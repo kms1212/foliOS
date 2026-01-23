@@ -1,0 +1,42 @@
+@uuid(%ENV("STRATA_GLOBAL_NAMESPACE"), "strata/interface/console")
+@prefix("StIfCon_")
+@include("strata/status.h")
+@status_type("StStatus")
+interface Console {
+    abirevision 0 {
+        bitfield<u32> CharCellAttribute {
+            text_blink_level : 2;
+            text_reversed : 1;
+            text_bold : 1;
+            text_dim : 1;
+            text_italic : 1;
+            text_underline : 1;
+            text_strike : 1;
+            text_overlined : 1;
+        };
+
+        struct CharCell {
+            u32 fg;
+            u32 bg;
+            CharCellAttribute attr;
+            u32 codepoint;
+        };
+
+        // Get frame buffer
+        function GetBuffer(out ptr<opaque> buf, out u64 size);
+
+        // Invalidate framebuffer region
+        function Invalidate(in u64 x, in u64 y, in u64 width, in u64 height);
+
+        // Flush invalidated region
+        function Flush();
+
+        // Cursor manipulation
+        function SetCursorPos(in u64 x, in u64 y);
+        function GetCursorPos(out u64 x, out u64 y);
+        function SetCursorVisibility(in u64 visible);
+        function GetCursorVisibility(out u64 visible);
+        function SetCursorAttribute(in const ptr<CharCell> attr);
+        function GetCursorAttribute(out ptr<CharCell> attr);
+    }
+}

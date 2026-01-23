@@ -1,0 +1,35 @@
+#!.strata.utils.folish
+
+$port = getenv("PORT")
+if ($port == null) {
+    $port = 8080
+}
+
+# Open TCP Virtual Device
+open("/System/Devices/Tcp" | handle=>$tcp)
+
+# Create Socket
+$tcp.Tcp.CreateSocket(| socket=>$socket_path)
+open($socket_path | handle=>$socket)
+$socket.Socket.Listen(| port=>$port)
+
+while (true) {
+    # 1. Wait for connection
+    $socket.Socket.Accept(| client=>$client_path)
+    open($client_path | handle=>$client)
+
+    # 2. Response in background
+    spawn {
+        $client.Socket.Read(| flags<=0, buffer=>$buf, size=>$buf_size)
+
+        # 3. Simple routing logic
+        if ($buf.StartsWith("GET / ")) {
+             open("/fs/index.html" | handle=>$file)
+             $file.ByteStream.GetLength(| size=>$file_size)
+             $file.ByteStream.ReadAll(| data=>$data)
+             $client.Socket.Write(| buffer=>$data, size=>$file_size, flags<=0)
+        }
+
+        close($client)
+    }
+}

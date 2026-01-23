@@ -52,9 +52,9 @@ OUTPUT=$1
 CURRENT_IMAGE=$(mktemp)
 BOOT_IMAGE=$CURRENT_IMAGE
 dd if=/dev/zero of="$CURRENT_IMAGE" bs=512 count=2880
-mformat -i "$CURRENT_IMAGE" -B "build/boot/arch/$ARCH/pc/bios/fdboot.bin"
-mcopy -i "$CURRENT_IMAGE" "build/boot/arch/$ARCH/pc/bios/stage1.bin" ::/STAGE1.$BOOTBIN_EXT
-mcopy -i "$CURRENT_IMAGE" "build/boot/arch/$ARCH/pc/bios/bootloader.bin" ::/BOOTLDR.$BOOTBIN_EXT
+mformat -i "$CURRENT_IMAGE" -B "build/vellum/arch/$ARCH/pc/bios/fdboot.bin"
+mcopy -i "$CURRENT_IMAGE" "build/vellum/arch/$ARCH/pc/bios/stage1.bin" ::/STAGE1.$BOOTBIN_EXT
+mcopy -i "$CURRENT_IMAGE" "build/vellum/arch/$ARCH/pc/bios/vellum.bin" ::/VELLUM.$BOOTBIN_EXT
 
 if [ "${PRESERVE_TEMP}" = true ]; then
     cp "$CURRENT_IMAGE" "${OUTPUT%.*}.fd.img";
@@ -67,11 +67,11 @@ mkdir ./.mkcdrom.temp
 mkdir ./.mkcdrom.temp/config
 mkdir ./.mkcdrom.temp/modules
 cp "$BOOT_IMAGE" ./.mkcdrom.temp/boot.img
-cp boot/config/boot.json ./.mkcdrom.temp/config/boot.json
-cp build/boot/modules/bootemos/bootemos.mod ./.mkcdrom.temp/modules/bootemos.mod
-cp build/boot/modules/helloworld/helloworld.mod ./.mkcdrom.temp/modules/helowrld.mod
-cp build/boot/bootloader.map ./.mkcdrom.temp/bootldr.map
-cp build/boot/unifont.bfn ./.mkcdrom.temp/unifont.bfn
+cp vellum/config/boot.json ./.mkcdrom.temp/config/boot.json
+cp build/vellum/modules/loadst/loadst.mod ./.mkcdrom.temp/modules/loadst.mod
+cp build/vellum/modules/helloworld/helloworld.mod ./.mkcdrom.temp/modules/helowrld.mod
+cp build/vellum/bootloader.map ./.mkcdrom.temp/bootldr.map
+cp build/vellum/unifont.bfn ./.mkcdrom.temp/unifont.bfn
 cp disk/plchldr.bmp ./.mkcdrom.temp/plchldr.bmp
 cp disk/unicode.txt ./.mkcdrom.temp/unicode.txt
 
@@ -81,7 +81,7 @@ mkdir ./.mkcdrom.temp/system/lib
 mkdir ./.mkcdrom.temp/system/subsys
 mkdir ./.mkcdrom.temp/system/services
 mkdir ./.mkcdrom.temp/system/drivers
-cp build/kernel/kernel.elf ./.mkcdrom.temp/system/kernel/kernel.elf
+cp build/strata/strata.elf ./.mkcdrom.temp/system/kernel/strata.elf
 
 xorriso -as mkisofs -o "$OUTPUT" -b "/boot.img" ./.mkcdrom.temp
 

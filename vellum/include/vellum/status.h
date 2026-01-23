@@ -1,0 +1,53 @@
+#ifndef __VELLUM_STATUS_H__
+#define __VELLUM_STATUS_H__
+
+#include <vellum/types.h>
+
+typedef unsigned int status_t;
+
+#define STATUS_FAILURE_MASK     0x80000000
+#define STATUS_SEVERITY_MASK    0x40000000
+#define STATUS_AREA_MASK        0x3FFF0000
+#define STATUS_CODE_MASK        0x0000FFFF
+
+#define CHECK_SUCCESS(status) (!((status) & 0x80000000))
+#define CHECK_FAILURE(status) (!!((status) & 0x80000000))
+
+#define CHECK_NORMAL_FAILURE(status) \
+    (CHECK_FAILURE(status) && (!((status) & 0x40000000)))
+#define CHECK_CRITICAL_FAILURE(status) \
+    (CHECK_FAILURE(status) && (!!((status) & 0x40000000)))
+
+#define STATUS_SUCCESS                  0x00000000
+#define STATUS_DEPRECATED               0x00000001
+#define STATUS_NO_EVENT                 0x00000002
+
+#define STATUS_UNKNOWN_ERROR            0x80000000
+#define STATUS_INVALID_RESOURCE         0x80000001
+#define STATUS_UNEXPECTED_RESULT        0x80000002
+#define STATUS_INVALID_SIGNATURE        0x80000003
+#define STATUS_INVALID_VALUE            0x80000004
+#define STATUS_UNSUPPORTED              0x80000005
+#define STATUS_ENTRY_NOT_FOUND          0x80000006
+#define STATUS_UNIMPLEMENTED            0x80000007
+#define STATUS_HARDWARE_NOT_FOUND       0x80000008
+#define STATUS_HARDWARE_FAILED          0x80000009
+#define STATUS_IO_TIMEOUT               0x8000000A
+#define STATUS_BUFFER_UNDERFLOW         0x8000000B
+#define STATUS_CONFLICTING_STATE        0x8000000C
+#define STATUS_END_OF_LIST              0x8000000D
+#define STATUS_WRONG_ELEMENT_TYPE       0x8000000E
+#define STATUS_DUPLICATE_ENTRY          0x8000000F
+#define STATUS_SYNTAX_ERROR             0x80000010
+#define STATUS_END_OF_FILE              0x80000011
+#define STATUS_INVALID_FORMAT           0x80000012
+#define STATUS_SIZE_CHECK_FAILURE       0x80000013
+#define STATUS_BOOT_DEVICE_INACCESSIBLE 0x80000014
+#define STATUS_INVALID_SYNTAX           0x80000015
+#define STATUS_BUFFER_TOO_SMALL         0x80000016
+#define STATUS_PAGE_NOT_PRESENT         0x80000017
+#define STATUS_INSUFFICIENT_MEMORY      0x80000018
+
+#define STATUS_FS_INCONSISTENT          0xC0000000
+
+#endif // __VELLUM_STATUS_H__

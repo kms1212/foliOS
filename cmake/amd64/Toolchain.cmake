@@ -10,18 +10,18 @@ find_program(CMAKE_C_COMPILER
     HINTS "/usr" "/usr/local" "/opt/homebrew" ENV PATH
     REQUIRED)
 set(CMAKE_C_COMPILER_TARGET     x86_64-elf)
-set(CMAKE_C_FLAGS               "${CMAKE_C_FLAGS} -ffreestanding -nostdlib -march=x86-64")
+set(CMAKE_C_FLAGS               "${CMAKE_C_FLAGS} -ffreestanding -nostdlib -fno-stack-protector -mno-red-zone")
 
 find_program(CMAKE_CXX_COMPILER
     "${TOOLCHAIN_PREFIX}g++"
     HINTS "/usr" "/usr/local" "/opt/homebrew" ENV PATH
     REQUIRED)
 set(CMAKE_CXX_COMPILER_TARGET   x86_64-elf)
-set(CMAKE_CXX_FLAGS             "${CMAKE_CXX_FLAGS} -ffreestanding -nostdlib -march=x86-64")
+set(CMAKE_CXX_FLAGS             "${CMAKE_CXX_FLAGS} -ffreestanding -nostdlib -fno-stack-protector -mno-red-zone")
 
 set(CMAKE_ASM_COMPILER          "${CMAKE_C_COMPILER}")
 set(CMAKE_ASM_COMPILER_TARGET   x86_64-elf)
-set(CMAKE_ASM_FLAGS             "${CMAKE_ASM_FLAGS} -ffreestanding -nostdlib -march=x86-64")
+set(CMAKE_ASM_FLAGS             "${CMAKE_ASM_FLAGS} -ffreestanding -nostdlib -fno-stack-protector -mno-red-zone")
 
 set(_BINUTILS_LIST LD;AR;NM;OBJCOPY;OBJDUMP;RANLIB;READELF;STRIP)
 

@@ -1,6 +1,0 @@
-#ifndef __EBOOT_ASM_PROCESSOR_H__
-#define __EBOOT_ASM_PROCESSOR_H__
-
-#define __PROCESSOR_LITTLE_ENDIAN 1
-
-#endif // __EBOOT_ASM_PROCESSOR_H__

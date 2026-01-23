@@ -75,22 +75,22 @@ case $BOOT_TYPE in
         mformat -i "$CURRENT_PART_IMAGE" -H 63
         mmd -i "$CURRENT_PART_IMAGE" ::/EFI
         mmd -i "$CURRENT_PART_IMAGE" ::/EFI/BOOT
-        mcopy -i "$CURRENT_PART_IMAGE" "build/boot/arch/$ARCH/pc/uefi/bootloader.efi" ::/EFI/BOOT/BOOT$UEFI_ARCH.EFI
+        mcopy -i "$CURRENT_PART_IMAGE" "build/vellum/arch/$ARCH/pc/uefi/vellum.efi" ::/EFI/BOOT/BOOT$UEFI_ARCH.EFI
         ;;
     bios)
-        mformat -i "$CURRENT_PART_IMAGE" -H 63 -B "build/boot/arch/$ARCH/pc/bios/fdboot.bin"
-        mcopy -i "$CURRENT_PART_IMAGE" "build/boot/arch/$ARCH/pc/bios/stage1.bin" ::/STAGE1.$BOOTBIN_EXT
-        mcopy -i "$CURRENT_PART_IMAGE" "build/boot/arch/$ARCH/pc/bios/bootloader.bin" ::/BOOTLDR.$BOOTBIN_EXT
+        mformat -i "$CURRENT_PART_IMAGE" -H 63 -B "build/vellum/arch/$ARCH/pc/bios/fdboot.bin"
+        mcopy -i "$CURRENT_PART_IMAGE" "build/vellum/arch/$ARCH/pc/bios/stage1.bin" ::/STAGE1.$BOOTBIN_EXT
+        mcopy -i "$CURRENT_PART_IMAGE" "build/vellum/arch/$ARCH/pc/bios/vellum.bin" ::/VELLUM.$BOOTBIN_EXT
         ;;
 esac
 mmd -i "$CURRENT_PART_IMAGE" ::/CONFIG
-mcopy -i "$CURRENT_PART_IMAGE" boot/config/boot.json ::/CONFIG/boot.json
+mcopy -i "$CURRENT_PART_IMAGE" vellum/config/boot.json ::/CONFIG/boot.json
 mmd -i "$CURRENT_PART_IMAGE" ::/MODULES
-mcopy -i "$CURRENT_PART_IMAGE" build/boot/modules/bootemos/bootemos.mod ::/MODULES/BOOTEMOS.MOD
-mcopy -i "$CURRENT_PART_IMAGE" build/boot/modules/guishell/guishell.mod ::/MODULES/guishell.MOD
-mcopy -i "$CURRENT_PART_IMAGE" build/boot/modules/helloworld/helloworld.mod ::/MODULES/HELOWRLD.MOD
-mcopy -i "$CURRENT_PART_IMAGE" build/boot/bootloader.map ::/BOOTLDR.MAP
-mcopy -i "$CURRENT_PART_IMAGE" build/boot/unifont.bfn ::/UNIFONT.BFN
+mcopy -i "$CURRENT_PART_IMAGE" build/vellum/modules/loadst/loadst.mod ::/MODULES/LOADST.MOD
+mcopy -i "$CURRENT_PART_IMAGE" build/vellum/modules/guishell/guishell.mod ::/MODULES/guishell.MOD
+mcopy -i "$CURRENT_PART_IMAGE" build/vellum/modules/helloworld/helloworld.mod ::/MODULES/HELOWRLD.MOD
+mcopy -i "$CURRENT_PART_IMAGE" build/vellum/vellum.map ::/VELLUM.MAP
+mcopy -i "$CURRENT_PART_IMAGE" build/vellum/unifont.bfn ::/UNIFONT.BFN
 mcopy -i "$CURRENT_PART_IMAGE" disk/plchldr.bmp ::/PLCHLDR.BMP
 mcopy -i "$CURRENT_PART_IMAGE" disk/unicode.txt ::/UNICODE.TXT
 
@@ -103,18 +103,18 @@ fi
 CURRENT_PART_IMAGE=$(mktemp)
 PART_IMAGES+=("$CURRENT_PART_IMAGE")
 dd if=/dev/zero of="$CURRENT_PART_IMAGE" bs=512 count=65520
-build/tools/mkfs.afs/mkfs.afs -l "Label" -j 1M -N 2 -r 1 -s 2 -o 8253 -u "$(uuidgen)" -iv "$CURRENT_PART_IMAGE"
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/system
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/kernel
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/lib
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/subsys
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/services
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/drivers
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/users
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/users/root
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/packages
-# build/tools/afsimg/afsimg mkdir -i "$CURRENT_PART_IMAGE" :/temp
-# build/tools/afsimg/afsimg copy -i "$CURRENT_PART_IMAGE" build/kernel/kernel.elf :/system/kernel/kernel.elf
+build/tools/mkfs.folifs/mkfs.folifs -l "Label" -j 1M -N 2 -r 1 -s 2 -o 8253 -u "$(uuidgen)" -iv "$CURRENT_PART_IMAGE"
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/system
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/kernel
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/lib
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/subsys
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/services
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/system/drivers
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/users
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/users/root
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/packages
+# build/tools/folifsimg/folifsimg mkdir -i "$CURRENT_PART_IMAGE" :/temp
+# build/tools/folifsimg/folifsimg copy -i "$CURRENT_PART_IMAGE" build/strata/strata.elf :/system/strata/strata.elf
 
 if [ "${PRESERVE_TEMP}" = true ]; then
     cp "$CURRENT_PART_IMAGE" "${OUTPUT%.*}.part1.img";
@@ -136,7 +136,7 @@ mmd -i "$CURRENT_PART_IMAGE" ::/users
 mmd -i "$CURRENT_PART_IMAGE" ::/users/root
 mmd -i "$CURRENT_PART_IMAGE" ::/packages
 mmd -i "$CURRENT_PART_IMAGE" ::/temp
-mcopy -i "$CURRENT_PART_IMAGE" build/kernel/kernel.elf ::/system/kernel/kernel.elf
+mcopy -i "$CURRENT_PART_IMAGE" build/strata/strata.elf ::/system/kernel/strata.elf
 
 if [ "${PRESERVE_TEMP}" = true ]; then
     cp "$CURRENT_PART_IMAGE" "${OUTPUT%.*}.part2.img";
@@ -176,7 +176,7 @@ y
 EOF
         ;;
     bios)
-        cp "build/boot/arch/$ARCH/pc/bios/mbrboot.bin" "$PART_TABLE_IMAGE"
+        cp "build/vellum/arch/$ARCH/pc/bios/mbrboot.bin" "$PART_TABLE_IMAGE"
         dd if=/dev/zero bs=512 count=62 >>"$PART_TABLE_IMAGE"
         cat "$PART_TABLE_IMAGE" "${PART_IMAGES[@]}" > "$OUTPUT"
 

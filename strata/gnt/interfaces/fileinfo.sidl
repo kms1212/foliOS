@@ -1,0 +1,20 @@
+@uuid(%ENV("STRATA_GLOBAL_NAMESPACE"), "strata/interface/fileinfo")
+@prefix("StIfFi_")
+@include("strata/status.h")
+@status_type("StStatus")
+interface FileInfo {
+    abirevision 0 {
+        struct StatInfo {
+            u64 size;
+            u64 alloc_size;
+        };
+
+        bitfield<u32> StatInfoFieldMask {
+            SIZE : 1;
+            ALLOC_SIZE : 1;
+        };
+
+        function GetStat(in ptr<StatInfo> statinfo, in u64 statinfo_size);
+        function SetStat(in const ptr<StatInfo> statinfo, in u64 statinfo_size, in StatInfoFieldMask field_mask);
+    }
+}

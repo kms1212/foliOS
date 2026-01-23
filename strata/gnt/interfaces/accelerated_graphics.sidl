@@ -1,0 +1,9 @@
+@uuid(%ENV("STRATA_GLOBAL_NAMESPACE"), "strata/interface/acceleratedgraphics")
+@prefix("StIfAg_")
+@include("strata/status.h")
+@status_type("StStatus")
+interface AcceleratedGraphics {
+    abirevision 0 {
+        // TBD
+    }
+}

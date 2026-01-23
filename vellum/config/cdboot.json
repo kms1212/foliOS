@@ -1,0 +1,30 @@
+{
+    "start_script": [
+        "vmode 640x480x24",
+        "usefont boot:/unifont.bfn"
+    ],
+    "menu": {
+        "title": "EMOS Installer CD-ROM Startup Menu",
+        "timeout": 5,
+        "default": 0,
+        "options": [
+            {
+                "name": "Boot from next device",
+                "script": "bootnext"
+            },
+            {
+                "name": "Boot from current device",
+                "script": [
+                    "loadmodule boot:/modules/loadst.mod",
+                    "loadst boot:/system/kernel/strata.elf -v"
+                ]
+            },
+            {   
+                "name": "Start shell",
+                "script": [
+                    "shell"
+                ]
+            }
+        ]
+    }
+}

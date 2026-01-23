@@ -1,0 +1,83 @@
+@uuid(%ENV("STRATA_GLOBAL_NAMESPACE"), "strata/interface/block")
+@prefix("StIfBlk_")
+@include("strata/status.h")
+@status_type("StStatus")
+interface Block {
+    abirevision 0 {
+        struct IoRequest {
+            ptr<opaque> buf;
+            u64 size;
+        };
+
+        @align_size(16)
+        struct IoResult {
+            u64 reqid;
+            u64 status;
+            u64 xfer_size;
+        };
+
+        bitfield<u32> IoFlags {
+            DIRECT : 1;
+        };
+
+        function Read(in u64 start_lba, in const ptr<IoRequest> ioreqvec, in u64 ioreq_size, in u64 ioreq_count, in IoFlags flags, out u64 reqid);
+        function Write(in u64 start_lba, in const ptr<IoRequest> ioreqvec, in u64 ioreq_size, in u64 ioreq_count, in IoFlags flags, out u64 reqid);
+        function Flush(in u64 start_lba, in u64 count, in IoFlags flags, out u64 reqid);
+        function Discard(in u64 start_lba, in u64 count, in IoFlags flags, out u64 reqid);
+
+        function CheckStatus(in u64 reqid, out u64 status);
+        function Wait(in ptr<IoResult> ioresvec, in u64 iores_size, in u64 max_iores_count, in u64 min_iores_count, in u64 timeout_ms, out u64 filled_iores_count);
+        function Cancel(in u64 reqid);
+
+        function GetBlockSize(out u64 block_size);
+        function SetBlockSize(in u64 block_size);
+        function GetMaxLba(out u64 max_lba);
+
+        view Read(
+            in u64 start_lba,
+            in u64 count,
+            @default(500) in u64 timeout_ms,
+            @visualize("hexdump") out ptr<u8> data,
+            @for(data) out u64 xfer_size
+        )
+        {
+            var u64 blksz;
+            var ptr<u8> buf;
+            var IoRequest ioreq;
+            var IoResult iores;
+            var u64 reqid;
+
+            GetBlockSize(blksz);
+            buf = Allocate(blksz * count);
+
+            ioreq.buf = buf;
+            ioreq.size = blksz * count;
+
+            Read(start_lba, ref(ioreq), sizeof(ioreq), 1, 0, reqid);
+
+            iores.reqid = reqid;
+            Wait(ref(iores), sizeof(iores), 1, 1, timeout_ms, ignore);
+
+            xfer_size = iores.xfer_size;
+            data = buf;
+        }
+
+        view GetBlockSize(@visualize("size") out u64 size) {
+            var u64 blksz;
+
+            GetBlockSize(blksz);
+
+            size = blksz;
+        }
+
+        view GetDiskSize(@visualize("size") out u64 size) {
+            var u64 max_lba;
+            var u64 blksz;
+
+            GetMaxLba(max_lba);
+            GetBlockSize(blksz);
+
+            size = (max_lba + 1) * blksz;
+        }
+    }
+}

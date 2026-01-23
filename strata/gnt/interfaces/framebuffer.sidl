@@ -1,0 +1,11 @@
+@uuid(%ENV("STRATA_GLOBAL_NAMESPACE"), "strata/interface/framebuffer")
+@prefix("StIfFb_")
+@include("strata/status.h")
+@status_type("StStatus")
+interface Framebuffer {
+    abirevision 0 {
+        function GetBuffer(out ptr<opaque> buf, out u64 size);
+        function Invalidate(in u64 x, in u64 y, in u64 width, in u64 height);
+        function Flush();
+    }
+}

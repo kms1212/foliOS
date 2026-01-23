@@ -1,9 +1,0 @@
-{
-    "timezone": 32400,
-    "rtc_utc": true,
-    "start_script": [
-        "loadmodule boot:/modules/bootemos.mod",
-        "mount fd0pt0p2 sys",
-        "bootemos sys:/system/kernel/kernel.elf -v"
-    ]
-}

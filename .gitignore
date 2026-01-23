@@ -1,4 +1,6 @@
 .vscode
+.cache
+.DS_Store
 build
 *.img
 *.iso

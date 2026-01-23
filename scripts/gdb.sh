@@ -3,6 +3,7 @@
 set -e
 
 GDB_ARCH=
+TARGET=
 declare -a OBJECTS
 declare -a GDB_OBJECT_FLAGS
 
@@ -10,11 +11,14 @@ print_usage() {
     echo "usage: $0 [-h] arch"
 }
 
-while getopts "hi" arg; do
+while getopts "hit:" arg; do
     case $arg in
         h)
             print_usage
             exit 0
+            ;;
+        t)
+            TARGET=$OPTARG
             ;;
         *)
             print_usage
@@ -24,14 +28,45 @@ while getopts "hi" arg; do
 done
 
 shift "$((OPTIND - 1))"
-GDB_ARCH=$1
 
-case $GDB_ARCH in
-    i386)
-        OBJECTS=(
-            "build/boot/arch/i686/pc/bios/fdboot.elf"
-            "build/boot/arch/i686/pc/bios/stage1.elf"
-        )
+case $1 in
+    i686)
+        GDB_ARCH=i386
+        case $TARGET in
+            vellum)
+                OBJECTS=(
+                    "build/vellum/arch/i686/pc/bios/fdboot.elf"
+                    "build/vellum/arch/i686/pc/bios/stage1.elf"
+                )
+                ;;
+            strata)
+                ;;
+        esac
+        ;;
+    amd64)
+        GDB_ARCH=x86_64
+        case $TARGET in
+            vellum)
+                OBJECTS=(
+                    "build/vellum/arch/i686/pc/bios/fdboot.elf"
+                    "build/vellum/arch/i686/pc/bios/stage1.elf"
+                )
+                ;;
+            strata)
+                OBJECTS=(
+                    "build/strata/arch/amd64/pc/trampoline/trampoline.elf"
+                )
+                ;;
+        esac
+        ;;
+esac
+
+case $TARGET in
+    vellum)
+        OBJECTS+=("build/vellum/vellum.elf")
+        ;;
+    strata)
+        OBJECTS+=("build/strata/strata.elf")
         ;;
 esac
 
@@ -42,8 +77,6 @@ done
 shift
 "$GDB_ARCH-elf-gdb" \
     --eval-command="set confirm off" \
-    --eval-command="add-symbol-file build/boot/bootloader.elf" \
-    --eval-command="add-symbol-file build/kernel/kernel.elf" \
     "${GDB_OBJECT_FLAGS[@]}" \
     --eval-command="set confirm on" \
     --command="./.gdbinit" \

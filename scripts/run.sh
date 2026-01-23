@@ -24,9 +24,9 @@ print_machines() {
     echo "  isapc-i386"
     echo "  q35-i386"
     echo "  pc-i386"
-    echo "  isapc-x86_64"
-    echo "  q35-x86_64"
-    echo "  pc-x86_64"
+    echo "  isapc-amd64"
+    echo "  q35-amd64"
+    echo "  pc-amd64"
     echo "  virt-arm"
     echo "  virt-aarch64"
     echo "  mac99-ppc64"
@@ -72,9 +72,9 @@ case $QEMU_MACHINE in
             pc-testdev
         )
         DRIVES=(
-            "file=build/boot/floppy.img,id=rd0,if=none,format=raw"
+            "file=floppy.img,id=rd0,if=none,format=raw"
             "file=disk.img,id=fd0,if=none,format=raw"
-            "file=build/boot/cdrom.iso,id=rd1,if=none,format=raw"
+            "file=cdrom.iso,id=rd1,if=none,format=raw"
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
@@ -99,7 +99,7 @@ case $QEMU_MACHINE in
         )
         DRIVES=(
             "file=disk.img,id=fd0,if=none,format=raw"
-            # "file=build/boot/cdrom.iso,id=rd0,if=none,format=raw"
+            # "file=cdrom.iso,id=rd0,if=none,format=raw"
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
@@ -122,13 +122,13 @@ case $QEMU_MACHINE in
             pci-testdev
         )
         DRIVES=(
-            # "file=build/boot/floppy.img,id=rd0,if=none,format=raw"
+            # "file=floppy.img,id=rd0,if=none,format=raw"
             "file=disk.img,id=fd0,index=0,if=none,format=raw"
             "file=cdrom.iso,id=rd1,index=1,if=none,format=raw"
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
-    isapc-x86_64)
+    isapc-amd64)
         QEMU_ARCH=x86_64
         MACHINE_TYPE=isapc
         DEVICES=(
@@ -144,13 +144,13 @@ case $QEMU_MACHINE in
             pc-testdev
         )
         DRIVES=(
-            "file=build/boot/floppy.img,id=rd0,if=none,format=raw"
+            "file=floppy.img,id=rd0,if=none,format=raw"
             "file=disk.img,id=fd0,if=none,format=raw"
-            "file=build/boot/cdrom.iso,id=rd1,if=none,format=raw"
+            "file=cdrom.iso,id=rd1,if=none,format=raw"
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
-    q35-x86_64)
+    q35-amd64)
         QEMU_ARCH=x86_64
         MACHINE_TYPE=q35
         DEVICES=(
@@ -171,11 +171,11 @@ case $QEMU_MACHINE in
         )
         DRIVES=(
             "file=disk.img,id=fd0,if=none,format=raw"
-            "file=build/boot/cdrom.iso,id=rd0,if=none,format=raw"
+            "file=cdrom.iso,id=rd0,if=none,format=raw"
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
-    pc-x86_64)
+    pc-amd64)
         QEMU_ARCH=x86_64
         MACHINE_TYPE=pc
         DEVICES=(
@@ -194,9 +194,9 @@ case $QEMU_MACHINE in
             pci-testdev
         )
         DRIVES=(
-            # "file=build/boot/floppy.img,id=rd0,if=none,format=raw"
+            # "file=floppy.img,id=rd0,if=none,format=raw"
             "file=disk.img,id=fd0,if=none,format=raw"
-            "file=build/boot/cdrom.iso,id=rd1,if=none,format=raw"
+            "file=cdrom.iso,id=rd1,if=none,format=raw"
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
@@ -223,7 +223,7 @@ case $QEMU_MACHINE in
         )
         DRIVES=(
             "file=disk.img,id=fd0,if=none,format=raw"
-            "file=build/boot/cdrom.iso,id=rd1,if=none,format=raw"
+            "file=cdrom.iso,id=rd1,if=none,format=raw"
         )
         ;;
     virt-aarch64)
@@ -249,7 +249,7 @@ case $QEMU_MACHINE in
         )
         DRIVES=(
             "file=disk.img,id=fd0,if=none,format=raw"
-            "file=build/boot/cdrom.iso,id=rd1,if=none,format=raw"
+            "file=cdrom.iso,id=rd1,if=none,format=raw"
         )
         ;;
     mac99-ppc64)
@@ -271,9 +271,9 @@ case $QEMU_MACHINE in
             pci-testdev
         )
         DRIVES=(
-            # "file=build/boot/floppy.img,id=rd0,if=none,format=raw"
+            # "file=floppy.img,id=rd0,if=none,format=raw"
             "file=disk.img,id=fd0,if=none,format=raw"
-            "file=build/boot/cdrom.iso,id=rd1,if=none,format=raw"
+            "file=cdrom.iso,id=rd1,if=none,format=raw"
         )
         ;;
     help)
@@ -291,7 +291,7 @@ if [ "$BOOT_TYPE" = "uefi" ]; then
         i386)
             OVMF_PATH="/usr/local/share/edk2.git/ovmf-ia32/OVMF-pure-efi.fd"
             ;;
-        x86_64)
+        amd64)
             OVMF_PATH="/usr/local/share/edk2.git/ovmf-x64/OVMF-pure-efi.fd"
             ;;
         arm)
