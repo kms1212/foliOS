@@ -21,9 +21,9 @@ print_usage() {
 
 print_machines() {
     echo "Available machine types:"
-    echo "  isapc-i386"
-    echo "  q35-i386"
-    echo "  pc-i386"
+    echo "  isapc-ia32"
+    echo "  q35-ia32"
+    echo "  pc-ia32"
     echo "  isapc-amd64"
     echo "  q35-amd64"
     echo "  pc-amd64"
@@ -55,8 +55,8 @@ shift "$((OPTIND - 1))"
 QEMU_MACHINE=$1
 
 case $QEMU_MACHINE in
-    isapc-i386)
-        QEMU_ARCH=i386
+    isapc-ia32)
+        QEMU_ARCH=ia32
         CPU_TYPE=486
         MACHINE_TYPE=isapc
         DEVICES=(
@@ -78,8 +78,8 @@ case $QEMU_MACHINE in
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
-    q35-i386)
-        QEMU_ARCH=i386
+    q35-ia32)
+        QEMU_ARCH=ia32
         MACHINE_TYPE=q35
         DEVICES=(
             "nvme,drive=fd0,serial=1234"
@@ -103,8 +103,8 @@ case $QEMU_MACHINE in
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
         ;;
-    pc-i386)
-        QEMU_ARCH=i386
+    pc-ia32)
+        QEMU_ARCH=ia32
         MACHINE_TYPE=pc
         DEVICES=(
             # "floppy,drive=rd0"
@@ -288,7 +288,7 @@ esac
 
 if [ "$BOOT_TYPE" = "uefi" ]; then
     case $QEMU_ARCH in
-        i386)
+        ia32)
             OVMF_PATH="/usr/local/share/edk2.git/ovmf-ia32/OVMF-pure-efi.fd"
             ;;
         amd64)

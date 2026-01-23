@@ -53,7 +53,7 @@ static status_t bus_soft_reset(struct device *dev)
     if (sr == 0xFF) return STATUS_HARDWARE_NOT_FOUND;
     
     do {
-        _i686_pause();
+        _ia32_pause();
         sr = io_in8(data->io_base1 + IDEREG_ALTSTAT);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while (sr & 0x80);
@@ -78,7 +78,7 @@ static status_t switch_device(struct device *dev, int slave)
     }
 
     while (sr & 0x80) {
-        _i686_pause();
+        _ia32_pause();
         sr = io_in8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     }
@@ -118,7 +118,7 @@ static status_t send_command(struct device *dev, struct ata_command *cmd)
 
     /* wait until the command is finished */
     do {
-        _i686_pause();
+        _ia32_pause();
         sr = io_in8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while (sr & 0x80);
@@ -150,7 +150,7 @@ static status_t send_command_pio_input(struct device *dev, struct ata_command *c
     /* read out data */
     do {
         do {
-            _i686_pause();
+            _ia32_pause();
             sr = io_in8(data->io_base0 + IDEREG_STATUS);
             if (sr & 0x21) goto end;
         } while (sr & 0x80);
@@ -181,7 +181,7 @@ static status_t send_command_pio_output(struct device *dev, struct ata_command *
     /* write out data */
     do {
         do {
-            _i686_pause();
+            _ia32_pause();
             sr = io_in8(data->io_base0 + IDEREG_STATUS);
             if (sr & 0x01) goto end;
         } while (sr & 0x08);
@@ -223,7 +223,7 @@ static status_t send_command_packet(struct device *dev, int slave, const uint8_t
     /* wait until the drive is ready to receive the packet */
     LOG_DEBUG("waiting for device to ready...\n");
     do {
-        _i686_pause();
+        _ia32_pause();
         sr = io_in8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while ((sr & 0x80) || !(sr & 0x08));
@@ -234,7 +234,7 @@ static status_t send_command_packet(struct device *dev, int slave, const uint8_t
     /* wait until the command is finished */
     LOG_DEBUG("waiting until the command is finished...\n");
     do {
-        _i686_pause();
+        _ia32_pause();
         sr = io_in8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while (sr & 0x80);
@@ -258,7 +258,7 @@ static status_t send_command_packet_input(struct device *dev, int slave, const u
     do {
         LOG_DEBUG("waiting for DRQ...\n");
         do {
-            _i686_pause();
+            _ia32_pause();
             sr = io_in8(data->io_base0 + IDEREG_STATUS);
             if (sr & 0x01) goto end;
         } while ((sr & 0x80) || !(sr & 0x08));

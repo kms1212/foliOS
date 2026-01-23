@@ -94,7 +94,7 @@ retry:
     if (tm->second != bcd2int(io_in8(data->io_data))) goto retry;
 
     if (!_pc_rdtsc_undefined && data->tsc_diff_per_second) {
-        tm->millisecond = (uint32_t)((_i686_rdtsc() - data->prev_tsc_value) >> 16) * 1000 / data->tsc_diff_per_second;
+        tm->millisecond = (uint32_t)((_ia32_rdtsc() - data->prev_tsc_value) >> 16) * 1000 / data->tsc_diff_per_second;
         if (tm->millisecond >= 1000) {
             tm->millisecond = 999;
         }
@@ -153,10 +153,10 @@ static void rtc_isr(void *_dev, struct interrupt_frame *frame, struct trap_regs 
 
     if (!_pc_rdtsc_undefined && (regc & 0x10)) {
         if (data->prev_tsc_value) {
-            data->tsc_diff_per_second = (_i686_rdtsc() - data->prev_tsc_value) >> 16;
+            data->tsc_diff_per_second = (_ia32_rdtsc() - data->prev_tsc_value) >> 16;
         }
 
-        data->prev_tsc_value = _i686_rdtsc();
+        data->prev_tsc_value = _ia32_rdtsc();
     }
 }
 

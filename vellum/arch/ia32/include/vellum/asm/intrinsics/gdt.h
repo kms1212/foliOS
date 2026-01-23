@@ -7,7 +7,7 @@
 
 #include <vellum/compiler.h>
 
-__always_inline void _i686_lgdt(struct gdtr *gdtr)
+__always_inline void _ia32_lgdt(struct gdtr *gdtr)
 {
     __asm__ volatile ("lgdt (%0)" : : "r"(gdtr));
 }

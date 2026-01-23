@@ -73,7 +73,7 @@ static void fill_pagetable_frame_entries(struct bootinfo_unavailable_frame_entry
     uint32_t filled_entries = 0;
 
     if (max_count-- > 0) {
-        entries[filled_entries].pfn_base = (_i686_read_cr3() & 0xFFFFF000) >> 12;
+        entries[filled_entries].pfn_base = (_ia32_read_cr3() & 0xFFFFF000) >> 12;
         entries[filled_entries].count = 1;
         entries[filled_entries++].type = BEUT_PAGETABLE;
     }

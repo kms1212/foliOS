@@ -4,7 +4,7 @@
 
 uacpi_u64 uacpi_kernel_get_nanoseconds_since_boot(void)
 {
-    return _i686_rdtsc();
+    return _ia32_rdtsc();
 }
 
 void uacpi_kernel_stall(uacpi_u8 usec)

@@ -64,7 +64,7 @@ static status_t send_command(struct device *dev, struct fdc_command *cmd)
 
     for (int i = 0; i < cmd->send_size + 1; i++) {
         while (!(io_in8(data->io_base + FDCREG_MSR) & 0x80)) {
-            _i686_pause();
+            _ia32_pause();
         }
         status = io_in8(data->io_base + FDCREG_MSR);
         if (status & 0x40) {
@@ -85,7 +85,7 @@ static status_t send_command(struct device *dev, struct fdc_command *cmd)
 
     for (int i = 0; i < cmd->recv_size; i++) {
         while (!(io_in8(data->io_base + FDCREG_MSR) & 0x80)) {
-            _i686_pause();
+            _ia32_pause();
         }
         status = io_in8(data->io_base + FDCREG_MSR);
         if (status & 0x40) {

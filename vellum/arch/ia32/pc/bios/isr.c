@@ -53,10 +53,10 @@ struct isr_handler *_pc_isr_table[256];
 
 void _pc_isr_init(void)
 {
-    _i686_idtr.size = sizeof(_pc_idt) - 1;
-    _i686_idtr.idt_ptr = (uint32_t)&_pc_idt;
+    _ia32_idtr.size = sizeof(_pc_idt) - 1;
+    _ia32_idtr.idt_ptr = (uint32_t)&_pc_idt;
     
-    _i686_lidt(&_i686_idtr);
+    _ia32_lidt(&_ia32_idtr);
 
     for (int i = 0; i < ARRAY_SIZE(_pc_isr_table); i++) {
         _pc_isr_table[i] = NULL;

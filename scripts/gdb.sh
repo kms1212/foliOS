@@ -30,13 +30,13 @@ done
 shift "$((OPTIND - 1))"
 
 case $1 in
-    i686)
+    ia32)
         GDB_ARCH=i386
         case $TARGET in
             vellum)
                 OBJECTS=(
-                    "build/vellum/arch/i686/pc/bios/fdboot.elf"
-                    "build/vellum/arch/i686/pc/bios/stage1.elf"
+                    "build/vellum/arch/ia32/pc/bios/fdboot.elf"
+                    "build/vellum/arch/ia32/pc/bios/stage1.elf"
                 )
                 ;;
             strata)
@@ -48,8 +48,8 @@ case $1 in
         case $TARGET in
             vellum)
                 OBJECTS=(
-                    "build/vellum/arch/i686/pc/bios/fdboot.elf"
-                    "build/vellum/arch/i686/pc/bios/stage1.elf"
+                    "build/vellum/arch/ia32/pc/bios/fdboot.elf"
+                    "build/vellum/arch/ia32/pc/bios/stage1.elf"
                 )
                 ;;
             strata)

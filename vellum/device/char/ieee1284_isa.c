@@ -20,7 +20,7 @@ static status_t write(struct device *dev, const char *buf, size_t len, size_t *r
 
     for (int i = 0; i < len; i++) {
         while (!(io_in8(data->io_base + 1) & 0x80)) {
-            _i686_pause();
+            _ia32_pause();
         }
 
         io_out8(data->io_base, buf[i]);

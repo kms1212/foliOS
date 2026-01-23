@@ -215,10 +215,10 @@ status_t mm_init(void)
     if (!CHECK_SUCCESS(status)) return status;
 
     LOG_DEBUG("setting up registers...\n");
-    _i686_write_cr3((uintptr_t)&page_dir_recursive);
-    cr0 = _i686_read_cr0();
+    _ia32_write_cr3((uintptr_t)&page_dir_recursive);
+    cr0 = _ia32_read_cr0();
     cr0 |= CR0_PG;
-    _i686_write_cr0(cr0);
+    _ia32_write_cr0(cr0);
 
     return STATUS_SUCCESS;
 }
@@ -253,9 +253,9 @@ status_t mm_vaddr_to_paddr(void *vaddr, uintptr_t *paddr)
 static void invalidate_page(vpn_t vpn)
 {
     if (!_pc_invlpg_undefined) {
-        _i686_invlpg((void *)(vpn * PAGE_SIZE));
+        _ia32_invlpg((void *)(vpn * PAGE_SIZE));
     } else {
-        _i686_write_cr3(_i686_read_cr3());
+        _ia32_write_cr3(_ia32_read_cr3());
     }
 }
 

@@ -7,7 +7,7 @@
 
 #include <vellum/compiler.h>
 
-__always_inline void _i686_lidt(struct idtr *idtr)
+__always_inline void _ia32_lidt(struct idtr *idtr)
 {
     __asm__ volatile ("lidt (%0)" : : "r"(idtr));
 }

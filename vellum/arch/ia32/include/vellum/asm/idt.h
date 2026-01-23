@@ -18,6 +18,6 @@ struct idt_entry {
     uint16_t offset_high;
 } __packed;
 
-extern struct idtr _i686_idtr;
+extern struct idtr _ia32_idtr;
 
 #endif // __VELLUM_ASM_IDT_H__

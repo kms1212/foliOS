@@ -35,7 +35,7 @@ static status_t wait_for_status_register(struct device *dev, uint8_t value, uint
 
     while ((io_in8(data->io_ctrl) & mask) != value) {
         if (get_global_tick() - tick_start > timeout) return STATUS_IO_TIMEOUT;
-        _i686_pause();
+        _ia32_pause();
     }
 
     return STATUS_SUCCESS;

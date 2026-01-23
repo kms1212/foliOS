@@ -24,7 +24,7 @@ void _pc_reboot()
     } while (status & 0x02);
     io_out8(0x0064, 0xFE);
 
-    _i686_lidt(&idtr);
+    _ia32_lidt(&idtr);
     __asm__ volatile ("int $0xFF");
 
     __asm__ volatile ("jmp $0xFFFF, $0x00000000");

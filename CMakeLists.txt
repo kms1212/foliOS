@@ -17,7 +17,7 @@ project("foliOS")
 add_subdirectory(tools)  # host tools
 
 # Build configurations
-set(TARGET "i686-pc-bios" CACHE STRING "Target triple (arch-board-firmware)")
+set(TARGET "ia32-pc-bios" CACHE STRING "Target triple (arch-board-firmware)")
 set(CONFIG_PRESET "default" CACHE STRING "Preset name of build configuration")
 
 string(REPLACE "-" ";" TARGET_TEMP ${TARGET})
@@ -31,7 +31,7 @@ list(GET TARGET_TEMP 2 TARGET_FIRMWARE)
 unset(TARGET_TEMP)
 
 if ("${TARGET_ARCH}" STREQUAL "amd64")
-    set(VELLUM_TARGET_ARCH i686)
+    set(VELLUM_TARGET_ARCH ia32)
 else()
     set(VELLUM_TARGET_ARCH "${TARGET_ARCH}")
 endif()

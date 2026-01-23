@@ -17,7 +17,7 @@ switch_r16_to_p32:
     xor     %ax, %ax
     mov     %ax, %ds                    # clear ds
 
-    lgdt    _i686_gdtr                  # load gdt
+    lgdt    _ia32_gdtr                  # load gdt
 
     mov     cr3_initialized, %ax
     test    %ax, %ax
@@ -38,7 +38,7 @@ switch_r16_to_p32:
     mov     cr0, %eax                   # get cr0
     mov     %eax, %cr0                  # set cr0
 
-    pushw   _i686_pm32_code_seg
+    pushw   _ia32_pm32_code_seg
     pushw   $.pmode
     retf                                # switch code segment
                                         # the .code32 directive should be placed
@@ -47,14 +47,14 @@ switch_r16_to_p32:
     .code32
 .pmode:
 
-    mov     _i686_pm32_data_seg, %ax
+    mov     _ia32_pm32_data_seg, %ax
     mov     %ax, %ds
     mov     %ax, %es
     mov     %ax, %fs
     mov     %ax, %gs
     mov     %ax, %ss                    # set segments
 
-    lidt    _i686_idtr                  # load idt
+    lidt    _ia32_idtr                  # load idt
 
     xor     %eax, %eax
     mov     (%esp), %ax
@@ -75,7 +75,7 @@ switch_r16_to_p32:
     .globl  switch_p32_to_r16
 switch_p32_to_r16:
     cli                                 # clear interrupt
-    lgdt    _i686_gdtr                  # load gdt
+    lgdt    _ia32_gdtr                  # load gdt
 
     mov     %cr0, %eax                  # save cr0
     mov     %eax, cr0
@@ -99,7 +99,7 @@ switch_p32_to_r16:
     mov     %eax, %esp
     mov     %eax, %ebp                  # set up stack pointer, base pointer
 
-    pushw   _i686_pm16_code_seg
+    pushw   _ia32_pm16_code_seg
     pushl   $.pmode16
     ljmp    *(%esp)                     # switch code segment
                                         # the .code16 directive should be placed
@@ -109,7 +109,7 @@ switch_p32_to_r16:
 .pmode16:
     add     $6, %esp
 
-    mov     _i686_pm16_data_seg, %ax
+    mov     _ia32_pm16_data_seg, %ax
     mov     %ax, %ds
     mov     %ax, %es
     mov     %ax, %fs
@@ -143,37 +143,37 @@ prot_stack:                             # protected mode stack
 
     .align  8
     .word   0
-    .globl  _i686_idtr
-_i686_idtr:
+    .globl  _ia32_idtr
+_ia32_idtr:
     .word   1023
     .long   0
 
     .align  8
     .word   0
-    .globl _i686_gdtr
-_i686_gdtr:
+    .globl _ia32_gdtr
+_ia32_gdtr:
     .word   8 * 5 - 1                   # 5 entries
-    .long   _i686_default_gdt           # gdt pointer
+    .long   _ia32_default_gdt           # gdt pointer
     
-    .globl _i686_pm32_code_seg
-_i686_pm32_code_seg:
+    .globl _ia32_pm32_code_seg
+_ia32_pm32_code_seg:
     .word   0x0008
 
-    .globl _i686_pm32_data_seg
-_i686_pm32_data_seg:
+    .globl _ia32_pm32_data_seg
+_ia32_pm32_data_seg:
     .word   0x0010
 
-    .globl _i686_pm16_code_seg
-_i686_pm16_code_seg:
+    .globl _ia32_pm16_code_seg
+_ia32_pm16_code_seg:
     .word   0x0018
 
-    .globl _i686_pm16_data_seg
-_i686_pm16_data_seg:
+    .globl _ia32_pm16_data_seg
+_ia32_pm16_data_seg:
     .word   0x0020
 
     .section .rodata
-    .globl _i686_default_gdt
-_i686_default_gdt:
+    .globl _ia32_default_gdt
+_ia32_default_gdt:
     .word   0x0000                      # null descriptor
     .word   0x0000
     .byte   0x00

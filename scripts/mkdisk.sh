@@ -39,11 +39,11 @@ while getopts "a:hSu" arg; do
 done
 
 case $ARCH in
-    i686)
+    ia32)
         BOOTBIN_EXT=X86
         UEFI_ARCH=IA32
         ;;
-    x86_64)
+    amd64)
         BOOTBIN_EXT=X64
         UEFI_ARCH=X64
         ;;

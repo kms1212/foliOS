@@ -44,11 +44,11 @@ struct gdt_entry {
     uint8_t base_high;
 } __packed;
 
-extern struct gdtr _i686_gdtr;
-extern struct gdt_entry _i686_default_gdt[];
-extern uint16_t _i686_pm32_code_seg;
-extern uint16_t _i686_pm32_data_seg;
-extern uint16_t _i686_pm16_code_seg;
-extern uint16_t _i686_pm16_data_seg;
+extern struct gdtr _ia32_gdtr;
+extern struct gdt_entry _ia32_default_gdt[];
+extern uint16_t _ia32_pm32_code_seg;
+extern uint16_t _ia32_pm32_data_seg;
+extern uint16_t _ia32_pm16_code_seg;
+extern uint16_t _ia32_pm16_data_seg;
 
 #endif // __VELLUM_ASM_GDT_H__

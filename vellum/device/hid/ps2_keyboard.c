@@ -459,7 +459,7 @@ static int translate_scancode(struct device *dev)
 
     do {
         while (data->seqbuf_start == data->seqbuf_end) {
-            _i686_pause();
+            _ia32_pause();
         }
 
         _pc_isr_mask_interrupt(data->irq_num);
@@ -507,7 +507,7 @@ static status_t wait_event(struct device *dev)
     struct ps2_keyboard_data *data = (struct ps2_keyboard_data *)dev->data;
 
     while (data->seqbuf_start == data->seqbuf_end) {
-        _i686_pause();
+        _ia32_pause();
     }
 
     return STATUS_SUCCESS;

@@ -18,7 +18,7 @@
 #define CPUID_INTEL_BRAND_STRING_MORE   0x80000003
 #define CPUID_INTEL_BRAND_STRING_END    0x80000004
 
-__always_inline void _i686_cpuid(uint32_t request, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
+__always_inline void _ia32_cpuid(uint32_t request, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx)
 {
     __cpuid(request, *eax, *ebx, *ecx, *edx);
 }

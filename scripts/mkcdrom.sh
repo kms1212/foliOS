@@ -33,10 +33,10 @@ while getopts "a:hSu" arg; do
 done
 
 case $ARCH in
-    i686)
+    ia32)
         BOOTBIN_EXT=X86
         ;;
-    x86_64)
+    amd64)
         BOOTBIN_EXT=X64
         ;;
     *)

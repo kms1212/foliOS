@@ -5,7 +5,7 @@
 
 #include <vellum/compiler.h>
 
-__always_inline uint64_t _i686_rdtsc(void)
+__always_inline uint64_t _ia32_rdtsc(void)
 {
     uint32_t low, high;
     __asm__ volatile ("rdtsc" : "=a"(low), "=d"(high));

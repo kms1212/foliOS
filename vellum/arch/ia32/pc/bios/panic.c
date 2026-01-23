@@ -28,7 +28,7 @@ void _pc_panic(status_t status, const char *fmt, ...)
     uint16_t *fbuf;
     va_list args;
 
-    _i686_interrupt_disable();
+    _ia32_interrupt_disable();
 
     /* enable keyboard translation */
     io_out8(0x0064, 0x60);
@@ -83,6 +83,6 @@ void _pc_panic(status_t status, const char *fmt, ...)
 #endif
     
     for (;;) {
-        _i686_halt();
+        _ia32_halt();
     }
 }

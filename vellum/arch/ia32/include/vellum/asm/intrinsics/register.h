@@ -19,7 +19,7 @@
 #define CR0_CD      0x40000000
 #define CR0_PG      0x80000000
 
-__always_inline uint32_t _i686_read_cr0(void)
+__always_inline uint32_t _ia32_read_cr0(void)
 {
     uint32_t value;
     __asm__ volatile (
@@ -30,7 +30,7 @@ __always_inline uint32_t _i686_read_cr0(void)
     return value;
 }
 
-__always_inline void _i686_write_cr0(uint32_t value)
+__always_inline void _ia32_write_cr0(uint32_t value)
 {
     __asm__ volatile (
         "mov    %0, %%eax\n\t"
@@ -39,7 +39,7 @@ __always_inline void _i686_write_cr0(uint32_t value)
     );
 }
 
-__always_inline uint32_t _i686_read_cr2(void)
+__always_inline uint32_t _ia32_read_cr2(void)
 {
     uint32_t value;
     __asm__ volatile (
@@ -50,7 +50,7 @@ __always_inline uint32_t _i686_read_cr2(void)
     return value;
 }
 
-__always_inline void _i686_write_cr2(uint32_t value)
+__always_inline void _ia32_write_cr2(uint32_t value)
 {
     __asm__ volatile (
         "mov    %0, %%eax\n\t"
@@ -62,7 +62,7 @@ __always_inline void _i686_write_cr2(uint32_t value)
 #define CR3_PWT     0x00000008
 #define CR3_PCD     0x00000010
 
-__always_inline uint32_t _i686_read_cr3(void)
+__always_inline uint32_t _ia32_read_cr3(void)
 {
     uint32_t value;
     __asm__ volatile (
@@ -73,7 +73,7 @@ __always_inline uint32_t _i686_read_cr3(void)
     return value;
 }
 
-__always_inline void _i686_write_cr3(uint32_t value)
+__always_inline void _ia32_write_cr3(uint32_t value)
 {
     __asm__ volatile (
         "mov    %0, %%eax\n\t"
@@ -106,7 +106,7 @@ __always_inline void _i686_write_cr3(uint32_t value)
 #define CR4_CET         0x00400000
 #define CR4_PKS         0x00800000
 
-__always_inline uint32_t _i686_read_cr4(void)
+__always_inline uint32_t _ia32_read_cr4(void)
 {
     uint32_t value;
     __asm__ volatile (
@@ -117,7 +117,7 @@ __always_inline uint32_t _i686_read_cr4(void)
     return value;
 }
 
-__always_inline void _i686_write_cr4(uint32_t value)
+__always_inline void _ia32_write_cr4(uint32_t value)
 {
     __asm__ volatile (
         "mov    %0, %%eax\n\t"
@@ -126,7 +126,7 @@ __always_inline void _i686_write_cr4(uint32_t value)
     );
 }
 
-__always_inline uint32_t _i686_read_cr8(void)
+__always_inline uint32_t _ia32_read_cr8(void)
 {
     uint32_t value;
     __asm__ volatile (
@@ -137,7 +137,7 @@ __always_inline uint32_t _i686_read_cr8(void)
     return value;
 }
 
-__always_inline void _i686_write_cr8(uint32_t value)
+__always_inline void _ia32_write_cr8(uint32_t value)
 {
     __asm__ volatile (
         "mov    %0, %%eax\n\t"

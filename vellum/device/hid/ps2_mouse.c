@@ -44,7 +44,7 @@ static status_t wait_event(struct device *dev)
     struct ps2_mouse_data *data = (struct ps2_mouse_data *)dev->data;
 
     while (data->seqbuf_start == data->seqbuf_end) {
-        _i686_pause();
+        _ia32_pause();
     }
 
     return STATUS_SUCCESS;

@@ -3,7 +3,7 @@
 
 #include <vellum/compiler.h>
 
-__always_inline void _i686_invlpg(void *addr)
+__always_inline void _ia32_invlpg(void *addr)
 {
     __asm__ volatile ("invlpg (%0)" : : "r"(addr) : "memory");
 }
