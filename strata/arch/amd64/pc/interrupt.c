@@ -13,6 +13,7 @@
 #include <strata/plat/gdt.h>
 #include <strata/plat/tss.h>
 
+#include <strata/scheduler.h>
 #include <strata/compiler.h>
 #include <strata/mm.h>
 #include <strata/panic.h>
@@ -236,7 +237,8 @@ uint64_t StIntP_GetIrqCount(void)
     return irq_count;
 }
 
-__externally_visible void *_pc_isr_common(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, int num)
+__externally_visible
+void *_pc_isr_common(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, int num)
 {
     void *new_esp = NULL;
     int has_error = 0, is_fault = 0;
@@ -259,9 +261,13 @@ __externally_visible void *_pc_isr_common(struct StA_InterruptFrame *frame, stru
     if (!current_isr) {
         if (is_fault) {
             if (has_error) {
-                St_Panic(STATUS_UNKNOWN_ERROR, "Unrecoverable fault #%02X(0x%08X) has occurred at 0x%04X:0x%016"PRIX64"", num, frame->error, frame->cs, frame->rip);
+                struct StThread *thread;
+                
+                StScheduler_GetCurrentThread(&thread);
+                ILOG_INFO("thread ID: %d\n", (int)thread->id);
+                St_Panic(STATUS_UNKNOWN_ERROR, "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016"PRIX64"", num, frame->error, frame->cs, frame->rip);
             } else {
-                St_Panic(STATUS_UNKNOWN_ERROR, "Unrecoverable fault #%02X has occurred at 0x%04X:0x%016"PRIX64"", num, frame->cs, frame->rip);
+                St_Panic(STATUS_UNKNOWN_ERROR, "Unhandled fault #%02X has occurred at 0x%04X:0x%016"PRIX64"", num, frame->cs, frame->rip);
             }
         } else {
             ILOG_WARN("unhandled interrupt #%02X at 0x%04X:0x%016"PRIX64"\n", num, frame->cs, frame->rip);

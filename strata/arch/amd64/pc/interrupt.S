@@ -35,15 +35,25 @@ _pc_isr_\num:
 
     mov     %rsp, %rbp                  # set up stack base pointer
 
+    testb   $3, 144(%rbp)
+    jz      0f
+    swapgs
+0:
+
     mov     $0x\num, %rdx               # interrupt num
-    lea     (%rbp), %rsi                # registers
-    lea     120(%rbp), %rdi             # interrupt frame + error
-    
+    lea     8(%rbp), %rsi               # registers
+    lea     128(%rbp), %rdi             # interrupt frame + error
+
     call    _pc_isr_common
 
     test    %rax, %rax                  # do not switch stack if common isr
     jz      0f                          # returned NULL
     mov     %rax, %rsp                  # switch stack
+0:
+
+    testb   $3, 144(%rsp)               # check if we should jump to user mode
+    jz      0f
+    swapgs
 0:
 
     add     $8, %rsp                    # skip stack pointer padding

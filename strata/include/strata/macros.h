@@ -11,6 +11,7 @@
 #define TEFLAG(val, mask) (((val) & (mask)) == (mask))
 
 #define ALIGN(v, a) (((v) + (a) - 1) & ~((a) - 1))
+#define ALIGN_DIV(v, a) (((v) + (a) - 1) / (a))
 
 #define RESERVE_1BYTE uint8_t : 8
 #define RESERVE_2BYTES uint16_t : 16

@@ -12,6 +12,7 @@
 
 #include <strata/types.h>
 #include <strata/compiler.h>
+#include <strata/process.h>
 #include <strata/mm.h>
 #include <strata/thread.h>
 #include <strata/scheduler.h>
@@ -92,15 +93,12 @@ static void fb_print_str(int col, int row, const char *str)
 
 static void thread1_main(struct StThread *th)
 {
-    uint64_t prev_tick = 0, current_tick;
     St_PageCount total_frames, free_frames;
 
     char buf[512];
 
     for (;;) {
-        current_tick = StTimeP_GetGlobalTick();
-        if (current_tick - prev_tick < 20) StScheduler_Yield();
-        prev_tick = current_tick;
+        StThread_Sleep(20);
         
         StPmm_GetTotalFrameCount(&total_frames);
         StPmm_GetFreeFrameCount(&free_frames);
@@ -119,7 +117,7 @@ static void thread2_main(struct StThread *th);
 static void thread4_main(struct StThread *th)
 {
     uint64_t start_tick = StTimeP_GetGlobalTick();
-    uint32_t time = 0, prev_time = 0, temp;
+    uint32_t time = 0, temp;
 
     do {
         if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
@@ -132,12 +130,9 @@ static void thread4_main(struct StThread *th)
             StMutex_Unlock(&mtx);
         }
 
+        StThread_Sleep(1);
+
         time = StTimeP_GetGlobalTick() - start_tick;
-        if (time == prev_time) {
-            StScheduler_Yield();
-            continue;
-        }
-        prev_time = time;
 
         temp = time;
         for (int i = 2; i >= 0; i--) {
@@ -155,7 +150,7 @@ static void thread4_main(struct StThread *th)
 static void thread3_main(struct StThread *th)
 {
     uint64_t start_tick = StTimeP_GetGlobalTick();
-    uint32_t time = 0, prev_time = 0, temp;
+    uint32_t time = 0, temp;
     struct StThread *new_thread;
 
     do {
@@ -169,12 +164,9 @@ static void thread3_main(struct StThread *th)
             StMutex_Unlock(&mtx);
         }
 
+        StThread_Sleep(1);
+
         time = StTimeP_GetGlobalTick() - start_tick;
-        if (time == prev_time) {
-            StScheduler_Yield();
-            continue;
-        }
-        prev_time = time;
 
         temp = time;
         for (int i = 2; i >= 0; i--) {
@@ -213,7 +205,7 @@ static void thread2_main(struct StThread *th)
 
         time = StTimeP_GetGlobalTick() - start_tick;
         if (time == prev_time) {
-            StScheduler_Yield();
+            StThread_Yield();
             continue;
         }
         prev_time = time;
@@ -226,6 +218,10 @@ static void thread2_main(struct StThread *th)
         }
     } while (time < 999);
 
+    for (int i = 2; i >= 0; i--) {
+        fb[21 * 80 + 60 + i] = 0x0700;
+    }
+
     StThread_CreateKernel(thread3_main, 0x10000, &new_thread1);
     StThread_CreateKernel(thread4_main, 0x10000, &new_thread2);
 
@@ -235,6 +231,29 @@ static void thread2_main(struct StThread *th)
 
     StThread_Remove(new_thread1);
     StThread_Remove(new_thread2);
+}
+
+static void setup_process(void)
+{
+    StStatus status;
+    St_VirtPage test_vpn;
+    uint8_t *test_addr;
+    struct StProcess *process;
+
+    StMm_AllocateSparse(VMM_DOMAIN_USER, &test_vpn, (St_PageCount)16, PMM_DEFAULT, VMM_DEFAULT, MAP_USER);
+
+    test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
+    test_addr[0] = 0x0F;  // syscall
+    test_addr[1] = 0x05;
+    test_addr[2] = 0xEB;  // jmp .
+    test_addr[3] = 0xFC;
+
+    status = StProcess_CreateUser(&process, (uintptr_t)test_addr, (uintptr_t)test_addr + 0x10000);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to create user process");
+    }
+
+    StThread_Detach(process->main_thread);
 }
 
 __attribute__((noreturn))
@@ -257,10 +276,8 @@ void main(void)
     struct print_state pstate;
     St_PageCount total_frames, free_frames;
     struct StThread *main_thread;
-    // struct StThread *thread1;
-    // struct StThread *thread2;
-    St_VirtPage test_vpn;
-    uint8_t *test_addr;
+    struct StThread *thread1;
+    struct StThread *thread2;
 
     enthdr = (void *)((uintptr_t)_pc_bootinfo_table + _pc_bootinfo_table->header_size);
     for (int i = 0; i < _pc_bootinfo_table->entry_count; i++) {
@@ -329,8 +346,9 @@ void main(void)
     pstate.cursor_col = pstate.cursor_row = 0;
 
     fb = pstate.framebuffer;
+    memset(fb, 0, fbent->pitch * fbent->height);
 
-    // LOG_DEBUG("reinitializing early logger...\n");
+    LOG_DEBUG("reinitializing early logger...\n");
     // StLog_EarlyInit(early_print_char, &pstate);
 
     /* print entries */
@@ -423,56 +441,20 @@ void main(void)
 
     StMutex_Init(&mtx);
 
-
-    StMm_AllocateSparse(VMM_DOMAIN_USER, &test_vpn, (St_PageCount)16, PMM_DEFAULT, VMM_DEFAULT, MAP_USER);
-
-    test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
-    test_addr[0] = 0x0F;  // syscall
-    test_addr[1] = 0x05;
-    test_addr[2] = 0xEB;  // jmp .
-    test_addr[3] = 0xFE;
-    
-    __asm__ volatile (
-        "mov    %0, %%ds\n\t"
-        "mov    %0, %%es\n\t"
-        "mov    %0, %%fs\n\t"
-
-        "swapgs\n\t"
-
-        "mov    %0, %%gs\n\t"
-
-        "pushq  %0\n\t"
-        "pushq  %1\n\t"
-        "pushq  %2\n\t"
-        "pushq  %3\n\t"
-        "pushq  %4\n\t"
-        
-        "iretq\n\t"
-        : 
-        :
-            "r"((uint64_t)(SEG_SEL_USER_DATA | 3)),
-            "r"((uint64_t)PAGE_TO_ADDR(test_vpn + 16)),
-            "r"((uint64_t)0x0000000000000202),
-            "r"((uint64_t)(SEG_SEL_USER_CODE | 3)),
-            "r"((uint64_t)PAGE_TO_ADDR(test_vpn))
-        : "memory"
-    );
-
-    for (;;) {}
-
-    /*
     StThread_EnablePreemption();
 
-    StThread_Create(thread1_main, 0x10000, &thread1);
-    StThread_Create(thread2_main, 0x10000, &thread2);
+    StThread_CreateKernel(thread1_main, 0x10000, &thread1);
+    StThread_CreateKernel(thread2_main, 0x10000, &thread2);
     StThread_Detach(thread1);
     StThread_Detach(thread2);
+
+    // setup_process();
 
     for (;;) {
         StScheduler_Maintain();
 
         if (StScheduler_CheckHasOtherRunnableThread()) {
-            StScheduler_Yield();
+            StThread_Yield();
         } else {
             uint32_t intstatus = StA_SaveInterrupt();
             StA_EnableInterrupt();
@@ -480,5 +462,4 @@ void main(void)
             StA_RestoreInterrupt(intstatus);
         }
     }
-    */
 }

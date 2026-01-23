@@ -17,7 +17,7 @@
 
 #define MODULE_NAME "asm_thread"
 
-extern void _StThreadP_RealThreadEntry(void);
+extern void _StThreadP_KernelThreadEntry(void);
 
 StStatus StThreadP_AllocateKThreadStack(struct StThread *th)
 {
@@ -25,11 +25,18 @@ StStatus StThreadP_AllocateKThreadStack(struct StThread *th)
     St_VirtPage kmode_stack_base_vpn = 0;
 
     /* allocate thread stack */
-    status = StMm_AllocateSparse(VMM_DOMAIN_KERNEL_FAST, &kmode_stack_base_vpn, th->kmode_stack_page_count, PMM_DEFAULT, VMM_DEFAULT, MAP_DEFAULT);
+    status = StMm_AllocateSparse(
+        VMM_DOMAIN_KERNEL_SLOW,
+        &kmode_stack_base_vpn,
+        th->kmode_stack_page_count,
+        PMM_DEFAULT,
+        VMM_DEFAULT,
+        MAP_DEFAULT
+    );
     if (!CHECK_SUCCESS(status)) return status;
 
-    th->kmode_stack_base_vpn = kmode_stack_base_vpn * PAGE_SIZE;
-    th->kmode_stack_ptr = (void *)((kmode_stack_base_vpn + th->kmode_stack_page_count) * PAGE_SIZE);
+    th->kmode_stack_base_vpn = kmode_stack_base_vpn;
+    th->kmode_stack_ptr = PAGE_TO_VPTR(kmode_stack_base_vpn + th->kmode_stack_page_count);
 
     return STATUS_SUCCESS;
 }
@@ -48,7 +55,7 @@ StStatus StThreadP_SetupKThreadStack(struct StThread *th)
     memset(iframe, 0, sizeof(*iframe));
     iframe->eflags = 0x00000202;
     iframe->cs = SEG_SEL_KERNEL_CODE;
-    iframe->eip = (uintptr_t)_StThreadP_RealThreadEntry;
+    iframe->eip = (uintptr_t)_StThreadP_KernelThreadEntry;
 
     /* fill initial register stack */
     esp -= sizeof(*iregs);

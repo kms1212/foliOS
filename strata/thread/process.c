@@ -5,10 +5,9 @@
 #include <strata/types.h>
 #include <strata/thread.h>
 
-/*
-StStatus StProcess_CreateUser(struct StProcess **process)
+StStatus StProcess_CreateUser(struct StProcess *process __out, uintptr_t entry __in, uintptr_t stack_top __in)
 {
-    static StProcess_Id new_process_id = 1;
+    static StProcess_Id new_process_id = (StProcess_Id)1;
 
     StStatus status;
     struct StProcess *proc = NULL;
@@ -23,15 +22,17 @@ StStatus StProcess_CreateUser(struct StProcess **process)
 
     proc->id = new_process_id++;
 
-    status = StMmuP_CreateAddressSpace(&asp);
+    // status = StMmuP_CreateAddressSpace(&asp);
+    // if (!CHECK_SUCCESS(status)) goto has_error;
+
+    // proc->address_space = asp;
+    
+    status = StThread_CreateUser(proc, entry, (St_PageCount)16, stack_top, &main_thread);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    proc->address_space = asp;
-    
-    status = StThread_CreateUser(proc, 0x0000000008000000, 0x0000000060000000, &main_thread);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-    
-    if (process) *process = proc;
+    proc->main_thread = main_thread;
+
+    *process = proc;
 
     return STATUS_SUCCESS;
 
@@ -50,7 +51,7 @@ has_error:
 
     return status;
 }
-*/
+
 void StProcess_Remove(struct StProcess *process)
 {
     if (!process) return;

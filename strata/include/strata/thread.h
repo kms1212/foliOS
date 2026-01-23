@@ -18,6 +18,7 @@ enum StThread_State {
     THREAD_STATE_RUNNING,
     THREAD_STATE_BLOCKING,
     THREAD_STATE_WAITING,
+    THREAD_STATE_SLEEPING,
     THREAD_STATE_FINISHED,
 };
 
@@ -51,11 +52,14 @@ struct StThread {
 
     size_t umode_stack_page_count;
     St_VirtPage umode_stack_base_vpn;
+    uintptr_t umode_stack_ptr;
     uintptr_t umode_entry;
 
     struct StThread **wait_list;
     int wait_count;
     int wait_timeout_ms;
+
+    uint64_t sleep_until_tick;
 };
 
 StStatus StThread_Init(struct StThread *main_thread __out);
@@ -72,7 +76,8 @@ StStatus StThread_CreateKernel(
 StStatus StThread_CreateUser(
     struct StProcess *proc __in,
     uintptr_t entry __in,
-    size_t stack_top __in,
+    size_t stack_size __in,
+    uintptr_t ustack_top __in,
     struct StThread *threadout __out
 );
 StStatus StThread_Remove(struct StThread *thread __in);
@@ -83,6 +88,10 @@ StStatus StThread_Wait(
     int count __in,
     int timeout_ms __in
 );
+
+StStatus StThread_Sleep(int timeout_ms __in);
+
+void StThread_Yield(void);
 
 __noreturn
 void StThread_Exit(void);

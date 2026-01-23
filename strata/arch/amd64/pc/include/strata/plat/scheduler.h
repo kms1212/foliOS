@@ -3,6 +3,4 @@
 
 #include <strata/status.h>
 
-StStatus StSchedulerP_Yield(void);
-
 #endif // __STRATA_PLAT_SCHEDULER_H__

@@ -21,8 +21,6 @@ StStatus StScheduler_SetCurrentThread(struct StThread *th);
 
 int StScheduler_CheckHasOtherRunnableThread(void);
 
-StStatus StScheduler_Yield(void);
-
 StStatus StScheduler_Maintain(void);  /* can be refactored to a better name */
 
 #endif // __STRATA_SCHEDULER_H__

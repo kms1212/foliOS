@@ -33,6 +33,8 @@ _StSyscallP_Entry:
     push    %r14
     push    %r15
 
+    sub     $8, %rsp                    # align stack pointer
+
     mov     %r10, %rcx                  # convert user abi to syscall abi
     mov     %rsp, %rbp                  # set up stack base pointer
 
@@ -43,6 +45,8 @@ _StSyscallP_Entry:
     call    _StSyscallP_Handler         # call syscall handler
 
     cli
+
+    add     $8, %rsp                    # skip stack pointer padding
 
     pop     %r15                        # pop all registers
     pop     %r14

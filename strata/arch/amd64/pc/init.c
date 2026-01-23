@@ -71,6 +71,11 @@ uint64_t StTimeP_GetGlobalTick(void)
     return global_tick;
 }
 
+uint32_t StTimeP_GetGlobalTickFrequency(void)
+{
+    return 100;
+}
+
 static void *pit_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data)
 {
     StStatus status;

@@ -107,7 +107,7 @@ StStatus StMmuP_CreateAddressSpace(struct StMmuP_AddressSpace *asp __out)
     status = StPmm_AllocateContiguousFrame(&root_table_pfn, (St_PageCount)1, PMM_DEFAULT);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    memcpy((void *)(root_table_pfn * PAGE_SIZE), _pml4, PAGE_SIZE);
+    memcpy(PAGE_TO_VPTR((St_VirtPage)0xFFFFC00000000ULL + (St_VirtPage)root_table_pfn), _pml4, PAGE_SIZE);
 
     new_asp->root_table_pfn = root_table_pfn;
 

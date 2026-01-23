@@ -1,4 +1,4 @@
-@uuid(%ENV("STRATA_GLOBAL_NAMESPACE"), "strata/interface/block")
+@uuid("STRATA_GLOBAL_NAMESPACE", "strata/interface/block")
 @prefix("StIfBlk_")
 @include("strata/status.h")
 @status_type("StStatus")

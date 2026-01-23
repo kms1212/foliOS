@@ -2,8 +2,8 @@
 
     .section .text
     .code32
-    .globl  _StThreadP_RealThreadEntry
-_StThreadP_RealThreadEntry:
+    .globl  _StThreadP_KernelThreadEntry
+_StThreadP_KernelThreadEntry:
     cld
 
     xor     %ebp, %ebp

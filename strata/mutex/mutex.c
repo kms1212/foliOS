@@ -73,7 +73,7 @@ StStatus StMutex_Lock(struct StMutex *mtx)
 
         add_blocking_thread(mtx, th);
 
-        StScheduler_Yield();
+        StThread_Yield();
 
         StThread_DisablePreemption();
     }

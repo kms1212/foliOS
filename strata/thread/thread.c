@@ -4,6 +4,8 @@
 
 #include <strata/arch/mmu.h>
 
+#include <strata/plat/time.h>
+
 #include <strata/panic.h>
 #include <strata/log.h>
 #include <strata/scheduler.h>
@@ -108,7 +110,84 @@ StStatus StThread_CreateKernel(
     if (!CHECK_SUCCESS(status)) goto has_error;
     added_thread_to_scheduler = 1;
 
-    LOG_DEBUG("created thread #%d\n", th->id);
+    LOG_DEBUG("created kernel thread #%d\n", th->id);
+
+    *threadout = th;
+
+    if (prev_preemption_enabled) {
+        StThread_EnablePreemption();
+    }
+
+    return STATUS_SUCCESS;
+
+has_error:
+    if (th && added_thread_to_scheduler) {
+        StScheduler_RemoveThread(th);
+    }
+
+    if (th && stack_allocated) {
+        StThreadP_FreeKThreadStack(th);
+    }
+
+    if (th) {
+        free(th);
+    }
+
+    if (prev_preemption_enabled) {
+        StThread_EnablePreemption();
+    }
+
+    return status;
+}
+
+StStatus StThread_CreateUser(
+    struct StProcess *process __in,
+    uintptr_t entry __in,
+    size_t stack_size __in,
+    uintptr_t ustack_top __in,
+    struct StThread *threadout __out
+)
+{
+    static StThread_Id new_thread_id = (StThread_Id)16384;
+
+    StStatus status;
+    int prev_preemption_enabled = preemption_enabled;
+    struct StThread *th = NULL;
+    int added_thread_to_scheduler = 0;
+    int stack_allocated = 0;
+
+    StThread_DisablePreemption();
+
+    /* create thread object */
+    th = calloc(1, sizeof(*th));
+    if (!th) {
+        status = STATUS_UNKNOWN_ERROR;
+        goto has_error;
+    }
+    th->id = new_thread_id++;
+    th->status = THREAD_STATE_PENDING;
+    th->type = THREAD_TYPE_USER;
+    th->owner = process;
+    
+    th->umode_entry = entry;
+    th->umode_stack_ptr = ustack_top;
+
+    /* prepare stack */
+    th->kmode_stack_page_count = ALIGN_DIV(stack_size, PAGE_SIZE);
+
+    status = StThreadP_AllocateKThreadStack(th);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+    stack_allocated = 1;
+
+    status = StThreadP_SetupKThreadStack(th);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    /* add thread object to list */
+    status = StScheduler_AddThread(th);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+    added_thread_to_scheduler = 1;
+
+    LOG_DEBUG("created user thread #%d\n", th->id);
 
     *threadout = th;
 
@@ -198,9 +277,34 @@ StStatus StThread_Wait(
 
     StThread_EnablePreemption();
 
-    StScheduler_Yield();
+    StThread_Yield();
 
     return STATUS_SUCCESS;
+}
+
+StStatus StThread_Sleep(int timeout_ms __in)
+{
+    StStatus status;
+    struct StThread *current_thread;
+    
+    status = StScheduler_GetCurrentThread(&current_thread);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    StThread_DisablePreemption();
+
+    current_thread->status = THREAD_STATE_SLEEPING;
+    current_thread->sleep_until_tick = StTimeP_GetGlobalTick() + timeout_ms * StTimeP_GetGlobalTickFrequency() / 1000;
+
+    StThread_EnablePreemption();
+
+    StThread_Yield();
+
+    return STATUS_SUCCESS;
+}
+
+void StThread_Yield(void)
+{
+    StThreadP_Yield();
 }
 
 __noreturn
@@ -222,7 +326,7 @@ void StThread_Exit(void)
 
     LOG_DEBUG("thread #%d finished\n", current_thread->id);
 
-    StScheduler_Yield();
+    StThread_Yield();
 
     for (;;) {}
 }

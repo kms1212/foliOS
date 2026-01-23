@@ -2,6 +2,7 @@
 
 #include <strata/plat/scheduler.h>
 #include <strata/plat/cpulocal.h>
+#include <strata/plat/time.h>
 
 #include <strata/panic.h>
 #include <strata/log.h>
@@ -76,7 +77,26 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
         if (!next_thread) {
             next_thread = scheduler->queue_head;
         }
-    } while (next_thread->status != THREAD_STATE_RUNNING && next_thread->status != THREAD_STATE_PENDING);
+
+        switch (next_thread->status) {
+            case THREAD_STATE_RUNNING:
+                break;
+            case THREAD_STATE_PENDING:
+                next_thread->status = THREAD_STATE_RUNNING;
+                break;
+            case THREAD_STATE_SLEEPING:
+                if (StTimeP_GetGlobalTick() >= next_thread->sleep_until_tick) {
+                    next_thread->status = THREAD_STATE_RUNNING;
+                }
+                break;
+            default:
+                break;
+        }
+
+        if (next_thread->status == THREAD_STATE_RUNNING) {
+            break;
+        }
+    } while (next_thread != scheduler->current);
     
     if (next) *next = next_thread;
 
@@ -103,15 +123,11 @@ int StScheduler_CheckHasOtherRunnableThread(void)
 
         if (current->status == THREAD_STATE_RUNNING || current->status == THREAD_STATE_PENDING) {
             result = 1;
+            break;
         } 
     }
 
     return result;
-}
-
-StStatus StScheduler_Yield(void)
-{
-    return StSchedulerP_Yield();
 }
 
 StStatus StScheduler_Maintain(void)
@@ -120,8 +136,8 @@ StStatus StScheduler_Maintain(void)
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     struct StThread *current, *prev;
     
-    if (scheduler->current && scheduler->current->type == THREAD_TYPE_MAIN) {
-        /* if there's an entry point, then it's not a main thread */
+    if (scheduler->current && scheduler->current->type != THREAD_TYPE_MAIN) {
+        /* only the main thread can call this function */
         return STATUS_INVALID_THREAD;
     }
 
@@ -162,6 +178,9 @@ StStatus StScheduler_Maintain(void)
         
         if (prev) {
             prev->next = current->next;
+            if (thread_to_remove == scheduler->queue_tail) {
+                scheduler->queue_tail = prev;
+            }
         } else {
             scheduler->queue_head = current->next;
         }
@@ -171,7 +190,6 @@ StStatus StScheduler_Maintain(void)
         LOG_DEBUG("thread #%d removed from scheduler (maintain)\n", thread_to_remove->id);
 
         if (thread_to_remove->is_detached) {
-            LOG_DEBUG("detached\n");
             StThread_Remove(thread_to_remove);
         }
     }

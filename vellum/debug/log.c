@@ -74,11 +74,11 @@ void log_vprintf(int level, const char *module_name, const char *fmt, va_list ar
 
 skip_time:
     if (time_available) {
-        fprintf(stddbg, "%d-%02d-%02dT%02d:%02d:%02d.%03dZ %s [%s] ", rtctime.year, rtctime.month, rtctime.mday, rtctime.hour, rtctime.minute, rtctime.second, rtctime.millisecond, module_name, ll_str[level]);
+        fprintf(stdout, "%d-%02d-%02dT%02d:%02d:%02d.%03dZ %s [%s] ", rtctime.year, rtctime.month, rtctime.mday, rtctime.hour, rtctime.minute, rtctime.second, rtctime.millisecond, module_name, ll_str[level]);
     } else {
-        fprintf(stddbg, "%s [%s] ", module_name, ll_str[level]);
+        fprintf(stdout, "%s [%s] ", module_name, ll_str[level]);
     }
-    vfprintf(stddbg, fmt, args);
+    vfprintf(stdout, fmt, args);
 }
 
 void log_isr_vprintf(int level, const char *module_name, const char *fmt, va_list args)
