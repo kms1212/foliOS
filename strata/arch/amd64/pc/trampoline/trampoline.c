@@ -5,9 +5,9 @@
 #include <strata/arch/intrinsics/register.h>
 #include <strata/arch/mmu.h>
 
+#include <strata/compiler.h>
 #include <strata/panic.h>
 #include <strata/status.h>
-#include <strata/compiler.h>
 #include <strata/types.h>
 
 static union StA_PageMapLevel4Entry st_pml4[512] __aligned(4096);
@@ -64,16 +64,16 @@ void setup_trampoline_page_tables(void)
     St_PhysFrame kernel_pdpt_pfn;
     St_PhysFrame low_pd_pfn;
     St_PhysFrame kernel_pd_pfn;
-    
+
     status = virt_to_phys(VPTR_TO_PAGE(st_pml4), &pml4_pfn);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = virt_to_phys(VPTR_TO_PAGE(st_low_pdpt), &low_pdpt_pfn);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = virt_to_phys(VPTR_TO_PAGE(st_kernel_pdpt), &kernel_pdpt_pfn);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = virt_to_phys(VPTR_TO_PAGE(st_kernel_pd), &kernel_pd_pfn);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -99,7 +99,7 @@ void setup_trampoline_page_tables(void)
 
     status = virt_to_phys(VPTR_TO_PAGE(st_low_pd), &low_pd_pfn);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = virt_to_phys(VPTR_TO_PAGE(st_kernel_pd), &kernel_pd_pfn);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -139,12 +139,12 @@ void setup_trampoline_page_tables(void)
         status = virt_to_phys(VPTR_TO_PAGE(st_kernel_pt[i]), &pt_pfn);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        st_kernel_pd[i].p = 1;  
+        st_kernel_pd[i].p = 1;
         st_kernel_pd[i].r_w = old_pd[old_pd_idx].r_w;
         st_kernel_pd[i].base = (uint64_t)pt_pfn;
         for (int j = 0; j < 512; j++) {
             int old_pt_idx = (old_pd_idx * 1024) + ((i & 1) * 512) + j;
-            
+
             if (!old_pt[old_pt_idx].p) continue;
 
             st_kernel_pt[i][j].p = 1;
@@ -156,17 +156,19 @@ void setup_trampoline_page_tables(void)
     return;
 
 has_error:
-    for (;;) {}
+    for (;;) {
+    }
 }
 
 St_PhysFrame get_trampoline_pml4_phys(void)
 {
     StStatus status;
     St_PhysFrame pml4_pfn;
-    
+
     status = virt_to_phys(VPTR_TO_PAGE(st_pml4), &pml4_pfn);
     if (!CHECK_SUCCESS(status)) {
-    for (;;) {}
+        for (;;) {
+        }
     }
 
     return pml4_pfn;

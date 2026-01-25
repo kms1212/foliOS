@@ -27,7 +27,7 @@ union StA_PageTableEntry {
 
 union StA_PageDirectoryEntry {
     uint32_t raw;
-    
+
     struct {
         uint32_t p : 1;
         uint32_t r_w : 1;
@@ -61,4 +61,4 @@ union StA_PageDirectoryEntry {
     union StA_PageTableEntry recursive;
 } __packed;
 
-#endif // __STRATA_ARCH_PAGE_H__
+#endif  // __STRATA_ARCH_PAGE_H__

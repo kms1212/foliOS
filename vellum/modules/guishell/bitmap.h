@@ -3,12 +3,12 @@
 
 #include <stdint.h>
 
-#include "types.h"
 #include "color.h"
+#include "types.h"
 
 struct bitmap {
     struct size2 size;
     color_t data[];
 };
 
-#endif // __BITMAP_H__
+#endif  // __BITMAP_H__

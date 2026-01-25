@@ -41,11 +41,10 @@ status_t shell_remove_variable(struct shell_instance *inst, const char *key);
 status_t shell_command_register(struct command *cmd);
 void shell_command_unregister(struct command *cmd);
 
-#define REGISTER_SHELL_COMMAND(name, init_func) \
-    __constructor \
-    static void _register_driver_##name(void) \
-    { \
-        init_func(); \
+#define REGISTER_SHELL_COMMAND(name, init_func)                                                    \
+    __constructor static void _register_driver_##name(void)                                        \
+    {                                                                                              \
+        init_func();                                                                               \
     }
 
-#endif // __VELLUM_SHELL_H__
+#endif  // __VELLUM_SHELL_H__

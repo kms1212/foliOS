@@ -1,6 +1,6 @@
-#include <vellum/asm/bios/video.h>
-#include <vellum/asm/bios/disk.h>
 #include <vellum/asm/bios/bootinfo.h>
+#include <vellum/asm/bios/disk.h>
+#include <vellum/asm/bios/video.h>
 
 #include <stdint.h>
 #include <string.h>
@@ -11,12 +11,12 @@
 #include "../../filesystem/fat/fat.h"
 
 #ifdef NDEBUG
-#   define PRINT_STR(str)
-#   define PRINT_HEX(val)
+#    define PRINT_STR(str)
+#    define PRINT_HEX(val)
 
 #else
-#   define PRINT_STR(str) print_str(str)
-#   define PRINT_HEX(val) print_hex(val)
+#    define PRINT_STR(str) print_str(str)
+#    define PRINT_HEX(val) print_hex(val)
 
 #endif
 
@@ -103,17 +103,23 @@ void s1main(void)
             PRINT_HEX(status);
             return;
         }
-    
+
         for (int i = 0; i < 32; i++) {
             entry = &((union fat_dir_entry *)sect_buf)[i];
-            
-            if (memcmp(entry->file.name_ext, "VELLUM  X86", sizeof(entry->file.name) + sizeof(entry->file.extension)) == 0 || !entry->file.name[0]) {
+
+            if (memcmp(
+                    entry->file.name_ext,
+                    "VELLUM  X86",
+                    sizeof(entry->file.name) + sizeof(entry->file.extension)
+                ) == 0 ||
+                !entry->file.name[0]) {
                 goto file_found;
             }
         }
     }
 
-file_found: {}
+file_found: {
+}
     if (!entry) {
         PRINT_STR("[stage1] VELLUM.X86 not found");
         return;
@@ -132,7 +138,11 @@ file_found: {}
     }
     PRINT_STR("[stage1] loading file...\r\n");
     while (current_cluster <= FAT12_MAX_CLUSTER) {
-        status = read_disk(cluster_start_lba + (current_cluster - 2) * bpb->sectors_per_cluster, bpb->sectors_per_cluster, clus_buf);
+        status = read_disk(
+            cluster_start_lba + (current_cluster - 2) * bpb->sectors_per_cluster,
+            bpb->sectors_per_cluster,
+            clus_buf
+        );
         if (!CHECK_SUCCESS(status)) {
             PRINT_STR("\r\n[stage1] failed to read disk: ");
             PRINT_HEX(status);
@@ -145,9 +155,11 @@ file_found: {}
         print_str(".");
 
         if (current_cluster & 1) {
-            current_cluster = (sect_buf[current_cluster * 3 / 2 + 1] << 4) | (sect_buf[current_cluster * 3 / 2] >> 4);
+            current_cluster = (sect_buf[current_cluster * 3 / 2 + 1] << 4) |
+                (sect_buf[current_cluster * 3 / 2] >> 4);
         } else {
-            current_cluster = ((sect_buf[current_cluster * 3 / 2 + 1] & 0xF) << 8) | sect_buf[current_cluster * 3 / 2];
+            current_cluster = ((sect_buf[current_cluster * 3 / 2 + 1] & 0xF) << 8) |
+                sect_buf[current_cluster * 3 / 2];
         }
     }
     PRINT_STR("\r\n");

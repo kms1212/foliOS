@@ -15,20 +15,20 @@ static int in_handler(struct shell_instance *inst, int argc, char **argv)
     uint16_t addr = strtol(argv[1], NULL, 16);
 
     switch (*argv[2]) {
-        case 'b':
-        case 'B':
-            printf("%02X\n", io_in8(addr));
-            break;
-        case 'w':
-        case 'W':
-            printf("%04X\n", io_in16(addr));
-            break;
-        case 'd':
-        case 'D':
-            printf("%08lX\n", io_in32(addr));
-            break;
-        default:
-            return 1;
+    case 'b':
+    case 'B':
+        printf("%02X\n", io_in8(addr));
+        break;
+    case 'w':
+    case 'W':
+        printf("%04X\n", io_in16(addr));
+        break;
+    case 'd':
+    case 'D':
+        printf("%08lX\n", io_in32(addr));
+        break;
+    default:
+        return 1;
     }
 
     return 0;

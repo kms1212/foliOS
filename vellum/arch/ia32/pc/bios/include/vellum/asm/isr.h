@@ -43,7 +43,9 @@ struct isr_handler {
 };
 
 void _pc_isr_init(void);
-status_t _pc_isr_add_interrupt_handler(int num, void *data, interrupt_handler_t func, struct isr_handler **handler);
+status_t _pc_isr_add_interrupt_handler(
+    int num, void *data, interrupt_handler_t func, struct isr_handler **handler
+);
 status_t _pc_isr_add_trap_handler(int num, trap_handler_t func, struct isr_handler **handler);
 void _pc_isr_remove_handler(struct isr_handler *handler);
 
@@ -54,4 +56,4 @@ uint64_t _pc_get_irq_count(void);
 
 #define isr_add_interrupt_handler _pc_isr_add_interrupt_handler
 
-#endif // __VELLUM_ASM_ISR_H__
+#endif  // __VELLUM_ASM_ISR_H__

@@ -25,4 +25,4 @@ struct ehci_operational_registers {
     uint32_t port_status[];
 } __packed;
 
-#endif // __EHCI_H__
+#endif  // __EHCI_H__

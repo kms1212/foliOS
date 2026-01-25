@@ -39,4 +39,4 @@ struct bioscall_regs {
 
 extern int _pc_bios_call(uint8_t irq, struct bioscall_regs *);
 
-#endif // __VELLUM_ASM_BIOS_BIOSCALL_H__
+#endif  // __VELLUM_ASM_BIOS_BIOSCALL_H__

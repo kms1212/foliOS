@@ -5,7 +5,7 @@
 
 __always_inline void _ia32_invlpg(void *addr)
 {
-    __asm__ volatile ("invlpg (%0)" : : "r"(addr) : "memory");
+    __asm__ volatile("invlpg (%0)" : : "r"(addr) : "memory");
 }
 
-#endif // __VELLUM_ASM_INTRINSICS_INVLPG_H__
+#endif  // __VELLUM_ASM_INTRINSICS_INVLPG_H__

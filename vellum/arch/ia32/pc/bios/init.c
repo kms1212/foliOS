@@ -1,43 +1,43 @@
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include <vellum/asm/apm.h>
 #include <vellum/asm/bios/bootinfo.h>
 #include <vellum/asm/bios/disk.h>
-#include <vellum/asm/bios/video.h>
 #include <vellum/asm/bios/keyboard.h>
 #include <vellum/asm/bios/mem.h>
 #include <vellum/asm/bios/misc.h>
-#include <vellum/asm/pci/cfgspace.h>
-#include <vellum/asm/io.h>
+#include <vellum/asm/bios/video.h>
 #include <vellum/asm/idt.h>
-#include <vellum/asm/isr.h>
-#include <vellum/asm/pic.h>
-#include <vellum/asm/pc_gdt.h>
-#include <vellum/asm/apm.h>
 #include <vellum/asm/instruction.h>
 #include <vellum/asm/intrinsics/rdtsc.h>
+#include <vellum/asm/io.h>
+#include <vellum/asm/isr.h>
+#include <vellum/asm/pc_gdt.h>
+#include <vellum/asm/pci/cfgspace.h>
+#include <vellum/asm/pic.h>
 
 #include <vellum/compiler.h>
-#include <vellum/status.h>
-#include <vellum/panic.h>
-#include <vellum/macros.h>
 #include <vellum/debug.h>
-#include <vellum/log.h>
-#include <vellum/mm.h>
 #include <vellum/device.h>
-#include <vellum/global_configs.h>
 #include <vellum/filesystem.h>
-#include <vellum/interface/char.h>
+#include <vellum/global_configs.h>
 #include <vellum/interface/block.h>
+#include <vellum/interface/char.h>
 #include <vellum/interface/console.h>
 #include <vellum/interface/framebuffer.h>
+#include <vellum/log.h>
+#include <vellum/macros.h>
+#include <vellum/mm.h>
+#include <vellum/panic.h>
+#include <vellum/status.h>
 
-#include <uacpi/uacpi.h>
 #include <uacpi/event.h>
 #include <uacpi/tables.h>
+#include <uacpi/uacpi.h>
 
 #define MODULE_NAME "init"
 
@@ -128,7 +128,7 @@ static status_t init_pma(void)
         status = mm_pma_mark_reserved(base_paddr, limit_paddr);
         if (!CHECK_SUCCESS(status)) return status;
     } while (smap_cursor);
-    
+
     return STATUS_SUCCESS;
 }
 
@@ -138,7 +138,7 @@ static status_t init_nonpnp_devices(int has_acpi)
     uacpi_status uacpi_status;
     int skip_legacy = 0, skip_8042 = 0, skip_rtc = 0;
     struct acpi_fadt *fadt;
-    
+
     if (has_acpi) {
         uacpi_status = uacpi_table_fadt(&fadt);
         if (uacpi_unlikely_error(uacpi_status)) {
@@ -149,11 +149,11 @@ static status_t init_nonpnp_devices(int has_acpi)
             if (!(fadt->iapc_boot_arch & ACPI_IA_PC_LEGACY_DEVS)) {
                 skip_legacy = 1;
             }
-    
+
             if (!(fadt->iapc_boot_arch & ACPI_IA_PC_8042)) {
                 skip_8042 = 1;
             }
-    
+
             if (fadt->iapc_boot_arch & ACPI_IA_PC_NO_CMOS_RTC) {
                 skip_rtc = 1;
             }
@@ -259,7 +259,7 @@ static status_t init_nonpnp_devices(int has_acpi)
 
             struct device *dev;
             struct device_driver *drv;
-    
+
             struct resource res[] = {
                 {
                     .type = RT_IOPORT,
@@ -277,7 +277,7 @@ static status_t init_nonpnp_devices(int has_acpi)
 
             status = device_driver_find("uart_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
-    
+
             status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
             if (!CHECK_SUCCESS(status)) return status;
         }
@@ -290,7 +290,7 @@ static status_t init_nonpnp_devices(int has_acpi)
 
             struct device *dev;
             struct device_driver *drv;
-    
+
             struct resource res[] = {
                 {
                     .type = RT_IOPORT,
@@ -302,13 +302,13 @@ static status_t init_nonpnp_devices(int has_acpi)
                     .type = RT_IRQ,
                     .base = irq_num,
                     .limit = irq_num,
-                    .flags = 0, 
+                    .flags = 0,
                 },
             };
 
             status = device_driver_find("ieee1284_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
-    
+
             status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
             if (!CHECK_SUCCESS(status)) return status;
         }
@@ -316,7 +316,7 @@ static status_t init_nonpnp_devices(int has_acpi)
         {
             struct device *dev;
             struct device_driver *drv;
-    
+
             struct resource res[] = {
                 {
                     .type = RT_IOPORT,
@@ -340,7 +340,7 @@ static status_t init_nonpnp_devices(int has_acpi)
 
             status = device_driver_find("fdc_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
-    
+
             status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
             if (!CHECK_SUCCESS(status)) return status;
         }
@@ -348,7 +348,7 @@ static status_t init_nonpnp_devices(int has_acpi)
         {
             struct device *dev;
             struct device_driver *drv;
-    
+
             struct resource res[] = {
                 {
                     .type = RT_IOPORT,
@@ -372,7 +372,7 @@ static status_t init_nonpnp_devices(int has_acpi)
 
             status = device_driver_find("ide_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
-    
+
             /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
             // if (!CHECK_SUCCESS(status)) return status;
         }
@@ -380,7 +380,7 @@ static status_t init_nonpnp_devices(int has_acpi)
         {
             struct device *dev;
             struct device_driver *drv;
-    
+
             struct resource res[] = {
                 {
                     .type = RT_IOPORT,
@@ -404,12 +404,12 @@ static status_t init_nonpnp_devices(int has_acpi)
 
             status = device_driver_find("ide_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
-    
+
             /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
             // if (!CHECK_SUCCESS(status)) return status;
         }
     }
-    
+
     {
         struct device *dev;
         struct device_driver *drv;
@@ -424,7 +424,8 @@ static status_t init_nonpnp_devices(int has_acpi)
     return 0;
 }
 
-#define MAKE_ACPI_STATUS(uacpi_status) ((uacpi_status) ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
+#define MAKE_ACPI_STATUS(uacpi_status)                                                             \
+    ((uacpi_status) ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
 
 int config_rtc_century_offset;
 
@@ -468,13 +469,19 @@ static status_t acpi_init(void)
 
     uacpi_status = uacpi_namespace_initialize();
     if (uacpi_unlikely_error(uacpi_status)) {
-        LOG_DEBUG("uacpi_namespace_initialize() failed: %s\n", uacpi_status_to_string(uacpi_status));
+        LOG_DEBUG(
+            "uacpi_namespace_initialize() failed: %s\n",
+            uacpi_status_to_string(uacpi_status)
+        );
         return MAKE_ACPI_STATUS(uacpi_status);
     }
 
     uacpi_status = uacpi_finalize_gpe_initialization();
     if (uacpi_unlikely_error(uacpi_status)) {
-        LOG_DEBUG("uacpi_finalize_gpe_initialization() failed: %s\n", uacpi_status_to_string(uacpi_status));
+        LOG_DEBUG(
+            "uacpi_finalize_gpe_initialization() failed: %s\n",
+            uacpi_status_to_string(uacpi_status)
+        );
         return MAKE_ACPI_STATUS(uacpi_status);
     }
 
@@ -530,9 +537,31 @@ static void bkpt_handler(struct interrupt_frame *frame, struct trap_regs *regs, 
 {
     fprintf(stderr, "Breakpoint at %04X:%08lX\n", frame->cs, frame->eip);
 
-    fprintf(stderr, "EAX=%08lX EBX=%08lX ECX=%08lX EDX=%08lX\n", regs->eax, regs->ebx, regs->ecx, regs->edx);
-    fprintf(stderr, "ESI=%08lX EDI=%08lX EBP=%08lX ESP=%08lX\n", regs->esi, regs->edi, regs->ebp, regs->esp);
-    fprintf(stderr, "CS=%04X DS=%04X ES=%04X FS=%04X GS=%04X\n", frame->cs, regs->ds, regs->es, regs->fs, regs->gs);
+    fprintf(
+        stderr,
+        "EAX=%08lX EBX=%08lX ECX=%08lX EDX=%08lX\n",
+        regs->eax,
+        regs->ebx,
+        regs->ecx,
+        regs->edx
+    );
+    fprintf(
+        stderr,
+        "ESI=%08lX EDI=%08lX EBP=%08lX ESP=%08lX\n",
+        regs->esi,
+        regs->edi,
+        regs->ebp,
+        regs->esp
+    );
+    fprintf(
+        stderr,
+        "CS=%04X DS=%04X ES=%04X FS=%04X GS=%04X\n",
+        frame->cs,
+        regs->ds,
+        regs->es,
+        regs->fs,
+        regs->gs
+    );
     fprintf(stderr, "EFLAGS=%08lX\n", frame->eflags);
 
     uint32_t bp = regs->ebp;
@@ -545,7 +574,7 @@ static void bkpt_handler(struct interrupt_frame *frame, struct trap_regs *regs, 
 static void init_pit(void)
 {
     static const uint16_t pit_value = 1193182 / 20;
-    
+
     io_out8(0x0043, 0x34);
     io_out8(0x0040, pit_value & 0xFF);
     io_out8(0x0040, (pit_value >> 8) & 0xFF);
@@ -558,17 +587,16 @@ int _pc_rdtsc_undefined;
 
 static void invlpg_test(void)
 {
-    __asm__ volatile ("invlpg (%0)" : : "r"(0));
+    __asm__ volatile("invlpg (%0)" : : "r"(0));
 }
 
 static void rdtsc_test(void)
 {
     uint32_t low, high;
-    __asm__ volatile ("rdtsc" : "=a"(low), "=d"(high));
+    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
 }
 
-__noreturn
-void _pc_init(void)
+__noreturn void _pc_init(void)
 {
     status_t status;
     int has_acpi = 0, has_apm = 0;
@@ -614,7 +642,14 @@ void _pc_init(void)
     struct chs chs = disk_lba_to_chs(_pc_boot_part_base, bootdisk_geom);
     status = _pc_bios_disk_read(_pc_boot_drive, chs, 1, _pc_boot_sector, NULL);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "could not reload VBR sector %02X:(%d, %d, %d)", _pc_boot_drive, chs.cylinder, chs.head, chs.sector);
+        panic(
+            status,
+            "could not reload VBR sector %02X:(%d, %d, %d)",
+            _pc_boot_drive,
+            chs.cylinder,
+            chs.head,
+            chs.sector
+        );
     }
 
     _pc_pic_remap_int(0x20, 0x28);

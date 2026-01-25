@@ -6,5 +6,6 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line, c
 {
     fprintf(stderr, "assertion failed: %s: %d: (%s): %s\n", file, line, func, assertion);
 
-    for (;;) {}
+    for (;;) {
+    }
 }

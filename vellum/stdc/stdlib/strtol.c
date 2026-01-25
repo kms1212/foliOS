@@ -6,7 +6,7 @@
 long strtol(const char *__restrict str, char **__restrict endptr, int base)
 {
     long ret = 0;
-    int sign = 0; // 0: positive 1: negative
+    int sign = 0;  // 0: positive 1: negative
 
     if (base < 0 || base == 1 || base > 36) {
         errno = EINVAL;

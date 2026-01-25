@@ -5,11 +5,11 @@
 
 #include <vellum/compiler.h>
 
-#define PAGE_SIZE   4096
+#define PAGE_SIZE 4096
 
 union page_dir_entry {
     uint32_t raw;
-    
+
     struct {
         uint32_t p : 1;
         uint32_t r_w : 1;
@@ -64,4 +64,4 @@ struct page_dir_recursive {
     union page_table_entry pte;
 } __packed;
 
-#endif // __VELLUM_ASM_PAGE_H__
+#endif  // __VELLUM_ASM_PAGE_H__

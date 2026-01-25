@@ -7,10 +7,10 @@
 
 #include <strata/compiler.h>
 
-#define MPIC_CMD     0x0020
-#define MPIC_DATA    0x0021
-#define SPIC_CMD     0x00A0
-#define SPIC_DATA    0x00A1
+#define MPIC_CMD  0x0020
+#define MPIC_DATA 0x0021
+#define SPIC_CMD  0x00A0
+#define SPIC_DATA 0x00A1
 
 __always_inline void StPicP_Remap(uint8_t master, uint8_t slave)
 {
@@ -23,7 +23,7 @@ __always_inline void StPicP_Remap(uint8_t master, uint8_t slave)
     StIoA_Out8(MPIC_DATA, 0x01);
     StIoA_Wait();
     StIoA_Out8(MPIC_DATA, 0xFF);
-    
+
     StIoA_Out8(SPIC_CMD, 0x11);
     StIoA_Wait();
     StIoA_Out8(SPIC_DATA, slave);
@@ -75,4 +75,4 @@ __always_inline void StPicP_Disable(void)
     StPicP_Remap(0x20, 0x28);
 }
 
-#endif // __STRATA_PLAT_PIC_H__
+#endif  // __STRATA_PLAT_PIC_H__

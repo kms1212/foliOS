@@ -9,14 +9,14 @@ size_t fwrite(const void *__restrict ptr, size_t size, size_t count, FILE *__res
 
     while (write_count < count) {
         switch (stream->type) {
-            case 2:
-                status = stream->dev.charif->write(stream->dev.dev, ptr, size, NULL);
-                if (!CHECK_SUCCESS(status)) goto end;
-                break;
-            case 3:
-                return stream->cookie.io_funcs.write(stream->cookie.cookie, ptr, size);
-            default:
-                return -1;
+        case 2:
+            status = stream->dev.charif->write(stream->dev.dev, ptr, size, NULL);
+            if (!CHECK_SUCCESS(status)) goto end;
+            break;
+        case 3:
+            return stream->cookie.io_funcs.write(stream->cookie.cookie, ptr, size);
+        default:
+            return -1;
         }
         write_count++;
         ptr = (uint8_t *)ptr + size;

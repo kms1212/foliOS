@@ -1,12 +1,12 @@
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <vellum/asm/io.h>
 #include <vellum/asm/intrinsics/misc.h>
+#include <vellum/asm/io.h>
 
-#include <vellum/log.h>
 #include <vellum/device.h>
 #include <vellum/interface/char.h>
+#include <vellum/log.h>
 
 #define MODULE_NAME "ieee1284_isa"
 
@@ -27,7 +27,8 @@ static status_t write(struct device *dev, const char *buf, size_t len, size_t *r
 
         uint8_t cr = io_in8(data->io_base + 2);
         io_out8(data->io_base + 2, cr | 0x1);
-        for (volatile int j = 0; j < 2048; j++) {}
+        for (volatile int j = 0; j < 2048; j++) {
+        }
         io_out8(data->io_base + 2, cr);
     }
 
@@ -40,7 +41,13 @@ static const struct char_interface charif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -60,7 +67,13 @@ static void ieee1284_isa_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -82,16 +95,18 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     data->io_base = rsrc[0].base;
     dev->data = data;
 
     io_out8(data->io_base + 2, 0x0C);
-    for (volatile int j = 0; j < 2048; j++) {}
+    for (volatile int j = 0; j < 2048; j++) {
+    }
     io_out8(data->io_base + 2, 0x08);
-    for (volatile int j = 0; j < 2048; j++) {}
+    for (volatile int j = 0; j < 2048; j++) {
+    }
     io_out8(data->io_base + 2, 0x0C);
-    
+
     if (devout) *devout = dev;
 
     LOG_DEBUG("initialization success\n");

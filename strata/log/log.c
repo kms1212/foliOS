@@ -43,14 +43,19 @@ void StLog_Print(int level, const char *module_name, const char *fmt, ...)
 void StLog_IntSafePrint(int level, const char *module_name, const char *fmt, ...)
 {
     va_list args;
-    
+
     va_start(args, fmt);
     StLog_IntSafePrintValist(level, module_name, fmt, args);
     va_end(args);
 }
 
 static const char *ll_str[] = {
-    "FATAL", "ERROR", "WARN", "INFO", "DEBUG", "TRACE",
+    "FATAL",
+    "ERROR",
+    "WARN",
+    "INFO",
+    "DEBUG",
+    "TRACE",
 };
 
 void StLog_PrintValist(int level, const char *module_name, const char *fmt, va_list args)
@@ -64,7 +69,7 @@ void StLog_PrintValist(int level, const char *module_name, const char *fmt, va_l
 void StLog_IntSafePrintValist(int level, const char *module_name, const char *fmt, va_list args)
 {
     if (log_level < level) return;
-    
+
     cprintf(log_print_func, log_print_state, "%s [%s] ", module_name, ll_str[level]);
     vcprintf(log_print_func, log_print_state, fmt, args);
 }

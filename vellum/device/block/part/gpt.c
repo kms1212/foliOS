@@ -1,16 +1,18 @@
 #include "gpt.h"
 
-#include <string.h>
+#include <endian.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <endian.h>
+#include <string.h>
 
-#include <vellum/status.h>
-#include <vellum/macros.h>
 #include <vellum/device.h>
 #include <vellum/interface/block.h>
+#include <vellum/macros.h>
+#include <vellum/status.h>
 
-static const gpt_guid null_entry = { 0, };
+static const gpt_guid null_entry = {
+    0,
+};
 
 struct gpt_data {
     struct device *blkdev;
@@ -44,7 +46,13 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -64,7 +72,13 @@ static void gpt_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -97,7 +111,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     snprintf(dev_name_base, sizeof(dev_name_base), "%.61spt", parent->name);
-    
+
     status = device_generate_name(dev_name_base, dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -125,11 +139,11 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     }
 
     gpt_base = le32toh(prot_mbr_sect->partition_entries[0].base_lba);
-    
+
     gpt_header = (struct gpt_header *)sect_buf;
     status = data->blkif->read(data->blkdev, gpt_base, sect_buf, 1, NULL);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     if (strncmp(gpt_header->signature, GPT_HEADER_SIGNATURE, sizeof(gpt_header->signature)) != 0) {
         status = STATUS_INVALID_SIGNATURE;
         goto has_error;
@@ -138,13 +152,13 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     bytes_per_entry = gpt_header->bytes_per_entry;
     entry_count = gpt_header->entry_count;
     entry_list_lba = le64toh(gpt_header->entry_list_base_lba);
-    
+
     status = data->blkif->read(data->blkdev, entry_list_lba, sect_buf, 1, NULL);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = device_driver_find("part", &partdrv);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     offset = 0;
     for (int i = 0; i < entry_count; i++) {
         entry = (struct gpt_partition_entry *)&sect_buf[offset];

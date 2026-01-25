@@ -1,5 +1,5 @@
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <vellum/asm/io.h>
 
@@ -27,7 +27,13 @@ static const struct char_interface charif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -47,7 +53,13 @@ static void debugout_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -69,10 +81,10 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     data->ioport = rsrc[0].base;
     dev->data = data;
-    
+
     if (devout) *devout = dev;
 
     return STATUS_SUCCESS;

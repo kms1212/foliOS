@@ -16,7 +16,7 @@ static int write_handler(struct shell_instance *inst, int argc, char **argv)
     uint8_t value = strtol(argv[2], NULL, 16);
 
     *(uint8_t *)addr = value;
-    
+
     return 0;
 }
 

@@ -19,7 +19,7 @@ static int mount_handler(struct shell_instance *inst, int argc, char **argv)
         fprintf(stderr, "%s: could not find device\n", argv[0]);
         return 1;
     }
-    
+
     status = filesystem_auto_mount(blkdev, argv[2]);
     if (!CHECK_SUCCESS(status)) return 1;
 

@@ -9,9 +9,9 @@
 
 #include <strata/plat/mmu.h>
 
+#include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/panic.h>
-#include <strata/log.h>
 
 #define MODULE_NAME "mm"
 
@@ -20,10 +20,7 @@ StStatus StMm_Init(void)
     return STATUS_SUCCESS;
 }
 
-StStatus StMm_VirtPageToPhysFrame(
-    St_VirtPage vpn __in,
-    St_PhysFrame *pfn __out_optional
-)
+StStatus StMm_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional)
 {
     return StMmuP_VirtPageToPhysFrame(vpn, pfn);
 }
@@ -50,15 +47,18 @@ StStatus StMm_MapContiguous(
         if (!CHECK_SUCCESS(status)) return status;
     }
 
-    LOG_TRACE("mapped page %lu-%lu to frame %lu-%lu\n", (uintptr_t)allocated_vpn, (uintptr_t)allocated_vpn + (uintptr_t)count - 1, (uintptr_t)pfn, (uintptr_t)pfn + (uintptr_t)count - 1);
+    LOG_TRACE(
+        "mapped page %lu-%lu to frame %lu-%lu\n",
+        (uintptr_t)allocated_vpn,
+        (uintptr_t)allocated_vpn + (uintptr_t)count - 1,
+        (uintptr_t)pfn,
+        (uintptr_t)pfn + (uintptr_t)count - 1
+    );
 
     return STATUS_SUCCESS;
 }
 
-void StMm_UnmapContiguous(
-    St_VirtPage vpn __in,
-    St_PageCount count __in
-)
+void StMm_UnmapContiguous(St_VirtPage vpn __in, St_PageCount count __in)
 {
     LOG_TRACE("unmapping page %lu-%lu\n", (uintptr_t)vpn, (uintptr_t)vpn + (uintptr_t)count - 1);
 
@@ -120,7 +120,7 @@ StStatus StMm_AllocateSparse(
     size_t allocated_count = 0;
 
     pmmflags &= ~PMM_ALIGN_MASK;
-    
+
     /* allocate virtual memory pages first */
     status = StVmm_AllocatePage(domain, &allocated_vpn, count, vmmflags);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -135,7 +135,8 @@ StStatus StMm_AllocateSparse(
         status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        status = StMmuP_MapMemory(allocated_pfn, allocated_vpn + (St_VirtPage)allocated_count, mapflags);
+        status =
+            StMmuP_MapMemory(allocated_pfn, allocated_vpn + (St_VirtPage)allocated_count, mapflags);
         if (!CHECK_SUCCESS(status)) {
             StPmm_FreeContiguousFrame(allocated_pfn);
             goto has_error;
@@ -164,10 +165,7 @@ has_error:
     return status;
 }
 
-void StMm_Free(
-    St_VirtPage vpn __in,
-    St_PageCount count __in
-)
+void StMm_Free(St_VirtPage vpn __in, St_PageCount count __in)
 {
     StStatus status;
     St_PhysFrame pfn;
@@ -179,12 +177,12 @@ void StMm_Free(
         if (!CHECK_SUCCESS(status)) {
             St_Panic(STATUS_CONFLICTING_STATE, "tried to free unmapped page");
         }
-        
+
         status = StPmm_GetAllocMetadata(pfn, &metadata);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(STATUS_CONFLICTING_STATE, "pmm allocation metadata unavailable");
         }
-    
+
         StMmuP_UnmapMemory(vpn + i);
         StPmm_FreeContiguousFrame(pfn);
 

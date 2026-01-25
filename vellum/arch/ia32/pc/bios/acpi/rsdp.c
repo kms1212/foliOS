@@ -1,10 +1,11 @@
-#include <uacpi/kernel_api.h>
 #include <uacpi/acpi.h>
+#include <uacpi/kernel_api.h>
 
 #include <stddef.h>
 #include <stdint.h>
 
-uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address) {
+uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address)
+{
     static const void *rsdp_addr = NULL;
     uint16_t rsdp_base_seg;
     const void *ebda_ptr = NULL;
@@ -67,7 +68,6 @@ skip_ebda:
 
         return UACPI_STATUS_OK;
     }
-
 
     return UACPI_STATUS_NOT_FOUND;
 }

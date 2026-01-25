@@ -1,38 +1,37 @@
+#include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdlib.h>
-#include <errno.h>
 
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
 #include <vellum/asm/instruction.h>
 #include <vellum/asm/intrinsics/rdtsc.h>
+#include <vellum/asm/io.h>
+#include <vellum/asm/isr.h>
 
 #include <vellum/device.h>
 #include <vellum/global_configs.h>
-#include <vellum/interface/rtc.h>
 #include <vellum/interface/nvram.h>
+#include <vellum/interface/rtc.h>
 
-#define RTC_NMI_DISABLE         0x80
+#define RTC_NMI_DISABLE 0x80
 
-#define RTC_REG_SECONDS         0x00
-#define RTC_REG_SECONDS_ALARM   0x01
-#define RTC_REG_MINUTES         0x02
-#define RTC_REG_MINUTES_ALARM   0x03
-#define RTC_REG_HOURS           0x04
-#define RTC_REG_HOURS_ALARM     0x05
-#define RTC_REG_WEEKDAY         0x06
-#define RTC_REG_MONTHDAY        0x07
-#define RTC_REG_MONTH           0x08
-#define RTC_REG_YEAR            0x09
-#define RTC_REG_STATUS_A        0x0a
-#define RTC_REG_STATUS_B        0x0b
-#define RTC_REG_STATUS_C        0x0c
-#define RTC_REG_STATUS_D        0x0d
-#define RTC_REG_RESET_CODE      0x0f
+#define RTC_REG_SECONDS       0x00
+#define RTC_REG_SECONDS_ALARM 0x01
+#define RTC_REG_MINUTES       0x02
+#define RTC_REG_MINUTES_ALARM 0x03
+#define RTC_REG_HOURS         0x04
+#define RTC_REG_HOURS_ALARM   0x05
+#define RTC_REG_WEEKDAY       0x06
+#define RTC_REG_MONTHDAY      0x07
+#define RTC_REG_MONTH         0x08
+#define RTC_REG_YEAR          0x09
+#define RTC_REG_STATUS_A      0x0a
+#define RTC_REG_STATUS_B      0x0b
+#define RTC_REG_STATUS_C      0x0c
+#define RTC_REG_STATUS_D      0x0d
+#define RTC_REG_RESET_CODE    0x0f
 
 #define RTC_A_UIP 0x80
 
@@ -94,7 +93,8 @@ retry:
     if (tm->second != bcd2int(io_in8(data->io_data))) goto retry;
 
     if (!_pc_rdtsc_undefined && data->tsc_diff_per_second) {
-        tm->millisecond = (int)(((_ia32_rdtsc() - data->prev_tsc_value) >> 16) * 1000 / data->tsc_diff_per_second);
+        tm->millisecond = (int)(((_ia32_rdtsc() - data->prev_tsc_value) >> 16) * 1000 /
+                                data->tsc_diff_per_second);
         if (tm->millisecond >= 1000) {
             tm->millisecond = 999;
         }
@@ -160,10 +160,16 @@ static void rtc_isr(void *_dev, struct interrupt_frame *frame, struct trap_regs 
     }
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
-    
+
 static void rtc_isa_init(void)
 {
     status_t status;
@@ -180,14 +186,19 @@ static void rtc_isa_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
     struct rtc_data *data = NULL;
 
-    if (!rsrc || rsrc_cnt != 2 ||
-        rsrc[0].type != RT_IOPORT || rsrc[0].limit - rsrc[0].base != 1 ||
+    if (!rsrc || rsrc_cnt != 2 || rsrc[0].type != RT_IOPORT || rsrc[0].limit - rsrc[0].base != 1 ||
         rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit) {
         return STATUS_INVALID_RESOURCE;
     }
@@ -225,7 +236,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     status = _pc_isr_unmask_interrupt(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     if (devout) *devout = dev;
 
     return STATUS_SUCCESS;
@@ -275,4 +286,3 @@ static status_t get_interface(struct device *dev, const char *name, const void *
 }
 
 REGISTER_DEVICE_DRIVER(rtc_isa, rtc_isa_init)
-

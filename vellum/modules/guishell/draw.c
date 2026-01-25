@@ -4,7 +4,8 @@
 
 void draw_pixel(struct bitmap *target, struct point2 point, color_t color)
 {
-    if (point.x < 0 || point.y < 0 || point.x >= target->size.width || point.y >= target->size.height) {
+    if (point.x < 0 || point.y < 0 || point.x >= target->size.width ||
+        point.y >= target->size.height) {
         return;
     }
 
@@ -14,7 +15,7 @@ void draw_pixel(struct bitmap *target, struct point2 point, color_t color)
 static color_t get_pixel(const struct bitmap *src, struct point2 point)
 {
     if (point.x < 0 || point.y < 0 || point.x >= src->size.width || point.y >= src->size.height) {
-        return (color_t){ 0 };
+        return (color_t){0};
     }
 
     return src->data[point.y * src->size.width + point.x];
@@ -34,11 +35,11 @@ void draw_line(struct bitmap *target, const struct brush *b, struct point2 p0, s
         }
     } else {
         int x = p0.x, y = p0.y;
-        int dx =  abs (p1.x - p0.x), sx = p0.x < p1.x ? 1 : -1;
-        int dy = -abs (p1.y - p0.y), sy = p0.y < p1.y ? 1 : -1; 
+        int dx = abs(p1.x - p0.x), sx = p0.x < p1.x ? 1 : -1;
+        int dy = -abs(p1.y - p0.y), sy = p0.y < p1.y ? 1 : -1;
         int err = dx + dy, e2;
         color_t color;
-       
+
         while (x != p1.x || y != p1.y) {
             color_resolve_brush(b, p0, p1, POINT2(x, y));
             draw_pixel(target, POINT2(x, y), color);
@@ -109,4 +110,3 @@ void draw_bitmap(struct bitmap *target, struct rect2 area, const struct bitmap *
         }
     }
 }
-

@@ -9,8 +9,8 @@
 #include <vellum/interface/char.h>
 
 static const struct option opts[] = {
-    { "device", optional_argument, 0, 'd' },
-    { NULL, 0, NULL, 0 },
+    {"device", optional_argument, 0, 'd'},
+    {NULL, 0, NULL, 0},
 };
 
 static int echo_handler(struct shell_instance *inst, int argc, char **argv)
@@ -24,12 +24,12 @@ static int echo_handler(struct shell_instance *inst, int argc, char **argv)
     getopt_init();
     while ((opt = getopt_long(argc, argv, "d:", opts, NULL)) != -1) {
         switch (opt) {
-            case 'd':
-                device_name = optarg;
-                break;
-            default:
-                printf("usage: %s [-d device] [message ...]\n", argv[0]);
-                return 1;
+        case 'd':
+            device_name = optarg;
+            break;
+        default:
+            printf("usage: %s [-d device] [message ...]\n", argv[0]);
+            return 1;
         }
     }
 
@@ -40,14 +40,14 @@ static int echo_handler(struct shell_instance *inst, int argc, char **argv)
             fprintf(stderr, "%s: cannot find device: 0x%08X\n", argv[0], status);
             return 1;
         }
-    
+
         const struct char_interface *cif;
         status = dev->driver->get_interface(dev, "char", (const void **)&cif);
         if (!CHECK_SUCCESS(status)) {
             fprintf(stderr, "%s: device is not a char device: 0x%08X\n", argv[0], status);
             return 1;
         }
-    
+
         for (int i = optind; i < argc; i++) {
             cif->write(dev, argv[i], strlen(argv[i]), NULL);
             if (i != argc - 1) {

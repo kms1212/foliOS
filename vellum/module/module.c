@@ -1,24 +1,26 @@
 #include <vellum/module.h>
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <vellum/macros.h>
-#include <vellum/log.h>
-#include <vellum/status.h>
-#include <vellum/panic.h>
 #include <vellum/elf.h>
-#include <vellum/path.h>
+#include <vellum/log.h>
+#include <vellum/macros.h>
 #include <vellum/mm.h>
+#include <vellum/panic.h>
+#include <vellum/path.h>
 #include <vellum/shell.h>
+#include <vellum/status.h>
 
 #include "symbol.h"
 
 #define MODULE_NAME "module"
 
-static status_t resolve_symbol_addr(struct elf_file *elf, struct elf32_sym *sym, uintptr_t load_vaddr, uintptr_t *addr)
+static status_t resolve_symbol_addr(
+    struct elf_file *elf, struct elf32_sym *sym, uintptr_t load_vaddr, uintptr_t *addr
+)
 {
     status_t status;
     char *sym_name = NULL;
@@ -48,14 +50,19 @@ static uint32_t resolve_symbol_value(struct elf_file *elf, unsigned int index)
 {
     struct elf32_sym sym;
     status_t status;
-    
+
     status = elf_get_symbol(elf, index, &sym, sizeof(sym));
     if (!CHECK_SUCCESS(status)) return 0;
 
     return sym.value;
 }
 
-static status_t relocate_section(struct elf_file *elf, unsigned int rel_section_idx, uintptr_t got_symbol_offset, uintptr_t load_vaddr)
+static status_t relocate_section(
+    struct elf_file *elf,
+    unsigned int rel_section_idx,
+    uintptr_t got_symbol_offset,
+    uintptr_t load_vaddr
+)
 {
     status_t status;
     struct elf32_shdr shdr;
@@ -96,60 +103,74 @@ static status_t relocate_section(struct elf_file *elf, unsigned int rel_section_
         if (rel_type != R_386_RELATIVE && rel_type != R_386_32) {
             status = elf_get_symbol(elf, rel_sym_idx, &sym, sizeof(sym));
             if (!CHECK_SUCCESS(status)) goto has_error;
-        
+
             status = resolve_symbol_addr(elf, &sym, load_vaddr, &S);
             if (!CHECK_SUCCESS(status)) return status;
         }
 
         switch (rel_type) {
-            case R_386_NONE:
-                LOG_TRACE("type=%02d\n", rel_type);
-                break;
-            case R_386_32:
-                // if (sym.shndx == SHN_UNDEF) {
-                //     LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
-                //     *(uint32_t *)P = B + A;
-                // } else {
-                    LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX\n", rel_type, P, S, A);
-                    *(uint32_t *)P = S + A;
-                // }
-                break;
-            case R_386_PC32:
-                if (sym.shndx == SHN_UNDEF) {
-                    LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX - P\n", rel_type, P, S, A);
-                    *(uint32_t *)P = S + A - P;
-                }
-                break;
-            case R_386_GOT32:
-            case R_386_GOT32X:
-                LOG_TRACE("type=%02d, (A:%08lX + GOT:%08lX) = (%08lX) = S:%08lX\n", rel_type, A, GOT, A + GOT, S);
-                *(elf32_addr_t *)(A + GOT) = S;
+        case R_386_NONE:
+            LOG_TRACE("type=%02d\n", rel_type);
+            break;
+        case R_386_32:
+            // if (sym.shndx == SHN_UNDEF) {
+            //     LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
+            //     *(uint32_t *)P = B + A;
+            // } else {
+            LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX\n", rel_type, P, S, A);
+            *(uint32_t *)P = S + A;
+            // }
+            break;
+        case R_386_PC32:
+            if (sym.shndx == SHN_UNDEF) {
+                LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX - P\n", rel_type, P, S, A);
+                *(uint32_t *)P = S + A - P;
+            }
+            break;
+        case R_386_GOT32:
+        case R_386_GOT32X:
+            LOG_TRACE(
+                "type=%02d, (A:%08lX + GOT:%08lX) = (%08lX) = S:%08lX\n",
+                rel_type,
+                A,
+                GOT,
+                A + GOT,
+                S
+            );
+            *(elf32_addr_t *)(A + GOT) = S;
 
-                break;
-            case R_386_GLOB_DAT:
-            case R_386_JMP_SLOT:
-                LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX\n", rel_type, P, S);
-                *(uint32_t *)P = S;
-                break;
-            case R_386_RELATIVE:
-                LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
-                *(uint32_t *)P = B + A;
-                break;
-            case R_386_GOTOFF:
-                if (sym.shndx == SHN_UNDEF) {
-                    LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX - GOT:%08lX\n", rel_type, P, S, A, GOT);
-                    *(uint32_t *)P = S + A - GOT;
-                }
-                break;
-            case R_386_GOTPC:
-                if (sym.shndx == SHN_UNDEF) {
-                    LOG_TRACE("type=%02d, (P:%08lX) = GOT:%08lX + A:%08lX - P\n", rel_type, P, GOT, A);
-                    *(uint32_t *)P = GOT + A - P;
-                }
-                break;
-            default:
-                panic(STATUS_UNSUPPORTED, "relocation type %02d not supported", rel_type);
-                break;
+            break;
+        case R_386_GLOB_DAT:
+        case R_386_JMP_SLOT:
+            LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX\n", rel_type, P, S);
+            *(uint32_t *)P = S;
+            break;
+        case R_386_RELATIVE:
+            LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
+            *(uint32_t *)P = B + A;
+            break;
+        case R_386_GOTOFF:
+            if (sym.shndx == SHN_UNDEF) {
+                LOG_TRACE(
+                    "type=%02d, (P:%08lX) = S:%08lX + A:%08lX - GOT:%08lX\n",
+                    rel_type,
+                    P,
+                    S,
+                    A,
+                    GOT
+                );
+                *(uint32_t *)P = S + A - GOT;
+            }
+            break;
+        case R_386_GOTPC:
+            if (sym.shndx == SHN_UNDEF) {
+                LOG_TRACE("type=%02d, (P:%08lX) = GOT:%08lX + A:%08lX - P\n", rel_type, P, GOT, A);
+                *(uint32_t *)P = GOT + A - P;
+            }
+            break;
+        default:
+            panic(STATUS_UNSUPPORTED, "relocation type %02d not supported", rel_type);
+            break;
         }
 
         LOG_TRACE("relocated to %08lX\n", *(uint32_t *)P);
@@ -284,7 +305,7 @@ status_t module_load(const char *path, struct module **modout)
         status = relocate_section(elf, rel_section_idx, got_symbol_offset, load_vpn * PAGE_SIZE);
         if (!CHECK_SUCCESS(status)) goto has_error;
     }
-    
+
     LOG_DEBUG("loading section .note.vellum...\n");
     status = elf_find_section(elf, ".note.vellum", &note_vellum_section_idx);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -299,7 +320,12 @@ status_t module_load(const char *path, struct module **modout)
         goto has_error;
     }
 
-    status = elf_load_section(elf, note_vellum_section_idx, note_vellum_section, note_vellum_section_len);
+    status = elf_load_section(
+        elf,
+        note_vellum_section_idx,
+        note_vellum_section,
+        note_vellum_section_len
+    );
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     mod = malloc(sizeof(*mod));
@@ -311,7 +337,8 @@ status_t module_load(const char *path, struct module **modout)
     LOG_DEBUG("reading metadata...\n");
     note_vellum_offset = 0;
     while (note_vellum_offset < note_vellum_section_len) {
-        struct note_vellum_entry *entry = (void *)((uintptr_t)note_vellum_section + note_vellum_offset);
+        struct note_vellum_entry *entry =
+            (void *)((uintptr_t)note_vellum_section + note_vellum_offset);
         char *key = (char *)((uintptr_t)entry + sizeof(struct note_vellum_entry));
         void *value = key + entry->key_len + 1;
 
@@ -331,7 +358,7 @@ status_t module_load(const char *path, struct module **modout)
         status = STATUS_INVALID_VALUE;
         goto has_error;
     }
-    
+
     mod->elf = elf;
     mod->name = mod_name;
     mod->load_vpn = load_vpn;
@@ -355,7 +382,8 @@ status_t module_load(const char *path, struct module **modout)
         mod_list_head = mod;
     } else {
         struct module *current = mod_list_head;
-        for (; current->next; current = current->next) {}
+        for (; current->next; current = current->next) {
+        }
 
         current->next = mod;
     }
@@ -432,4 +460,3 @@ struct module *module_get_first_mod(void)
 }
 
 status_t module_find(const char *name, struct module **mod);
-

@@ -2,9 +2,10 @@
 // int ehci_device_index = -1;
 // for (int i = 0; i < pci_count; i++) {
 //     if (pci_devices[i].base_class == 0x0C &&
-//         pci_devices[i].sub_class == 0x03 && 
+//         pci_devices[i].sub_class == 0x03 &&
 //         pci_devices[i].interface == 0x20) {
-//         printf("EHCI Controller found at 0x%04X, device 0x%04X, function %d\r\n", pci_devices[i].vendor_id, pci_devices[i].device_id, pci_devices[i].function);
+//         printf("EHCI Controller found at 0x%04X, device 0x%04X, function %d\r\n",
+//         pci_devices[i].vendor_id, pci_devices[i].device_id, pci_devices[i].function);
 
 //         ehci_device_index = i;
 //     }

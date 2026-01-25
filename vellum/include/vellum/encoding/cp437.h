@@ -8,4 +8,4 @@
 
 status_t enc_utf32_to_cp437(wchar_t utf32, uint8_t *cp437out);
 
-#endif // __VELLUM_ENCODING_CP437_H__
+#endif  // __VELLUM_ENCODING_CP437_H__

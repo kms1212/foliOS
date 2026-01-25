@@ -3,9 +3,9 @@
 
 #include <strata/plat/thread.h>
 
-#include <strata/status.h>
 #include <strata/compiler.h>
 #include <strata/mm.h>
+#include <strata/status.h>
 
 struct StThread;
 struct StProcess;
@@ -69,9 +69,7 @@ void StThread_DisablePreemption(void);
 int StThread_IsPreemptionEnabled(void);
 
 StStatus StThread_CreateKernel(
-    StThread_EntryFunction entry __in,
-    size_t stack_size __in,
-    struct StThread **threadout __out
+    StThread_EntryFunction entry __in, size_t stack_size __in, struct StThread **threadout __out
 );
 StStatus StThread_CreateUser(
     struct StProcess *proc __in,
@@ -83,17 +81,12 @@ StStatus StThread_CreateUser(
 StStatus StThread_Remove(struct StThread *thread __in);
 
 StStatus StThread_Detach(struct StThread *thread __in);
-StStatus StThread_Wait(
-    struct StThread **list __in,
-    int count __in,
-    int timeout_ms __in
-);
+StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_ms __in);
 
 StStatus StThread_Sleep(int timeout_ms __in);
 
 void StThread_Yield(void);
 
-__noreturn
-void StThread_Exit(void);
+__noreturn void StThread_Exit(void);
 
-#endif // __STRATA_THREAD_H__
+#endif  // __STRATA_THREAD_H__

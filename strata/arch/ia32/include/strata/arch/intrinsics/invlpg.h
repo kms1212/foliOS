@@ -5,7 +5,7 @@
 
 __always_inline void StA_Invlpg(void *addr)
 {
-    __asm__ volatile ("invlpg (%0)" : : "r"(addr) : "memory");
+    __asm__ volatile("invlpg (%0)" : : "r"(addr) : "memory");
 }
 
-#endif // __STRATA_ARCH_INTRINSICS_INVLPG_H__
+#endif  // __STRATA_ARCH_INTRINSICS_INVLPG_H__

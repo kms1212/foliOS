@@ -5,4 +5,4 @@
 
 typedef int mode_t;
 
-#endif // __SYS_TYPES_H__
+#endif  // __SYS_TYPES_H__

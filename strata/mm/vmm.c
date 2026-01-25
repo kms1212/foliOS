@@ -8,14 +8,14 @@
 
 #include <rb.h>
 
-#include <strata/arch/mmu.h>
 #include <strata/arch/cpufeatures.h>
-#include <strata/arch/intrinsics/register.h>
 #include <strata/arch/intrinsics/invlpg.h>
+#include <strata/arch/intrinsics/register.h>
+#include <strata/arch/mmu.h>
 
+#include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/panic.h>
-#include <strata/log.h>
 
 #define MODULE_NAME "vmm"
 
@@ -35,11 +35,11 @@ struct alloc_node {
 };
 
 static struct alloc_domain alloc_domain_list[VMM_DOMAIN_MAX] = {
-    [VMM_DOMAIN_USER] = { .initialized = 0 },
-    [VMM_DOMAIN_MODULE] = { .initialized = 0 },
-    [VMM_DOMAIN_KERNEL_FAST] = { .initialized = 0 },
-    [VMM_DOMAIN_KERNEL_SLOW] = { .initialized = 0 },
-    [VMM_DOMAIN_IO] = { .initialized = 0 },
+    [VMM_DOMAIN_USER] = {.initialized = 0},
+    [VMM_DOMAIN_MODULE] = {.initialized = 0},
+    [VMM_DOMAIN_KERNEL_FAST] = {.initialized = 0},
+    [VMM_DOMAIN_KERNEL_SLOW] = {.initialized = 0},
+    [VMM_DOMAIN_IO] = {.initialized = 0},
 };
 
 static struct alloc_node early_alloc_node_pool[EARLY_ALLOC_NODE_POOL_COUNT];
@@ -67,9 +67,7 @@ static int compare_alloc(struct StRbtree_Node *node1, struct StRbtree_Node *node
 }
 
 StStatus StVmm_InitDomain(
-    enum StVmm_Domain domain __in,
-    St_VirtPage base_vpn __in,
-    St_VirtPage limit_vpn __in
+    enum StVmm_Domain domain __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
 )
 {
     struct alloc_domain *alloc_domain;
@@ -87,10 +85,7 @@ StStatus StVmm_InitDomain(
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_GetTotalPageCount(
-    enum StVmm_Domain domain __in,
-    St_PageCount *count __out
-)
+StStatus StVmm_GetTotalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out)
 {
     struct alloc_domain *alloc_domain;
 
@@ -105,10 +100,7 @@ StStatus StVmm_GetTotalPageCount(
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_GetFreePageCount(
-    enum StVmm_Domain domain,
-    St_PageCount *count __out
-)
+StStatus StVmm_GetFreePageCount(enum StVmm_Domain domain, St_PageCount *count __out)
 {
     struct alloc_domain *alloc_domain;
 
@@ -146,11 +138,12 @@ StStatus StVmm_AllocatePage(
      * RBT는 주소 순으로 정렬되어 있으므로 In-Order 순회를 하며
      * 노드 사이의 간격(Hole)을 검사합니다.
      */
-    
+
     curr_rb = StRbtree_Min(&ad->rbtree);
     candidate_start = ad->base_vpn;
 
-    while (curr_rb != NULL) { // &ad->rbtree.nil 체크 필요 여부는 라이브러리 구현에 따름 (보통 NULL)
+    while (curr_rb !=
+           NULL) {  // &ad->rbtree.nil 체크 필요 여부는 라이브러리 구현에 따름 (보통 NULL)
         struct alloc_node *curr_node = rb_entry(curr_rb, struct alloc_node, rbnode);
 
         // 1. 현재 노드 앞의 공간 확인
@@ -158,7 +151,7 @@ StStatus StVmm_AllocatePage(
         if (curr_node->base_vpn > candidate_start) {
             size_t gap = curr_node->base_vpn - candidate_start;
             if (gap >= count) {
-                goto found_hole; // 찾았다!
+                goto found_hole;  // 찾았다!
             }
         }
 
@@ -202,8 +195,4 @@ found_hole:
     return STATUS_SUCCESS;
 }
 
-void StVmm_FreePage(
-    St_VirtPage vpn __in,
-    St_PageCount count __in
-)
-{}
+void StVmm_FreePage(St_VirtPage vpn __in, St_PageCount count __in) {}

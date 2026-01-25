@@ -3,13 +3,13 @@
 #include <inttypes.h>
 
 #include <strata/arch/cpufeatures.h>
-#include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/interrupt.h>
+#include <strata/arch/intrinsics/msr.h>
 
 #include <strata/plat/gdt.h>
 
-#include <strata/status.h>
 #include <strata/log.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "syscall"
 
@@ -25,7 +25,10 @@ StStatus StSyscallP_Init(void)
     if (!g_p_cpu_features->has_syscall) return STATUS_UNSUPPORTED;
 
     StA_WriteMsr(MSR_LSTAR, (uintptr_t)_StSyscallP_Entry);
-    StA_WriteMsr(MSR_STAR, ((uint64_t)SEG_SEL_KERNEL_CODE << 32) | (((uint64_t)SEG_SEL_USER_DATA - 8) << 48));
+    StA_WriteMsr(
+        MSR_STAR,
+        ((uint64_t)SEG_SEL_KERNEL_CODE << 32) | (((uint64_t)SEG_SEL_USER_DATA - 8) << 48)
+    );
     StA_WriteMsr(MSR_SFMASK, 0x0000000000000202);
 
     return STATUS_SUCCESS;

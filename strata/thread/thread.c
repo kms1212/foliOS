@@ -6,10 +6,10 @@
 
 #include <strata/plat/time.h>
 
-#include <strata/panic.h>
 #include <strata/log.h>
-#include <strata/scheduler.h>
 #include <strata/macros.h>
+#include <strata/panic.h>
+#include <strata/scheduler.h>
 
 #define MODULE_NAME "thread"
 
@@ -38,7 +38,7 @@ StStatus StThread_Init(struct StThread **main_thread __out)
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     *main_thread = main_th;
-    
+
     return STATUS_SUCCESS;
 
 has_error:
@@ -69,9 +69,7 @@ int StThread_IsPreemptionEnabled(void)
 }
 
 StStatus StThread_CreateKernel(
-    StThread_EntryFunction entry __in,
-    size_t stack_size __in,
-    struct StThread **threadout __out
+    StThread_EntryFunction entry __in, size_t stack_size __in, struct StThread **threadout __out
 )
 {
     static StThread_Id new_thread_id = (StThread_Id)1;
@@ -168,7 +166,7 @@ StStatus StThread_CreateUser(
     th->status = THREAD_STATE_PENDING;
     th->type = THREAD_TYPE_USER;
     th->owner = process;
-    
+
     th->umode_entry = entry;
     th->umode_stack_ptr = ustack_top;
 
@@ -237,7 +235,7 @@ StStatus StThread_Detach(struct StThread *thread)
 {
     StStatus status;
     struct StThread *current_thread;
-    
+
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -250,15 +248,11 @@ StStatus StThread_Detach(struct StThread *thread)
     return STATUS_SUCCESS;
 }
 
-StStatus StThread_Wait(
-    struct StThread **list __in,
-    int count __in,
-    int timeout_ms __in
-)
+StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_ms __in)
 {
     StStatus status;
     struct StThread *current_thread;
-    
+
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -286,14 +280,15 @@ StStatus StThread_Sleep(int timeout_ms __in)
 {
     StStatus status;
     struct StThread *current_thread;
-    
+
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) return status;
 
     StThread_DisablePreemption();
 
     current_thread->status = THREAD_STATE_SLEEPING;
-    current_thread->sleep_until_tick = StTimeP_GetGlobalTick() + timeout_ms * StTimeP_GetGlobalTickFrequency() / 1000;
+    current_thread->sleep_until_tick =
+        StTimeP_GetGlobalTick() + timeout_ms * StTimeP_GetGlobalTickFrequency() / 1000;
 
     StThread_EnablePreemption();
 
@@ -307,12 +302,11 @@ void StThread_Yield(void)
     StThreadP_Yield();
 }
 
-__noreturn
-void StThread_Exit(void)
+__noreturn void StThread_Exit(void)
 {
     StStatus status;
     struct StThread *current_thread;
-    
+
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "cannot get current thread");
@@ -328,5 +322,6 @@ void StThread_Exit(void)
 
     StThread_Yield();
 
-    for (;;) {}
+    for (;;) {
+    }
 }

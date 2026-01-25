@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <vellum/status.h>
-#include <vellum/font.h>
-#include <vellum/path.h>
 #include <vellum/device.h>
+#include <vellum/font.h>
 #include <vellum/interface/console.h>
+#include <vellum/path.h>
+#include <vellum/status.h>
 
 static int usefont_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -20,7 +20,7 @@ static int usefont_handler(struct shell_instance *inst, int argc, char **argv)
         } else {
             strncpy(path, inst->working_dir_path, sizeof(path) - 1);
             path_join(path, sizeof(path), argv[1]);
-    
+
             if (!inst->fs) {
                 fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
                 return 1;
@@ -30,7 +30,7 @@ static int usefont_handler(struct shell_instance *inst, int argc, char **argv)
 
     int ret = font_use(argc > 1 ? path : NULL);
     if (ret) return 1;
-    
+
     struct device *condev;
     status = device_find("console0", &condev);
     if (!CHECK_SUCCESS(status)) return 1;

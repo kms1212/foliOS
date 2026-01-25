@@ -1,20 +1,20 @@
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <vellum/asm/isr.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/time.h>
 #include <vellum/asm/intrinsics/misc.h>
+#include <vellum/asm/io.h>
+#include <vellum/asm/isr.h>
+#include <vellum/asm/time.h>
 
-#include <vellum/log.h>
-#include <vellum/macros.h>
-#include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/hid.h>
 #include <vellum/interface/char.h>
 #include <vellum/interface/hid.h>
 #include <vellum/interface/ps2.h>
+#include <vellum/log.h>
+#include <vellum/macros.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "ps2mse"
 
@@ -59,70 +59,70 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
     uint8_t byte;
 
     if (data->seqbuf_start == data->seqbuf_end) return STATUS_NO_EVENT;
-    
+
     status = _pc_isr_mask_interrupt(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     byte = data->seqbuf[data->seqbuf_start];
     status = STATUS_SUCCESS;
     switch (data->seq_state) {
-        case SS_DEFAULT:
-            if ((byte & 0x08) && !(byte & 0xC0)) {
-                if ((byte & 0x04) != (data->prev_button_state & 0x04)) {
-                    ret_key = KEY_MOUSEBTNM;
-                    ret_flags = (byte & 0x04) ? 0 : KEY_FLAG_BREAK;
-                    data->prev_button_state = (data->prev_button_state & ~0x04) | (byte & 0x04);
-                } else if ((byte & 0x02) != (data->prev_button_state & 0x02)) {
-                    ret_key = KEY_MOUSEBTNR;
-                    ret_flags = (byte & 0x02) ? 0 : KEY_FLAG_BREAK;
-                    data->prev_button_state = (data->prev_button_state & ~0x02) | (byte & 0x02);
-                } else if ((byte & 0x01) != (data->prev_button_state & 0x01)) {
-                    ret_key = KEY_MOUSEBTNL;
-                    ret_flags = (byte & 0x01) ? 0 : KEY_FLAG_BREAK;
-                    data->prev_button_state = (data->prev_button_state & ~0x01) | (byte & 0x01);
-                } else {
-                    data->byte0 = byte;
-                    data->seq_state = SS_XMOVEMENT;
-                    advance = 1;
-                    status = STATUS_BUFFER_UNDERFLOW;
-                }
+    case SS_DEFAULT:
+        if ((byte & 0x08) && !(byte & 0xC0)) {
+            if ((byte & 0x04) != (data->prev_button_state & 0x04)) {
+                ret_key = KEY_MOUSEBTNM;
+                ret_flags = (byte & 0x04) ? 0 : KEY_FLAG_BREAK;
+                data->prev_button_state = (data->prev_button_state & ~0x04) | (byte & 0x04);
+            } else if ((byte & 0x02) != (data->prev_button_state & 0x02)) {
+                ret_key = KEY_MOUSEBTNR;
+                ret_flags = (byte & 0x02) ? 0 : KEY_FLAG_BREAK;
+                data->prev_button_state = (data->prev_button_state & ~0x02) | (byte & 0x02);
+            } else if ((byte & 0x01) != (data->prev_button_state & 0x01)) {
+                ret_key = KEY_MOUSEBTNL;
+                ret_flags = (byte & 0x01) ? 0 : KEY_FLAG_BREAK;
+                data->prev_button_state = (data->prev_button_state & ~0x01) | (byte & 0x01);
             } else {
+                data->byte0 = byte;
+                data->seq_state = SS_XMOVEMENT;
                 advance = 1;
                 status = STATUS_BUFFER_UNDERFLOW;
             }
-            break;
-        case SS_XMOVEMENT:
-            if (data->byte0 & 0x40) break;
-            if (data->byte0 & 0x10) {
-                ret_key = 0x100 - byte;
-                ret_flags = KEY_FLAG_XMOVE | KEY_FLAG_NEGATIVE;
-            } else {
-                ret_key = byte;
-                ret_flags = KEY_FLAG_XMOVE;
-            }
-            data->seq_state = SS_YMOVEMENT;
+        } else {
             advance = 1;
-            break;
-        case SS_YMOVEMENT:
-            if (data->byte0 & 0x80) break;
-            if (data->byte0 & 0x20) {
-                ret_key = 0x100 - byte;
-                ret_flags = KEY_FLAG_YMOVE | KEY_FLAG_NEGATIVE;
-            } else {
-                ret_key = byte;
-                ret_flags = KEY_FLAG_YMOVE;
-            }
-            data->seq_state = SS_DEFAULT;
-            advance = 1;
-            break;
-        default:
-            break;
+            status = STATUS_BUFFER_UNDERFLOW;
+        }
+        break;
+    case SS_XMOVEMENT:
+        if (data->byte0 & 0x40) break;
+        if (data->byte0 & 0x10) {
+            ret_key = 0x100 - byte;
+            ret_flags = KEY_FLAG_XMOVE | KEY_FLAG_NEGATIVE;
+        } else {
+            ret_key = byte;
+            ret_flags = KEY_FLAG_XMOVE;
+        }
+        data->seq_state = SS_YMOVEMENT;
+        advance = 1;
+        break;
+    case SS_YMOVEMENT:
+        if (data->byte0 & 0x80) break;
+        if (data->byte0 & 0x20) {
+            ret_key = 0x100 - byte;
+            ret_flags = KEY_FLAG_YMOVE | KEY_FLAG_NEGATIVE;
+        } else {
+            ret_key = byte;
+            ret_flags = KEY_FLAG_YMOVE;
+        }
+        data->seq_state = SS_DEFAULT;
+        advance = 1;
+        break;
+    default:
+        break;
     }
-    
+
     data->seqbuf_start = (data->seqbuf_start + advance) % sizeof(data->seqbuf);
 
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = _pc_isr_unmask_interrupt(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -154,15 +154,21 @@ static void mouse_isr(void *_dev, struct interrupt_frame *frame, struct trap_reg
 
     io_out8(0x007A, 0x04);
     io_out8(0x007B, byte);
-    
+
     unsigned int next_seqbuf_end = (data->seqbuf_end + 1) % sizeof(data->seqbuf);
     if (next_seqbuf_end == data->seqbuf_start) return;
-    
+
     data->seqbuf[data->seqbuf_end] = byte;
     data->seqbuf_end = next_seqbuf_end;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -182,7 +188,13 @@ static void ps2_mouse_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -191,8 +203,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     struct ps2_mouse_data *data = NULL;
     uint8_t buf[3];
 
-    if (!rsrc || rsrc_cnt != 2 ||
-        rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit ||
+    if (!rsrc || rsrc_cnt != 2 || rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit ||
         rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit) {
         return STATUS_INVALID_RESOURCE;
     }
@@ -205,7 +216,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     status = ps2dev->driver->get_interface(ps2dev, "ps2", (const void **)&ps2if);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = device_create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -304,7 +315,7 @@ static status_t remove(struct device *dev)
     struct ps2_mouse_data *data = (struct ps2_mouse_data *)dev->data;
 
     _pc_isr_remove_handler(data->isr);
-    
+
     free(data);
 
     device_remove(dev);

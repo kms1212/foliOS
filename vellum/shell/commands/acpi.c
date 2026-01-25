@@ -17,15 +17,15 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
     printf("RSDP found at 0x%p\n", (void *)rsdp);
     printf("\tVersion: %d", rsdp->revision);
     switch (rsdp->revision) {
-        case 0:
-            printf(" ACPI 1.0\n");
-            break;
-        case 2:
-            printf(" ACPI 2.0 or upper\n");
-            break;
-        default:
-            printf(" Unknown\n");
-            break;
+    case 0:
+        printf(" ACPI 1.0\n");
+        break;
+    case 2:
+        printf(" ACPI 2.0 or upper\n");
+        break;
+    default:
+        printf(" Unknown\n");
+        break;
     }
     printf("\tOEM ID: %s\n", rsdp->oemid);
 
@@ -57,15 +57,28 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
         printf("\tACPI Disable Port: %04X\n", fadt->acpi_disable);
 
         printf("\tPM1: evt_len=%d, ctl_len=%d\n", fadt->pm1_evt_len, fadt->pm1_cnt_len);
-        printf("\tPM1a: evt_blk=0x%08lX, ctl_blk=0x%08lX\n", fadt->pm1a_evt_blk, fadt->pm1a_cnt_blk);
-        printf("\tPM1b: evt_blk=0x%08lX, ctl_blk=0x%08lX\n", fadt->pm1b_evt_blk, fadt->pm1b_cnt_blk);
-        
+        printf(
+            "\tPM1a: evt_blk=0x%08lX, ctl_blk=0x%08lX\n",
+            fadt->pm1a_evt_blk,
+            fadt->pm1a_cnt_blk
+        );
+        printf(
+            "\tPM1b: evt_blk=0x%08lX, ctl_blk=0x%08lX\n",
+            fadt->pm1b_evt_blk,
+            fadt->pm1b_cnt_blk
+        );
+
         printf("\tPM2: ctl_blk=0x%08lX, ctl_len=%d\n", fadt->pm2_cnt_blk, fadt->pm2_cnt_len);
 
         printf("\tPM Timer: block=0x%08lX, length=%d\n", fadt->pm_tmr_blk, fadt->pm_tmr_len);
 
         printf("\tGPE0: block=0x%08lX, length=%d\n", fadt->gpe0_blk, fadt->gpe0_blk_len);
-        printf("\tGPE1: base=%d, block=0x%08lX, length=%d\n", fadt->gpe1_base, fadt->gpe1_blk, fadt->gpe1_blk_len);
+        printf(
+            "\tGPE1: base=%d, block=0x%08lX, length=%d\n",
+            fadt->gpe1_base,
+            fadt->gpe1_blk,
+            fadt->gpe1_blk_len
+        );
 
         printf("\tCSTATE Control: %02X\n", fadt->cst_cnt);
         printf("\tWorst Latency: c2=%u c3=%u\n", fadt->p_lvl2_lat, fadt->p_lvl3_lat);
@@ -101,40 +114,43 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
 
         while ((ptrdiff_t)entry - (ptrdiff_t)madt < madt->hdr.length) {
             switch (entry->header.type) {
-                case ACPI_MADT_ENTRY_TYPE_LAPIC:
-                    printf("\tProcessor Local APIC Entry:\n");
-                    printf("\t\tACPI Processor ID: 0x%02X\n", entry->lapic.uid);
-                    printf("\t\tLAPIC ID: 0x%02X\n", entry->lapic.id);
-                    printf("\t\tFlags: 0x%08lX\n", entry->lapic.flags);
-                    break;
-                case ACPI_MADT_ENTRY_TYPE_IOAPIC:
-                    printf("\tI/O APIC Entry:\n");
-                    printf("\t\tID: 0x%02X\n", entry->ioapic.id);
-                    printf("\t\tAddress: 0x%08lX\n", entry->ioapic.address);
-                    printf("\t\tGlobal System Interrupt Base: 0x%08lX\n", entry->ioapic.gsi_base);
-                    break;
-                case ACPI_MADT_ENTRY_TYPE_INTERRUPT_SOURCE_OVERRIDE:
-                    printf("\tInterrupt Source Override Entry:\n");
-                    printf("\t\tBus: 0x%02X\n", entry->interrupt_source_override.bus);
-                    printf("\t\tIRQ: 0x%02X\n", entry->interrupt_source_override.source);
-                    printf("\t\tGlobal System Interrupt: 0x%08lX\n", entry->interrupt_source_override.gsi);
-                    printf("\t\tFlags: 0x%04X\n", entry->interrupt_source_override.flags);
-                    break;
-                case ACPI_MADT_ENTRY_TYPE_NMI_SOURCE:
-                    printf("\tNMI Source Entry:\n");
-                    break;
-                case ACPI_MADT_ENTRY_TYPE_LAPIC_NMI:
-                    printf("\tLocal APIC NMI Entry:\n");
-                    printf("\t\tACPI Processor ID: 0x%02X\n", entry->lapic_nmi.uid);
-                    printf("\t\tFlags: 0x%04X\n", entry->lapic_nmi.flags);
-                    printf("\t\tLocal APIC LINT#: 0x%02X\n", entry->lapic_nmi.lint);
-                    break;
-                case ACPI_MADT_ENTRY_TYPE_LAPIC_ADDRESS_OVERRIDE:
-                    printf("\tLocal APIC Address Override Entry:\n");
-                    printf("\t\tAddress: 0x%016llX\n", entry->lapic_address_override.address);
-                    break;
-                default:
-                    break;
+            case ACPI_MADT_ENTRY_TYPE_LAPIC:
+                printf("\tProcessor Local APIC Entry:\n");
+                printf("\t\tACPI Processor ID: 0x%02X\n", entry->lapic.uid);
+                printf("\t\tLAPIC ID: 0x%02X\n", entry->lapic.id);
+                printf("\t\tFlags: 0x%08lX\n", entry->lapic.flags);
+                break;
+            case ACPI_MADT_ENTRY_TYPE_IOAPIC:
+                printf("\tI/O APIC Entry:\n");
+                printf("\t\tID: 0x%02X\n", entry->ioapic.id);
+                printf("\t\tAddress: 0x%08lX\n", entry->ioapic.address);
+                printf("\t\tGlobal System Interrupt Base: 0x%08lX\n", entry->ioapic.gsi_base);
+                break;
+            case ACPI_MADT_ENTRY_TYPE_INTERRUPT_SOURCE_OVERRIDE:
+                printf("\tInterrupt Source Override Entry:\n");
+                printf("\t\tBus: 0x%02X\n", entry->interrupt_source_override.bus);
+                printf("\t\tIRQ: 0x%02X\n", entry->interrupt_source_override.source);
+                printf(
+                    "\t\tGlobal System Interrupt: 0x%08lX\n",
+                    entry->interrupt_source_override.gsi
+                );
+                printf("\t\tFlags: 0x%04X\n", entry->interrupt_source_override.flags);
+                break;
+            case ACPI_MADT_ENTRY_TYPE_NMI_SOURCE:
+                printf("\tNMI Source Entry:\n");
+                break;
+            case ACPI_MADT_ENTRY_TYPE_LAPIC_NMI:
+                printf("\tLocal APIC NMI Entry:\n");
+                printf("\t\tACPI Processor ID: 0x%02X\n", entry->lapic_nmi.uid);
+                printf("\t\tFlags: 0x%04X\n", entry->lapic_nmi.flags);
+                printf("\t\tLocal APIC LINT#: 0x%02X\n", entry->lapic_nmi.lint);
+                break;
+            case ACPI_MADT_ENTRY_TYPE_LAPIC_ADDRESS_OVERRIDE:
+                printf("\tLocal APIC Address Override Entry:\n");
+                printf("\t\tAddress: 0x%016llX\n", entry->lapic_address_override.address);
+                break;
+            default:
+                break;
             }
 
             entry = (void *)((uint8_t *)entry + entry->header.length);
@@ -147,9 +163,13 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
         printf("HPET: 0x%p\n", (void *)hpet);
 
         printf("\tBlock ID: %08lX\n", hpet->block_id);
-        printf("\tAddress: asp=%u width=%u offset=%u asz=%u address=%016llX\n",
-            hpet->address.address_space_id, hpet->address.register_bit_width, hpet->address.register_bit_offset,
-            hpet->address.access_size, hpet->address.address
+        printf(
+            "\tAddress: asp=%u width=%u offset=%u asz=%u address=%016llX\n",
+            hpet->address.address_space_id,
+            hpet->address.register_bit_width,
+            hpet->address.register_bit_offset,
+            hpet->address.access_size,
+            hpet->address.address
         );
         printf("\tNumber: %u\n", hpet->number);
         printf("\tMinimum Clock Tick: %u\n", hpet->min_clock_tick);

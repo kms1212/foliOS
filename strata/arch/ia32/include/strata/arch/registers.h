@@ -14,4 +14,4 @@ struct StA_PushalResult {
     uint32_t eax;
 } __packed;
 
-#endif // __STRATA_ARCH_REGISTERS_H__
+#endif  // __STRATA_ARCH_REGISTERS_H__

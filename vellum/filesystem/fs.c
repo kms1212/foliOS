@@ -1,10 +1,9 @@
 #include <vellum/filesystem.h>
 
+#include <ctype.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdlib.h>
-#include <ctype.h>
 
 static struct filesystem *fs_list_head = NULL;
 
@@ -13,14 +12,16 @@ struct filesystem *filesystem_get_first_fs(void)
     return fs_list_head;
 }
 
-status_t filesystem_create(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name)
+status_t filesystem_create(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+)
 {
     status_t status;
     struct filesystem *fs;
     struct filesystem *conflicting_fs;
-    
+
     status = filesystem_find(name, &conflicting_fs);
-    if (CHECK_SUCCESS(status)) return STATUS_DUPLICATE_ENTRY; 
+    if (CHECK_SUCCESS(status)) return STATUS_DUPLICATE_ENTRY;
 
     fs = calloc(1, sizeof(*fs));
     if (!fs) return STATUS_UNKNOWN_ERROR;
@@ -32,7 +33,8 @@ status_t filesystem_create(struct filesystem **fsout, struct fs_driver *drv, str
         fs_list_head = fs;
     } else {
         struct filesystem *current = fs_list_head;
-        for (; current->next; current = current->next) {}
+        for (; current->next; current = current->next) {
+        }
 
         current->next = fs;
     }
@@ -41,14 +43,14 @@ status_t filesystem_create(struct filesystem **fsout, struct fs_driver *drv, str
     strncpy(fs->name, name, sizeof(fs->name) - 1);
 
     if (fsout) *fsout = fs;
-    
+
     return STATUS_SUCCESS;
 }
 
 void filesystem_remove(struct filesystem *fs)
 {
     struct filesystem *prev_fs = NULL;
-    
+
     if (!fs_list_head) return;
 
     for (struct filesystem *current = fs_list_head; current->next; current = current->next) {
@@ -88,8 +90,9 @@ status_t filesystem_driver_create(struct fs_driver **drvout)
         driver_list_head = drv;
     } else {
         struct fs_driver *current = driver_list_head;
-        for (; current->next; current = current->next) {}
-        
+        for (; current->next; current = current->next) {
+        }
+
         current->next = drv;
     }
 
@@ -113,7 +116,7 @@ status_t filesystem_driver_find(const char *name, struct fs_driver **drv)
 status_t filesystem_auto_mount(struct device *__restrict dev, const char *__restrict name)
 {
     status_t status;
-    
+
     for (struct fs_driver *current = driver_list_head; current; current = current->next) {
         status = current->probe(dev, current);
         if (!CHECK_SUCCESS(status)) continue;

@@ -7,7 +7,7 @@
 static int lsfs_handler(struct shell_instance *inst, int argc, char **argv)
 {
     struct filesystem *current = filesystem_get_first_fs();
-    
+
     while (current) {
         printf("%s: type=%s dev=%s\n", current->name, current->driver->name, current->dev->name);
 

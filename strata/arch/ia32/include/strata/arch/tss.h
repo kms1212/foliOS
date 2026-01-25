@@ -47,4 +47,4 @@ struct StA_Tss {
     uint32_t ssp;
 } __packed __aligned(16);
 
-#endif // __STRATA_ARCH_TSS_H__
+#endif  // __STRATA_ARCH_TSS_H__

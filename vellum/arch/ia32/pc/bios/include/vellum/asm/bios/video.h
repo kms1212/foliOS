@@ -5,8 +5,8 @@
 
 #include <vellum/asm/farptr.h>
 
-#include <vellum/status.h>
 #include <vellum/compiler.h>
+#include <vellum/status.h>
 
 void _pc_bios_video_set_mode(uint8_t mode);
 
@@ -16,9 +16,13 @@ void _pc_bios_video_set_cursor_pos(uint8_t page, uint8_t row, uint8_t col);
 
 void _pc_bios_video_get_cursor_info(uint8_t page, uint16_t *shape, uint8_t *row, uint8_t *col);
 
-void _pc_bios_video_scroll_up(uint8_t amount, uint8_t left, uint8_t right, uint8_t top, uint8_t bottom, uint8_t attr);
+void _pc_bios_video_scroll_up(
+    uint8_t amount, uint8_t left, uint8_t right, uint8_t top, uint8_t bottom, uint8_t attr
+);
 
-void _pc_bios_video_scroll_down(uint8_t amount, uint8_t left, uint8_t right, uint8_t top, uint8_t bottom, uint8_t attr);
+void _pc_bios_video_scroll_down(
+    uint8_t amount, uint8_t left, uint8_t right, uint8_t top, uint8_t bottom, uint8_t attr
+);
 
 void _pc_bios_video_get_char_attr(uint8_t *ch, uint8_t *attr);
 
@@ -28,7 +32,9 @@ void _pc_bios_video_write_char(uint8_t ch, uint16_t count);
 
 void _pc_bios_video_write_tty(uint8_t ch);
 
-void _pc_bios_video_write_string(uint8_t mode, uint8_t attr, uint8_t row, uint8_t col, const void *str, uint16_t len);
+void _pc_bios_video_write_string(
+    uint8_t mode, uint8_t attr, uint8_t row, uint8_t col, const void *str, uint16_t len
+);
 
 void _pc_bios_video_set_pixel(uint8_t page, uint16_t x, uint16_t y, uint8_t color);
 
@@ -63,7 +69,7 @@ struct vbe_pm_interface {
     uint16_t set_window;
     uint16_t set_display_start;
     uint16_t set_primary_palette_data;
-    uint16_t port_mem_locations;  /* refer to VBE 3.0 spec page 57 */
+    uint16_t port_mem_locations; /* refer to VBE 3.0 spec page 57 */
     uint8_t additional_data[];
 } __packed;
 
@@ -85,7 +91,7 @@ struct vbe_controller_info {
     uint8_t reserved[222];
 
     uint8_t oem_data[256];
-    
+
 } __packed;
 
 enum vbe_memory_model {
@@ -152,7 +158,7 @@ struct vbe_video_mode_info {
     uint8_t lin_reserved_mask;
     uint8_t lin_reserved_position;
     uint32_t max_pixel_clock;
-    
+
     uint8_t reserved3[189];
 } __packed;
 
@@ -213,9 +219,9 @@ struct edid {
     uint8_t checksum;
 } __packed;
 
-#define DDC_CAP_DDC1        0x01
-#define DDC_CAP_DDC2        0x02
-#define DDC_CAP_XFER_BLANK  0x04
+#define DDC_CAP_DDC1       0x01
+#define DDC_CAP_DDC2       0x02
+#define DDC_CAP_XFER_BLANK 0x04
 
 status_t _pc_bios_vbe_get_controller_info(struct vbe_controller_info *buf);
 
@@ -239,5 +245,4 @@ status_t _pc_bios_vbeddc_check_capability(uint16_t ctrlr_unit, uint8_t *xfer_tim
 
 status_t _pc_bios_vbeddc_get_edid(uint16_t ctrlr_unit, uint16_t edid_block, struct edid *buf);
 
-#endif // __VELLUM_ASM_BIOS_VIDEO_H__
-
+#endif  // __VELLUM_ASM_BIOS_VIDEO_H__

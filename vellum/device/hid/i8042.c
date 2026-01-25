@@ -1,18 +1,18 @@
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <vellum/asm/isr.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/time.h>
 #include <vellum/asm/intrinsics/misc.h>
+#include <vellum/asm/io.h>
+#include <vellum/asm/isr.h>
+#include <vellum/asm/time.h>
 
-#include <vellum/log.h>
-#include <vellum/status.h>
-#include <vellum/macros.h>
-#include <vellum/hid.h>
 #include <vellum/device.h>
+#include <vellum/hid.h>
 #include <vellum/interface/ps2.h>
+#include <vellum/log.h>
+#include <vellum/macros.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "i8042"
 
@@ -27,7 +27,9 @@ struct key_event {
     uint16_t flags;
 };
 
-static status_t wait_for_status_register(struct device *dev, uint8_t value, uint8_t mask, unsigned int timeout)
+static status_t wait_for_status_register(
+    struct device *dev, uint8_t value, uint8_t mask, unsigned int timeout
+)
 {
     struct i8042_data *data = (struct i8042_data *)dev->data;
 
@@ -187,7 +189,13 @@ static const struct ps2_interface ps2if = {
     .irq_get_byte = irq_get_byte,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -207,7 +215,13 @@ static void i8042_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -217,11 +231,9 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     struct device_driver *msdrv = NULL;
     uint8_t prev_ccb;
 
-    if (!rsrc || rsrc_cnt != 4 ||
-        rsrc[0].type != RT_IOPORT || rsrc[0].base != rsrc[0].limit ||
-        rsrc[1].type != RT_IOPORT || rsrc[1].base != rsrc[1].limit ||
-        rsrc[2].type != RT_IRQ || rsrc[2].base != rsrc[2].limit ||
-        rsrc[3].type != RT_IRQ || rsrc[3].base != rsrc[3].limit) {
+    if (!rsrc || rsrc_cnt != 4 || rsrc[0].type != RT_IOPORT || rsrc[0].base != rsrc[0].limit ||
+        rsrc[1].type != RT_IOPORT || rsrc[1].base != rsrc[1].limit || rsrc[2].type != RT_IRQ ||
+        rsrc[2].base != rsrc[2].limit || rsrc[3].type != RT_IRQ || rsrc[3].base != rsrc[3].limit) {
         status = STATUS_INVALID_RESOURCE;
         goto has_error;
     }
@@ -251,7 +263,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     status = disable_port(dev, 1);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     LOG_DEBUG("flushing output buffer...\n");
     /* flush the output buffer*/
     io_in8(data->io_data);
@@ -260,7 +272,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     /* disable translation & IRQ */
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = write_ccb(dev, prev_ccb & ~0x43);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -276,7 +288,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     /* disable translation & IRQ (again) */
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = write_ccb(dev, prev_ccb & ~0x43);
     if (!CHECK_SUCCESS(status)) goto has_error;
 

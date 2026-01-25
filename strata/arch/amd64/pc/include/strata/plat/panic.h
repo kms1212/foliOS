@@ -4,7 +4,6 @@
 #include <strata/compiler.h>
 #include <strata/status.h>
 
-__noreturn
-void StP_Panic(StStatus status, const char *fmt, ...);
+__noreturn void StP_Panic(StStatus status, const char *fmt, ...);
 
-#endif // __STRATA_PLAT_PANIC_H__
+#endif  // __STRATA_PLAT_PANIC_H__

@@ -2,18 +2,18 @@
 
 #include <stdint.h>
 
-#define CNTRL   0x0001
-#define PRINT   0x0002
-#define SPACE   0x0004
-#define BLANK   0x0008
-#define GRAPH   0x0010
-#define PUNCT   0x0020
-#define ALNUM   0x0040
-#define ALPHA   0x0080
-#define UPPER   0x0100
-#define LOWER   0x0200
-#define DIGIT   0x0400
-#define XDIGI   0x0800
+#define CNTRL 0x0001
+#define PRINT 0x0002
+#define SPACE 0x0004
+#define BLANK 0x0008
+#define GRAPH 0x0010
+#define PUNCT 0x0020
+#define ALNUM 0x0040
+#define ALPHA 0x0080
+#define UPPER 0x0100
+#define LOWER 0x0200
+#define DIGIT 0x0400
+#define XDIGI 0x0800
 
 static const uint16_t ctype_table[128] = {
     0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001, 0x0001,  // 00h-07h
@@ -35,71 +35,85 @@ static const uint16_t ctype_table[128] = {
 };
 
 #undef isalnum
-int isalnum(int c) {
+int isalnum(int c)
+{
     return !!(ctype_table[c] & ALNUM);
 }
 
 #undef isalpha
-int isalpha(int c) {
+int isalpha(int c)
+{
     return !!(ctype_table[c] & ALPHA);
 }
 
 #undef iscntrl
-int iscntrl(int c) {
+int iscntrl(int c)
+{
     return !!(ctype_table[c] & CNTRL);
 }
 
 #undef isdigit
-int isdigit(int c) {
+int isdigit(int c)
+{
     return !!(ctype_table[c] & DIGIT);
 }
 
 #undef isgraph
-int isgraph(int c) {
+int isgraph(int c)
+{
     return !!(ctype_table[c] & GRAPH);
 }
 
 #undef islower
-int islower(int c) {
+int islower(int c)
+{
     return !!(ctype_table[c] & LOWER);
 }
 
 #undef isprint
-int isprint(int c) {
+int isprint(int c)
+{
     return !!(ctype_table[c] & PRINT);
 }
 
 #undef ispunct
-int ispunct(int c) {
+int ispunct(int c)
+{
     return !!(ctype_table[c] & PUNCT);
 }
 
 #undef isspace
-int isspace(int c) {
+int isspace(int c)
+{
     return !!(ctype_table[c] & SPACE);
 }
 
 #undef isupper
-int isupper(int c) {
+int isupper(int c)
+{
     return !!(ctype_table[c] & UPPER);
 }
 
 #undef isxdigit
-int isxdigit(int c) {
+int isxdigit(int c)
+{
     return !!(ctype_table[c] & XDIGI);
 }
 
 #undef isblank
-int isblank(int c) {
+int isblank(int c)
+{
     return !!(ctype_table[c] & BLANK);
 }
 
 #undef toupper
-int toupper(int c) {
+int toupper(int c)
+{
     return (ctype_table[c] & LOWER) ? c - 'a' + 'A' : c;
 }
 
 #undef tolower
-int tolower(int c) {
+int tolower(int c)
+{
     return (ctype_table[c] & UPPER) ? c - 'A' + 'a' : c;
 }

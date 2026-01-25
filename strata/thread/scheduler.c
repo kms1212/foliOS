@@ -1,11 +1,11 @@
 #include <strata/scheduler.h>
 
-#include <strata/plat/scheduler.h>
 #include <strata/plat/cpulocal.h>
+#include <strata/plat/scheduler.h>
 #include <strata/plat/time.h>
 
-#include <strata/panic.h>
 #include <strata/log.h>
+#include <strata/panic.h>
 
 #define MODULE_NAME "scheduler"
 
@@ -60,7 +60,7 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
 StStatus StScheduler_GetCurrentThread(struct StThread **current)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    
+
     if (current) *current = scheduler->current;
 
     return STATUS_SUCCESS;
@@ -71,7 +71,7 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
     struct StThread *next_thread = scheduler->current;
-    
+
     do {
         next_thread = next_thread->next;
         if (!next_thread) {
@@ -79,25 +79,25 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
         }
 
         switch (next_thread->status) {
-            case THREAD_STATE_RUNNING:
-                break;
-            case THREAD_STATE_PENDING:
+        case THREAD_STATE_RUNNING:
+            break;
+        case THREAD_STATE_PENDING:
+            next_thread->status = THREAD_STATE_RUNNING;
+            break;
+        case THREAD_STATE_SLEEPING:
+            if (StTimeP_GetGlobalTick() >= next_thread->sleep_until_tick) {
                 next_thread->status = THREAD_STATE_RUNNING;
-                break;
-            case THREAD_STATE_SLEEPING:
-                if (StTimeP_GetGlobalTick() >= next_thread->sleep_until_tick) {
-                    next_thread->status = THREAD_STATE_RUNNING;
-                }
-                break;
-            default:
-                break;
+            }
+            break;
+        default:
+            break;
         }
 
         if (next_thread->status == THREAD_STATE_RUNNING) {
             break;
         }
     } while (next_thread != scheduler->current);
-    
+
     if (next) *next = next_thread;
 
     return STATUS_SUCCESS;
@@ -106,7 +106,7 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
 StStatus StScheduler_SetCurrentThread(struct StThread *th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    
+
     scheduler->current = th;
 
     return STATUS_SUCCESS;
@@ -117,14 +117,14 @@ int StScheduler_CheckHasOtherRunnableThread(void)
     int result = 0;
 
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    
+
     for (struct StThread *current = scheduler->queue_head; current; current = current->next) {
         if (current == scheduler->current) continue;
 
         if (current->status == THREAD_STATE_RUNNING || current->status == THREAD_STATE_PENDING) {
             result = 1;
             break;
-        } 
+        }
     }
 
     return result;
@@ -135,7 +135,7 @@ StStatus StScheduler_Maintain(void)
     int unwait_thread;
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     struct StThread *current, *prev;
-    
+
     if (scheduler->current && scheduler->current->type != THREAD_TYPE_MAIN) {
         /* only the main thread can call this function */
         return STATUS_INVALID_THREAD;
@@ -173,9 +173,9 @@ StStatus StScheduler_Maintain(void)
             current = current->next;
             continue;
         }
-        
+
         thread_to_remove = current;
-        
+
         if (prev) {
             prev->next = current->next;
             if (thread_to_remove == scheduler->queue_tail) {

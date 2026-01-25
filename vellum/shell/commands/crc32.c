@@ -40,7 +40,7 @@ static int crc32_handler(struct shell_instance *inst, int argc, char **argv)
         checksum = crc32(checksum, buf, read_count);
     }
     printf("%08lX\n", checksum);
-    
+
     fclose(fp);
 
     return 0;

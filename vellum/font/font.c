@@ -1,9 +1,9 @@
 #include <vellum/font.h>
 
 #include <stdint.h>
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <vellum/asm/bios/video.h>
 
@@ -22,7 +22,7 @@ struct font_header {
 
 struct glyph_header {
     uint8_t is_full_width : 1;
-    uint8_t : 7;    
+    uint8_t : 7;
     uint8_t reserved[3];
 } __packed;
 
@@ -30,7 +30,6 @@ status_t font_use(const char *path)
 {
     long file_size;
     char signature[4];
-
 
     if (!path) {
         if (font_file_data) {
@@ -69,7 +68,7 @@ status_t font_use(const char *path)
         free(font_file_data);
         font_file_data = NULL;
     }
-    
+
     fclose(fp);
     return STATUS_SUCCESS;
 }
@@ -85,8 +84,14 @@ status_t font_get_glyph_dimension(wchar_t codepoint, int *width, int *height)
         }
     } else {
         struct font_header *header = (struct font_header *)font_file_data;
-        if (codepoint > header->max_codepoint || !((uint32_t *)((uint8_t *)font_file_data + header->glyph_offset_table_offset))[codepoint]) return STATUS_INVALID_VALUE;
-        struct glyph_header *glyph_header = (struct glyph_header *)((uint8_t *)font_file_data + ((uint32_t *)((uint8_t *)font_file_data + header->glyph_offset_table_offset))[codepoint]);
+        if (codepoint > header->max_codepoint ||
+            !((uint32_t *)((uint8_t *)font_file_data +
+                           header->glyph_offset_table_offset))[codepoint])
+            return STATUS_INVALID_VALUE;
+        struct glyph_header *glyph_header =
+            (struct glyph_header *)((uint8_t *)font_file_data +
+                                    ((uint32_t *)((uint8_t *)font_file_data +
+                                                  header->glyph_offset_table_offset))[codepoint]);
 
         if (width) {
             *width = glyph_header->is_full_width ? 16 : 8;
@@ -112,25 +117,29 @@ status_t font_get_glyph_data(wchar_t codepoint, uint8_t *buf, size_t size)
 
         status = enc_utf32_to_cp437(codepoint, &cp437_char);
         if (!CHECK_SUCCESS(status)) return status;
-        
+
         memcpy(buf, (const uint8_t *)vbios_font + 16 * cp437_char, 16);
     } else {
         header = (struct font_header *)font_file_data;
-        glyph_offset = ((uint32_t *)((uintptr_t)header + header->glyph_offset_table_offset))[codepoint];
+        glyph_offset =
+            ((uint32_t *)((uintptr_t)header + header->glyph_offset_table_offset))[codepoint];
         if (codepoint > header->max_codepoint || !glyph_offset) return STATUS_INVALID_VALUE;
         glyph_header = (struct glyph_header *)((uintptr_t)header + glyph_offset);
-    
+
         if (glyph_header->is_full_width && size < 32) return STATUS_INVALID_VALUE;
         if (!glyph_header->is_full_width && size < 16) return STATUS_INVALID_VALUE;
-    
-        memcpy(buf, ((uint8_t *)glyph_header) + sizeof(struct glyph_header), glyph_header->is_full_width ? 32 : 16);
+
+        memcpy(
+            buf,
+            ((uint8_t *)glyph_header) + sizeof(struct glyph_header),
+            glyph_header->is_full_width ? 32 : 16
+        );
     }
 
     return STATUS_SUCCESS;
 }
 
-__constructor
-static void _init_vbios_font(void)
+__constructor static void _init_vbios_font(void)
 {
     _pc_bios_video_get_font_data(0x06, &vbios_font, NULL);
 }

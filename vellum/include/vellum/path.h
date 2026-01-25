@@ -1,9 +1,9 @@
 #ifndef __VELLUM_PATH_H__
 #define __VELLUM_PATH_H__
 
+#include <limits.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <limits.h>
 
 struct path_iterator {
     const char *path;
@@ -27,4 +27,4 @@ char *path_get_extension(char *__restrict buf, size_t len, const char *__restric
 int path_is_absolute(const char *path);
 int path_compare(const char *__restrict path1, const char *__restrict path2, int case_sensitive);
 
-#endif // __VELLUM_PATH_H__
+#endif  // __VELLUM_PATH_H__

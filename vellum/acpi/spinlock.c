@@ -16,7 +16,4 @@ uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle spinlock)
     return UACPI_STATUS_OK;
 }
 
-void uacpi_kernel_unlock_spinlock(uacpi_handle spinlock, uacpi_cpu_flags cpuflags)
-{
-
-}
+void uacpi_kernel_unlock_spinlock(uacpi_handle spinlock, uacpi_cpu_flags cpuflags) {}

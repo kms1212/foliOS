@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <vellum/path.h>
 #include <vellum/filesystem.h>
+#include <vellum/path.h>
 
 static int list_directory(struct fs_directory *dir)
 {
@@ -40,7 +40,7 @@ static int lsfile_handler(struct shell_instance *inst, int argc, char **argv)
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
             return 1;
         }
-        
+
         return list_directory(inst->working_dir);
     }
 
@@ -98,7 +98,7 @@ static int lsfile_handler(struct shell_instance *inst, int argc, char **argv)
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
             return 1;
         }
-    
+
         struct path_iterator iter;
         path_iter_init(&iter, argv[1]);
 
@@ -125,7 +125,7 @@ static int lsfile_handler(struct shell_instance *inst, int argc, char **argv)
             }
 
             newdir = tmp;
-        } while (!iter_result);        
+        } while (!iter_result);
 
         return list_directory(newdir);
     }

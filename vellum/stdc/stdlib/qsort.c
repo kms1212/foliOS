@@ -14,7 +14,7 @@ static void swap(void *_a, void *_b, size_t size)
     }
 }
 
-void qsort(void *base, size_t num, size_t size, int (*cmp)(const void*, const void*))
+void qsort(void *base, size_t num, size_t size, int (*cmp)(const void *, const void *))
 {
     return;
 }

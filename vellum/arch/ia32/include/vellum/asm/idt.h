@@ -20,4 +20,4 @@ struct idt_entry {
 
 extern struct idtr _ia32_idtr;
 
-#endif // __VELLUM_ASM_IDT_H__
+#endif  // __VELLUM_ASM_IDT_H__

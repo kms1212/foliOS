@@ -3,10 +3,6 @@
 
 #include <strata/status.h>
 
+struct StModule {};
 
-
-struct StModule {
-
-};
-
-#endif // __STRATA_MODULE_H__
+#endif  // __STRATA_MODULE_H__

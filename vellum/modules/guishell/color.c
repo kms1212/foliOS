@@ -33,36 +33,39 @@ static color_t resolve_gradient(color_t pri, color_t sec, int numer, int denom)
     return new_color;
 }
 
-color_t color_resolve_brush(const struct brush *b, struct point2 start, struct point2 end, struct point2 current)
+color_t color_resolve_brush(
+    const struct brush *b, struct point2 start, struct point2 end, struct point2 current
+)
 {
     color_t new_color;
     int numer, denom;
 
     switch (b->type) {
-        case BRUSH_TYPE_NONE:
-            new_color.a = 0xFF;
-            new_color.r = 0;
-            new_color.g = 0;
-            new_color.b = 0;
-            break;
-        case BRUSH_TYPE_SOLID:
-            new_color.raw = b->primary_color.raw;
-            break;
-        case BRUSH_TYPE_GRADIENT:
-            numer = current.x - start.x;
-            denom = end.x - start.x;
-            if ((numer > 0 && denom < 0) || (numer < 0 && denom > 0)) {
-                numer = 0;
-            } else if ((numer < 0 && numer < denom) || (numer > 0 && numer > denom)) {
-                numer = denom;
-            }
-            new_color.raw = resolve_gradient(b->primary_color, b->secondary_color, numer, denom).raw;
-            break;
-        case BRUSH_TYPE_PATTERN:
-            new_color.raw = ((current.x + current.y) & 1) ? b->primary_color.raw : b->secondary_color.raw;
-            break;
-        default:
-            break;
+    case BRUSH_TYPE_NONE:
+        new_color.a = 0xFF;
+        new_color.r = 0;
+        new_color.g = 0;
+        new_color.b = 0;
+        break;
+    case BRUSH_TYPE_SOLID:
+        new_color.raw = b->primary_color.raw;
+        break;
+    case BRUSH_TYPE_GRADIENT:
+        numer = current.x - start.x;
+        denom = end.x - start.x;
+        if ((numer > 0 && denom < 0) || (numer < 0 && denom > 0)) {
+            numer = 0;
+        } else if ((numer < 0 && numer < denom) || (numer > 0 && numer > denom)) {
+            numer = denom;
+        }
+        new_color.raw = resolve_gradient(b->primary_color, b->secondary_color, numer, denom).raw;
+        break;
+    case BRUSH_TYPE_PATTERN:
+        new_color.raw =
+            ((current.x + current.y) & 1) ? b->primary_color.raw : b->secondary_color.raw;
+        break;
+    default:
+        break;
     }
 
     return new_color;

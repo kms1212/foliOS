@@ -6,7 +6,9 @@
 
 #define MAKE_STATUS(code) (code ? (0xA0001500 | (code)) : STATUS_SUCCESS)
 
-status_t _pc_bios_apm_check_installation(uint16_t device_id, uint8_t *major_ver, uint8_t *minor_ver, uint16_t *flags)
+status_t _pc_bios_apm_check_installation(
+    uint16_t device_id, uint8_t *major_ver, uint8_t *minor_ver, uint16_t *flags
+)
 {
     struct bioscall_regs regs = {
         .a.w = 0x5300,

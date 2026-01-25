@@ -9,8 +9,7 @@
 
 __always_inline void _ia32_lidt(struct idtr *idtr)
 {
-    __asm__ volatile ("lidt (%0)" : : "r"(idtr));
+    __asm__ volatile("lidt (%0)" : : "r"(idtr));
 }
 
-
-#endif // __VELLUM_ASM_INTRINSICS_IDT_H__
+#endif  // __VELLUM_ASM_INTRINSICS_IDT_H__

@@ -16,7 +16,6 @@ void hexdump(FILE *stream, const void *data, long len, uint32_t offset)
 
         for (int i = 0; i < sizeof(buf) && count + i < len; i++) {
             fprintf(stream, "%02X ", buf[i]);
-
         }
 
         fprintf(stream, "│ ");
@@ -24,7 +23,7 @@ void hexdump(FILE *stream, const void *data, long len, uint32_t offset)
         for (int i = 0; i < sizeof(buf) && count + i < len; i++) {
             fprintf(stream, "%c", buf[i] >= 0x20 && buf[i] < 0x80 ? (char)buf[i] : '.');
         }
-        
+
         fprintf(stream, "\n");
 
         addr += 16;

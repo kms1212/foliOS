@@ -7,7 +7,6 @@
 
 #include "types.h"
 
-
 struct window {
     struct window *next;
 
@@ -21,4 +20,4 @@ struct window {
 
 status_t window_create(struct window *window);
 
-#endif // __WINDOW_H__
+#endif  // __WINDOW_H__

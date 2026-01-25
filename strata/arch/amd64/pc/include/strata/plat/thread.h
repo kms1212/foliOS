@@ -3,8 +3,8 @@
 
 #include <strata/plat/interrupt.h>
 
-#include <strata/status.h>
 #include <strata/compiler.h>
+#include <strata/status.h>
 
 struct StThreadP_PlatformData {
     int dummy;
@@ -17,11 +17,9 @@ StStatus StThreadP_SetupKThreadStack(struct StThread *th __in);
 void StThreadP_FreeKThreadStack(struct StThread *th __in);
 
 StStatus StThreadP_Switch(
-    struct StThread *next __in,
-    struct StIntP_Context *ctx __in,
-    void **next_stack_ptr __out
+    struct StThread *next __in, struct StIntP_Context *ctx __in, void **next_stack_ptr __out
 );
 
 void StThreadP_Yield(void);
 
-#endif // __STRATA_PLAT_THREAD_H__
+#endif  // __STRATA_PLAT_THREAD_H__

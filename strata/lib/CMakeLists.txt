@@ -11,20 +11,19 @@ FetchContent_Declare(zlib
     DOWNLOAD_EXTRACT_TIMESTAMP false
 )
 
-include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
-include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/liballoc/include")
-
 set(ZLIB_BUILD_EXAMPLES OFF)
 FetchContent_MakeAvailable(zlib)
 
 set_target_properties(zlib PROPERTIES EXCLUDE_FROM_ALL TRUE EXCLUDE_FROM_DEFAULT_BUILD TRUE)
 
-set_target_properties(zlibstatic PROPERTIES C_CLANG_TIDY "")
-
 add_library(zlib.lib STATIC IMPORTED GLOBAL)
 add_dependencies(zlib.lib PRIVATE zlibstatic)
 set_target_properties(zlib.lib PROPERTIES IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/_deps/zlib-build/libzlibstatic.a")
 
+target_include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/liballoc/include")
+set_target_properties(zlibstatic PROPERTIES C_CLANG_TIDY "")
+
 target_link_libraries(strata zlib.lib)
-target_compile_options(strata PRIVATE "-isystem ${CMAKE_BINARY_DIR}/_deps/zlib-src")
-target_compile_options(strata PRIVATE "-isystem ${CMAKE_BINARY_DIR}/_deps/zlib-build")
+target_include_directories(strata SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-src")
+target_include_directories(strata SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-build")

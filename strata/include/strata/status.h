@@ -7,24 +7,23 @@
 
 typedef uint32_t StStatus __nocast;
 
-#define STATUS_FAILURE_MASK             ((StStatus)0x80000000)
-#define STATUS_SEVERITY_MASK            ((StStatus)0x40000000)
-#define STATUS_AREA_MASK                ((StStatus)0x3FFF0000)
-#define STATUS_CODE_MASK                ((StStatus)0x0000FFFF)
+#define STATUS_FAILURE_MASK  ((StStatus)0x80000000)
+#define STATUS_SEVERITY_MASK ((StStatus)0x40000000)
+#define STATUS_AREA_MASK     ((StStatus)0x3FFF0000)
+#define STATUS_CODE_MASK     ((StStatus)0x0000FFFF)
 
 #define CHECK_SUCCESS(status) (!((status) & (StStatus)0x80000000))
 #define CHECK_FAILURE(status) (!!((status) & (StStatus)0x80000000))
 
-#define CHECK_NORMAL_FAILURE(status) \
-    (CHECK_FAILURE(status) && (!((status) & (StStatus)0x40000000)))
-#define CHECK_CRITICAL_FAILURE(status) \
+#define CHECK_NORMAL_FAILURE(status) (CHECK_FAILURE(status) && (!((status) & (StStatus)0x40000000)))
+#define CHECK_CRITICAL_FAILURE(status)                                                             \
     (CHECK_FAILURE(status) && (!!((status) & (StStatus)0x40000000)))
 
-#define STATUS_SUCCESS                  ((StStatus)0x00000000)
-#define STATUS_DEPRECATED               ((StStatus)0x00000001)
-#define STATUS_NO_EVENT                 ((StStatus)0x00000002)
-#define STATUS_MUTEX_LOCKED             ((StStatus)0x00000003)
-#define STATUS_INVALID_UTF8_SEQUENCE    ((StStatus)0x00000004)
+#define STATUS_SUCCESS               ((StStatus)0x00000000)
+#define STATUS_DEPRECATED            ((StStatus)0x00000001)
+#define STATUS_NO_EVENT              ((StStatus)0x00000002)
+#define STATUS_MUTEX_LOCKED          ((StStatus)0x00000003)
+#define STATUS_INVALID_UTF8_SEQUENCE ((StStatus)0x00000004)
 
 #define STATUS_UNKNOWN_ERROR            ((StStatus)0x80000000)
 #define STATUS_INVALID_RESOURCE         ((StStatus)0x80000001)
@@ -56,7 +55,7 @@ typedef uint32_t StStatus __nocast;
 #define STATUS_INVALID_THREAD           ((StStatus)0x8000001B)
 #define STATUS_NOT_ALLOCATED            ((StStatus)0x8000001C)
 
-#define STATUS_FS_INCONSISTENT          ((StStatus)0xC0000000)
-#define STATUS_SYSTEM_CORRUPTED         ((StStatus)0xC0000001)
+#define STATUS_FS_INCONSISTENT  ((StStatus)0xC0000000)
+#define STATUS_SYSTEM_CORRUPTED ((StStatus)0xC0000001)
 
-#endif // __STRATA_STATUS_H__
+#endif  // __STRATA_STATUS_H__

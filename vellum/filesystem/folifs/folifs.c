@@ -1,16 +1,16 @@
-#include <string.h>
-#include <strings.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <endian.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 #include <vellum/compiler.h>
-#include <vellum/status.h>
 #include <vellum/device.h>
-#include <vellum/filesystem.h>
 #include <vellum/disk.h>
+#include <vellum/filesystem.h>
 #include <vellum/interface/block.h>
+#include <vellum/status.h>
 
 #include "folifs.h"
 
@@ -18,23 +18,23 @@ struct folifs_data {
     struct device *blkdev;
     const struct block_interface *blkif;
 
-    uint16_t    reserved_sectors;
-    uint8_t     sectors_per_block;
-    uint16_t    sector_size;
-    uint32_t    block_size;
-    uint64_t    udb_pointer;
-    uint64_t    jbb_pointer;
-    uint64_t    rbb_pointer;
-    uint64_t    group0_gbb_pointer;
-    uint64_t    root_mdb_pointer;
+    uint16_t reserved_sectors;
+    uint8_t sectors_per_block;
+    uint16_t sector_size;
+    uint32_t block_size;
+    uint64_t udb_pointer;
+    uint64_t jbb_pointer;
+    uint64_t rbb_pointer;
+    uint64_t group0_gbb_pointer;
+    uint64_t root_mdb_pointer;
 
-    int64_t     blkbuf_num;
-    uint8_t     *blkbuf;
+    int64_t blkbuf_num;
+    uint8_t *blkbuf;
 };
 
 struct folifs_dir_data {
-    uint64_t    block;
-    uint16_t    offset;
+    uint64_t block;
+    uint16_t offset;
 };
 
 static lba_t block_to_sector(struct filesystem *fs, uint64_t block)
@@ -62,7 +62,9 @@ static status_t read_block(struct filesystem *fs, uint64_t block)
 }
 
 static status_t probe(struct device *dev, struct fs_driver *drv);
-static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name);
+static status_t mount(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+);
 static status_t unmount(struct filesystem *fs);
 
 static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
@@ -72,7 +74,9 @@ static status_t tell(struct fs_file *file, off_t *result);
 static void close(struct fs_file *file);
 
 static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
-static status_t open_directory(struct fs_directory *dir, const char *name, struct fs_directory **dirout);
+static status_t open_directory(
+    struct fs_directory *dir, const char *name, struct fs_directory **dirout
+);
 static status_t rewind_directory(struct fs_directory *dir);
 static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
 static void close_directory(struct fs_directory *dir);
@@ -130,14 +134,20 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
         return STATUS_INVALID_SIGNATURE;
     }
 
-    if (strncmp(lba0.filesystem_signature, FOLIFS_FS_SIGNATURE, sizeof(lba0.filesystem_signature)) != 0) {
+    if (strncmp(
+            lba0.filesystem_signature,
+            FOLIFS_FS_SIGNATURE,
+            sizeof(lba0.filesystem_signature)
+        ) != 0) {
         return STATUS_INVALID_SIGNATURE;
     }
 
     return STATUS_SUCCESS;
 }
 
-static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name)
+static status_t mount(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+)
 {
     status_t status;
     struct filesystem *fs = NULL;
@@ -187,7 +197,11 @@ static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct d
         goto has_error;
     }
 
-    if ((strncmp(lba0.filesystem_signature, FOLIFS_FS_SIGNATURE, sizeof(lba0.filesystem_signature)) != 0)) {
+    if ((strncmp(
+             lba0.filesystem_signature,
+             FOLIFS_FS_SIGNATURE,
+             sizeof(lba0.filesystem_signature)
+         ) != 0)) {
         status = STATUS_INVALID_SIGNATURE;
         goto has_error;
     }
@@ -240,7 +254,7 @@ static status_t unmount(struct filesystem *fs)
     free(data->blkbuf);
 
     free(data);
-    
+
     filesystem_remove(fs);
 
     return STATUS_SUCCESS;
@@ -266,19 +280,16 @@ static status_t tell(struct fs_file *file, off_t *result)
     return STATUS_UNIMPLEMENTED;
 }
 
-static void close(struct fs_file *file)
-{
-
-}
+static void close(struct fs_file *file) {}
 
 static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout)
 {
     // struct folifs_data *data = (struct folifs_data *)fs->data;
-    // 
+    //
     // struct folifs_dir_data *dir_data = malloc(sizeof(*dir_data));
     // dir_data->block = data->root_mdb_pointer;
     // dir_data->offset = offsetof(struct folifs_acb, entries);
-    // 
+    //
     // struct fs_directory *dir = malloc(sizeof(*dir));
     // dir->fs = fs;
     // dir->data = dir_data;
@@ -286,7 +297,9 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
     return STATUS_UNIMPLEMENTED;
 }
 
-static status_t open_directory(struct fs_directory *dir, const char *name, struct fs_directory **dirout)
+static status_t open_directory(
+    struct fs_directory *dir, const char *name, struct fs_directory **dirout
+)
 {
     return STATUS_UNIMPLEMENTED;
 }
@@ -301,9 +314,6 @@ static status_t iter_directory(struct fs_directory *dir, struct fs_directory_ent
     return STATUS_UNIMPLEMENTED;
 }
 
-static void close_directory(struct fs_directory *dir)
-{
-    
-}
+static void close_directory(struct fs_directory *dir) {}
 
 REGISTER_FILESYSTEM_DRIVER(folifs, folifs_init)

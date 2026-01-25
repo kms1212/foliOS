@@ -11,10 +11,12 @@ void *memmove(void *dest, const void *src, size_t len)
         dest_c += len;
         src_c += len;
 
-        while (len--) *--dest_c = *--src_c;
+        while (len--)
+            *--dest_c = *--src_c;
     } else {
-        while (len--) *dest_c++ = *src_c++;
+        while (len--)
+            *dest_c++ = *src_c++;
     }
-    
+
     return dest;
 }

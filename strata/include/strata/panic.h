@@ -5,4 +5,4 @@
 
 #define St_Panic StP_Panic
 
-#endif // __STRATA_PANIC_H__
+#endif  // __STRATA_PANIC_H__

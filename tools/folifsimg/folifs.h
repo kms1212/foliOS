@@ -155,4 +155,4 @@ struct folifs_ddb {
     uint64_t dsb_pointers[];
 } __attribute__((packed));
 
-#endif // __FOLIFS_H__
+#endif  // __FOLIFS_H__

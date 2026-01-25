@@ -1,5 +1,5 @@
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 
 #include <vellum/compiler.h>
@@ -39,13 +39,13 @@ struct iso9660_data {
     uint16_t sector_size;
 };
 
-static status_t read_sector(struct filesystem* fs, lba_t lba)
+static status_t read_sector(struct filesystem *fs, lba_t lba)
 {
     struct iso9660_data *data = (struct iso9660_data *)fs->data;
     status_t status;
 
     if (data->databuf_lba == lba) return STATUS_SUCCESS;
-    
+
     status = data->blkif->read(data->blkdev, lba, data->databuf, 1, NULL);
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -55,9 +55,7 @@ static status_t read_sector(struct filesystem* fs, lba_t lba)
 }
 
 static status_t match_name(
-    struct fs_directory* dir,
-    const char* name,
-    struct fs_directory_entry* direntry
+    struct fs_directory *dir, const char *name, struct fs_directory_entry *direntry
 )
 {
     status_t status;
@@ -71,12 +69,14 @@ static status_t match_name(
             return STATUS_SUCCESS;
         }
     }
-    
+
     return STATUS_ENTRY_NOT_FOUND;
 }
 
 static status_t probe(struct device *dev, struct fs_driver *drv);
-static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name);
+static status_t mount(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+);
 static status_t unmount(struct filesystem *fs);
 
 static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
@@ -86,7 +86,9 @@ static status_t tell(struct fs_file *file, off_t *result);
 static void close(struct fs_file *file);
 
 static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
-static status_t open_directory(struct fs_directory *dir, const char *name, struct fs_directory **dirout);
+static status_t open_directory(
+    struct fs_directory *dir, const char *name, struct fs_directory **dirout
+);
 static status_t rewind_directory(struct fs_directory *dir);
 static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
 static void close_directory(struct fs_directory *dir);
@@ -126,7 +128,7 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     lba_t current_descriptor_lba;
     lba_t primary_descriptor_lba = -1;
     struct iso9660_vol_desc voldesc;
-    
+
     blkdev = dev;
     if (!blkdev) return STATUS_INVALID_VALUE;
 
@@ -159,7 +161,9 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     return STATUS_SUCCESS;
 }
 
-static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name)
+static status_t mount(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+)
 {
     status_t status;
     struct filesystem *fs = NULL;
@@ -192,7 +196,7 @@ static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct d
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     data->blkdev = blkdev;
     data->blkif = blkif;
     data->databuf_lba = -1;
@@ -372,17 +376,17 @@ static status_t seek(struct fs_file *file, off_t offset, int origin)
     size_t file_size = GET_BIENDIAN(&file_data->direntry.data_size);
 
     switch (origin) {
-        case SEEK_SET:
-            new_cursor = offset;
-            break;
-        case SEEK_CUR:
-            new_cursor = file_data->cursor + offset;
-            break;
-        case SEEK_END:
-            new_cursor = file_size + offset;
-            break;
-        default:
-            return STATUS_INVALID_VALUE;
+    case SEEK_SET:
+        new_cursor = offset;
+        break;
+    case SEEK_CUR:
+        new_cursor = file_data->cursor + offset;
+        break;
+    case SEEK_END:
+        new_cursor = file_size + offset;
+        break;
+    default:
+        return STATUS_INVALID_VALUE;
     }
     if (new_cursor < 0) return STATUS_INVALID_VALUE;
     if (new_cursor > file_size) {
@@ -408,7 +412,7 @@ static void close(struct fs_file *file)
     struct iso9660_file_data *file_data = (struct iso9660_file_data *)file->data;
 
     free(file_data);
-    
+
     free(file);
 }
 
@@ -426,7 +430,7 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     dir->fs = fs;
 
     dir_data = malloc(sizeof(*dir_data));
@@ -458,7 +462,9 @@ has_error:
     return status;
 }
 
-static status_t open_directory(struct fs_directory *dir, const char *name, struct fs_directory **dirout)
+static status_t open_directory(
+    struct fs_directory *dir, const char *name, struct fs_directory **dirout
+)
 {
     status_t status;
     struct filesystem *fs = dir->fs;
@@ -468,12 +474,13 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
     struct iso9660_dir_data *new_dir_data = NULL;
     struct fs_directory_entry dirent;
 
-    if (dir_data->data_start_lba == data->rootdir_lba && (strcmp(".", name) == 0 || strcmp("..", name) == 0)) {
+    if (dir_data->data_start_lba == data->rootdir_lba &&
+        (strcmp(".", name) == 0 || strcmp("..", name) == 0)) {
         return open_root_directory(fs, dirout);
     }
 
     if (!dirout) return STATUS_INVALID_VALUE;
-    
+
     status = match_name(dir, name, &dirent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -496,7 +503,8 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
     }
     new_dir_data->current_entry_offset = 0;
     new_dir_data->prev_entry_size = 0;
-    new_dir_data->data_start_lba = new_dir_data->current_lba = GET_BIENDIAN(&dir_data->direntry.lba_data_location);
+    new_dir_data->data_start_lba = new_dir_data->current_lba =
+        GET_BIENDIAN(&dir_data->direntry.lba_data_location);
     memset(&new_dir_data->direntry, 0, sizeof(new_dir_data->direntry));
     new_dir->data = new_dir_data;
 
@@ -536,7 +544,7 @@ static status_t iter_directory(struct fs_directory *dir, struct fs_directory_ent
     struct iso9660_dir_entry_header *dirent_header = NULL;
     const char *filename;
     size_t filename_len;
-    
+
     status = read_sector(fs, dir_data->current_lba);
     if (!CHECK_SUCCESS(status)) return status;
 

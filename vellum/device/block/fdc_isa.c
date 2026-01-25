@@ -1,29 +1,29 @@
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include <vellum/asm/intrinsics/misc.h>
 #include <vellum/asm/io.h>
 #include <vellum/asm/isr.h>
 #include <vellum/asm/time.h>
-#include <vellum/asm/intrinsics/misc.h>
 
+#include <vellum/device.h>
+#include <vellum/interface/fdc.h>
 #include <vellum/log.h>
 #include <vellum/macros.h>
 #include <vellum/status.h>
-#include <vellum/device.h>
-#include <vellum/interface/fdc.h>
 
 #define MODULE_NAME "fdc_isa"
 
-#define FDCREG_SRA             0x0
-#define FDCREG_SRB             0x1
-#define FDCREG_DOR             0x2
-#define FDCREG_TDR             0x3
-#define FDCREG_MSR             0x4
-#define FDCREG_DRSR            0x4
-#define FDCREG_FIFO            0x5
-#define FDCREG_DIR             0x7
-#define FDCREG_CCR             0x7
+#define FDCREG_SRA  0x0
+#define FDCREG_SRB  0x1
+#define FDCREG_DOR  0x2
+#define FDCREG_TDR  0x3
+#define FDCREG_MSR  0x4
+#define FDCREG_DRSR 0x4
+#define FDCREG_FIFO 0x5
+#define FDCREG_DIR  0x7
+#define FDCREG_CCR  0x7
 
 struct fdc_data {
     uint16_t io_base;
@@ -146,11 +146,15 @@ static const struct fdc_interface fdcif = {
     .reset = reset,
 };
 
-static void isr(void *data, struct interrupt_frame *frame, struct trap_regs *regs, int num)
-{
-}
+static void isr(void *data, struct interrupt_frame *frame, struct trap_regs *regs, int num) {}
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -170,7 +174,13 @@ static void fdc_isa_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -178,10 +188,9 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     struct device *fpdev = NULL;
     struct device_driver *fpdrv = NULL;
 
-    if (!rsrc || rsrc_cnt != 3 ||
-        rsrc[0].type != RT_IOPORT || rsrc[0].limit - rsrc[0].base != 7 ||
-        rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit ||
-        rsrc[2].type != RT_DMA || rsrc[2].base != rsrc[2].limit) {
+    if (!rsrc || rsrc_cnt != 3 || rsrc[0].type != RT_IOPORT || rsrc[0].limit - rsrc[0].base != 7 ||
+        rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit || rsrc[2].type != RT_DMA ||
+        rsrc[2].base != rsrc[2].limit) {
         return STATUS_INVALID_RESOURCE;
     }
 
@@ -196,7 +205,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     data->io_base = rsrc[0].base;
     data->irq_ch = (int)rsrc[1].base;
     data->dma_ch = (int)rsrc[2].base;
@@ -238,7 +247,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     status = _pc_isr_unmask_interrupt(data->irq_ch);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     if (devout) *devout = dev;
 
     LOG_DEBUG("initialization success\n");

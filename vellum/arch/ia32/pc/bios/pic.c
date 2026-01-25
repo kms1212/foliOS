@@ -13,7 +13,7 @@ void _pc_pic_remap_int(uint8_t master, uint8_t slave)
     io_out8(0x0021, 0x01);
     io_out8(0x0080, 0x00);
     io_out8(0x0021, 0x00);
-    
+
     io_out8(0x00A0, 0x11);
     io_out8(0x0080, 0x00);
     io_out8(0x00A1, slave);

@@ -21,4 +21,4 @@ struct farptr32 {
 
 typedef struct farptr32 farptr32_t;
 
-#endif // __VELLUM_ASM_FARPTR_H__
+#endif  // __VELLUM_ASM_FARPTR_H__

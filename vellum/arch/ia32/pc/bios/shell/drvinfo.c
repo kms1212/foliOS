@@ -8,7 +8,7 @@
 static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
 {
     status_t status;
-    
+
     if (argc < 2) {
         fprintf(stderr, "usage: %s drvnum\n", argv[0]);
         return 1;
@@ -32,7 +32,12 @@ static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
     };
 
     printf("Type: %s\n", drive_types[drive_type]);
-    printf("Geometry: cylinder=%d, head=%d, sector=%d\n", drive_geometry.cylinder, drive_geometry.head, drive_geometry.sector);
+    printf(
+        "Geometry: cylinder=%d, head=%d, sector=%d\n",
+        drive_geometry.cylinder,
+        drive_geometry.head,
+        drive_geometry.sector
+    );
 
     struct bios_extended_drive_params params;
     uint8_t edd_version;
@@ -43,30 +48,34 @@ static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     switch (edd_version) {
-        case EDD_VER_1_X:
-            printf("EDD Version: 1.x\n");
-            break;
-        case EDD_VER_2_0:
-            printf("EDD Version: 2.0\n");
-            break;
-        case EDD_VER_2_1:
-            printf("EDD Version: 2.1\n");
-            break;
-        case EDD_VER_3_0:
-            printf("EDD Version: 3.0\n");
-            break;
-        default:
-            printf("Unknown EDD Version: %02X\n", edd_version);
-            break;
+    case EDD_VER_1_X:
+        printf("EDD Version: 1.x\n");
+        break;
+    case EDD_VER_2_0:
+        printf("EDD Version: 2.0\n");
+        break;
+    case EDD_VER_2_1:
+        printf("EDD Version: 2.1\n");
+        break;
+    case EDD_VER_3_0:
+        printf("EDD Version: 3.0\n");
+        break;
+    default:
+        printf("Unknown EDD Version: %02X\n", edd_version);
+        break;
     }
-
 
     status = _pc_bios_disk_get_params_ext(drive, &params);
     if (!CHECK_SUCCESS(status)) return 1;
 
     if (edd_version >= EDD_VER_1_X) {
         printf("Flags: %04X\n", params.flags);
-        printf("Geometry: cylinder=%lu, head=%lu, sector=%lu\n", params.geom_cylinders, params.geom_heads, params.geom_sectors);
+        printf(
+            "Geometry: cylinder=%lu, head=%lu, sector=%lu\n",
+            params.geom_cylinders,
+            params.geom_heads,
+            params.geom_sectors
+        );
         printf("Bytes per sector: %u\n", params.bytes_per_sector);
         printf("Total sectors: %llu\n", params.total_sectors);
     }

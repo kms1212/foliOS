@@ -7,15 +7,15 @@
 
 #include <vellum/asm/bios/video.h>
 
-#include <vellum/status.h>
 #include <vellum/device.h>
-#include <vellum/interface/video.h>
-#include <vellum/interface/framebuffer.h>
 #include <vellum/interface/console.h>
+#include <vellum/interface/framebuffer.h>
+#include <vellum/interface/video.h>
+#include <vellum/status.h>
 
 static const struct option opts[] = {
-    { "list", optional_argument, 0, 'l' },
-    { NULL, 0, NULL, 0 },
+    {"list", optional_argument, 0, 'l'},
+    {NULL, 0, NULL, 0},
 };
 
 static int list_modes(char *argv0)
@@ -113,12 +113,12 @@ static int vmode_handler(struct shell_instance *inst, int argc, char **argv)
     getopt_init();
     while ((opt = getopt_long(argc, argv, "l", opts, NULL)) != -1) {
         switch (opt) {
-            case 'l':
-                list = 1;
-                break;
-            default:
-                printf("usage: %s [-l] [mode]\n", argv[0]);
-                return 1;
+        case 'l':
+            list = 1;
+            break;
+        default:
+            printf("usage: %s [-l] [mode]\n", argv[0]);
+            return 1;
         }
     }
 

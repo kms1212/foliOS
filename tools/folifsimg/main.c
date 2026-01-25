@@ -1,13 +1,13 @@
+#include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
-#include <ctype.h>
-#include <time.h>
 #include <sys/stat.h>
+#include <time.h>
 
-#include "folifs.h"
 #include "command.h"
+#include "folifs.h"
 
 const char *argv0;
 
@@ -118,4 +118,3 @@ int main(int argc, char **argv)
     }
     return 0;
 }
-

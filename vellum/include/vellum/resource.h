@@ -23,4 +23,4 @@ struct resource {
 
 struct resource *create_resource(struct resource *prev);
 
-#endif // __VELLUM_RESOURCE_H__
+#endif  // __VELLUM_RESOURCE_H__

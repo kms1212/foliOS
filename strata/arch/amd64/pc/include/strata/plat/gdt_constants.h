@@ -9,4 +9,4 @@
 #define SEG_SEL_USER_CODE   0x20
 #define SEG_SEL_TSS         0x28
 
-#endif // __STRATA_PLAT_GDT_CONSTANTS_H__
+#endif  // __STRATA_PLAT_GDT_CONSTANTS_H__

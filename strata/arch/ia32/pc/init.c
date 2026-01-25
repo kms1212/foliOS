@@ -1,13 +1,13 @@
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <inttypes.h>
+#include <string.h>
 
+#include <strata/arch/cpufeatures.h>
 #include <strata/arch/gdt.h>
 #include <strata/arch/io.h>
 #include <strata/arch/mmu.h>
-#include <strata/arch/cpufeatures.h>
 
 #include <strata/plat/gdt.h>
 #include <strata/plat/interrupt.h>
@@ -15,13 +15,13 @@
 
 #include <strata/compiler.h>
 #include <strata/interrupt.h>
-#include <strata/mm.h>
-#include <strata/status.h>
-#include <strata/macros.h>
-#include <strata/panic.h>
 #include <strata/log.h>
-#include <strata/thread.h>
+#include <strata/macros.h>
+#include <strata/mm.h>
+#include <strata/panic.h>
 #include <strata/scheduler.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 #include <loadst/bootinfo.h>
 
@@ -32,13 +32,13 @@ int _pc_rdtsc_undefined = 1;
 
 static void invlpg_test(void)
 {
-    __asm__ volatile ("invlpg (%0)" : : "r"(0));
+    __asm__ volatile("invlpg (%0)" : : "r"(0));
 }
 
 static void rdtsc_test(void)
 {
     uint32_t low, high;
-    __asm__ volatile ("rdtsc" : "=a"(low), "=d"(high));
+    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
 }
 
 struct bootinfo_table_header *_pc_bootinfo_table;
@@ -46,12 +46,12 @@ struct bootinfo_table_header *_pc_bootinfo_table;
 static int early_print_char(void *, char ch)
 {
     switch (ch) {
-        case '\0':
-        case '\r':
-            return 1;
-        default:
-            StIoA_Out8(0x00E9, ch);
-            return 0;
+    case '\0':
+    case '\r':
+        return 1;
+    default:
+        StIoA_Out8(0x00E9, ch);
+        return 0;
     }
 }
 
@@ -71,17 +71,17 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     enthdr = (void *)((uintptr_t)btblhdr + btblhdr->header_size);
     for (int i = 0; i < btblhdr->entry_count; i++) {
         switch (enthdr->type) {
-            case BET_MEMORY_MAP:
-                mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_UNAVAILABLE_FRAMES:
-                ufent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_PAGETABLE_VPN:
-                pvent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            default:
-                break;
+        case BET_MEMORY_MAP:
+            mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_UNAVAILABLE_FRAMES:
+            ufent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_PAGETABLE_VPN:
+            pvent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        default:
+            break;
         }
 
         enthdr = (void *)((uintptr_t)enthdr + enthdr->size);
@@ -101,11 +101,7 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     LOG_DEBUG("initializing virtual memory allocator...\n");
-    status = StVmm_Init(
-        0x00000100, 0x0009FFFF,
-        0x000A0000, 0x000BFFFF,
-        0x000C1000, 0x000FEFFF
-    );
+    status = StVmm_Init(0x00000100, 0x0009FFFF, 0x000A0000, 0x000BFFFF, 0x000C1000, 0x000FEFFF);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
@@ -121,12 +117,18 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     if (!newbtblhdr) {
         St_Panic(status, "cannot allocate memory for bootinfo table");
     }
-    
+
     memcpy(newbtblhdr, btblhdr, btblhdr->size);
-    
+
     _pc_bootinfo_table = newbtblhdr;
 
-    LOG_DEBUG("%p %p %p %08"PRIX32"\n", (void *)_pc_bootinfo_table, (void *)btblhdr, (void *)enthdr, btblhdr->size);
+    LOG_DEBUG(
+        "%p %p %p %08" PRIX32 "\n",
+        (void *)_pc_bootinfo_table,
+        (void *)btblhdr,
+        (void *)enthdr,
+        btblhdr->size
+    );
 }
 
 static volatile uint64_t global_tick = 0;
@@ -150,19 +152,19 @@ static void *switch_thread(struct StA_InterruptFrame *frame, struct StIntP_Conte
 
     /* check thread status */
     switch (next_thread->status) {
-        case THREAD_STATE_PENDING:
-            next_thread->status = THREAD_STATE_RUNNING;
-            break;
-        case THREAD_STATE_RUNNING:
-            break;
-        case THREAD_STATE_BLOCKING:
-            break;
-        case THREAD_STATE_FINISHED:
-            break;
-        default:
-            St_Panic(STATUS_SYSTEM_CORRUPTED, "system corrupted");
+    case THREAD_STATE_PENDING:
+        next_thread->status = THREAD_STATE_RUNNING;
+        break;
+    case THREAD_STATE_RUNNING:
+        break;
+    case THREAD_STATE_BLOCKING:
+        break;
+    case THREAD_STATE_FINISHED:
+        break;
+    default:
+        St_Panic(STATUS_SYSTEM_CORRUPTED, "system corrupted");
     }
-    
+
     /* save current stack pointer of the previous thread */
     current_thread->kmode_stack_ptr = (void *)(ctx->pushal.esp - sizeof(*ctx) - 4);
 
@@ -173,7 +175,9 @@ static void *switch_thread(struct StA_InterruptFrame *frame, struct StIntP_Conte
     return next_thread->kmode_stack_ptr;
 }
 
-static void *pit_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data)
+static void *pit_isr(
+    int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
+)
 {
     global_tick++;
 
@@ -187,7 +191,7 @@ static void *pit_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Co
 static void init_pit(void)
 {
     static const uint16_t pit_value = 1193182 / 100;
-    
+
     StIoA_Out8(0x0043, 0x34);
     StIoA_Out8(0x0040, pit_value & 0xFF);
     StIoA_Out8(0x0040, (pit_value >> 8) & 0xFF);
@@ -217,7 +221,7 @@ void _pc_init_late(void)
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to check CPU features");
     }
-    
+
     LOG_DEBUG("activating common CPU features...\n");
     status = StA_ActivateCommonCpuFeatures();
     if (!CHECK_SUCCESS(status)) {

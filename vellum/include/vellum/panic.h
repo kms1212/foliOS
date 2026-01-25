@@ -3,4 +3,4 @@
 
 #include <vellum/asm/panic.h>
 
-#endif // __VELLUM_PANIC_H__
+#endif  // __VELLUM_PANIC_H__

@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 
-#include <strata/status.h>
 #include <strata/compiler.h>
-#include <strata/thread.h>
 #include <strata/scheduler.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 struct StCpuLocalP_Data {
     uintptr_t kernel_rsp;
@@ -24,8 +24,8 @@ StStatus StCpuLocalP_Init(void);
 __always_inline struct StCpuLocalP_Data *StCpuLocalP_GetData(void)
 {
     struct StCpuLocalP_Data *data;
-    __asm__ volatile ("mov %%gs:0x10, %0" : "=r"(data));
+    __asm__ volatile("mov %%gs:0x10, %0" : "=r"(data));
     return data;
 }
 
-#endif // __STRATA_PLAT_CPULOCAL_H__
+#endif  // __STRATA_PLAT_CPULOCAL_H__

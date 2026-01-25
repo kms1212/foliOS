@@ -30,7 +30,7 @@ trim_next:
         }
         str++;
     }
-    
+
     last = NULL;
 
     return token;

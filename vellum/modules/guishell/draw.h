@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <wchar.h>
 
-#include "types.h"
-#include "color.h"
 #include "bitmap.h"
+#include "color.h"
+#include "types.h"
 
 struct drawing_context {
     const struct brush *brush;
@@ -31,4 +31,4 @@ void draw_bitmap(struct drawing_context *ctx, struct rect2 area, const struct bi
 void draw_char(struct drawing_context *ctx, struct point2 pos, wchar_t ch);
 void draw_text(struct drawing_context *ctx, struct point2 pos, const wchar_t *str);
 
-#endif // __DRAW_H__
+#endif  // __DRAW_H__

@@ -1,49 +1,49 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
+#include <strata/arch/cpufeatures.h>
 #include <strata/arch/gdt.h>
 #include <strata/arch/io.h>
 #include <strata/arch/mmu.h>
-#include <strata/arch/cpufeatures.h>
 
-#include <strata/plat/time.h>
+#include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
 #include <strata/plat/interrupt.h>
-#include <strata/plat/pic.h>
 #include <strata/plat/mmu.h>
-#include <strata/plat/cpulocal.h>
+#include <strata/plat/pic.h>
 #include <strata/plat/syscall.h>
+#include <strata/plat/time.h>
 
 #include <strata/compiler.h>
 #include <strata/interrupt.h>
-#include <strata/mm.h>
-#include <strata/status.h>
-#include <strata/macros.h>
-#include <strata/panic.h>
 #include <strata/log.h>
-#include <strata/thread.h>
+#include <strata/macros.h>
+#include <strata/mm.h>
+#include <strata/panic.h>
 #include <strata/scheduler.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 #include <loadst/bootinfo.h>
 
 #define MODULE_NAME "init"
 
-#define VMM_DOMAIN_USER_VPN_BASE            ((St_VirtPage)0x0000000000200ULL)
-#define VMM_DOMAIN_USER_VPN_LIMIT           ((St_VirtPage)0x00007FFFFFFFFULL)
+#define VMM_DOMAIN_USER_VPN_BASE  ((St_VirtPage)0x0000000000200ULL)
+#define VMM_DOMAIN_USER_VPN_LIMIT ((St_VirtPage)0x00007FFFFFFFFULL)
 
-#define VMM_DOMAIN_MODULE_VPN_BASE          ((St_VirtPage)0xFFFF800000000ULL)
-#define VMM_DOMAIN_MODULE_VPN_LIMIT         ((St_VirtPage)0xFFFFBFFFFFFFFULL)
+#define VMM_DOMAIN_MODULE_VPN_BASE  ((St_VirtPage)0xFFFF800000000ULL)
+#define VMM_DOMAIN_MODULE_VPN_LIMIT ((St_VirtPage)0xFFFFBFFFFFFFFULL)
 
-#define VMM_DOMAIN_IO_VPN_BASE              ((St_VirtPage)0xFFFFF00000000ULL)
-#define VMM_DOMAIN_IO_VPN_LIMIT             ((St_VirtPage)0xFFFFF7FFFFFFFULL)
+#define VMM_DOMAIN_IO_VPN_BASE  ((St_VirtPage)0xFFFFF00000000ULL)
+#define VMM_DOMAIN_IO_VPN_LIMIT ((St_VirtPage)0xFFFFF7FFFFFFFULL)
 
-#define VMM_DOMAIN_KERNEL_SLOW_VPN_BASE     ((St_VirtPage)0xFFFFF80000000ULL)
-#define VMM_DOMAIN_KERNEL_SLOW_VPN_LIMIT    ((St_VirtPage)0xFFFFFFFEFFFFFULL)
+#define VMM_DOMAIN_KERNEL_SLOW_VPN_BASE  ((St_VirtPage)0xFFFFF80000000ULL)
+#define VMM_DOMAIN_KERNEL_SLOW_VPN_LIMIT ((St_VirtPage)0xFFFFFFFEFFFFFULL)
 
-#define VMM_DOMAIN_KERNEL_FAST_VPN_BASE     ((St_VirtPage)0xFFFFFFFF80000ULL)
-#define VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT    ((St_VirtPage)0xFFFFFFFFFFFFFULL)
+#define VMM_DOMAIN_KERNEL_FAST_VPN_BASE  ((St_VirtPage)0xFFFFFFFF80000ULL)
+#define VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT ((St_VirtPage)0xFFFFFFFFFFFFFULL)
 
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
@@ -55,12 +55,12 @@ extern int _end_;
 static int early_print_char(void *data, char ch)
 {
     switch (ch) {
-        case '\0':
-        case '\r':
-            return 1;
-        default:
-            StIoA_Out8(0x00E9, ch);
-            return 0;
+    case '\0':
+    case '\r':
+        return 1;
+    default:
+        StIoA_Out8(0x00E9, ch);
+        return 0;
     }
 }
 
@@ -76,14 +76,18 @@ uint32_t StTimeP_GetGlobalTickFrequency(void)
     return 100;
 }
 
-static void *trap_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data)
+static void *trap_isr(
+    int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
+)
 {
     StSyscallP_Handler(frame, ctx);
 
     return NULL;
 }
 
-static void *pit_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data)
+static void *pit_isr(
+    int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
+)
 {
     StStatus status;
     struct StThread *next_thread;
@@ -107,7 +111,7 @@ static void *pit_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Co
 static void init_pit(void)
 {
     static const uint16_t pit_value = 1193182 / 100;
-    
+
     StIoA_Out8(0x0043, 0x34);
     StIoA_Out8(0x0040, pit_value & 0xFF);
     StIoA_Out8(0x0040, (pit_value >> 8) & 0xFF);
@@ -125,8 +129,7 @@ static void init_rtc(void)
     StIoA_Out8(0x0071, temp & ~0x70);
 }
 
-__externally_visible
-void _pc_init(struct bootinfo_table_header *btblhdr)
+__externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 {
     StStatus status;
     struct bootinfo_entry_header *enthdr = NULL;
@@ -142,17 +145,17 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     enthdr = (void *)((uintptr_t)btblhdr + btblhdr->header_size);
     for (int i = 0; i < btblhdr->entry_count; i++) {
         switch (enthdr->type) {
-            case BET_MEMORY_MAP:
-                mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_UNAVAILABLE_FRAMES:
-                ufent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_PAGETABLE_VPN:
-                pvent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            default:
-                break;
+        case BET_MEMORY_MAP:
+            mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_UNAVAILABLE_FRAMES:
+            ufent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_PAGETABLE_VPN:
+            pvent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        default:
+            break;
         }
 
         enthdr = (void *)((uintptr_t)enthdr + enthdr->size);
@@ -223,7 +226,9 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     /* mark trampoline area as unusable */
     status = StPmm_MarkUnusableContiguousFrame(
         VPTR_TO_PAGE(&_trampoline_load_),
-        ADDR_TO_PAGE(ALIGN((uintptr_t)&_trampoline_load_ + (uintptr_t)&_trampoline_size_, PAGE_SIZE)) - 1
+        ADDR_TO_PAGE(
+            ALIGN((uintptr_t)&_trampoline_load_ + (uintptr_t)&_trampoline_size_, PAGE_SIZE)
+        ) - 1
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to mark trampoline area as unusable");
@@ -236,12 +241,20 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     LOG_DEBUG("initializing virtual memory allocator...\n");
-    status = StVmm_InitDomain(VMM_DOMAIN_KERNEL_FAST, ADDR_TO_PAGE(ALIGN((uintptr_t)&_end_, PAGE_SIZE)), VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT);
+    status = StVmm_InitDomain(
+        VMM_DOMAIN_KERNEL_FAST,
+        ADDR_TO_PAGE(ALIGN((uintptr_t)&_end_, PAGE_SIZE)),
+        VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT
+    );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    status = StVmm_InitDomain(VMM_DOMAIN_KERNEL_SLOW, VMM_DOMAIN_KERNEL_SLOW_VPN_BASE, VMM_DOMAIN_KERNEL_SLOW_VPN_LIMIT);
+    status = StVmm_InitDomain(
+        VMM_DOMAIN_KERNEL_SLOW,
+        VMM_DOMAIN_KERNEL_SLOW_VPN_BASE,
+        VMM_DOMAIN_KERNEL_SLOW_VPN_LIMIT
+    );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
@@ -251,7 +264,11 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    status = StVmm_InitDomain(VMM_DOMAIN_MODULE, VMM_DOMAIN_MODULE_VPN_BASE, VMM_DOMAIN_MODULE_VPN_LIMIT);
+    status = StVmm_InitDomain(
+        VMM_DOMAIN_MODULE,
+        VMM_DOMAIN_MODULE_VPN_BASE,
+        VMM_DOMAIN_MODULE_VPN_LIMIT
+    );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
@@ -274,7 +291,7 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     memcpy(newbtblhdr, btblhdr, btblhdr->size);
-    
+
     LOG_DEBUG("late initializing MMU...\n")
     status = StMmuP_LateInit();
     if (!CHECK_SUCCESS(status)) {

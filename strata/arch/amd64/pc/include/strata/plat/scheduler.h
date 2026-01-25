@@ -3,4 +3,4 @@
 
 #include <strata/status.h>
 
-#endif // __STRATA_PLAT_SCHEDULER_H__
+#endif  // __STRATA_PLAT_SCHEDULER_H__

@@ -4,8 +4,8 @@
 
 #include <vellum/asm/bios/mem.h>
 
-#include <vellum/status.h>
 #include <vellum/mm.h>
+#include <vellum/status.h>
 
 static int mem_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -14,15 +14,27 @@ static int mem_handler(struct shell_instance *inst, int argc, char **argv)
     uint32_t cursor = 0;
     struct smap_entry entry;
 
-    static const char *region_type[] ={
-        "", "Free", "Reserved", "ACPI Reclaimable", "ACPI NVS", "Bad",
+    static const char *region_type[] = {
+        "",
+        "Free",
+        "Reserved",
+        "ACPI Reclaimable",
+        "ACPI NVS",
+        "Bad",
     };
 
     printf("Memory Map:\n");
     printf("Base             Size             Type\n");
     do {
         _pc_bios_mem_query_map(&cursor, &entry, sizeof(entry));
-        printf("%08lX%08lX %08lX%08lX %s\n", entry.base_addr_high, entry.base_addr_low, entry.length_high, entry.length_low, region_type[entry.type]);
+        printf(
+            "%08lX%08lX %08lX%08lX %s\n",
+            entry.base_addr_high,
+            entry.base_addr_low,
+            entry.length_high,
+            entry.length_low,
+            region_type[entry.type]
+        );
     } while (cursor);
 
     status = mm_pma_get_available_frame_count(&total_pages);
@@ -37,7 +49,12 @@ static int mem_handler(struct shell_instance *inst, int argc, char **argv)
         return 1;
     }
 
-    printf("%lu bytes allocatable memory, %lu bytes free (%ld%%)\n", total_pages * PAGE_SIZE, free_pages * PAGE_SIZE, free_pages * 100 / total_pages);
+    printf(
+        "%lu bytes allocatable memory, %lu bytes free (%ld%%)\n",
+        total_pages * PAGE_SIZE,
+        free_pages * PAGE_SIZE,
+        free_pages * 100 / total_pages
+    );
 
     return 0;
 }

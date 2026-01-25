@@ -19,7 +19,7 @@ struct StA_IdtEntry {
         uint8_t raw;
 
         struct {
-            uint8_t gate_type: 4;
+            uint8_t gate_type : 4;
             uint8_t : 1;
             uint8_t dpl : 2;
             uint8_t p : 1;
@@ -29,4 +29,4 @@ struct StA_IdtEntry {
     uint16_t offset_high;
 } __packed;
 
-#endif // __STRATA_ARCH_IDT_H__
+#endif  // __STRATA_ARCH_IDT_H__

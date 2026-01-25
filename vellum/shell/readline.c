@@ -11,22 +11,22 @@ long shell_readline(const char *__restrict prompt, char *__restrict buf, long le
     do {
         fread(&ch, 1, 1, stdin);
         switch (ch) {
-            case '\r':
-            case '\n':
-                putchar('\n');
+        case '\r':
+        case '\n':
+            putchar('\n');
+            break;
+        case '\b':
+            if (cur < 1) {
                 break;
-            case '\b':
-                if (cur < 1) {
-                    break;
-                }
-                cur--;
-                fputs("\b \b", stdout);
-                break;
-            default:
-                if (cur >= len - 1) break;
-                putchar(ch);
-                buf[cur++] = ch;
-                break;
+            }
+            cur--;
+            fputs("\b \b", stdout);
+            break;
+        default:
+            if (cur >= len - 1) break;
+            putchar(ch);
+            buf[cur++] = ch;
+            break;
         }
     } while (ch != '\r' && ch != '\n');
 

@@ -4,20 +4,14 @@
 
 void _pc_bios_video_set_mode(uint8_t mode)
 {
-    struct bioscall_regs regs = {
-        .a.b.h = 0x00,
-        .a.b.l = mode
-    };
+    struct bioscall_regs regs = {.a.b.h = 0x00, .a.b.l = mode};
 
     _pc_bios_call(0x10, &regs);
 }
 
 void _pc_bios_video_set_cursor_shape(uint16_t shape)
 {
-    struct bioscall_regs regs = {
-        .a.b.h = 0x01,
-        .c.w = shape
-    };
+    struct bioscall_regs regs = {.a.b.h = 0x01, .c.w = shape};
 
     _pc_bios_call(0x10, &regs);
 }
@@ -138,10 +132,7 @@ status_t _pc_bios_vbe_get_video_mode_info(uint16_t mode, struct vbe_video_mode_i
 
 status_t _pc_bios_vbe_set_video_mode(uint16_t mode)
 {
-    struct bioscall_regs regs = {
-        .a.w = 0x4F02,
-        .b.w = mode
-    };
+    struct bioscall_regs regs = {.a.w = 0x4F02, .b.w = mode};
 
     _pc_bios_call(0x10, &regs);
 
@@ -232,7 +223,7 @@ status_t _pc_bios_vbe_get_pm_interface(farptr16_t *pmi_table, uint16_t *size)
     };
 
     _pc_bios_call(0x10, &regs);
-    
+
     if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
     if (regs.a.b.h) return STATUS_UNKNOWN_ERROR;
 
@@ -247,7 +238,9 @@ status_t _pc_bios_vbe_get_pm_interface(farptr16_t *pmi_table, uint16_t *size)
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbeddc_check_capability(uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *ddc_level)
+status_t _pc_bios_vbeddc_check_capability(
+    uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *ddc_level
+)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F15,

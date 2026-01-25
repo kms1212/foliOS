@@ -5,7 +5,7 @@
 
 __always_inline void StA_Halt(void)
 {
-    __asm__ volatile ("hlt");
+    __asm__ volatile("hlt");
 }
 
-#endif // __STRATA_ARCH_HALT_H__
+#endif  // __STRATA_ARCH_HALT_H__

@@ -18,7 +18,8 @@ static int lspci_handler(struct shell_instance *inst, int argc, char **argv)
         printf("%s -> %s -> %s\n",
             _bus_pci_device_get_class_name(pci_devices[i].base_class),
             _bus_pci_device_get_subclass_name(pci_devices[i].base_class, pci_devices[i].sub_class),
-            _bus_pci_device_get_interface_name(pci_devices[i].base_class, pci_devices[i].sub_class, pci_devices[i].interface)
+            _bus_pci_device_get_interface_name(pci_devices[i].base_class, pci_devices[i].sub_class,
+    pci_devices[i].interface)
         );
         uint32_t bar = _bus_pci_cfg_read32(bus, device, function, PCI_CFGSPACE_BAR0);
         if (bar) {

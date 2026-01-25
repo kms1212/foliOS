@@ -1,6 +1,6 @@
 ---
 BasedOnStyle: LLVM
-AlignAfterOpenBracket: Align
+AlignAfterOpenBracket: BlockIndent
 AlignArrayOfStructures: None
 AlignConsecutiveAssignments:
   Enabled: false
@@ -41,11 +41,11 @@ AlignConsecutiveShortCaseStatements:
   AlignCaseArrows: false
   AlignCaseColons: false
 AlignEscapedNewlines: Right
-AlignOperands: Align
+AlignOperands: DontAlign
 AlignTrailingComments:
   Kind: Always
   OverEmptyLines: 0
-AllowAllArgumentsOnNextLine: true
+AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: true
 AllowShortBlocksOnASingleLine: Never
 AllowShortCaseExpressionOnASingleLine: true
@@ -93,20 +93,18 @@ AttributeMacros:
   - __releases
   - __bitwise
   - __nocast
-BinPackArguments: true
+BinPackArguments: false
 BinPackLongBracedList: true
-BinPackParameters: BinPack
+BinPackParameters: OnePerLine
 BitFieldColonSpacing: Both
 BraceWrapping:
   AfterCaseLabel: false
-  AfterClass: false
   AfterControlStatement: Never
   AfterEnum: false
   AfterFunction: true
   AfterStruct: false
   AfterUnion: false
   AfterExternBlock: false
-  BeforeCatch: false
   BeforeElse: false
   BeforeWhile: false
   IndentBraces: false
@@ -114,7 +112,7 @@ BraceWrapping:
   SplitEmptyRecord: true
 BracedInitializerIndentWidth: -1
 BreakAdjacentStringLiterals: true
-BreakAfterAttributes: Leave
+BreakAfterAttributes: Always
 BreakAfterReturnType: None
 BreakArrays: true
 BreakBeforeBinaryOperators: None
@@ -180,7 +178,7 @@ MaxEmptyLinesToKeep: 1
 OneLineFormatOffRegex: ""
 PPIndentWidth: -1
 PenaltyBreakAssignment: 2
-PenaltyBreakBeforeFirstCallParameter: 19
+PenaltyBreakBeforeFirstCallParameter: 0
 PenaltyBreakBeforeMemberAccess: 150
 PenaltyBreakComment: 300
 PenaltyBreakFirstLessLess: 120
@@ -189,7 +187,7 @@ PenaltyBreakScopeResolution: 500
 PenaltyBreakString: 1000
 PenaltyExcessCharacter: 1000000
 PenaltyIndentedWhitespace: 0
-PenaltyReturnTypeOnItsOwnLine: 60
+PenaltyReturnTypeOnItsOwnLine: 1000
 PointerAlignment: Right
 QualifierAlignment: Leave
 ReferenceAlignment: Pointer
@@ -234,6 +232,6 @@ SpacesInParensOptions:
 SpacesInSquareBrackets: false
 Standard: Latest
 # StatementAttributeLikeMacros:
-# StatementAttributeLikeMacros:
+# StatementMacros:
 TabWidth: 4
 UseTab: Never

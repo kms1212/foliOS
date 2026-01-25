@@ -2,8 +2,7 @@
 
 #include <vellum/asm/power.h>
 
-__noreturn
-static int poweroff_handler(struct shell_instance *inst, int argc, char **argv)
+__noreturn static int poweroff_handler(struct shell_instance *inst, int argc, char **argv)
 {
     _pc_poweroff();
 }

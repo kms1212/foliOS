@@ -2,12 +2,12 @@
 
 #include <stdio.h>
 
-#include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/hid.h>
+#include <vellum/interface/framebuffer.h>
 #include <vellum/interface/hid.h>
 #include <vellum/interface/video.h>
-#include <vellum/interface/framebuffer.h>
+#include <vellum/status.h>
 
 static int testmouse_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -61,49 +61,49 @@ static int testmouse_handler(struct shell_instance *inst, int argc, char **argv)
         if (!CHECK_SUCCESS(status)) continue;
 
         switch (flags & KEY_FLAG_TYPEMASK) {
-            case 0:
-                if (key == KEY_MOUSEBTNL && !(flags & KEY_FLAG_BREAK)) {
-                    if (xpos < 40 && ypos < 16) {
-                        should_exit = 1;
-                    }
+        case 0:
+            if (key == KEY_MOUSEBTNL && !(flags & KEY_FLAG_BREAK)) {
+                if (xpos < 40 && ypos < 16) {
+                    should_exit = 1;
                 }
-                break;
-            case KEY_FLAG_XMOVE:
-                if ((flags & KEY_FLAG_NEGATIVE)) {
-                    if (xpos < key) {
-                        xpos = 0;
-                    } else {
-                        xpos -= key;
-                    }
-                } else if (!(flags & KEY_FLAG_NEGATIVE)) {
-                    if (vmode_info.width <= xpos + key) {
-                        xpos = vmode_info.width - 1;
-                    } else {
-                        xpos += key;
-                    }
+            }
+            break;
+        case KEY_FLAG_XMOVE:
+            if ((flags & KEY_FLAG_NEGATIVE)) {
+                if (xpos < key) {
+                    xpos = 0;
+                } else {
+                    xpos -= key;
                 }
-                break;
-            case KEY_FLAG_YMOVE:
-                if ((flags & KEY_FLAG_NEGATIVE)) {
-                    if (vmode_info.height <= ypos + key) {
-                        ypos = vmode_info.height - 1;
-                    } else {
-                        ypos += key;
-                    }
-                } else if (!(flags & KEY_FLAG_NEGATIVE)) {
-                    if (ypos < key) {
-                        ypos = 0;
-                    } else {
-                        ypos -= key;
-                    }
+            } else if (!(flags & KEY_FLAG_NEGATIVE)) {
+                if (vmode_info.width <= xpos + key) {
+                    xpos = vmode_info.width - 1;
+                } else {
+                    xpos += key;
                 }
+            }
+            break;
+        case KEY_FLAG_YMOVE:
+            if ((flags & KEY_FLAG_NEGATIVE)) {
+                if (vmode_info.height <= ypos + key) {
+                    ypos = vmode_info.height - 1;
+                } else {
+                    ypos += key;
+                }
+            } else if (!(flags & KEY_FLAG_NEGATIVE)) {
+                if (ypos < key) {
+                    ypos = 0;
+                } else {
+                    ypos -= key;
+                }
+            }
 
-                framebuffer[ypos * vmode_info.width + xpos] = 0xFFFFFF;
-                fbif->invalidate(fbdev, xpos, ypos, xpos, ypos);
-                fbif->flush(fbdev);
-                break;
-            default:
-                break;
+            framebuffer[ypos * vmode_info.width + xpos] = 0xFFFFFF;
+            fbif->invalidate(fbdev, xpos, ypos, xpos, ypos);
+            fbif->flush(fbdev);
+            break;
+        default:
+            break;
         }
     }
 

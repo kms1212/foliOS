@@ -31,7 +31,7 @@ struct gdt_entry {
 
     union {
         uint8_t raw;
-        
+
         struct {
             uint8_t limit_high : 4;
             uint8_t : 1;
@@ -51,4 +51,4 @@ extern uint16_t _ia32_pm32_data_seg;
 extern uint16_t _ia32_pm16_code_seg;
 extern uint16_t _ia32_pm16_data_seg;
 
-#endif // __VELLUM_ASM_GDT_H__
+#endif  // __VELLUM_ASM_GDT_H__

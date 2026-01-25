@@ -4,7 +4,7 @@
 
 static int write_file(void *arg, char ch)
 {
-    FILE* fp = arg;
+    FILE *fp = arg;
 
     fwrite(&ch, 1, 1, fp);
 

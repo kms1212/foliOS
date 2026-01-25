@@ -5,22 +5,20 @@
 
 typedef unsigned int status_t;
 
-#define STATUS_FAILURE_MASK     0x80000000
-#define STATUS_SEVERITY_MASK    0x40000000
-#define STATUS_AREA_MASK        0x3FFF0000
-#define STATUS_CODE_MASK        0x0000FFFF
+#define STATUS_FAILURE_MASK  0x80000000
+#define STATUS_SEVERITY_MASK 0x40000000
+#define STATUS_AREA_MASK     0x3FFF0000
+#define STATUS_CODE_MASK     0x0000FFFF
 
 #define CHECK_SUCCESS(status) (!((status) & 0x80000000))
 #define CHECK_FAILURE(status) (!!((status) & 0x80000000))
 
-#define CHECK_NORMAL_FAILURE(status) \
-    (CHECK_FAILURE(status) && (!((status) & 0x40000000)))
-#define CHECK_CRITICAL_FAILURE(status) \
-    (CHECK_FAILURE(status) && (!!((status) & 0x40000000)))
+#define CHECK_NORMAL_FAILURE(status)   (CHECK_FAILURE(status) && (!((status) & 0x40000000)))
+#define CHECK_CRITICAL_FAILURE(status) (CHECK_FAILURE(status) && (!!((status) & 0x40000000)))
 
-#define STATUS_SUCCESS                  0x00000000
-#define STATUS_DEPRECATED               0x00000001
-#define STATUS_NO_EVENT                 0x00000002
+#define STATUS_SUCCESS    0x00000000
+#define STATUS_DEPRECATED 0x00000001
+#define STATUS_NO_EVENT   0x00000002
 
 #define STATUS_UNKNOWN_ERROR            0x80000000
 #define STATUS_INVALID_RESOURCE         0x80000001
@@ -48,6 +46,6 @@ typedef unsigned int status_t;
 #define STATUS_PAGE_NOT_PRESENT         0x80000017
 #define STATUS_INSUFFICIENT_MEMORY      0x80000018
 
-#define STATUS_FS_INCONSISTENT          0xC0000000
+#define STATUS_FS_INCONSISTENT 0xC0000000
 
-#endif // __VELLUM_STATUS_H__
+#endif  // __VELLUM_STATUS_H__

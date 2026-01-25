@@ -2,13 +2,13 @@
 
 #include <stdio.h>
 
-#include <vellum/asm/power.h>
+#include <vellum/asm/bios/keyboard.h>
+#include <vellum/asm/bios/video.h>
 #include <vellum/asm/interrupt.h>
+#include <vellum/asm/intrinsics/misc.h>
 #include <vellum/asm/io.h>
 #include <vellum/asm/pic.h>
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/bios/video.h>
-#include <vellum/asm/bios/keyboard.h>
+#include <vellum/asm/power.h>
 
 static int print_char(void *, char ch)
 {
@@ -22,8 +22,7 @@ static int print_char(void *, char ch)
     return 0;
 }
 
-__noreturn
-void _pc_panic(status_t status, const char *fmt, ...)
+__noreturn void _pc_panic(status_t status, const char *fmt, ...)
 {
     uint16_t *fbuf;
     va_list args;
@@ -81,7 +80,7 @@ void _pc_panic(status_t status, const char *fmt, ...)
     _pc_reboot();
 
 #endif
-    
+
     for (;;) {
         _ia32_halt();
     }

@@ -25,16 +25,24 @@ static int dispinfo_handler(struct shell_instance *inst, int argc, char **argv)
         return 1;
     }
 
-    uint16_t manufacturer_id = ((buf.manufacturer_id & 0x00FF) << 8) | ((buf.manufacturer_id & 0xFF00) >> 8);
+    uint16_t manufacturer_id =
+        ((buf.manufacturer_id & 0x00FF) << 8) | ((buf.manufacturer_id & 0xFF00) >> 8);
 
-    printf("Manufacturer: %c%c%c\n", 'A' + ((manufacturer_id & 0x7C00) >> 10), 'A' + ((manufacturer_id & 0x03E0) >> 5), 'A' + (manufacturer_id & 0x001F));
+    printf(
+        "Manufacturer: %c%c%c\n",
+        'A' + ((manufacturer_id & 0x7C00) >> 10),
+        'A' + ((manufacturer_id & 0x03E0) >> 5),
+        'A' + (manufacturer_id & 0x001F)
+    );
 
     printf("EDID Version: %02X\n", buf.edid_version);
     printf("EDID Revision: %02X\n", buf.edid_revision);
 
     for (int i = 0; i < 4; i++) {
-        int w = buf.detailed_timings[0].hactive | ((int)(buf.detailed_timings[0].hactive_hblank & 0xF0) << 4);
-        int h = buf.detailed_timings[0].vactive | ((int)(buf.detailed_timings[0].vactive_vblank & 0xF0) << 4);
+        int w = buf.detailed_timings[0].hactive |
+            ((int)(buf.detailed_timings[0].hactive_hblank & 0xF0) << 4);
+        int h = buf.detailed_timings[0].vactive |
+            ((int)(buf.detailed_timings[0].vactive_vblank & 0xF0) << 4);
 
         printf("Preferred resolution #%d: %dx%d\n", i, w, h);
     }

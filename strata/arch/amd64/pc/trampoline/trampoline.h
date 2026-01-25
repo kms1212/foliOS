@@ -6,4 +6,4 @@
 void setup_trampoline_page_tables(void);
 St_PhysFrame get_trampoline_pml4_phys(void);
 
-#endif // __TRAMPOLINE_H__
+#endif  // __TRAMPOLINE_H__

@@ -7,7 +7,7 @@
 char *strncat(char *__restrict dest, const char *__restrict src, size_t maxlen)
 {
     char *orig_dest = dest;
-    
+
     while (*dest && maxlen > 0) {
         dest++;
         maxlen--;

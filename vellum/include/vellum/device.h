@@ -3,10 +3,10 @@
 
 #include <stdint.h>
 
-#include <vellum/status.h>
+#include <vellum/compiler.h>
 #include <vellum/panic.h>
 #include <vellum/resource.h>
-#include <vellum/compiler.h>
+#include <vellum/status.h>
 
 #define DEVICE_NAME_MAX 64
 
@@ -35,7 +35,9 @@ struct device_driver {
     struct device_driver *next;
 
     const char *name;
-    status_t (*probe)(struct device **, struct device_driver *, struct device *, struct resource *, int);
+    status_t (*probe)(
+        struct device **, struct device_driver *, struct device *, struct resource *, int
+    );
     status_t (*remove)(struct device *);
     status_t (*get_interface)(struct device *, const char *, const void **);
 };
@@ -65,11 +67,10 @@ status_t device_driver_create(struct device_driver **drv);
 
 status_t device_driver_find(const char *name, struct device_driver **drv);
 
-#define REGISTER_DEVICE_DRIVER(name, init_func) \
-    __constructor \
-    static void _register_driver_##name(void) \
-    { \
-        init_func(); \
+#define REGISTER_DEVICE_DRIVER(name, init_func)                                                    \
+    __constructor static void _register_driver_##name(void)                                        \
+    {                                                                                              \
+        init_func();                                                                               \
     }
 
-#endif // __VELLUM_DEVICE_H__
+#endif  // __VELLUM_DEVICE_H__

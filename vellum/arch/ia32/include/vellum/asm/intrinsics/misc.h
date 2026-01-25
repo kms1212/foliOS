@@ -9,22 +9,22 @@
 
 __always_inline void _ia32_interrupt_enable(void)
 {
-    __asm__ volatile ("sti");
+    __asm__ volatile("sti");
 }
 
 __always_inline void _ia32_interrupt_disable(void)
 {
-    __asm__ volatile ("cli");
+    __asm__ volatile("cli");
 }
 
 __always_inline void _ia32_halt(void)
 {
-    __asm__ volatile ("hlt");
+    __asm__ volatile("hlt");
 }
 
 __always_inline void _ia32_pause(void)
 {
-    __asm__ volatile ("pause");
+    __asm__ volatile("pause");
 }
 
-#endif // __VELLUM_ASM_INTRINSICS_MISC_H__
+#endif  // __VELLUM_ASM_INTRINSICS_MISC_H__

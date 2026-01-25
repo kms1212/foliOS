@@ -7,7 +7,7 @@
 static int lsmod_handler(struct shell_instance *inst, int argc, char **argv)
 {
     struct module *current = module_get_first_mod();
-    
+
     while (current) {
         printf("%s: base=%08lX\n", current->name, current->load_vpn * PAGE_SIZE);
 

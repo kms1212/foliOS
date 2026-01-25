@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <vellum/status.h>
-#include <vellum/path.h>
 #include <vellum/filesystem.h>
+#include <vellum/path.h>
+#include <vellum/status.h>
 
 static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -82,7 +82,7 @@ static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
             return 1;
         }
-    
+
         char pathbuf[PATH_MAX];
         struct path_iterator iter;
         path_iter_init(&iter, argv[1]);

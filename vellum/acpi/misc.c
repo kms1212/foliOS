@@ -6,9 +6,7 @@ uacpi_thread_id uacpi_kernel_get_thread_id(void)
 }
 
 uacpi_status uacpi_kernel_schedule_work(
-    uacpi_work_type type,
-    uacpi_work_handler handler,
-    uacpi_handle ctx
+    uacpi_work_type type, uacpi_work_handler handler, uacpi_handle ctx
 )
 {
     return UACPI_STATUS_OK;

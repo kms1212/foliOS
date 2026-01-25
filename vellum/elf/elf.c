@@ -1,12 +1,12 @@
 #include <vellum/elf.h>
 
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include <vellum/log.h>
 #include <vellum/macros.h>
 #include <vellum/mm.h>
-#include <vellum/log.h>
 
 #define MODULE_NAME "elf"
 
@@ -18,7 +18,7 @@ status_t elf_open(const char *path, struct elf_file **elfout)
     struct elf64_shdr shdr64;
     unsigned int strtab_idx = -1;
     unsigned int symtab_idx = -1;
-    
+
     elf = calloc(1, sizeof(struct elf_file));
     if (!elf) {
         status = STATUS_UNKNOWN_ERROR;
@@ -50,82 +50,82 @@ status_t elf_open(const char *path, struct elf_file **elfout)
     if (elf->ident.class == ELFCLASS32) {
         fseek(elf->fp, 0, SEEK_SET);
         fread(&elf->ehdr32, sizeof(elf->ehdr32), 1, elf->fp);
-    
+
         if (elf->ehdr32.machine != EM_386) {
             status = STATUS_UNSUPPORTED;
             goto has_error;
         }
-    
+
         status = elf_get_section_header(elf, elf->ehdr32.shstrndx, &shdr32, sizeof(shdr32));
         if (!CHECK_SUCCESS(status)) goto has_error;
-        
+
         elf->shstrtab = malloc(shdr32.size);
         status = elf_load_section(elf, elf->ehdr32.shstrndx, elf->shstrtab, shdr32.size);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_find_section(elf, ".strtab", &strtab_idx);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_get_section_header(elf, strtab_idx, &shdr32, sizeof(shdr32));
         if (!CHECK_SUCCESS(status)) goto has_error;
-        
+
         elf->strtab = malloc(shdr32.size);
         status = elf_load_section(elf, strtab_idx, elf->strtab, shdr32.size);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_find_section(elf, ".symtab", &symtab_idx);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_get_section_header(elf, symtab_idx, &shdr32, sizeof(shdr32));
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         elf->symtab32 = malloc(shdr32.size);
         elf->symtab_size = shdr32.size;
-    
+
         status = elf_load_section(elf, symtab_idx, elf->symtab32, elf->symtab_size);
-        if (!CHECK_SUCCESS(status)) goto has_error;    
+        if (!CHECK_SUCCESS(status)) goto has_error;
     } else if (elf->ident.class == ELFCLASS64) {
         fseek(elf->fp, 0, SEEK_SET);
         fread(&elf->ehdr64, sizeof(elf->ehdr64), 1, elf->fp);
-    
+
         if (elf->ehdr64.machine != EM_X86_64) {
             status = STATUS_UNSUPPORTED;
             goto has_error;
         }
-    
+
         status = elf_get_section_header(elf, elf->ehdr64.shstrndx, &shdr64, sizeof(shdr64));
         if (!CHECK_SUCCESS(status)) goto has_error;
-        
+
         elf->shstrtab = malloc(shdr64.size);
         status = elf_load_section(elf, elf->ehdr64.shstrndx, elf->shstrtab, shdr64.size);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_find_section(elf, ".strtab", &strtab_idx);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_get_section_header(elf, strtab_idx, &shdr64, sizeof(shdr64));
         if (!CHECK_SUCCESS(status)) goto has_error;
-        
+
         elf->strtab = malloc(shdr64.size);
         status = elf_load_section(elf, strtab_idx, elf->strtab, shdr64.size);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_find_section(elf, ".symtab", &symtab_idx);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         status = elf_get_section_header(elf, symtab_idx, &shdr64, sizeof(shdr64));
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         elf->symtab64 = malloc(shdr64.size);
         elf->symtab_size = shdr64.size;
-    
+
         status = elf_load_section(elf, symtab_idx, elf->symtab64, elf->symtab_size);
-        if (!CHECK_SUCCESS(status)) goto has_error;    
+        if (!CHECK_SUCCESS(status)) goto has_error;
     } else {
         status = STATUS_UNSUPPORTED;
         goto has_error;
     }
-    
+
     if (elfout) *elfout = elf;
 
     return STATUS_SUCCESS;
@@ -169,7 +169,7 @@ status_t elf_get_header(struct elf_file *elf, void *buf, size_t len)
     return STATUS_SUCCESS;
 }
 
-status_t elf_get_program_header(struct elf_file * elf, unsigned int index, void *buf, size_t len)
+status_t elf_get_program_header(struct elf_file *elf, unsigned int index, void *buf, size_t len)
 {
     uint64_t phent_offset;
     size_t phent_size;
@@ -250,7 +250,11 @@ status_t elf_get_section_header(struct elf_file *elf, unsigned int index, void *
     } else if (elf->ident.class == ELFCLASS64) {
         if (index >= elf->ehdr64.shnum) return STATUS_INVALID_VALUE;
 
-        fseek(elf->fp, (long)(elf->ehdr64.shoff + (elf64_off_t)(index * elf->ehdr64.shentsize)), SEEK_SET);
+        fseek(
+            elf->fp,
+            (long)(elf->ehdr64.shoff + (elf64_off_t)(index * elf->ehdr64.shentsize)),
+            SEEK_SET
+        );
         fread(buf, MIN(len, elf->ehdr64.shentsize), 1, elf->fp);
     } else {
         return STATUS_UNSUPPORTED;
@@ -402,6 +406,6 @@ status_t elf_get_symbol_count(struct elf_file *elf, unsigned int *count)
     } else {
         return STATUS_UNSUPPORTED;
     }
-    
+
     return STATUS_SUCCESS;
 }

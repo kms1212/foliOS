@@ -22,18 +22,16 @@ struct StA_InterruptFrame {
     uint16_t : 16;
 } __packed;
 
-#define StA_EnableInterrupt StA_Sti
+#define StA_EnableInterrupt  StA_Sti
 #define StA_DisableInterrupt StA_Cli
 
 __always_inline uint32_t StA_SaveInterrupt(void)
 {
     uint64_t flags;
 
-    __asm__ volatile (
-        "pushfq\r\n"
-        "pop    %0\r\n"
-        : "=r"(flags)
-    );
+    __asm__ volatile("pushfq\r\n"
+                     "pop    %0\r\n"
+                     : "=r"(flags));
 
     return !!(flags & 0x0200);
 }
@@ -47,4 +45,4 @@ __always_inline void StA_RestoreInterrupt(uint32_t state)
     }
 }
 
-#endif // __STRATA_ARCH_INTERRUPT_H__
+#endif  // __STRATA_ARCH_INTERRUPT_H__

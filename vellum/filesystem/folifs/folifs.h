@@ -5,8 +5,8 @@
 
 #include <vellum/compiler.h>
 
-#define FOLIFS_VBR_SIGNATURE   0xAA55
-#define FOLIFS_FS_SIGNATURE    "FOLI"
+#define FOLIFS_VBR_SIGNATURE 0xAA55
+#define FOLIFS_FS_SIGNATURE  "FOLI"
 
 typedef struct {
     uint8_t bytes[16];
@@ -158,4 +158,4 @@ struct folifs_ddb {
     uint64_t dsb_pointers[];
 } __packed;
 
-#endif // __FOLIFS_H__
+#endif  // __FOLIFS_H__

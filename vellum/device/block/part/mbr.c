@@ -1,14 +1,14 @@
 #include "mbr.h"
 
-#include <string.h>
+#include <endian.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <endian.h>
+#include <string.h>
 
-#include <vellum/status.h>
-#include <vellum/macros.h>
 #include <vellum/device.h>
 #include <vellum/interface/block.h>
+#include <vellum/macros.h>
+#include <vellum/status.h>
 
 struct mbr_data {
     struct device *blkdev;
@@ -42,7 +42,13 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -71,7 +77,7 @@ static status_t register_partitions(struct device *dev, struct device_driver *pa
     struct mbr_partition_entry *entry = NULL;
     struct device *partdev = NULL;
     uint32_t base_lba, sector_count;
-    
+
     mbr_sect = (struct mbr *)buf;
     status = data->blkif->read(data->blkdev, base, buf, 1, NULL);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -116,7 +122,13 @@ has_error:
     return status;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -125,7 +137,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     char dev_name_base[sizeof(dev->name)];
     struct mbr_data *data = NULL;
     struct device_driver *partdrv = NULL;
-    
+
     blkdev = parent;
     if (!blkdev) {
         status = STATUS_INVALID_VALUE;
@@ -137,9 +149,9 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     status = device_create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     snprintf(dev_name_base, sizeof(dev_name_base), "%.61spt", parent->name);
-    
+
     status = device_generate_name(dev_name_base, dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 

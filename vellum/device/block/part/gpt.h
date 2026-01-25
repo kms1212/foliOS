@@ -3,7 +3,7 @@
 
 #include "mbr.h"
 
-#define GPT_HEADER_SIGNATURE    "EFI PART"
+#define GPT_HEADER_SIGNATURE "EFI PART"
 
 typedef uint8_t gpt_guid[16];
 
@@ -33,4 +33,4 @@ struct gpt_partition_entry {
     uint16_t name[72];
 } __packed;
 
-#endif // __DEVICE_BLOCK_PART_GPT_H__
+#endif  // __DEVICE_BLOCK_PART_GPT_H__

@@ -13,4 +13,4 @@ struct StA_JumpBuffer {
     uint32_t eax;
 };
 
-#endif // __STRATA_ARCH_JMPBUF_H__
+#endif  // __STRATA_ARCH_JMPBUF_H__

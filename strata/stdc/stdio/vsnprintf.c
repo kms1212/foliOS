@@ -7,12 +7,12 @@ struct cb_args {
 
 static int write_buffer(void *_args, char ch)
 {
-    struct cb_args* args = _args;
+    struct cb_args *args = _args;
 
     if (args->len < 1) {
         return 1;
     }
-    
+
     *args->buf++ = ch;
     args->len--;
 

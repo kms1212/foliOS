@@ -1,11 +1,11 @@
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <vellum/log.h>
 #include <vellum/device.h>
-#include <vellum/interface/fdc.h>
 #include <vellum/interface/block.h>
+#include <vellum/interface/fdc.h>
+#include <vellum/log.h>
 
 #define MODULE_NAME "floppy"
 
@@ -34,7 +34,13 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -54,7 +60,13 @@ static void floppy_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -72,7 +84,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_INVALID_VALUE;
         goto has_error;
     }
-    
+
     status = fdcdev->driver->get_interface(fdcdev, "fdc", (const void **)&fdcif);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -87,7 +99,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     dev->data = data;
 
     LOG_DEBUG("initialization success\n");

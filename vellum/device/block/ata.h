@@ -64,4 +64,4 @@ struct ata_device_ident {
     uint16_t integrity;
 };
 
-#endif // __ATA_H__
+#endif  // __ATA_H__

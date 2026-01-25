@@ -1,12 +1,12 @@
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <vellum/log.h>
-#include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/interface/block.h>
 #include <vellum/interface/ide.h>
+#include <vellum/log.h>
+#include <vellum/status.h>
 
 #include "ata.h"
 
@@ -33,7 +33,7 @@ static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, siz
     size_t xfer_count;
 
     if (count > UINT16_MAX) count = UINT16_MAX;
-    
+
     if (lba < (1 << 28)) {
         cmd = (struct ata_command){
             .extended = 0,
@@ -77,7 +77,13 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -97,7 +103,13 @@ static void ata_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -108,7 +120,8 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     struct device *ptdev = NULL;
     struct device_driver *ptdrv = NULL;
 
-    if (!rsrc || rsrc_cnt != 1 || rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit || rsrc[0].base > 1) {
+    if (!rsrc || rsrc_cnt != 1 || rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit ||
+        rsrc[0].base > 1) {
         status = STATUS_INVALID_RESOURCE;
         goto has_error;
     }
@@ -118,7 +131,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_INVALID_VALUE;
         goto has_error;
     }
-    
+
     status = idedev->driver->get_interface(idedev, "ide", (const void **)&ideif);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -141,7 +154,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     LOG_DEBUG("identifying device...\n");
     struct ata_command cmd = {
         .extended = 0,
-        .command = 0xEC,  /* IDENTIFY DEVICE */
+        .command = 0xEC, /* IDENTIFY DEVICE */
         .features = 0,
         .count = 0,
         .sector = 0,
@@ -167,7 +180,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = ptdrv->probe(&ptdev, ptdrv, dev, NULL, 0);
         if (CHECK_SUCCESS(status)) return STATUS_SUCCESS;
     }
-    
+
     if (devout) *devout = dev;
 
     LOG_DEBUG("initialization success\n");

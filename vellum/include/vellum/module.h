@@ -1,13 +1,13 @@
 #ifndef __VELLUM_MODULE_H__
 #define __VELLUM_MODULE_H__
 
-#include <vellum/status.h>
 #include <vellum/elf.h>
 #include <vellum/mm.h>
+#include <vellum/status.h>
 
 struct module {
     struct module *next;
-    
+
     struct elf_file *elf;
 
     char *name;
@@ -21,4 +21,4 @@ void module_unload(struct module *mod);
 struct module *module_get_first_mod(void);
 status_t module_find(const char *name, struct module **mod);
 
-#endif // __VELLUM_MODULE_H__
+#endif  // __VELLUM_MODULE_H__

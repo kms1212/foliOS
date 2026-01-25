@@ -35,4 +35,4 @@ struct StA_Tss {
     uint16_t iomap_base;
 } __packed __aligned(16);
 
-#endif // __STRATA_ARCH_TSS_H__
+#endif  // __STRATA_ARCH_TSS_H__

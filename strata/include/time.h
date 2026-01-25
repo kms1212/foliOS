@@ -1,8 +1,8 @@
 #ifndef __TIME_H__
 #define __TIME_H__
 
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #define CLOCKS_PER_SEC 1024
 
@@ -31,11 +31,12 @@ struct tm *gmtime(const time_t *time);
 
 struct tm *localtime(const time_t *time);
 
-size_t strftime(char *__restrict str, size_t maxsize, const char *__restrict fmt, const struct tm *__restrict tm);
+size_t strftime(
+    char *__restrict str, size_t maxsize, const char *__restrict fmt, const struct tm *__restrict tm
+);
 
 char *asctime(const struct tm *tm);
 
 char *ctime(const time_t *timer);
 
-
-#endif // __TIME_H__
+#endif  // __TIME_H__

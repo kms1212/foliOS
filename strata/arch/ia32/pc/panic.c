@@ -1,10 +1,10 @@
 #include <strata/plat/panic.h>
 
-#include <stdio.h>
 #include <stdarg.h>
+#include <stdio.h>
 
-#include <strata/arch/io.h>
 #include <strata/arch/intrinsics/misc.h>
+#include <strata/arch/io.h>
 
 static int panic_out(void *, char ch)
 {
@@ -15,8 +15,7 @@ static int panic_out(void *, char ch)
     return 0;
 }
 
-__noreturn
-void StP_Panic(StStatus status, const char *fmt, ...)
+__noreturn void StP_Panic(StStatus status, const char *fmt, ...)
 {
     va_list args;
 

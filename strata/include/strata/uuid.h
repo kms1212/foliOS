@@ -3,17 +3,35 @@
 
 #include <string.h>
 
-#include <strata/types.h>
 #include <strata/compiler.h>
 #include <strata/status.h>
+#include <strata/types.h>
 
 struct StUuid {
     uint8_t data[16];
 };
 
-#define UUID(...) ((struct StUuid){ .data = { __VA_ARGS__ } })
+#define UUID(...) ((struct StUuid){.data = {__VA_ARGS__}})
 #define UUID_NULL UUID(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-#define UUID_MAX  UUID(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF)
+#define UUID_MAX                                                                                   \
+    UUID(                                                                                          \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF,                                                                                      \
+        0xFF                                                                                       \
+    )
 
 static __always_inline int StUuid_IsEqual(struct StUuid *uuid1 __in, struct StUuid *uuid2 __in)
 {
@@ -37,12 +55,19 @@ static __always_inline int StUuid_GetVersion(struct StUuid *uuid __in)
 
 StStatus StUuid_GenerateVersion1(struct StUuid *uuid __buf);
 StStatus StUuid_GenerateVersion2(struct StUuid *uuid __buf);
-StStatus StUuid_GenerateVersion3(struct StUuid *uuid __buf, const char *name __in, size_t name_len __in);
+StStatus StUuid_GenerateVersion3(
+    struct StUuid *uuid __buf, const char *name __in, size_t name_len __in
+);
 StStatus StUuid_GenerateVersion4(struct StUuid *uuid __buf);
-StStatus StUuid_GenerateVersion5(struct StUuid *uuid __buf, const struct StUuid *namespace __in, const char *name __in, size_t name_len __in);
+StStatus StUuid_GenerateVersion5(
+    struct StUuid *uuid __buf,
+    const struct StUuid *namespace __in,
+    const char *name __in,
+    size_t name_len __in
+);
 StStatus StUuid_GenerateVersion6(struct StUuid *uuid __buf);
 StStatus StUuid_GenerateVersion7(struct StUuid *uuid __buf);
 
 StStatus StUuid_Validate(const struct StUuid *uuid __in);
 
-#endif // __STRATA_UUID_H__
+#endif  // __STRATA_UUID_H__

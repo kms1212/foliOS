@@ -9,7 +9,7 @@
 
 __always_inline void StA_Lidt(struct StA_Idtr *idtr)
 {
-    __asm__ volatile ("lidt (%0)" : : "r"(idtr));
+    __asm__ volatile("lidt (%0)" : : "r"(idtr));
 }
 
-#endif // __STRATA_ARCH_INTRINSICS_IDT_H__
+#endif  // __STRATA_ARCH_INTRINSICS_IDT_H__

@@ -18,9 +18,9 @@ struct StA_IdtEntry {
         uint16_t raw;
 
         struct {
-            uint16_t ist: 3;
+            uint16_t ist : 3;
             uint16_t : 5;
-            uint16_t gate_type: 4;
+            uint16_t gate_type : 4;
             uint16_t : 1;
             uint16_t dpl : 2;
             uint16_t p : 1;
@@ -32,4 +32,4 @@ struct StA_IdtEntry {
     uint32_t : 32;
 } __packed;
 
-#endif // __STRATA_ARCH_IDT_H__
+#endif  // __STRATA_ARCH_IDT_H__

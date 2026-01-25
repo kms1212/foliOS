@@ -10,14 +10,14 @@ StStatus StMutex_Init(struct StMutex *mtx)
 {
     mtx->locked = 0;
     mtx->owner = NULL;
-    
+
     return STATUS_SUCCESS;
 }
 
 static void add_blocking_thread(struct StMutex *mtx, struct StThread *th)
 {
     struct StThread *last_blocking_th;
-        
+
     LOG_DEBUG("blocking thread #%d\n", th->id);
 
     if (mtx->blocking_threads == th) return;
@@ -44,10 +44,10 @@ static void unblock_blocking_thread(struct StMutex *mtx)
     struct StThread *th_to_unblock;
 
     if (!mtx->blocking_threads) return;
-    
+
     th_to_unblock = mtx->blocking_threads;
     mtx->blocking_threads = th_to_unblock->mutex_blocking_next;
-        
+
     LOG_DEBUG("unblocking thread #%d\n", th_to_unblock->id);
 
     th_to_unblock->mutex_blocking_next = NULL;
@@ -93,7 +93,7 @@ StStatus StMutex_TryLock(struct StMutex *mtx)
 
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
-    
+
     StThread_DisablePreemption();
 
     if (mtx->locked) {
@@ -101,7 +101,7 @@ StStatus StMutex_TryLock(struct StMutex *mtx)
 
         return STATUS_MUTEX_LOCKED;
     }
-    
+
     mtx->locked = 1;
     mtx->owner = th;
 
@@ -130,7 +130,7 @@ StStatus StMutex_Unlock(struct StMutex *mtx)
     mtx->owner = NULL;
 
     unblock_blocking_thread(mtx);
-    
+
     StThread_EnablePreemption();
 
     return STATUS_SUCCESS;

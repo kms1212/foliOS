@@ -6,15 +6,15 @@
 #ifdef USE_INT_BREAKPOINT
 __always_inline void StA_Breakpoint(void)
 {
-    __asm__ volatile ("int3");
+    __asm__ volatile("int3");
 }
 
 #else
 __always_inline void StA_Breakpoint(void)
 {
-    __asm__ volatile ("xchg %%bx, %%bx");
+    __asm__ volatile("xchg %%bx, %%bx");
 }
 
 #endif
 
-#endif // __STRATA_ARCH_BREAKPOINT_H__
+#endif  // __STRATA_ARCH_BREAKPOINT_H__

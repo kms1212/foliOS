@@ -7,17 +7,17 @@
 #include <strata/arch/intrinsics/misc.h>
 #include <strata/arch/mmu.h>
 
+#include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
 #include <strata/plat/tss.h>
-#include <strata/plat/cpulocal.h>
 
-#include <strata/process.h>
-#include <strata/log.h>
 #include <strata/interrupt.h>
+#include <strata/log.h>
+#include <strata/mm.h>
 #include <strata/panic.h>
+#include <strata/process.h>
 #include <strata/scheduler.h>
 #include <strata/thread.h>
-#include <strata/mm.h>
 
 #define MODULE_NAME "thread"
 
@@ -74,7 +74,7 @@ StStatus StThreadP_SetupKThreadStack(struct StThread *th __in)
     rsp -= sizeof(*iregs);
     iregs = (void *)rsp;
     memset(iregs, 0, sizeof(*iregs));
-    
+
     if (th->type == THREAD_TYPE_KERNEL) {
         iregs->rbx = (uintptr_t)th->kmode_entry;
         iregs->rdi = (uintptr_t)th;
@@ -99,9 +99,7 @@ void StThreadP_FreeKThreadStack(struct StThread *th __in)
 }
 
 StStatus StThreadP_Switch(
-    struct StThread *next __in,
-    struct StIntP_Context *ctx __in,
-    void **next_stack_ptr __out
+    struct StThread *next __in, struct StIntP_Context *ctx __in, void **next_stack_ptr __out
 )
 {
     StStatus status;
@@ -156,13 +154,12 @@ void StThreadP_Yield(void)
 }
     */
 
-__externally_visible
-void *_StThreadP_DoYield(struct StIntP_Context *ctx __in)
+__externally_visible void *_StThreadP_DoYield(struct StIntP_Context *ctx __in)
 {
     StStatus status;
     struct StThread *next_thread;
     void *next_stack_ptr;
-    
+
     if (StThread_IsPreemptionEnabled()) {
         status = StScheduler_GetNextThread(&next_thread);
         if (!CHECK_SUCCESS(status) || !next_thread) return NULL;
@@ -175,4 +172,3 @@ void *_StThreadP_DoYield(struct StIntP_Context *ctx __in)
 
     return NULL;
 }
-

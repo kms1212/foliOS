@@ -7,7 +7,8 @@
 size_t strnlen(const char *str, size_t maxlen)
 {
     size_t s = 0;
-    for (; *str++ && s <= maxlen; s++);
+    for (; *str++ && s <= maxlen; s++)
+        ;
     return s;
 }
 
@@ -16,6 +17,7 @@ size_t strnlen(const char *str, size_t maxlen)
 size_t strlen(const char *str)
 {
     size_t s = 0;
-    for (; *str++; s++);
+    for (; *str++; s++)
+        ;
     return s;
 }

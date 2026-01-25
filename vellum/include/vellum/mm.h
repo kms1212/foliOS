@@ -8,11 +8,11 @@
 
 #include <vellum/status.h>
 
-#define PF_DEFAULT      0x00000000
-#define PF_READONLY     0x00000001
-#define PF_USER         0x00000002
-#define PF_NOCACHE      0x00000004
-#define PF_WTCACHE      0x00000008
+#define PF_DEFAULT  0x00000000
+#define PF_READONLY 0x00000001
+#define PF_USER     0x00000002
+#define PF_NOCACHE  0x00000004
+#define PF_WTCACHE  0x00000008
 
 typedef uintptr_t pfn_t;
 typedef uintptr_t vpn_t;
@@ -38,4 +38,4 @@ status_t mm_allocate_pages(size_t page_count, vpn_t *vpn);
 status_t mm_allocate_pages_to(vpn_t vpn, size_t page_count);
 void mm_free_pages(vpn_t vpn, size_t page_count);
 
-#endif // __VELLUM_MM_H__
+#endif  // __VELLUM_MM_H__

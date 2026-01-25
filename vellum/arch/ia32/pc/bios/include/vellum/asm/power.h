@@ -3,13 +3,11 @@
 
 #include <vellum/compiler.h>
 
-__noreturn
-void _pc_poweroff();
+__noreturn void _pc_poweroff();
 
-__noreturn
-void _pc_reboot();
+__noreturn void _pc_reboot();
 
 #define poweroff _pc_poweroff
-#define reboot _pc_reboot
+#define reboot   _pc_reboot
 
-#endif // __VELLUM_ASM_POWEROFF_H__
+#endif  // __VELLUM_ASM_POWEROFF_H__

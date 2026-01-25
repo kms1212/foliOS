@@ -1,24 +1,24 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include <uacpi/acpi.h>
 #include <uacpi/kernel_api.h>
 
 #include <vellum/asm/bios/mem.h>
-#include <vellum/asm/pc_page.h>
 #include <vellum/asm/intrinsics/register.h>
+#include <vellum/asm/pc_page.h>
 
+#include <vellum/device.h>
+#include <vellum/elf.h>
+#include <vellum/interface/video.h>
 #include <vellum/log.h>
 #include <vellum/macros.h>
-#include <vellum/status.h>
-#include <vellum/shell.h>
-#include <vellum/elf.h>
-#include <vellum/device.h>
-#include <vellum/path.h>
 #include <vellum/mm.h>
-#include <vellum/interface/video.h>
+#include <vellum/path.h>
+#include <vellum/shell.h>
+#include <vellum/status.h>
 
 #include <loadst/bootinfo.h>
 
@@ -26,15 +26,12 @@
 
 extern int _stage1_end_;
 
-__noreturn
-static void jump_kernel(void *entry, struct bootinfo_table_header *btblhdr)
+__noreturn static void jump_kernel(void *entry, struct bootinfo_table_header *btblhdr)
 {
-    __asm__ volatile (
-        "jmp *%1"
-        : : "d"(btblhdr), "r"(entry)
-    );
+    __asm__ volatile("jmp *%1" : : "d"(btblhdr), "r"(entry));
 
-    for (;;) {}
+    for (;;) {
+    }
 }
 
 static status_t count_smap_entry(int *result)
@@ -68,7 +65,9 @@ static int count_pagetable_frame(void)
     return 1 + count; /* PD count + PT count */
 }
 
-static void fill_pagetable_frame_entries(struct bootinfo_unavailable_frame_entry *entries, uint32_t max_count)
+static void fill_pagetable_frame_entries(
+    struct bootinfo_unavailable_frame_entry *entries, uint32_t max_count
+)
 {
     uint32_t filled_entries = 0;
 
@@ -77,11 +76,11 @@ static void fill_pagetable_frame_entries(struct bootinfo_unavailable_frame_entry
         entries[filled_entries].count = 1;
         entries[filled_entries++].type = BEUT_PAGETABLE;
     }
-    
+
     for (int i = 0; i < 1023; i++) {
         if (!_pc_page_dir->pde[i].dir.p) continue;
         if (max_count-- <= 0) break;
-        
+
         entries[filled_entries].pfn_base = _pc_page_dir->pde[i].dir.base;
         entries[filled_entries].count = 1;
         entries[filled_entries++].type = BEUT_PAGETABLE;
@@ -97,7 +96,6 @@ static int count_kernel_ufent(void *load_vaddr, uint32_t max_count)
     for (uint32_t i = 0; i < max_count; i++) {
         status = mm_vpn_to_pfn(((uintptr_t)load_vaddr >> 12) + i, &pfn);
         if (!CHECK_SUCCESS(status)) continue;
-        
 
         if (prev_pfn + 1 != pfn) {
             count++;
@@ -111,7 +109,9 @@ static int count_kernel_ufent(void *load_vaddr, uint32_t max_count)
     return count;
 }
 
-static status_t fill_kernel_frame_entries(struct bootinfo_unavailable_frame_entry *entries, uint32_t max_count, void *load_vaddr)
+static status_t fill_kernel_frame_entries(
+    struct bootinfo_unavailable_frame_entry *entries, uint32_t max_count, void *load_vaddr
+)
 {
     status_t status;
     pfn_t pfn;
@@ -121,10 +121,8 @@ static status_t fill_kernel_frame_entries(struct bootinfo_unavailable_frame_entr
         status = mm_vpn_to_pfn(((uintptr_t)load_vaddr >> 12) + i, &pfn);
         if (!CHECK_SUCCESS(status)) return status;
 
-        if (
-            filled_entries > 0 &&
-            entries[filled_entries - 1].pfn_base + entries[filled_entries - 1].count == pfn
-        ) {
+        if (filled_entries > 0 &&
+            entries[filled_entries - 1].pfn_base + entries[filled_entries - 1].count == pfn) {
             entries[filled_entries - 1].count++;
             continue;
         }
@@ -199,32 +197,32 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
 
     if (ident.class == ELFCLASS32) {
         if (elf->ehdr32.type != ET_EXEC) return 1;
-    
+
         LOG_DEBUG("calculating program offset and size...\n");
         for (int i = 0; i < elf->ehdr32.phnum; i++) {
             status = elf_get_program_header(elf, i, &phdr32, sizeof(phdr32));
             if (!CHECK_SUCCESS(status)) return 1;
-    
+
             if (!load_paddr || (uintptr_t)load_paddr > phdr32.paddr) {
                 load_paddr = (void *)phdr32.paddr;
             }
-    
+
             if ((uintptr_t)load_paddr + program_size < phdr32.paddr + phdr32.memsz) {
                 program_size = phdr32.paddr + phdr32.memsz - (uintptr_t)load_paddr;
             }
         }
     } else if (ident.class == ELFCLASS64) {
         if (elf->ehdr64.type != ET_EXEC) return 1;
-    
+
         LOG_DEBUG("calculating program offset and size...\n");
         for (int i = 0; i < elf->ehdr64.phnum; i++) {
             status = elf_get_program_header(elf, i, &phdr64, sizeof(phdr64));
             if (!CHECK_SUCCESS(status)) return 1;
-    
+
             if (!load_paddr || (uintptr_t)load_paddr > phdr64.paddr) {
                 load_paddr = (void *)(uintptr_t)phdr64.paddr;
             }
-    
+
             if ((uintptr_t)load_paddr + program_size < phdr64.paddr + phdr64.memsz) {
                 program_size = phdr64.paddr + phdr64.memsz - (uintptr_t)load_paddr;
             }
@@ -234,9 +232,10 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     }
     LOG_DEBUG("offset=0x%p, size=%08zX\n", load_paddr, program_size);
 
-    status = mm_allocate_pages_to((uintptr_t)load_paddr / PAGE_SIZE, ALIGN_DIV(program_size, PAGE_SIZE));
+    status =
+        mm_allocate_pages_to((uintptr_t)load_paddr / PAGE_SIZE, ALIGN_DIV(program_size, PAGE_SIZE));
     if (!CHECK_SUCCESS(status)) return status;
-    
+
     LOG_DEBUG("loading program...\n");
     if (ident.class == ELFCLASS32) {
         for (int i = 0; i < elf->ehdr32.phnum; i++) {
@@ -259,7 +258,7 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
             if (!CHECK_SUCCESS(status)) return 1;
         }
     }
-    
+
     struct device *fbdev;
     status = device_find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {
@@ -285,7 +284,7 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
         fprintf(stderr, "%s: cannot get video mode hardware info\n", argv[0]);
         return 1;
     }
-    
+
     // cleanup();
 
     btblentsize = 0;
@@ -300,9 +299,12 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
         btblhdrsize += strlen(argv[i]) + 1;
     }
     btblentsize += ALIGN(sizeof(*benthdr), 16);
-    btblentsize += ALIGN(sizeof(*entry_command_args) + (argc - 2) * sizeof(*entry_command_args->arg_offsets), 16);
+    btblentsize += ALIGN(
+        sizeof(*entry_command_args) + (argc - 2) * sizeof(*entry_command_args->arg_offsets),
+        16
+    );
     btblentcount++;
-    
+
     /* add loader info entry size */
     btblhdrsize += sizeof("vellum") + 1;
     btblhdrsize += sizeof("0.0.1") + 1;
@@ -310,7 +312,7 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     btblentsize += ALIGN(sizeof(*benthdr), 16);
     btblentsize += ALIGN(sizeof(*entry_loader_info), 16);
     btblentcount++;
-    
+
     /* add memory map entry size */
     status = count_smap_entry(&mmap_entry_count);
     if (!CHECK_SUCCESS(status)) {
@@ -318,17 +320,20 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     btblentsize += ALIGN(sizeof(*benthdr), 16);
-    btblentsize += ALIGN(sizeof(*entry_memory_map) + mmap_entry_count * sizeof(*entry_memory_map->entries), 16);
+    btblentsize += ALIGN(
+        sizeof(*entry_memory_map) + mmap_entry_count * sizeof(*entry_memory_map->entries),
+        16
+    );
     btblentcount++;
-    
+
     /* add system disk entry size */
     // TODO: implement
-    
+
     /* add acpi rsdp entry size */
     btblentsize += ALIGN(sizeof(*benthdr), 16);
     btblentsize += ALIGN(sizeof(*entry_acpi_rsdp), 16);
     btblentcount++;
-    
+
     /* add framebuffer entry size */
     btblentsize += ALIGN(sizeof(*benthdr), 16);
     btblentsize += ALIGN(sizeof(*entry_framebuffer), 16);
@@ -339,12 +344,12 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     kernel_frame_count = ALIGN_DIV(program_size, PAGE_SIZE);
     kernel_ufent_count = count_kernel_ufent(load_paddr, kernel_frame_count);
     btblentsize += ALIGN(sizeof(*benthdr), 16);
-    btblentsize +=
-        ALIGN(
-            sizeof(*entry_unavailable_frames) +
-            (pagetable_frame_count + kernel_ufent_count) * sizeof(*entry_unavailable_frames->entries),
-            16
-        );
+    btblentsize += ALIGN(
+        sizeof(*entry_unavailable_frames) +
+            (pagetable_frame_count + kernel_ufent_count) *
+                sizeof(*entry_unavailable_frames->entries),
+        16
+    );
     btblentcount++;
 
     /* add pagetable vpn entry size */
@@ -354,10 +359,10 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
 
     /* align header size */
     btblhdrsize = ALIGN(btblhdrsize, 16);
-    
+
     /* allocate table */
     btblhdr = (void *)ALIGN((uintptr_t)&_stage1_end_, 16);
-    
+
     /* fill header */
     btblhdr->flags = 0;
     btblhdr->version = BTV_CURRENT;
@@ -365,14 +370,14 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     btblhdr->entry_count = btblentcount;
     btblhdr->size = btblhdrsize + btblentsize;
     strtab_cursor = 0;
-    
+
     /* fill command args entry */
     benthdr = (void *)((uintptr_t)btblhdr + btblhdr->header_size);
     benthdr->type = BET_COMMAND_ARGS;
     benthdr->header_size = ALIGN(sizeof(*benthdr), 16);
-    benthdr->size =
-        benthdr->header_size +
-        ALIGN(sizeof(*entry_command_args) + (argc - 2) * sizeof(*entry_command_args->arg_offsets), 16);
+    benthdr->size = benthdr->header_size +
+        ALIGN(sizeof(*entry_command_args) + (argc - 2) * sizeof(*entry_command_args->arg_offsets),
+              16);
     benthdr->flags = BEF_REQUIRED;
 
     entry_command_args = (void *)((uintptr_t)benthdr + benthdr->header_size);
@@ -406,9 +411,9 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     benthdr = (void *)((uintptr_t)benthdr + benthdr->size);
     benthdr->type = BET_MEMORY_MAP;
     benthdr->header_size = ALIGN(sizeof(*benthdr), 16);
-    benthdr->size =
-        benthdr->header_size +
-        ALIGN(sizeof(*entry_memory_map) + mmap_entry_count * sizeof(*entry_memory_map->entries), 16);
+    benthdr->size = benthdr->header_size +
+        ALIGN(sizeof(*entry_memory_map) + mmap_entry_count * sizeof(*entry_memory_map->entries),
+              16);
     benthdr->flags = BEF_REQUIRED;
 
     entry_memory_map = (void *)((uintptr_t)benthdr + benthdr->header_size);
@@ -416,11 +421,13 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     smap_cursor = 0;
     for (int i = 0; i < mmap_entry_count; i++) {
         _pc_bios_mem_query_map(&smap_cursor, &smap_entry, sizeof(smap_entry));
-        entry_memory_map->entries[i].base = (uint64_t)smap_entry.base_addr_high << 32 | smap_entry.base_addr_low;
-        entry_memory_map->entries[i].size = (uint64_t)smap_entry.length_high << 32 | smap_entry.length_low;
+        entry_memory_map->entries[i].base =
+            (uint64_t)smap_entry.base_addr_high << 32 | smap_entry.base_addr_low;
+        entry_memory_map->entries[i].size =
+            (uint64_t)smap_entry.length_high << 32 | smap_entry.length_low;
         entry_memory_map->entries[i].type = smap_entry.type;
     }
-    
+
     /* fill acpi rsdp entry */
     uacpi_status = uacpi_kernel_get_rsdp((uacpi_phys_addr *)&rsdp);
     if (uacpi_unlikely_error(uacpi_status)) {
@@ -474,20 +481,22 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     benthdr = (void *)((uintptr_t)benthdr + benthdr->size);
     benthdr->type = BET_UNAVAILABLE_FRAMES;
     benthdr->header_size = ALIGN(sizeof(*benthdr), 16);
-    benthdr->size =
-        benthdr->header_size +
-        ALIGN(
-            sizeof(*entry_unavailable_frames) +
-            (pagetable_frame_count + kernel_ufent_count) * sizeof(*entry_unavailable_frames->entries),
-            16
-        );
+    benthdr->size = benthdr->header_size +
+        ALIGN(sizeof(*entry_unavailable_frames) +
+                  (pagetable_frame_count + kernel_ufent_count) *
+                      sizeof(*entry_unavailable_frames->entries),
+              16);
     benthdr->flags = BEF_REQUIRED;
 
     entry_unavailable_frames = (void *)((uintptr_t)benthdr + benthdr->header_size);
     entry_unavailable_frames->entry_count = pagetable_frame_count + kernel_ufent_count;
     LOG_DEBUG("entry count: %lu\n", entry_unavailable_frames->entry_count);
     fill_pagetable_frame_entries(entry_unavailable_frames->entries, pagetable_frame_count);
-    status = fill_kernel_frame_entries(&entry_unavailable_frames->entries[pagetable_frame_count], kernel_frame_count, load_paddr);
+    status = fill_kernel_frame_entries(
+        &entry_unavailable_frames->entries[pagetable_frame_count],
+        kernel_frame_count,
+        load_paddr
+    );
     if (!CHECK_SUCCESS(status)) {
         return 1;
     }
@@ -512,8 +521,7 @@ static struct command loadst_command = {
     .help_message = "Load Strata kernel",
 };
 
-__constructor
-static void init()
+__constructor static void init()
 {
     shell_command_register(&loadst_command);
 }
@@ -523,8 +531,7 @@ status_t _start(int argc, char **argv)
     return STATUS_SUCCESS;
 }
 
-__destructor
-static void deinit(void)
+__destructor static void deinit(void)
 {
     shell_command_unregister(&loadst_command);
 }

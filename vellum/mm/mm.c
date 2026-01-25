@@ -5,29 +5,29 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <vellum/asm/page.h>
 #include <vellum/asm/instruction.h>
-#include <vellum/asm/intrinsics/register.h>
 #include <vellum/asm/intrinsics/invlpg.h>
+#include <vellum/asm/intrinsics/register.h>
+#include <vellum/asm/page.h>
 
+#include <vellum/log.h>
 #include <vellum/macros.h>
 #include <vellum/panic.h>
-#include <vellum/log.h>
 
 #define MODULE_NAME "mm"
 
 extern int _end_;
 
-#define PBM_GET(idx)        ((pma_bitmap[(idx) >> 2] >> (((idx) & 3) * 2)) & 3)
-#define PBM_SET(idx, val) \
-    do { \
-        pma_bitmap[(idx) >> 2] &= ~(3 << (((idx) & 3) * 2)); \
-        pma_bitmap[(idx) >> 2] |= (val) << (((idx) & 3) * 2); \
+#define PBM_GET(idx) ((pma_bitmap[(idx) >> 2] >> (((idx) & 3) * 2)) & 3)
+#define PBM_SET(idx, val)                                                                          \
+    do {                                                                                           \
+        pma_bitmap[(idx) >> 2] &= ~(3 << (((idx) & 3) * 2));                                       \
+        pma_bitmap[(idx) >> 2] |= (val) << (((idx) & 3) * 2);                                      \
     } while (0)
 
-#define PBM_FREE            0
-#define PBM_ALLOCATED       1
-#define PBM_RESERVED        2
+#define PBM_FREE      0
+#define PBM_ALLOCATED 1
+#define PBM_RESERVED  2
 
 static uint8_t *pma_bitmap;
 static size_t pma_bitmap_size;
@@ -57,7 +57,12 @@ status_t mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
 
     memset(pma_bitmap, 0, pma_bitmap_size);
 
-    LOG_DEBUG("PMA bitmap initialized to 0x%p. basepfn=%lu limitpfn=%lu\n", pma_bitmap, pma_base_pfn, pma_limit_pfn);
+    LOG_DEBUG(
+        "PMA bitmap initialized to 0x%p. basepfn=%lu limitpfn=%lu\n",
+        pma_bitmap,
+        pma_base_pfn,
+        pma_limit_pfn
+    );
 
     status = mm_pma_mark_reserved(base_paddr, (uintptr_t)pma_bitmap + pma_bitmap_size - 1);
     if (!CHECK_SUCCESS(status)) return status;
@@ -115,7 +120,7 @@ status_t mm_pma_allocate_frame(size_t count, pfn_t *pfn)
 {
     size_t free_count = 0;
     uintptr_t alloc_start_idx = 0;
-    
+
     for (size_t i = 0; i < pma_frame_desc_count; i++) {
         if (PBM_GET(i) != PBM_FREE) {
             free_count = 0;
@@ -144,7 +149,11 @@ status_t mm_pma_allocate_frame(size_t count, pfn_t *pfn)
 
     if (pfn) *pfn = pma_base_pfn + alloc_start_idx;
 
-    LOG_TRACE("allocated frame %lu-%lu\n", pma_base_pfn + alloc_start_idx, pma_base_pfn + alloc_start_idx + count - 1);
+    LOG_TRACE(
+        "allocated frame %lu-%lu\n",
+        pma_base_pfn + alloc_start_idx,
+        pma_base_pfn + alloc_start_idx + count - 1
+    );
 
     return STATUS_SUCCESS;
 }
@@ -166,10 +175,15 @@ void mm_pma_free_frame(pfn_t pfn, size_t frame_count)
         pma_free_frames++;
     }
 
-    LOG_TRACE("freed frame %08lX-%08lX\n", pma_base_pfn + free_start_idx, pma_base_pfn + free_start_idx + frame_count - 1);
+    LOG_TRACE(
+        "freed frame %08lX-%08lX\n",
+        pma_base_pfn + free_start_idx,
+        pma_base_pfn + free_start_idx + frame_count - 1
+    );
 }
 
-static vpn_t alloc_virt_page(size_t page_count) {
+static vpn_t alloc_virt_page(size_t page_count)
+{
     static vpn_t alloc_vpn = 0x00000400;
     vpn_t new_vpn = alloc_vpn;
 
@@ -225,7 +239,8 @@ status_t mm_init(void)
 
 status_t mm_vpn_to_pfn(vpn_t vpn, pfn_t *pfn)
 {
-    union page_table_entry *pt = (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
+    union page_table_entry *pt =
+        (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
 
     if (vpn > 0x000FFFFF) return STATUS_INVALID_VALUE;
 
@@ -275,7 +290,7 @@ static status_t map(pfn_t pfn, vpn_t vpn, uint32_t flags)
         _pc_page_dir->pde[(vpn & 0x000FFC00) >> 10].raw = 0x00000003 | (new_pt_pfn << 12);
 
         invalidate_page((uintptr_t)&pt[vpn & 0xFFC00] / PAGE_SIZE);
-        
+
         for (int i = 0; i < 1024; i++) {
             pt[(vpn & 0xFFC00) + i].raw = 0x00000000;
         }
@@ -285,15 +300,15 @@ static status_t map(pfn_t pfn, vpn_t vpn, uint32_t flags)
         if (!!(flags & PF_READONLY) != !pt[vpn].r_w) {
             return STATUS_CONFLICTING_STATE;
         }
-    
+
         if (!(flags & PF_USER) != !pt[vpn].u_s) {
             return STATUS_CONFLICTING_STATE;
         }
-    
+
         if (!(flags & PF_NOCACHE) != !(pt[vpn].pat && pt[vpn].pcd)) {
             return STATUS_CONFLICTING_STATE;
         }
-    
+
         if (!(flags & PF_WTCACHE) != !(pt[vpn].pat && pt[vpn].pwt)) {
             return STATUS_CONFLICTING_STATE;
         }
@@ -340,14 +355,21 @@ status_t mm_map(pfn_t pfn, vpn_t vpn, size_t page_count, uint32_t flags)
 
     // TODO: rollback if failed
 
-    LOG_TRACE("mapped page %lu-%lu to frame %lu-%lu\n", pfn, pfn + page_count - 1, vpn, vpn + page_count - 1);
+    LOG_TRACE(
+        "mapped page %lu-%lu to frame %lu-%lu\n",
+        pfn,
+        pfn + page_count - 1,
+        vpn,
+        vpn + page_count - 1
+    );
 
     return STATUS_SUCCESS;
 }
 
 static void unmap(vpn_t vpn)
 {
-    union page_table_entry *pt = (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
+    union page_table_entry *pt =
+        (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
 
     if (vpn > 0x000FFFFF) return;
 
@@ -377,7 +399,7 @@ status_t mm_allocate_pages(size_t page_count, vpn_t *vpn)
     vpn_t allocated_vpn;
 
     allocated_vpn = alloc_virt_page(page_count);
-    
+
     for (size_t i = 0; i < page_count; i++) {
         status = mm_vpn_to_pfn(allocated_vpn + i, NULL);
         if (!CHECK_SUCCESS(status) && status != STATUS_PAGE_NOT_PRESENT) return status;
@@ -413,7 +435,7 @@ status_t mm_allocate_pages_to(vpn_t vpn, size_t page_count)
             if (!CHECK_SUCCESS(status)) return status;
         }
     }
-    
+
     return STATUS_SUCCESS;
 }
 
@@ -425,10 +447,10 @@ void mm_free_pages(vpn_t vpn, size_t page_count)
     for (size_t i = 0; i < page_count; i++) {
         status = mm_vpn_to_pfn(vpn + i, &pfn);
         if (!CHECK_SUCCESS(status)) continue;
-    
+
         status = mm_unmap(vpn + i, 1);
         if (!CHECK_SUCCESS(status)) continue;
-    
+
         mm_pma_free_frame(pfn, 1);
     }
 }

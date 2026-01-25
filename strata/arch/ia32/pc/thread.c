@@ -8,12 +8,12 @@
 
 #include <strata/plat/gdt.h>
 
-#include <strata/log.h>
 #include <strata/interrupt.h>
+#include <strata/log.h>
+#include <strata/mm.h>
 #include <strata/panic.h>
 #include <strata/scheduler.h>
 #include <strata/thread.h>
-#include <strata/mm.h>
 
 #define MODULE_NAME "asm_thread"
 

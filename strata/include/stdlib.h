@@ -1,19 +1,19 @@
 #ifdef TESTING
-#   include_next <stdlib.h>
+#    include_next <stdlib.h>
 
 #else
 
-#ifndef __STDLIB_H__
-#define __STDLIB_H__
+#    ifndef __STDLIB_H__
+#        define __STDLIB_H__
 
-#include <stddef.h>
+#        include <stddef.h>
 
-#include <strata/compiler.h>
+#        include <strata/compiler.h>
 
-#define EXIT_SUCCESS    0
-#define EXIT_FAILURE    1
+#        define EXIT_SUCCESS 0
+#        define EXIT_FAILURE 1
 
-#define RAND_MAX        0x7FFF
+#        define RAND_MAX 0x7FFF
 
 double atof(const char *str);
 
@@ -39,7 +39,13 @@ unsigned long long strtoull(const char *__restrict str, char **__restrict endptr
 
 void qsort(void *base, size_t num, size_t size, int (*cmp)(const void *, const void *));
 
-void *bsearch(const void *key, const void *base, size_t num, size_t size, int (*cmp)(const void *, const void *));
+void *bsearch(
+    const void *key,
+    const void *base,
+    size_t num,
+    size_t size,
+    int (*cmp)(const void *, const void *)
+);
 
 typedef struct {
     int quot;
@@ -68,7 +74,6 @@ long long llabs(long long n);
 
 lldiv_t lldiv(long long numer, long long denom);
 
-
 int rand(void);
 
 void srand(unsigned int seed);
@@ -81,6 +86,6 @@ void *realloc(void *ptr, size_t size);
 
 void free(void *ptr);
 
-#endif // __STDLIB_H__
+#    endif  // __STDLIB_H__
 
 #endif

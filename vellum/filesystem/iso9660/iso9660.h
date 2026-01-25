@@ -1,27 +1,27 @@
 #ifndef __ISO9660_H__
 #define __ISO9660_H__
 
-#include <stdint.h>
 #include <endian.h>
+#include <stdint.h>
 
 #include <vellum/compiler.h>
 
 #define ISO9660_SIGNATURE "CD001"
 
-#define ISO9660_MAX_PATH    255
-#define ISO9660_PATH_BUFSZ  (ISO9660_MAX_PATH + 1)
+#define ISO9660_MAX_PATH   255
+#define ISO9660_PATH_BUFSZ (ISO9660_MAX_PATH + 1)
 
-#define VDTYPE_BOOTRECORD   0
-#define VDTYPE_PRIVOLDESC   1
-#define VDTYPE_SUPVOLDESC   2
-#define VDTYPE_VOLPARTDESC  3
-#define VDTYPE_VDSETTERM    255
+#define VDTYPE_BOOTRECORD  0
+#define VDTYPE_PRIVOLDESC  1
+#define VDTYPE_SUPVOLDESC  2
+#define VDTYPE_VOLPARTDESC 3
+#define VDTYPE_VDSETTERM   255
 
 #if defined(__PROCESSOR_BIG_ENDIAN)
-#   define GET_BIENDIAN(biend_struct) ((biend_struct)->be)
+#    define GET_BIENDIAN(biend_struct) ((biend_struct)->be)
 
 #else
-#   define GET_BIENDIAN(biend_struct) ((biend_struct)->le)
+#    define GET_BIENDIAN(biend_struct) ((biend_struct)->le)
 
 #endif
 
@@ -101,7 +101,7 @@ struct iso9660_pathtbl_entry_header {
 
 struct iso9660_vol_desc {
     uint8_t type;
-    char    signature[5];
+    char signature[5];
     uint8_t version;
 
     union {
@@ -201,4 +201,4 @@ struct rrip_tf_entry {
     };
 } __packed;
 
-#endif // __ISO9660_H__
+#endif  // __ISO9660_H__

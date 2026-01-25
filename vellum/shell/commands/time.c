@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/interface/rtc.h>
+#include <vellum/status.h>
 
 static int time_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -19,12 +19,27 @@ static int time_handler(struct shell_instance *inst, int argc, char **argv)
 
     gmtime_r(&timet, &tm);
 
-    printf("GMT: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    printf(
+        "GMT: %d-%02d-%02d %02d:%02d:%02d\n",
+        tm.tm_year + 1900,
+        tm.tm_mon + 1,
+        tm.tm_mday,
+        tm.tm_hour,
+        tm.tm_min,
+        tm.tm_sec
+    );
 
     localtime_r(&timet, &tm);
 
-    printf("Local: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-
+    printf(
+        "Local: %d-%02d-%02d %02d:%02d:%02d\n",
+        tm.tm_year + 1900,
+        tm.tm_mon + 1,
+        tm.tm_mday,
+        tm.tm_hour,
+        tm.tm_min,
+        tm.tm_sec
+    );
 
     return 0;
 }

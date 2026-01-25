@@ -3,4 +3,4 @@
 
 #define FILENAME_MAX 256
 
-#endif // __STRATA_LIMITS_H__
+#endif  // __STRATA_LIMITS_H__

@@ -4,13 +4,15 @@
 #include <stdlib.h>
 
 #include <strata/compiler.h>
-#include <strata/panic.h>
 #include <strata/log.h>
 #include <strata/macros.h>
+#include <strata/panic.h>
 
 #define MODULE_NAME "interrupt"
 
-StStatus StInt_CreateHandler(int num, void *data, StInt_HandlerFunction func, struct StInt_Handler **handler)
+StStatus StInt_CreateHandler(
+    int num, void *data, StInt_HandlerFunction func, struct StInt_Handler **handler
+)
 {
     StStatus status;
     struct StInt_Handler *newentry = NULL;
@@ -40,7 +42,8 @@ StStatus StInt_CreateHandler(int num, void *data, StInt_HandlerFunction func, st
         if (!CHECK_SUCCESS(status)) goto has_error;
     } else {
         struct StInt_Handler *entry = firstentry;
-        for (; entry->next; entry = entry->next) {}
+        for (; entry->next; entry = entry->next) {
+        }
 
         entry->next = newentry;
     }
@@ -62,7 +65,7 @@ void StInt_RemoveHandler(struct StInt_Handler *handler)
     StStatus status;
     struct StInt_Handler *prev = NULL;
     struct StInt_Handler *current;
-    
+
     LOG_DEBUG("removing intrrupt handler from #%02X...\n", handler->irq_num);
 
     status = StIntP_GetFirstHandler(handler->irq_num, &current);
@@ -82,6 +85,6 @@ void StInt_RemoveHandler(struct StInt_Handler *handler)
 
         prev->next = handler->next;
     }
-    
+
     free(handler);
 }

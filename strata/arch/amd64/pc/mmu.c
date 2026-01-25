@@ -1,17 +1,17 @@
 #include "strata/types.h"
 #include <strata/plat/mmu.h>
 
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <strata/arch/mmu.h>
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/intrinsics/register.h>
+#include <strata/arch/mmu.h>
 
 #include <strata/macros.h>
 
-#define PML4_HOLE_START         ((St_VirtPage)0x0000000800000000ULL)
-#define PML4_HOLE_END           ((St_VirtPage)0x000FFFF7FFFFFFFFULL)
+#define PML4_HOLE_START ((St_VirtPage)0x0000000800000000ULL)
+#define PML4_HOLE_END   ((St_VirtPage)0x000FFFF7FFFFFFFFULL)
 
 /*
 0xFFFF_8000_0000_0000-0xFFFF_BFFF_FFFF_FFFF Module Area
@@ -22,21 +22,21 @@
 
 */
 
-#define VIRT_PAGE_MAX               ((St_VirtPage)0x000FFFFFFFFFFFFFUL)
-#define VIRT_PAGE_PML4_MASK         ((St_VirtPage)0x0000000FF8000000UL)
-#define VIRT_PAGE_PML4_INDEX_MASK   VIRT_PAGE_PML4_MASK
-#define VIRT_PAGE_PDPT_MASK         ((St_VirtPage)0x0000000007FC0000UL)
-#define VIRT_PAGE_PDPT_INDEX_MASK   (VIRT_PAGE_PML4_INDEX_MASK | VIRT_PAGE_PDPT_MASK)
-#define VIRT_PAGE_PD_MASK           ((St_VirtPage)0x000000000003FE00UL)
-#define VIRT_PAGE_PD_INDEX_MASK     (VIRT_PAGE_PDPT_INDEX_MASK | VIRT_PAGE_PD_MASK)
-#define VIRT_PAGE_PT_MASK           ((St_VirtPage)0x00000000000001FFUL)
-#define VIRT_PAGE_PT_INDEX_MASK     (VIRT_PAGE_PD_INDEX_MASK | VIRT_PAGE_PT_MASK)
+#define VIRT_PAGE_MAX             ((St_VirtPage)0x000FFFFFFFFFFFFFUL)
+#define VIRT_PAGE_PML4_MASK       ((St_VirtPage)0x0000000FF8000000UL)
+#define VIRT_PAGE_PML4_INDEX_MASK VIRT_PAGE_PML4_MASK
+#define VIRT_PAGE_PDPT_MASK       ((St_VirtPage)0x0000000007FC0000UL)
+#define VIRT_PAGE_PDPT_INDEX_MASK (VIRT_PAGE_PML4_INDEX_MASK | VIRT_PAGE_PDPT_MASK)
+#define VIRT_PAGE_PD_MASK         ((St_VirtPage)0x000000000003FE00UL)
+#define VIRT_PAGE_PD_INDEX_MASK   (VIRT_PAGE_PDPT_INDEX_MASK | VIRT_PAGE_PD_MASK)
+#define VIRT_PAGE_PT_MASK         ((St_VirtPage)0x00000000000001FFUL)
+#define VIRT_PAGE_PT_INDEX_MASK   (VIRT_PAGE_PD_INDEX_MASK | VIRT_PAGE_PT_MASK)
 
-#define PAGE_TABLE_RCRS_SLOT        510UL
-#define PAGE_TABLE_RCRS_PT_BASE     (0xFFFF000000000000ULL | (PAGE_TABLE_RCRS_SLOT << 39))
-#define PAGE_TABLE_RCRS_PD_BASE     (PAGE_TABLE_RCRS_PT_BASE | (PAGE_TABLE_RCRS_SLOT << 30))
-#define PAGE_TABLE_RCRS_PDPT_BASE   (PAGE_TABLE_RCRS_PD_BASE | (PAGE_TABLE_RCRS_SLOT << 21))
-#define PAGE_TABLE_RCRS_PML4_BASE   (PAGE_TABLE_RCRS_PDPT_BASE | (PAGE_TABLE_RCRS_SLOT << 12))
+#define PAGE_TABLE_RCRS_SLOT      510UL
+#define PAGE_TABLE_RCRS_PT_BASE   (0xFFFF000000000000ULL | (PAGE_TABLE_RCRS_SLOT << 39))
+#define PAGE_TABLE_RCRS_PD_BASE   (PAGE_TABLE_RCRS_PT_BASE | (PAGE_TABLE_RCRS_SLOT << 30))
+#define PAGE_TABLE_RCRS_PDPT_BASE (PAGE_TABLE_RCRS_PD_BASE | (PAGE_TABLE_RCRS_SLOT << 21))
+#define PAGE_TABLE_RCRS_PML4_BASE (PAGE_TABLE_RCRS_PDPT_BASE | (PAGE_TABLE_RCRS_SLOT << 12))
 
 static union StA_PageMapLevel4Entry *const _pml4 = (void *)PAGE_TABLE_RCRS_PML4_BASE;
 static union StA_PageDirPtrTableEntry *const _pdpt = (void *)PAGE_TABLE_RCRS_PDPT_BASE;
@@ -107,7 +107,11 @@ StStatus StMmuP_CreateAddressSpace(struct StMmuP_AddressSpace **asp __out)
     status = StPmm_AllocateContiguousFrame(&root_table_pfn, (St_PageCount)1, PMM_DEFAULT);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    memcpy(PAGE_TO_VPTR((St_VirtPage)0xFFFFC00000000ULL + (St_VirtPage)root_table_pfn), _pml4, PAGE_SIZE);
+    memcpy(
+        PAGE_TO_VPTR((St_VirtPage)0xFFFFC00000000ULL + (St_VirtPage)root_table_pfn),
+        _pml4,
+        PAGE_SIZE
+    );
 
     new_asp->root_table_pfn = root_table_pfn;
 
@@ -148,10 +152,7 @@ StStatus StMmuP_SwitchAddressSpace(struct StMmuP_AddressSpace *asp __in)
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_VirtPageToPhysFrame(
-    St_VirtPage vpn __in,
-    St_PhysFrame *pfn __out_optional
-)
+StStatus StMmuP_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional)
 {
     uint64_t pml4e_idx;
     uint64_t pdpte_idx;
@@ -186,11 +187,7 @@ StStatus StMmuP_VirtPageToPhysFrame(
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_MapMemory(
-    St_PhysFrame pfn __in,
-    St_VirtPage vpn __in,
-    StMm_MapFlags mapflags __in
-)
+StStatus StMmuP_MapMemory(St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
 {
     StStatus status;
     uint64_t pml4e_idx;
@@ -276,7 +273,7 @@ StStatus StMmuP_MapMemory(
     _pt[pte_idx].raw = 0;
     _pt[pte_idx].base = (uint64_t)pfn;
     _pt[pte_idx].p = 1;
-    
+
     _pt[pte_idx].r_w = (mapflags & MAP_READONLY) ? 0 : 1;
     _pt[pte_idx].u_s = (mapflags & MAP_USER) ? 1 : 0;
     _pt[pte_idx].pcd = (mapflags & MAP_NO_CACHE) ? 1 : 0;
@@ -288,8 +285,4 @@ StStatus StMmuP_MapMemory(
     return STATUS_SUCCESS;
 }
 
-void StMmuP_UnmapMemory(St_VirtPage vpn)
-{
-    
-}
-
+void StMmuP_UnmapMemory(St_VirtPage vpn) {}

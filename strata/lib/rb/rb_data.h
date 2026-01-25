@@ -7,7 +7,7 @@
 #define _RB_DATA_HEADER
 
 typedef struct {
-	int key;
+    int key;
 } mydata;
 
 mydata *makedata(int key);
@@ -17,4 +17,3 @@ void print_func(void *d);
 void print_char_func(void *d);
 
 #endif /* _RB_DATA_HEADER */
-

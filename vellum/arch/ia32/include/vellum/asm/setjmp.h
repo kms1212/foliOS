@@ -15,4 +15,4 @@ struct jmp_buf {
 
 typedef struct jmp_buf jmp_buf[1];
 
-#endif // __VELLUM_ASM_SETJMP_H__
+#endif  // __VELLUM_ASM_SETJMP_H__

@@ -5,9 +5,9 @@
 
 #include <loadst/compiler.h>
 
-#define BTV_CURRENT     0
+#define BTV_CURRENT 0
 
-#define BTF_BIGENDIAN   0x0001
+#define BTF_BIGENDIAN 0x0001
 
 struct bootinfo_table_header {
     uint16_t flags;
@@ -19,7 +19,7 @@ struct bootinfo_table_header {
     char strtab[];
 } __packed;
 
-#define BEF_REQUIRED    0x0001
+#define BEF_REQUIRED 0x0001
 
 struct bootinfo_entry_header {
     uint32_t type;
@@ -28,17 +28,17 @@ struct bootinfo_entry_header {
     uint32_t size;
 } __packed;
 
-#define BET_COMMAND_ARGS        0
-#define BET_LOADER_INFO         1
-#define BET_MEMORY_MAP          2
-#define BET_SYSTEM_DISK         3
-#define BET_ACPI_RSDP           4
-#define BET_FRAMEBUFFER         5
-#define BET_DEFAULT_FONT        6
-#define BET_BOOT_GRAPHICS       7
-#define BET_UNAVAILABLE_FRAMES  8
-#define BET_PAGETABLE_VPN       9
-#define BET_RAMDISK             10
+#define BET_COMMAND_ARGS       0
+#define BET_LOADER_INFO        1
+#define BET_MEMORY_MAP         2
+#define BET_SYSTEM_DISK        3
+#define BET_ACPI_RSDP          4
+#define BET_FRAMEBUFFER        5
+#define BET_DEFAULT_FONT       6
+#define BET_BOOT_GRAPHICS      7
+#define BET_UNAVAILABLE_FRAMES 8
+#define BET_PAGETABLE_VPN      9
+#define BET_RAMDISK            10
 
 struct bootinfo_entry_command_args {
     uint32_t arg_count;
@@ -53,11 +53,11 @@ struct bootinfo_entry_loader_info {
     uint32_t additional_entries[];
 } __packed;
 
-#define BEMT_FREE               1
-#define BEMT_RESERVED           2
-#define BEMT_ACPI_RECLAIMABLE   3
-#define BEMT_ACPI_NVS           4
-#define BEMT_BAD                5
+#define BEMT_FREE             1
+#define BEMT_RESERVED         2
+#define BEMT_ACPI_RECLAIMABLE 3
+#define BEMT_ACPI_NVS         4
+#define BEMT_BAD              5
 
 struct bootinfo_entry_memory_map {
     uint32_t entry_count;
@@ -87,8 +87,8 @@ struct bootinfo_entry_acpi_rsdp {
     uint64_t xsdt_addr;
 } __packed;
 
-#define BEFT_TEXT       0
-#define BEFT_DIRECT     1
+#define BEFT_TEXT   0
+#define BEFT_DIRECT 1
 
 struct bootinfo_entry_framebuffer {
     uint64_t framebuffer_addr;
@@ -124,11 +124,11 @@ struct bootinfo_entry_boot_graphics {
     uint64_t data_addr;
 } __packed;
 
-#define BEUT_PAGETABLE      0
-#define BEUT_KERNEL         1
-#define BEUT_DEFAULT_FONT   2
-#define BEUT_BOOT_GRAPHICS  3
-#define BEUT_RAMDISK        4
+#define BEUT_PAGETABLE     0
+#define BEUT_KERNEL        1
+#define BEUT_DEFAULT_FONT  2
+#define BEUT_BOOT_GRAPHICS 3
+#define BEUT_RAMDISK       4
 
 struct bootinfo_entry_unavailable_frames {
     uint32_t entry_count;
@@ -144,10 +144,10 @@ struct bootinfo_entry_pagetable_vpn {
 } __packed;
 
 struct bootinfo_entry_ramdisk {
-    uint8_t  version;
-    uint8_t  reserved[3];
+    uint8_t version;
+    uint8_t reserved[3];
     uint32_t size;
     uint64_t data_addr;
 };
 
-#endif // __LOADST_BOOTINFO_H__
+#endif  // __LOADST_BOOTINFO_H__

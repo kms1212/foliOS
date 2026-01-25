@@ -1,15 +1,15 @@
 #include "command.h"
 
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <getopt.h>
 
 #include "folifs.h"
 
 static const struct option options[] = {
-    { "image", 1, NULL, 'i' },
-    { 0, 0, 0, 0 },
+    {"image", 1, NULL, 'i'},
+    {0, 0, 0, 0},
 };
 
 int volinfo_handler(int argc, char **argv)
@@ -22,15 +22,15 @@ int volinfo_handler(int argc, char **argv)
         next_option = getopt_long(argc, argv, "i:", options, NULL);
 
         switch (next_option) {
-            case 'i':
-                image_path = optarg; 
-                break;
-            case '?':
-                return 1;
-            case -1:
-                break;
-            default:
-                exit(1);
+        case 'i':
+            image_path = optarg;
+            break;
+        case '?':
+            return 1;
+        case -1:
+            break;
+        default:
+            exit(1);
         }
     } while (next_option != -1);
 
@@ -43,7 +43,8 @@ int volinfo_handler(int argc, char **argv)
 
     void *buf = malloc(512);
 
-    uint64_t total_sector_count, total_block_count, root_mdb_pointer, udb_pointer, jbb_pointer, rbb_pointer, group0_gbb_pointer;
+    uint64_t total_sector_count, total_block_count, root_mdb_pointer, udb_pointer, jbb_pointer,
+        rbb_pointer, group0_gbb_pointer;
     uint32_t flags;
     uint16_t reserved_sectors, bytes_per_sector, filesystem_version;
     uint8_t sectors_per_block, rdb_copy_count;
@@ -59,10 +60,8 @@ int volinfo_handler(int argc, char **argv)
 
     /* validate signature & get values */
     struct folifs_first_sector *sect0 = buf;
-    if (sect0->filesystem_signature[0] != 'A' ||
-        sect0->filesystem_signature[1] != 'F' ||
-        sect0->filesystem_signature[2] != 'S' ||
-        sect0->filesystem_signature[3] != '\0') {
+    if (sect0->filesystem_signature[0] != 'A' || sect0->filesystem_signature[1] != 'F' ||
+        sect0->filesystem_signature[2] != 'S' || sect0->filesystem_signature[3] != '\0') {
         fprintf(stderr, "%s: invalid filesystem signature\n", argv0);
         close_image();
         exit(1);
@@ -112,7 +111,11 @@ int volinfo_handler(int argc, char **argv)
     filesystem_version = rdb->filesystem_version;
 
     /* read root MDB */
-    io_count = read_sector(buf, reserved_sectors + root_mdb_pointer * sectors_per_block, sectors_per_block);
+    io_count = read_sector(
+        buf,
+        reserved_sectors + root_mdb_pointer * sectors_per_block,
+        sectors_per_block
+    );
     if (io_count != sectors_per_block) {
         close_image();
         exit(1);
@@ -135,9 +138,13 @@ int volinfo_handler(int argc, char **argv)
 
         if (mdb->next_mdb_pointer && entry->header.entry_type == 0) {
             mdb_offset = sizeof(struct folifs_mdb);
-            
+
             /* read next root MDB */
-            io_count = read_sector(buf, reserved_sectors + mdb->next_mdb_pointer * sectors_per_block, sectors_per_block);
+            io_count = read_sector(
+                buf,
+                reserved_sectors + mdb->next_mdb_pointer * sectors_per_block,
+                sectors_per_block
+            );
             if (io_count != sectors_per_block) {
                 close_image();
                 exit(1);
@@ -147,14 +154,14 @@ int volinfo_handler(int argc, char **argv)
         }
 
         switch (entry->header.entry_type) {
-            case MDB_ENTRY_FAE:
-            case MDB_ENTRY_TAE:
-            case MDB_ENTRY_PAE:
-            case MDB_ENTRY_QAE:
-            case MDB_ENTRY_EAE:
-            case MDB_ENTRY_CAE:
-            default:
-                break;
+        case MDB_ENTRY_FAE:
+        case MDB_ENTRY_TAE:
+        case MDB_ENTRY_PAE:
+        case MDB_ENTRY_QAE:
+        case MDB_ENTRY_EAE:
+        case MDB_ENTRY_CAE:
+        default:
+            break;
         }
     } while (entry->header.entry_type != 0);
 
@@ -168,11 +175,24 @@ int volinfo_handler(int argc, char **argv)
     printf("JBB Pointer: 0x%016llX\n", jbb_pointer);
     printf("RBB Pointer: 0x%016llX\n", rbb_pointer);
     printf("Group 0 GBB Pointer: 0x%016llX\n", group0_gbb_pointer);
-    printf("Volume UUID: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
-        volume_uuid.bytes[0], volume_uuid.bytes[1], volume_uuid.bytes[2], volume_uuid.bytes[3],
-        volume_uuid.bytes[4], volume_uuid.bytes[5], volume_uuid.bytes[6], volume_uuid.bytes[7],
-        volume_uuid.bytes[8], volume_uuid.bytes[9], volume_uuid.bytes[10], volume_uuid.bytes[11],
-        volume_uuid.bytes[12], volume_uuid.bytes[13], volume_uuid.bytes[14], volume_uuid.bytes[15]
+    printf(
+        "Volume UUID: %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+        volume_uuid.bytes[0],
+        volume_uuid.bytes[1],
+        volume_uuid.bytes[2],
+        volume_uuid.bytes[3],
+        volume_uuid.bytes[4],
+        volume_uuid.bytes[5],
+        volume_uuid.bytes[6],
+        volume_uuid.bytes[7],
+        volume_uuid.bytes[8],
+        volume_uuid.bytes[9],
+        volume_uuid.bytes[10],
+        volume_uuid.bytes[11],
+        volume_uuid.bytes[12],
+        volume_uuid.bytes[13],
+        volume_uuid.bytes[14],
+        volume_uuid.bytes[15]
     );
     printf("Formatted OS: %s\n", formatted_os);
     printf("Filesystem Version: %u\n", filesystem_version);

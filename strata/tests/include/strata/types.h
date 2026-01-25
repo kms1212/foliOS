@@ -1,9 +1,9 @@
 #ifndef __STRATA_TYPES_H__
 #define __STRATA_TYPES_H__
 
-#include <stdint.h>
-#include <stddef.h>
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #include <strata/compiler.h>
 
@@ -20,4 +20,4 @@ typedef uint16_t uint_le16_t __bitwise;
 typedef uint32_t uint_le32_t __bitwise;
 typedef uint64_t uint_le64_t __bitwise;
 
-#endif // __STRATA_TYPES_H__
+#endif  // __STRATA_TYPES_H__

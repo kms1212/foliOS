@@ -1,26 +1,26 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <vellum/asm/bios/bootinfo.h>
 #include <vellum/asm/bios/misc.h>
 #include <vellum/asm/power.h>
 
-#include <vellum/macros.h>
-#include <vellum/status.h>
-#include <vellum/panic.h>
-#include <vellum/log.h>
 #include <vellum/device.h>
 #include <vellum/filesystem.h>
-#include <vellum/json.h>
-#include <vellum/hid.h>
-#include <vellum/shell.h>
 #include <vellum/global_configs.h>
+#include <vellum/hid.h>
 #include <vellum/interface/block.h>
 #include <vellum/interface/char.h>
 #include <vellum/interface/console.h>
 #include <vellum/interface/framebuffer.h>
 #include <vellum/interface/hid.h>
+#include <vellum/json.h>
+#include <vellum/log.h>
+#include <vellum/macros.h>
+#include <vellum/panic.h>
+#include <vellum/shell.h>
+#include <vellum/status.h>
 
 #include <x86gprintrin.h>
 
@@ -42,13 +42,13 @@ void setup_tty(void)
         fprintf(stderr, "find_device() failed: 0x%08X\n", status);
         panic(status, "video device not available");
     }
-    
+
     status = fbdev->driver->get_interface(fbdev, "framebuffer", (const void **)&fbi);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "get_interface() failed: 0x%08X\n", status);
         panic(status, "failed to get interface from device");
     }
-    
+
     status = device_driver_find("vconsole", &condrv);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "find_device_driver() failed: 0x%08X\n", status);
@@ -133,7 +133,7 @@ void read_config(void)
     if (!CHECK_SUCCESS(status) || !json || json->type != JVT_OBJECT) {
         panic(STATUS_INVALID_FORMAT, "invalid config file");
     }
-    
+
     free(cfg_str);
     fclose(cfg_fp);
 
@@ -164,7 +164,7 @@ void read_config(void)
     /* read out whether rtc stores utc */
     status = json_object_find_value(&config_data->obj, "rtc_utc", &rtc_utc);
     if (!CHECK_SUCCESS(status) || !rtc_utc) {
-        config_rtc_utc = 1;  /* assume that rtc stores utc time */
+        config_rtc_utc = 1; /* assume that rtc stores utc time */
     } else if (rtc_utc->type == JVT_BOOLEAN) {
         config_rtc_utc = rtc_utc->boolean;
     } else {
@@ -180,7 +180,10 @@ void read_config(void)
     } else if (start_script->type == JVT_ARRAY) {
         for (struct json_array_elem *elem = start_script->arr.elem; elem; elem = elem->next) {
             if (elem->value->type != JVT_STRING) {
-                panic(STATUS_INVALID_FORMAT, "an element of array \"start_script\" has invalid value type");
+                panic(
+                    STATUS_INVALID_FORMAT,
+                    "an element of array \"start_script\" has invalid value type"
+                );
             }
             shell_execute(NULL, elem->value->str);
         }
@@ -243,7 +246,7 @@ int show_menu(struct json_value *menu, int root_menu)
     if (!CHECK_SUCCESS(status)) {
         panic(status, "keyboard not detected");
     }
-    
+
     status = kbd->driver->get_interface(kbd, "hid", (const void **)&hidi);
     if (!CHECK_SUCCESS(status)) {
         panic(status, "failed to get interface from device");
@@ -251,7 +254,10 @@ int show_menu(struct json_value *menu, int root_menu)
 
     status = json_object_find_value(&menu->obj, "options", &options);
     if (!CHECK_SUCCESS(status) || !options) {
-        panic(!CHECK_SUCCESS(status) ? status : STATUS_INVALID_FORMAT, "element \"options\" not found");
+        panic(
+            !CHECK_SUCCESS(status) ? status : STATUS_INVALID_FORMAT,
+            "element \"options\" not found"
+        );
     } else if (options->type != JVT_ARRAY) {
         panic(STATUS_INVALID_FORMAT, "element \"options\" has invalid value type");
     }
@@ -277,7 +283,10 @@ reselect:
         for (int i = 0; i < option_count; i++) {
             status = json_array_find_value(&options->arr, i, &option);
             if (!CHECK_SUCCESS(status) || !option || option->type != JVT_OBJECT) {
-                panic(STATUS_INVALID_FORMAT, "an element of array \"options\" is not found or has invalid type");
+                panic(
+                    STATUS_INVALID_FORMAT,
+                    "an element of array \"options\" is not found or has invalid type"
+                );
             }
 
             status = json_object_find_value(&option->obj, "name", &option_name);
@@ -301,9 +310,18 @@ reselect:
         }
 
         if (selection_changed) {
-            printf("\n  Select option: %d\x1b[0K\x1b[%d;18H\x1b[?25h", selection + 1, root_menu ? option_count + 6 : option_count + 7);
+            printf(
+                "\n  Select option: %d\x1b[0K\x1b[%d;18H\x1b[?25h",
+                selection + 1,
+                root_menu ? option_count + 6 : option_count + 7
+            );
         } else {
-            printf("\n  Select option: %d\tTime remaining: %d\x1b[%d;18H\x1b[?25h", selection + 1, timeout_value, root_menu ? option_count + 6 : option_count + 7);
+            printf(
+                "\n  Select option: %d\tTime remaining: %d\x1b[%d;18H\x1b[?25h",
+                selection + 1,
+                timeout_value,
+                root_menu ? option_count + 6 : option_count + 7
+            );
         }
 
         status = hidi->wait_event(kbd);
@@ -314,25 +332,25 @@ reselect:
         } while (status == STATUS_BUFFER_UNDERFLOW);
         if (!CHECK_SUCCESS(status) || (flags & 1)) continue;
 
-        switch (key)  {
-            case KEY_UP:
-                if (selection > 0) {
-                    selection--;
-                }
-                selection_changed = 1;
-                break;
-            case KEY_DOWN:
-                if (selection < (root_menu ? option_count - 1 : option_count)) {
-                    selection++;
-                }
-                selection_changed = 1;
-                break;
-            case KEY_ENTER:
-            case KEY_KPENTER:
-                selected = 1;
-                break;
-            default:
-                break;
+        switch (key) {
+        case KEY_UP:
+            if (selection > 0) {
+                selection--;
+            }
+            selection_changed = 1;
+            break;
+        case KEY_DOWN:
+            if (selection < (root_menu ? option_count - 1 : option_count)) {
+                selection++;
+            }
+            selection_changed = 1;
+            break;
+        case KEY_ENTER:
+        case KEY_KPENTER:
+            selected = 1;
+            break;
+        default:
+            break;
         }
     }
 
@@ -342,7 +360,10 @@ reselect:
 
     status = json_array_find_value(&options->arr, selection, &option);
     if (!CHECK_SUCCESS(status) || !option || option->type != JVT_OBJECT) {
-        panic(STATUS_INVALID_FORMAT, "an element of array \"options\" is not found or has invalid type");
+        panic(
+            STATUS_INVALID_FORMAT,
+            "an element of array \"options\" is not found or has invalid type"
+        );
     }
 
     fputs("\x1b[3J\x1b[0;0f\x1b[?25h", stdout);
@@ -354,7 +375,10 @@ reselect:
     } else if (option_script->type == JVT_ARRAY) {
         for (struct json_array_elem *elem = option_script->arr.elem; elem; elem = elem->next) {
             if (elem->value->type != JVT_STRING) {
-                panic(STATUS_INVALID_FORMAT, "an element of array \"script\" has invalid value type");
+                panic(
+                    STATUS_INVALID_FORMAT,
+                    "an element of array \"script\" has invalid value type"
+                );
             }
             shell_execute(NULL, elem->value->str);
         }
@@ -373,8 +397,7 @@ reselect:
     return 0;
 }
 
-__noreturn
-void main(void)
+__noreturn void main(void)
 {
     status_t status;
     struct json_value *menu = NULL;

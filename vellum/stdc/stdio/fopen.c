@@ -1,9 +1,9 @@
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include <vellum/path.h>
 #include <vellum/filesystem.h>
+#include <vellum/path.h>
 
 FILE *fopen(const char *__restrict path, const char *__restrict mode)
 {
@@ -44,7 +44,7 @@ FILE *fopen(const char *__restrict path, const char *__restrict mode)
     if (!pathit.element[0]) {
         return NULL;
     }
-    
+
     struct fs_file *file;
     status = fs->driver->open(dir, pathit.element, &file);
     if (!CHECK_SUCCESS(status)) return NULL;
@@ -60,4 +60,3 @@ FILE *fopen(const char *__restrict path, const char *__restrict mode)
 
     return stream;
 }
-

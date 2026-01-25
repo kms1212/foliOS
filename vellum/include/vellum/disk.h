@@ -26,4 +26,4 @@ __always_inline struct chs disk_lba_to_chs(lba_t lba, struct chs geom)
     return chs;
 }
 
-#endif // __VELLUM_DISK_H__
+#endif  // __VELLUM_DISK_H__

@@ -50,8 +50,10 @@ void json_destruct(struct json_value *obj);
 
 status_t json_parse(const char *str, long len, struct json_value **json);
 
-status_t json_object_find_value(struct json_object *obj, const char *str, struct json_value **value);
+status_t json_object_find_value(
+    struct json_object *obj, const char *str, struct json_value **value
+);
 status_t json_array_find_value(struct json_array *arr, unsigned int idx, struct json_value **value);
 status_t json_array_get_element_count(struct json_array *arr, unsigned int *count);
 
-#endif // __VELLUM_JSON_H__
+#endif  // __VELLUM_JSON_H__

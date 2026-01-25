@@ -51,4 +51,4 @@ struct atapi_device_ident {
     uint16_t integrity;
 } __packed;
 
-#endif // __ATAPI_H__
+#endif  // __ATAPI_H__

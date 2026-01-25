@@ -1,10 +1,12 @@
 #include <vellum/mm.h>
 
-int liballoc_lock(void) {
+int liballoc_lock(void)
+{
     return 0;
 }
 
-int liballoc_unlock(void) {
+int liballoc_unlock(void)
+{
     return 0;
 }
 

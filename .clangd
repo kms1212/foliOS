@@ -7,62 +7,22 @@ CompileFlags:
     - -Wextra
     - -nostdinc
     - -Icommon/include
+    - -D_Atomic(X)=X
 
 ---
 If:
   PathMatch: vellum/.*
 CompileFlags:
   CompilationDatabase: build/vellum
-  Add:
-    - --target=i686-pc-none-elf
-    - -I/opt/homebrew/Cellar/i686-elf-gcc/15.2.0/lib/gcc/i686-elf/15.2.0/include
-    - -Icommon/include
-    - -Ivellum/include
-    - -Ivellum/arch/i686/include
-    - -Ivellum/arch/i686/pc/bios/include
-    - -Ivellum/lib/getopt/include
-    - -Ivellum/lib/liballoc/include
-    - -Ivellum/lib/gnu-efi/inc
-    - -Ibuild/vellum/_deps/uacpi-src/include
 
 ---
 If:
   PathMatch: strata/.*
 CompileFlags:
   CompilationDatabase: build/strata
-  Add:
-    - -Icommon/include
-    - -Istrata/include
-    - -Istrata/lib/liballoc/include
-    # Default to i686
-    - --target=i686-pc-none-elf
-    - -I/opt/homebrew/Cellar/i686-elf-gcc/15.2.0/lib/gcc/i686-elf/15.2.0/include
-    - -Istrata/arch/i686/include
-    - -Istrata/arch/i686/pc/include
-
----
-If:
-  PathMatch: strata/arch/amd64/.*
-CompileFlags:
-  Remove:
-    - --target=i686-pc-none-elf
-    - -Istrata/arch/i686/include
-    - -Istrata/arch/i686/pc/include
-    - -I/opt/homebrew/Cellar/i686-elf-gcc/15.2.0/lib/gcc/i686-elf/15.2.0/include
-  Add:
-    - --target=x86_64-pc-none-elf
-    - -I/opt/homebrew/Cellar/x86_64-elf-gcc/15.2.0/lib/gcc/x86_64-elf/15.2.0/include
-    - -Istrata/arch/amd64/include
-    - -Istrata/arch/amd64/pc/include
 
 ---
 If:
   PathMatch: strata/tests/.*
 CompileFlags:
-  Remove:
-    - --target=i686-pc-none-elf
-    - -nostdinc
-    - -D__STDC_HOSTED__=0
-  Add:
-    - -Istrata/tests/include
-    - -DTESTING=1
+  CompilationDatabase: build/strata/tests

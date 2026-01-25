@@ -13,4 +13,4 @@ struct StGnt_Node {
     St_Utf32Char name[];
 };
 
-#endif // __STRATA_GNT_H__
+#endif  // __STRATA_GNT_H__

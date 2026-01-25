@@ -23,26 +23,24 @@ FetchContent_Declare(zlib
     URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
     DOWNLOAD_EXTRACT_TIMESTAMP false
 )
-include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
-include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/liballoc/include")
 
 set(ZLIB_BUILD_EXAMPLES OFF)
 FetchContent_MakeAvailable(zlib)
 
-target_include_directories(vellum PRIVATE
-    "${CMAKE_BINARY_DIR}/_deps/zlib-src"
-    "${CMAKE_BINARY_DIR}/_deps/zlib-build"
-)
-
 set_target_properties(zlib PROPERTIES EXCLUDE_FROM_ALL TRUE EXCLUDE_FROM_DEFAULT_BUILD TRUE)
 
-set_target_properties(zlibstatic PROPERTIES C_CLANG_TIDY "")
 
 add_library(zlib.lib STATIC IMPORTED GLOBAL)
 add_dependencies(zlib.lib PRIVATE zlibstatic)
 set_target_properties(zlib.lib PROPERTIES IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/_deps/zlib-build/libzlibstatic.a")
 
+target_include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
+target_include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/liballoc/include")
+set_target_properties(zlibstatic PROPERTIES C_CLANG_TIDY "")
+
 target_link_libraries(vellum zlib.lib)
+target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-src")
+target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-build")
 
 FetchContent_Declare(uacpi
     URL "https://github.com/uACPI/uACPI/archive/refs/tags/3.1.0.tar.gz"
@@ -52,7 +50,7 @@ FetchContent_Declare(uacpi
 FetchContent_MakeAvailable(uacpi)
 
 include("${CMAKE_BINARY_DIR}/_deps/uacpi-src/uacpi.cmake")
-target_include_directories(vellum PRIVATE ${UACPI_INCLUDES})
+target_include_directories(vellum SYSTEM PRIVATE ${UACPI_INCLUDES})
 
 add_library(uacpi.lib STATIC)
 

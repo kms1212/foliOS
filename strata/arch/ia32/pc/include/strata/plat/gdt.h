@@ -13,4 +13,4 @@
 
 void StP_InitGdt(void);
 
-#endif // __STRATA_PLAT_GDT_H__
+#endif  // __STRATA_PLAT_GDT_H__

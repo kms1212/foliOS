@@ -3,10 +3,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <vellum/status.h>
-#include <vellum/device.h>
 #include <vellum/debug.h>
+#include <vellum/device.h>
 #include <vellum/interface/block.h>
+#include <vellum/status.h>
 
 static int readblk_handler(struct shell_instance *inst, int argc, char **argv)
 {

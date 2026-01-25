@@ -6,7 +6,7 @@
 int atoi(const char *str)
 {
     int ret = 0;
-    int sign = 0; // 0: positive 1: negative
+    int sign = 0;  // 0: positive 1: negative
 
     while (*str && *str == ' ') {  // trim leading spaces
         str++;

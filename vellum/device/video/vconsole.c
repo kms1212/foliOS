@@ -1,23 +1,22 @@
-#include <stdint.h>
-#include <stdlib.h>
-#include <stdio.h>
 #include <errno.h>
-#include <string.h>
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <wchar.h>
 
 #include <vellum/asm/io.h>
 
-#include <vellum/status.h>
-#include <vellum/macros.h>
-#include <vellum/log.h>
 #include <vellum/compiler.h>
-#include <vellum/font.h>
 #include <vellum/device.h>
-#include <vellum/interface/video.h>
-#include <vellum/interface/framebuffer.h>
-#include <vellum/interface/console.h>
+#include <vellum/font.h>
 #include <vellum/interface/char.h>
+#include <vellum/interface/console.h>
+#include <vellum/interface/framebuffer.h>
+#include <vellum/interface/video.h>
+#include <vellum/log.h>
+#include <vellum/macros.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "vconsole"
 
@@ -56,8 +55,22 @@ static status_t draw_char(struct device *dev, int col, int row)
     int x_offset, y_offset;
     uint8_t font_glyph[32];
     static const uint8_t fallback_glyph[16] = {
-        0x00, 0x00, 0x00, 0x7E, 0x66, 0x5A, 0x5A, 0x7A,
-        0x76, 0x76, 0x7E, 0x76, 0x76, 0x7E, 0x00, 0x00,
+        0x00,
+        0x00,
+        0x00,
+        0x7E,
+        0x66,
+        0x5A,
+        0x5A,
+        0x7A,
+        0x76,
+        0x76,
+        0x7E,
+        0x76,
+        0x76,
+        0x7E,
+        0x00,
+        0x00,
     };
     const uint8_t *glyph;
     int use_fallback;
@@ -91,7 +104,7 @@ static status_t draw_char(struct device *dev, int col, int row)
         cheight = 16;
     }
 
-    glyph = use_fallback ? fallback_glyph : font_glyph;     
+    glyph = use_fallback ? fallback_glyph : font_glyph;
 
     for (int y = 0; y < cheight; y++) {
         for (int x = 0; x < cwidth; x++) {
@@ -111,22 +124,26 @@ static status_t draw_char(struct device *dev, int col, int row)
             }
 
             if (cell->attr.text_reversed) {
-                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] = fg ? bg_color : fg_color;
+                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] =
+                    fg ? bg_color : fg_color;
             } else {
-                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] = fg ? fg_color : bg_color;
+                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] =
+                    fg ? fg_color : bg_color;
             }
         }
 
-        if ((cell->attr.text_overlined && y == 1) ||
-            (cell->attr.text_strike && y == 8) ||
+        if ((cell->attr.text_overlined && y == 1) || (cell->attr.text_strike && y == 8) ||
             (cell->attr.text_underline && y == 15)) {
             for (int x = 0; x < cwidth; x++) {
-                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] = cell->attr.text_reversed ? cell->attr.bg_color : cell->attr.fg_color;
+                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] =
+                    cell->attr.text_reversed ? cell->attr.bg_color : cell->attr.fg_color;
             }
         }
     }
-    
-    status = data->fbif->invalidate(data->fbdev, x_offset, y_offset, x_offset + cwidth, y_offset + cheight);
+
+    status =
+        data->fbif
+            ->invalidate(data->fbdev, x_offset, y_offset, x_offset + cwidth, y_offset + cheight);
     if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
@@ -141,7 +158,7 @@ static status_t draw_cursor(struct device *dev)
 
     status = data->fbif->get_framebuffer(data->fbdev, (void **)&framebuffer);
     if (!CHECK_SUCCESS(status)) return status;
-    
+
     x_offset = data->cursor_col * 8;
     y_offset = data->cursor_row * 16;
 
@@ -151,7 +168,8 @@ static status_t draw_cursor(struct device *dev)
         }
     }
 
-    status = data->fbif->invalidate(data->fbdev, x_offset, y_offset + 14, x_offset + 8, y_offset + 16);
+    status =
+        data->fbif->invalidate(data->fbdev, x_offset, y_offset + 14, x_offset + 8, y_offset + 16);
     if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
@@ -216,13 +234,16 @@ static status_t flush(struct device *dev)
 
     for (int row = 0; row < data->rows; row++) {
         for (int col = 0; col < data->cols; col++) {
-            if (data->diff_buffer[(row * data->cols + col) / 8] & (1 << ((row * data->cols + col) % 8)) ||
-                ((data->cursor_prev_col != data->cursor_col || data->cursor_prev_row != data->cursor_row) &&
-                (data->cursor_prev_col == col && data->cursor_prev_row == row))) {
+            if (data->diff_buffer[(row * data->cols + col) / 8] &
+                    (1 << ((row * data->cols + col) % 8)) ||
+                ((data->cursor_prev_col != data->cursor_col ||
+                  data->cursor_prev_row != data->cursor_row) &&
+                 (data->cursor_prev_col == col && data->cursor_prev_row == row))) {
                 /* status = */ draw_char(dev, col, row);
                 // ignore status
 
-                data->diff_buffer[(row * data->cols + col) / 8] &= ~(1 << ((row * data->cols + col) % 8));
+                data->diff_buffer[(row * data->cols + col) / 8] &=
+                    ~(1 << ((row * data->cols + col) % 8));
             }
         }
     }
@@ -230,7 +251,7 @@ static status_t flush(struct device *dev)
     if (data->cursor_prev_col != data->cursor_col || data->cursor_prev_row != data->cursor_row) {
         data->cursor_prev_col = data->cursor_col;
         data->cursor_prev_row = data->cursor_row;
-        
+
         if (data->cursor_visible) {
             /* status = */ draw_cursor(dev);
             // ignore status
@@ -312,7 +333,13 @@ static const struct console_interface conif = {
     .get_cursor_attr = NULL,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -362,7 +389,8 @@ static void video_mode_callback(void *_dev, struct device *fbdev, int mode)
         data->rows = data->current_vmode_info.height / 16;
 
         LOG_DEBUG("allocating buffers... cols=%d, rows=%d\n", data->cols, data->rows);
-        new_char_buffer = realloc(data->char_buffer, data->cols * data->rows * sizeof(*data->char_buffer));
+        new_char_buffer =
+            realloc(data->char_buffer, data->cols * data->rows * sizeof(*data->char_buffer));
         if (!new_char_buffer) goto has_error;
         data->char_buffer = new_char_buffer;
         memset(data->char_buffer, 0, data->cols * data->rows * sizeof(*data->char_buffer));
@@ -380,7 +408,7 @@ static void video_mode_callback(void *_dev, struct device *fbdev, int mode)
     data->cursor_row = 0;
     data->cursor_prev_col = 0;
     data->cursor_prev_row = 0;
-    
+
     data->is_switching_mode = 0;
 
     return;
@@ -389,7 +417,13 @@ has_error:
     panic(STATUS_UNKNOWN_ERROR, "I think there's no way to recover this");
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -404,13 +438,13 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_INVALID_VALUE;
         goto has_error;
     }
-    
+
     status = fbdev->driver->get_interface(fbdev, "video", (const void **)&vidif);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = fbdev->driver->get_interface(fbdev, "framebuffer", (const void **)&fbif);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = fbdev->driver->get_interface(fbdev, "console", (const void **)&conif);
     if (!CHECK_SUCCESS(status)) {  // optional
         conif = NULL;
@@ -445,11 +479,11 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     status = vidif->get_mode(fbdev, &data->current_vmode);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     video_mode_callback(dev, fbdev, data->current_vmode);
-    
+
     vidif->add_mode_callback(fbdev, dev, video_mode_callback, &data->fbdev_callback_id);
-    
+
     if (devout) *devout = dev;
 
     LOG_DEBUG("initialization success\n");

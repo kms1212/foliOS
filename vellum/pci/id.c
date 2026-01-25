@@ -2,7 +2,14 @@
 
 #include <vellum/pci/driver.h>
 
-int _bus_pci_match_id(const struct pci_device_driver *driver, uint16_t vendor_id, uint16_t device_id, uint16_t base_class, uint16_t sub_class, uint16_t interface)
+int _bus_pci_match_id(
+    const struct pci_device_driver *driver,
+    uint16_t vendor_id,
+    uint16_t device_id,
+    uint16_t base_class,
+    uint16_t sub_class,
+    uint16_t interface
+)
 {
     if (driver->id.vendor_id != PCI_DEVICE_ID_ANY && driver->id.vendor_id != vendor_id) {
         return 0;

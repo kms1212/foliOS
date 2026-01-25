@@ -4,7 +4,8 @@
 
 #include <vellum/device.h>
 
-static void print_dev_tree(struct device *parent_dev, int indent, uint32_t chain) {
+static void print_dev_tree(struct device *parent_dev, int indent, uint32_t chain)
+{
     struct device *dev = parent_dev->first_child;
 
     while (dev) {

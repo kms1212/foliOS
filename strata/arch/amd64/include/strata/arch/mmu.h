@@ -52,7 +52,7 @@ union StA_PaePageTableEntry {
 
 union StA_PageDirectoryEntry {
     uint32_t raw;
-    
+
     struct {
         uint32_t p : 1;
         uint32_t r_w : 1;
@@ -209,4 +209,4 @@ __always_inline void StA_InvalidatePage(St_VirtPage vpn)
     }
 }
 
-#endif // __STRATA_ARCH_MMU_H__
+#endif  // __STRATA_ARCH_MMU_H__

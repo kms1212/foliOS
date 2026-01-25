@@ -37,7 +37,7 @@ static int readfile_handler(struct shell_instance *inst, int argc, char **argv)
         printf("%.*s", read_count, buf);
     }
     printf("\n");
-    
+
     fclose(fp);
 
     return 0;

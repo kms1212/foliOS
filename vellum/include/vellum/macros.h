@@ -10,7 +10,7 @@
 
 #define TEST_FLAG(val, mask) (((val) & (mask)) == (mask))
 
-#define ALIGN(v, a) (((v) + (a) - 1) & ~((a) - 1))
+#define ALIGN(v, a)     (((v) + (a) - 1) & ~((a) - 1))
 #define ALIGN_DIV(v, a) (((v) + (a) - 1) / (a))
 
 #endif  // __VELLUM_MACROS_H__

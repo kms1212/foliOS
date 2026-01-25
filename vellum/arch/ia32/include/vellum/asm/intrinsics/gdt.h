@@ -9,8 +9,7 @@
 
 __always_inline void _ia32_lgdt(struct gdtr *gdtr)
 {
-    __asm__ volatile ("lgdt (%0)" : : "r"(gdtr));
+    __asm__ volatile("lgdt (%0)" : : "r"(gdtr));
 }
 
-
-#endif // __VELLUM_ASM_INTRINSICS_GDT_H__
+#endif  // __VELLUM_ASM_INTRINSICS_GDT_H__

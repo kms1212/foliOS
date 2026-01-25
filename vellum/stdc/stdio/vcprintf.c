@@ -2,23 +2,23 @@
 
 #include <ctype.h>
 #include <limits.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <vellum/macros.h>
 
-#define SF_LEFT     0x01
-#define SF_PLUS     0x02
-#define SF_SPACE    0x04
-#define SF_ZERO     0x08
-#define SF_LOWER    0x10
-#define SF_PREFIX   0x20
-#define SF_PTR      0x40
+#define SF_LEFT   0x01
+#define SF_PLUS   0x02
+#define SF_SPACE  0x04
+#define SF_ZERO   0x08
+#define SF_LOWER  0x10
+#define SF_PREFIX 0x20
+#define SF_PTR    0x40
 
-#define WIDTH_AUTO  0
-#define PREC_ARG    -1
-#define WIDTH_ARG   -1
+#define WIDTH_AUTO 0
+#define PREC_ARG   -1
+#define WIDTH_ARG  -1
 
 enum fmt_spec_type {
     ST_INVALID = 0,
@@ -57,28 +57,28 @@ struct fmt_spec {
 
 static struct fmt_spec decode_spec(const char *fmt)
 {
-    struct fmt_spec spec = { 0 };
+    struct fmt_spec spec = {0};
 
     // flags
     while (*fmt) {
         switch (*fmt) {
-            case '-':
-                spec.flags |= SF_LEFT;
-                break;
-            case '+':
-                spec.flags |= SF_PLUS;
-                break;
-            case ' ':
-                spec.flags |= SF_SPACE;
-                break;
-            case '#':
-                spec.flags |= SF_PREFIX;
-                break;
-            case '0':
-                spec.flags |= SF_ZERO;
-                break;
-            default:
-                goto end_flags;
+        case '-':
+            spec.flags |= SF_LEFT;
+            break;
+        case '+':
+            spec.flags |= SF_PLUS;
+            break;
+        case ' ':
+            spec.flags |= SF_SPACE;
+            break;
+        case '#':
+            spec.flags |= SF_PREFIX;
+            break;
+        case '0':
+            spec.flags |= SF_ZERO;
+            break;
+        default:
+            goto end_flags;
         }
         fmt++;
     }
@@ -123,147 +123,147 @@ end_precision:
 
     // length
     switch (*fmt) {
-        case 'h':
-            if (fmt[1] == 'h') {
-                spec.type = ST_BYTE;
-                fmt++;
-            } else {
-                spec.type = ST_SHORT;
-            }
-            break;
-        case 'l':
-            if (fmt[1] == 'l') {
-                spec.type = ST_LONG_LONG;
-                fmt++;
-            } else {
-                spec.type = ST_LONG;
-            }
-            break;
-        case 'j':
-            spec.type = ST_INTMAX_T;
-            break;
-        case 'z':
-            spec.type = ST_SIZE_T;
-            break;
-        case 't':
-            spec.type = ST_PTRDIFF_T;
-            break;
-        case 'L':
-            spec.type = ST_LONG_DOUBLE;
-            break;
-        default:
-            spec.type = ST_INT;
-            goto end_length;
-            break;
+    case 'h':
+        if (fmt[1] == 'h') {
+            spec.type = ST_BYTE;
+            fmt++;
+        } else {
+            spec.type = ST_SHORT;
+        }
+        break;
+    case 'l':
+        if (fmt[1] == 'l') {
+            spec.type = ST_LONG_LONG;
+            fmt++;
+        } else {
+            spec.type = ST_LONG;
+        }
+        break;
+    case 'j':
+        spec.type = ST_INTMAX_T;
+        break;
+    case 'z':
+        spec.type = ST_SIZE_T;
+        break;
+    case 't':
+        spec.type = ST_PTRDIFF_T;
+        break;
+    case 'L':
+        spec.type = ST_LONG_DOUBLE;
+        break;
+    default:
+        spec.type = ST_INT;
+        goto end_length;
+        break;
     }
     fmt++;
 end_length:
 
     // specifier
     switch (*fmt) {
-        case '%':
-            spec.type = ST_PERCENT;
+    case '%':
+        spec.type = ST_PERCENT;
+        break;
+    case 'd':
+    case 'i':
+        if (spec.type == ST_LONG_DOUBLE) {
+            spec.type = ST_INVALID;
+        }
+        spec.base = 10;
+        break;
+    case 'u':
+    case 'o':
+    case 'x':
+        spec.flags |= SF_LOWER;
+    case 'X':
+        switch (spec.type) {
+        case ST_BYTE:
+            spec.type = ST_UBYTE;
             break;
-        case 'd':
-        case 'i':
-            if (spec.type == ST_LONG_DOUBLE) {
-                spec.type = ST_INVALID;
-            }
-            spec.base = 10;
+        case ST_SHORT:
+            spec.type = ST_USHORT;
             break;
-        case 'u':
-        case 'o':
-        case 'x':
-            spec.flags |= SF_LOWER;
-        case 'X':
-            switch (spec.type) {
-                case ST_BYTE:
-                    spec.type = ST_UBYTE;
-                    break;
-                case ST_SHORT:
-                    spec.type = ST_USHORT;
-                    break;
-                case ST_INT:
-                    spec.type = ST_UINT;
-                    break;
-                case ST_LONG:
-                    spec.type = ST_ULONG;
-                    break;
-                case ST_LONG_LONG:
-                    spec.type = ST_ULONG_LONG;
-                    break;
-                case ST_LONG_DOUBLE:
-                    spec.type = ST_INVALID;
-                    break;
-                default:
-                    break;
-            }
-            if (*fmt == 'u') {
-                spec.base = 10;
-            } else if (*fmt == 'o') {
-                spec.base = 8;
-            } else {
-                spec.base = 16;
-            }
+        case ST_INT:
+            spec.type = ST_UINT;
             break;
-        case 'f':
-        case 'F':
-        case 'e':
-        case 'E':
-        case 'g':
-        case 'G':
-        case 'a':
-        case 'A':
-            switch (spec.type) {
-                case ST_INT:
-                    spec.type = ST_DOUBLE;
-                    break;
-                case ST_LONG_DOUBLE:
-                    break;
-                default:
-                    spec.type = ST_INVALID;
-            }
+        case ST_LONG:
+            spec.type = ST_ULONG;
             break;
-        case 'c':
-            switch (spec.type) {
-                case ST_INT:
-                    spec.type = ST_CHAR;
-                    break;
-                case ST_LONG:
-                    spec.type = ST_WCHAR;
-                    break;
-                default:
-                    spec.type = ST_INVALID;
-            }
+        case ST_LONG_LONG:
+            spec.type = ST_ULONG_LONG;
             break;
-        case 's':
-            switch (spec.type) {
-                case ST_INT:
-                    spec.type = ST_STR;
-                    break;
-                case ST_LONG:
-                    spec.type = ST_WSTR;
-                    break;
-                default:
-                    spec.type = ST_INVALID;
-            }
-            break;
-        case 'p':
-            if (spec.type == ST_INT) {
-                if (spec.precision == 0) {
-                    spec.precision = sizeof(void*) * 2;
-                }
-                spec.type = ST_PTR;
-                spec.base = 16;
-            } else {
-                spec.type = ST_INVALID;
-            }
-            break;
-        case 'n':
-            spec.flags |= SF_PTR;
+        case ST_LONG_DOUBLE:
+            spec.type = ST_INVALID;
             break;
         default:
-            goto end_specifier;
+            break;
+        }
+        if (*fmt == 'u') {
+            spec.base = 10;
+        } else if (*fmt == 'o') {
+            spec.base = 8;
+        } else {
+            spec.base = 16;
+        }
+        break;
+    case 'f':
+    case 'F':
+    case 'e':
+    case 'E':
+    case 'g':
+    case 'G':
+    case 'a':
+    case 'A':
+        switch (spec.type) {
+        case ST_INT:
+            spec.type = ST_DOUBLE;
+            break;
+        case ST_LONG_DOUBLE:
+            break;
+        default:
+            spec.type = ST_INVALID;
+        }
+        break;
+    case 'c':
+        switch (spec.type) {
+        case ST_INT:
+            spec.type = ST_CHAR;
+            break;
+        case ST_LONG:
+            spec.type = ST_WCHAR;
+            break;
+        default:
+            spec.type = ST_INVALID;
+        }
+        break;
+    case 's':
+        switch (spec.type) {
+        case ST_INT:
+            spec.type = ST_STR;
+            break;
+        case ST_LONG:
+            spec.type = ST_WSTR;
+            break;
+        default:
+            spec.type = ST_INVALID;
+        }
+        break;
+    case 'p':
+        if (spec.type == ST_INT) {
+            if (spec.precision == 0) {
+                spec.precision = sizeof(void *) * 2;
+            }
+            spec.type = ST_PTR;
+            spec.base = 16;
+        } else {
+            spec.type = ST_INVALID;
+        }
+        break;
+    case 'n':
+        spec.flags |= SF_PTR;
+        break;
+    default:
+        goto end_specifier;
     }
     fmt++;
 end_specifier:
@@ -436,7 +436,13 @@ static int print_str(int (*func)(void *, char), void *farg, struct fmt_spec spec
 static const char hex_table_lower[] = "0123456789abcdef";
 static const char hex_table_upper[] = "0123456789ABCDEF";
 
-static int do_print_int(int (*func)(void *, char), void *farg, unsigned long long num, struct fmt_spec spec, int is_signed)
+static int do_print_int(
+    int (*func)(void *, char),
+    void *farg,
+    unsigned long long num,
+    struct fmt_spec spec,
+    int is_signed
+)
 {
     char rbuf[22], *rbuf_ptr = rbuf;  // buffer of reversed digits
     int rbuf_len = 0, char_cnt = 0;
@@ -493,7 +499,7 @@ static int do_print_int(int (*func)(void *, char), void *farg, unsigned long lon
         spec.precision--;
         char_cnt++;
     }
-    
+
     while (rbuf_len > 0) {  // now rewind reversed buffer
         if (func(farg, *--rbuf_ptr)) {
             return char_cnt;
@@ -524,60 +530,60 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
 
     // get number
     switch (spec.type) {
-        case ST_ULONG_LONG:
-            num = (unsigned long long)va_arg(*args, unsigned long long);
-            break;
-        case ST_LONG_LONG:
-            num = (long long)va_arg(*args, long long);
-            is_signed = 1;
-            break;
-        case ST_ULONG:
-            num = (unsigned long)va_arg(*args, unsigned long);
-            break;
-        case ST_LONG:
-            num = (long)va_arg(*args, long);
-            is_signed = 1;
-            break;
-        case ST_UBYTE:
-            num = (unsigned char)va_arg(*args, unsigned int);
-            break;
-        case ST_BYTE:
-            num = (char)va_arg(*args, int);
-            is_signed = 1;
-            break;
-        case ST_USHORT:
-            num = (unsigned short)va_arg(*args, unsigned int);
-            break;
-        case ST_SHORT:
-            num = (short)va_arg(*args, int);
-            is_signed = 1;
-            break;
-        case ST_UINT:
-            num = (unsigned int)va_arg(*args, unsigned int);
-            break;
-        case ST_INT:
-            num = (int)va_arg(*args, int);
-            is_signed = 1;
-            break;
-        case ST_UINTMAX_T:
-            num = (uintmax_t)va_arg(*args, uintmax_t);
-            break;
-        case ST_INTMAX_T:
-            num = (intmax_t)va_arg(*args, intmax_t);
-            is_signed = 1;
-            break;
-        case ST_SIZE_T:
-            num = (size_t)va_arg(*args, size_t);
-            break;
-        case ST_PTRDIFF_T:
-            num = (ptrdiff_t)va_arg(*args, ptrdiff_t);
-            is_signed = 1;
-            break;
-        case ST_PTR:
-            num = (unsigned long)va_arg(*args, void*);
-            break;
-        default:
-            break;
+    case ST_ULONG_LONG:
+        num = (unsigned long long)va_arg(*args, unsigned long long);
+        break;
+    case ST_LONG_LONG:
+        num = (long long)va_arg(*args, long long);
+        is_signed = 1;
+        break;
+    case ST_ULONG:
+        num = (unsigned long)va_arg(*args, unsigned long);
+        break;
+    case ST_LONG:
+        num = (long)va_arg(*args, long);
+        is_signed = 1;
+        break;
+    case ST_UBYTE:
+        num = (unsigned char)va_arg(*args, unsigned int);
+        break;
+    case ST_BYTE:
+        num = (char)va_arg(*args, int);
+        is_signed = 1;
+        break;
+    case ST_USHORT:
+        num = (unsigned short)va_arg(*args, unsigned int);
+        break;
+    case ST_SHORT:
+        num = (short)va_arg(*args, int);
+        is_signed = 1;
+        break;
+    case ST_UINT:
+        num = (unsigned int)va_arg(*args, unsigned int);
+        break;
+    case ST_INT:
+        num = (int)va_arg(*args, int);
+        is_signed = 1;
+        break;
+    case ST_UINTMAX_T:
+        num = (uintmax_t)va_arg(*args, uintmax_t);
+        break;
+    case ST_INTMAX_T:
+        num = (intmax_t)va_arg(*args, intmax_t);
+        is_signed = 1;
+        break;
+    case ST_SIZE_T:
+        num = (size_t)va_arg(*args, size_t);
+        break;
+    case ST_PTRDIFF_T:
+        num = (ptrdiff_t)va_arg(*args, ptrdiff_t);
+        is_signed = 1;
+        break;
+    case ST_PTR:
+        num = (unsigned long)va_arg(*args, void *);
+        break;
+    default:
+        break;
     }
 
     // get additional args if neded
@@ -634,7 +640,7 @@ static int print_float(int (*func)(void *, char), void *farg, struct fmt_spec sp
 int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list args)
 {
     int write_count = 0;
-    struct fmt_spec spec = { 0 };
+    struct fmt_spec spec = {0};
 
     while (*fmt) {
         if (*fmt != '%') {
@@ -651,44 +657,44 @@ int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list arg
 
         int fmt_write_len = 0;
         switch (spec.type) {
-            case ST_PERCENT:
-                fmt_write_len = func(farg, '%') ? 0 : 1;
-                break;
-            case ST_WCHAR:
-                fmt_write_len = print_wchar(func, farg, spec, &args);
-                break;
-            case ST_CHAR:
-                fmt_write_len = print_char(func, farg, spec, &args);
-                break;
-            case ST_WSTR:
-                fmt_write_len = print_wstr(func, farg, spec, &args);
-                break;
-            case ST_STR:
-                fmt_write_len = print_str(func, farg, spec, &args);
-                break;
-            case ST_PTR:
-            case ST_ULONG_LONG:
-            case ST_LONG_LONG:
-            case ST_ULONG:
-            case ST_LONG:
-            case ST_UBYTE:
-            case ST_BYTE:
-            case ST_USHORT:
-            case ST_SHORT:
-            case ST_UINT:
-            case ST_INT:
-            case ST_UINTMAX_T:
-            case ST_INTMAX_T:
-            case ST_SIZE_T:
-            case ST_PTRDIFF_T:
-                fmt_write_len = print_int(func, farg, spec, &args);
-                break;
-            case ST_DOUBLE:
-            case ST_LONG_DOUBLE:
-                fmt_write_len = print_float(func, farg, spec, &args);
-                break;
-            default:  // invalid / unrecognized format specifier
-                break;
+        case ST_PERCENT:
+            fmt_write_len = func(farg, '%') ? 0 : 1;
+            break;
+        case ST_WCHAR:
+            fmt_write_len = print_wchar(func, farg, spec, &args);
+            break;
+        case ST_CHAR:
+            fmt_write_len = print_char(func, farg, spec, &args);
+            break;
+        case ST_WSTR:
+            fmt_write_len = print_wstr(func, farg, spec, &args);
+            break;
+        case ST_STR:
+            fmt_write_len = print_str(func, farg, spec, &args);
+            break;
+        case ST_PTR:
+        case ST_ULONG_LONG:
+        case ST_LONG_LONG:
+        case ST_ULONG:
+        case ST_LONG:
+        case ST_UBYTE:
+        case ST_BYTE:
+        case ST_USHORT:
+        case ST_SHORT:
+        case ST_UINT:
+        case ST_INT:
+        case ST_UINTMAX_T:
+        case ST_INTMAX_T:
+        case ST_SIZE_T:
+        case ST_PTRDIFF_T:
+            fmt_write_len = print_int(func, farg, spec, &args);
+            break;
+        case ST_DOUBLE:
+        case ST_LONG_DOUBLE:
+            fmt_write_len = print_float(func, farg, spec, &args);
+            break;
+        default:  // invalid / unrecognized format specifier
+            break;
         }
         write_count += fmt_write_len;
         fmt = spec.next;

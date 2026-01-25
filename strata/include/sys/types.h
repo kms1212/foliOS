@@ -6,4 +6,4 @@
 typedef int mode_t;
 typedef uintptr_t off_t;
 
-#endif // __SYS_TYPES_H__
+#endif  // __SYS_TYPES_H__

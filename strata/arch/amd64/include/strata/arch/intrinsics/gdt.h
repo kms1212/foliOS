@@ -9,7 +9,7 @@
 
 __always_inline void StA_Lgdt(struct StA_Gdtr *gdtr)
 {
-    __asm__ volatile ("lgdt (%0)" : : "r"(gdtr));
+    __asm__ volatile("lgdt (%0)" : : "r"(gdtr));
 }
 
-#endif // __STRATA_ARCH_INTRINSICS_GDT_H__
+#endif  // __STRATA_ARCH_INTRINSICS_GDT_H__

@@ -9,4 +9,4 @@ typedef struct {
     uint8_t bytes[16];
 } __attribute__((packed)) uuid_t;
 
-#endif // __TYPES_H__
+#endif  // __TYPES_H__

@@ -6,7 +6,7 @@
 struct StScheduler_Data {
     struct StThread *volatile queue_head;
     struct StThread *volatile queue_tail;
-    
+
     struct StThread *volatile current;
 
     uint64_t context_switch_count;
@@ -21,6 +21,6 @@ StStatus StScheduler_SetCurrentThread(struct StThread *th);
 
 int StScheduler_CheckHasOtherRunnableThread(void);
 
-StStatus StScheduler_Maintain(void);  /* can be refactored to a better name */
+StStatus StScheduler_Maintain(void); /* can be refactored to a better name */
 
-#endif // __STRATA_SCHEDULER_H__
+#endif  // __STRATA_SCHEDULER_H__

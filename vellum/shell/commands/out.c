@@ -16,22 +16,22 @@ static int out_handler(struct shell_instance *inst, int argc, char **argv)
     uint32_t value = strtoul(argv[3], NULL, 16);
 
     switch (*argv[2]) {
-        case 'b':
-        case 'B':
-            io_out8(addr, value);
-            break;
-        case 'w':
-        case 'W':
-            io_out16(addr, value);
-            break;
-        case 'd':
-        case 'D':
-            io_out32(addr, value);
-            break;
-        default:
-            return 1;
+    case 'b':
+    case 'B':
+        io_out8(addr, value);
+        break;
+    case 'w':
+    case 'W':
+        io_out16(addr, value);
+        break;
+    case 'd':
+    case 'D':
+        io_out32(addr, value);
+        break;
+    default:
+        return 1;
     }
-    
+
     return 0;
 }
 

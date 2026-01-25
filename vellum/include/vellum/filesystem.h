@@ -36,7 +36,7 @@ struct fs_driver {
 
 struct filesystem {
     struct filesystem *next;
-    
+
     struct fs_driver *driver;
     struct device *dev;
     char name[FILESYSTEM_NAME_MAX];
@@ -61,7 +61,9 @@ struct fs_directory_entry {
     uint64_t size;
 };
 
-status_t filesystem_create(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name);
+status_t filesystem_create(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+);
 void filesystem_remove(struct filesystem *fs);
 
 struct filesystem *filesystem_get_first_fs(void);
@@ -72,13 +74,14 @@ status_t filesystem_driver_create(struct fs_driver **drv);
 status_t filesystem_driver_find(const char *name, struct fs_driver **drv);
 
 status_t filesystem_auto_mount(struct device *__restrict dev, const char *__restrict name);
-status_t filesystem_mount(struct device *__restrict dev, const char *__restrict fsname, const char *__restrict name);
+status_t filesystem_mount(
+    struct device *__restrict dev, const char *__restrict fsname, const char *__restrict name
+);
 
-#define REGISTER_FILESYSTEM_DRIVER(name, init_func) \
-    __constructor \
-    static void _register_driver_##name(void) \
-    { \
-        init_func(); \
+#define REGISTER_FILESYSTEM_DRIVER(name, init_func)                                                \
+    __constructor static void _register_driver_##name(void)                                        \
+    {                                                                                              \
+        init_func();                                                                               \
     }
 
-#endif // __VELLUM_FS_H__
+#endif  // __VELLUM_FS_H__

@@ -5,7 +5,7 @@
 
 __always_inline void StA_Pause(void)
 {
-    __asm__ volatile ("pause");
+    __asm__ volatile("pause");
 }
 
-#endif // __STRATA_ARCH_PAUSE_H__
+#endif  // __STRATA_ARCH_PAUSE_H__

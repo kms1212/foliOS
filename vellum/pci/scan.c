@@ -2,8 +2,8 @@
 
 #include <asm/pci/cfgspace.h>
 
-#include <bus/pci/device.h>
 #include <bus/pci/cfgspace.h>
+#include <bus/pci/device.h>
 
 struct pci_device_list {
     struct pci_device *devices;
@@ -58,7 +58,7 @@ int _bus_pci_device_scan(struct pci_device_list *list, int bus, int device)
         if (vendor_id == 0xFFFF) {
             continue;
         }
-        
+
         ret = _bus_pci_function_scan(list, bus, device, function);
         if (ret) return ret;
     }
@@ -75,7 +75,7 @@ int _bus_pci_bus_scan(struct pci_device_list *list, int bus)
         if (vendor_id == 0xFFFF) {
             continue;
         }
-        
+
         ret = _bus_pci_device_scan(list, bus, device);
         if (ret) return ret;
     }

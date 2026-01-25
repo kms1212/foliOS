@@ -26,55 +26,62 @@
  *
  ******************************************************************************/
 
- #ifndef INCLUDED_GETOPT_PORT_H
- #define INCLUDED_GETOPT_PORT_H
- 
- #if defined(__cplusplus)
- extern "C" {
- #endif
- 
- #define no_argument 1
- #define required_argument 2
- #define optional_argument 3
- 
- extern char* optarg;
- extern int optind, opterr, optopt;
- 
- struct option {
-   const char* name;
-   int has_arg;
-   int* flag;
-   int val;
- };
+#ifndef INCLUDED_GETOPT_PORT_H
+#define INCLUDED_GETOPT_PORT_H
 
- /**
-  * @brief Initialize getopt internal state.
-  */
- void getopt_init();
- 
- /**
-  * @brief Parse command-line options.
-  * @param argc The argument count.
-  * @param argv The argument vector.
-  * @param optstring The option string.
-  * @return The option character if an option was found, -1 if no more options, or '?' for an unknown option.
-  */
- int getopt(int argc, char* const argv[], const char* optstring);
- 
- /**
-  * @brief Parse command-line options with long options.
-  * @param argc The argument count.
-  * @param argv The argument vector.
-  * @param optstring The short option string.
-  * @param longopts An array of long options.
-  * @param longindex A pointer to store the index of the long option found.
-  * @return The option character if an option was found, -1 if no more options, or '?' for an unknown option.
-  */
- int getopt_long(int argc, char* const argv[],
-   const char* optstring, const struct option* longopts, int* longindex);
- 
- #if defined(__cplusplus)
- }
- #endif
- 
- #endif // INCLUDED_GETOPT_PORT_H
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
+#define no_argument       1
+#define required_argument 2
+#define optional_argument 3
+
+extern char *optarg;
+extern int optind, opterr, optopt;
+
+struct option {
+    const char *name;
+    int has_arg;
+    int *flag;
+    int val;
+};
+
+/**
+ * @brief Initialize getopt internal state.
+ */
+void getopt_init();
+
+/**
+ * @brief Parse command-line options.
+ * @param argc The argument count.
+ * @param argv The argument vector.
+ * @param optstring The option string.
+ * @return The option character if an option was found, -1 if no more options, or '?' for an unknown
+ * option.
+ */
+int getopt(int argc, char *const argv[], const char *optstring);
+
+/**
+ * @brief Parse command-line options with long options.
+ * @param argc The argument count.
+ * @param argv The argument vector.
+ * @param optstring The short option string.
+ * @param longopts An array of long options.
+ * @param longindex A pointer to store the index of the long option found.
+ * @return The option character if an option was found, -1 if no more options, or '?' for an unknown
+ * option.
+ */
+int getopt_long(
+    int argc,
+    char *const argv[],
+    const char *optstring,
+    const struct option *longopts,
+    int *longindex
+);
+
+#if defined(__cplusplus)
+}
+#endif
+
+#endif  // INCLUDED_GETOPT_PORT_H

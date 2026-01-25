@@ -1,16 +1,16 @@
 #include <vellum/shell.h>
 
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <limits.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <vellum/status.h>
-#include <vellum/panic.h>
 #include <vellum/elf.h>
-#include <vellum/path.h>
 #include <vellum/mm.h>
 #include <vellum/module.h>
+#include <vellum/panic.h>
+#include <vellum/path.h>
+#include <vellum/status.h>
 
 static int loadmodule_handler(struct shell_instance *inst, int argc, char **argv)
 {

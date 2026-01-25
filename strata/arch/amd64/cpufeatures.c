@@ -1,25 +1,27 @@
 #include <strata/arch/cpufeatures.h>
 
-#include <stdio.h>
 #include <inttypes.h>
+#include <stdio.h>
 
 #include <cpuid.h>
 
 #include <strata/arch/intrinsics/cpuid.h>
-#include <strata/arch/intrinsics/register.h>
 #include <strata/arch/intrinsics/msr.h>
+#include <strata/arch/intrinsics/register.h>
 
 #include <strata/plat/interrupt.h>
 
-#include <strata/panic.h>
 #include <strata/log.h>
+#include <strata/panic.h>
 
 #define MODULE_NAME "cpufeatures"
 
 static volatile int handler_called;
 static size_t instr_size;
 
-static void *fault_handler_func(int irq_num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data)
+static void *fault_handler_func(
+    int irq_num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
+)
 {
     handler_called = 1;
     frame->rip += instr_size;
@@ -44,7 +46,7 @@ static StStatus test_instruction(void (*test_func)(void), size_t _instr_size, in
 
     status = StIntP_GetFirstHandler(0x06, &orig_first_handler);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     handler_called = 0;
     instr_size = _instr_size;
 
@@ -59,9 +61,9 @@ static StStatus test_instruction(void (*test_func)(void), size_t _instr_size, in
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     StA_RestoreInterrupt(intstate);
-    
+
     return STATUS_SUCCESS;
-    
+
 has_error:
     if (orig_first_handler && !CHECK_SUCCESS(StIntP_SetFirstHandler(0x06, orig_first_handler))) {
         St_Panic(status, "failed to restore interrupt handler while recovering from failure");
@@ -78,19 +80,19 @@ const struct StA_CpuFeatures *const g_p_cpu_features = &cpu_features;
 static int check_cpuid_available(void)
 {
     int available;
-    
-    __asm__ volatile (
-        "pushfq\n\t"
-        "pushfq\n\t"
-        "xorl   $0x00200000, (%%rsp)\n\t"
-        "popfq\n\t"
-        "pushfq\n\t"
-        "pop    %%rax\n\t"
-        "xor    (%%rsp), %%rax\n\t"
-        "popfq\n\t"
-        "and    $0x00200000, %%rax\n\t"
-        : "=r"(available) : : "rax"
-    );
+
+    __asm__ volatile("pushfq\n\t"
+                     "pushfq\n\t"
+                     "xorl   $0x00200000, (%%rsp)\n\t"
+                     "popfq\n\t"
+                     "pushfq\n\t"
+                     "pop    %%rax\n\t"
+                     "xor    (%%rsp), %%rax\n\t"
+                     "popfq\n\t"
+                     "and    $0x00200000, %%rax\n\t"
+                     : "=r"(available)
+                     :
+                     : "rax");
 
     return !!available;
 }
@@ -113,12 +115,18 @@ StStatus StA_CheckCpuFeatures(void)
     if (max_param >= 1) {
         StA_Cpuid(0x00000001, &eax, &ebx, &ecx, &edx);
 
-        LOG_DEBUG("processor type: %1"PRIX32"\n", (eax & 0x00003000) >> 12);
-        LOG_DEBUG("model id: %02"PRIX32"\n", ((eax & 0x000F0000) >> 12) | ((eax & 0x000000F0) >> 4));
-        LOG_DEBUG("family id: %03"PRIX32"\n", ((eax & 0x0FF00000) >> 16) | ((eax & 0x00000F00) >> 8));
-        LOG_DEBUG("stepping id: %1"PRIX32"\n", eax & 0x0000000F);
+        LOG_DEBUG("processor type: %1" PRIX32 "\n", (eax & 0x00003000) >> 12);
+        LOG_DEBUG(
+            "model id: %02" PRIX32 "\n",
+            ((eax & 0x000F0000) >> 12) | ((eax & 0x000000F0) >> 4)
+        );
+        LOG_DEBUG(
+            "family id: %03" PRIX32 "\n",
+            ((eax & 0x0FF00000) >> 16) | ((eax & 0x00000F00) >> 8)
+        );
+        LOG_DEBUG("stepping id: %1" PRIX32 "\n", eax & 0x0000000F);
 
-        LOG_DEBUG("branding index: %02"PRIX32"\n", ebx & 0x000000FF);
+        LOG_DEBUG("branding index: %02" PRIX32 "\n", ebx & 0x000000FF);
 
         if (ecx & bit_SSE3) {
             cpu_features.has_sse3 = 1;
@@ -186,11 +194,11 @@ StStatus StA_CheckCpuFeatures(void)
 
         if (edx & (1 << 28)) {
             cpu_features.has_htt = 1;
-            LOG_DEBUG("max logical processor id: %"PRId32"\n", (ebx & 0x00FF0000) >> 16);
+            LOG_DEBUG("max logical processor id: %" PRId32 "\n", (ebx & 0x00FF0000) >> 16);
         }
 
         if (edx & (1 << 9)) {
-            LOG_DEBUG("local APIC id: %"PRId32"\n", (ebx & 0xFF000000) >> 16);
+            LOG_DEBUG("local APIC id: %" PRId32 "\n", (ebx & 0xFF000000) >> 16);
         }
 
         if (edx & (1 << 0)) {
@@ -251,7 +259,7 @@ StStatus StA_CheckCpuFeatures(void)
 
         if (edx & (1 << 19)) {
             cpu_features.has_clfsh = 1;
-            LOG_DEBUG("CLFSH line size: %"PRId32"\n", (ebx & 0x0000FF00) >> 5);
+            LOG_DEBUG("CLFSH line size: %" PRId32 "\n", (ebx & 0x0000FF00) >> 5);
         }
 
         if (edx & bit_MMX) {
@@ -317,7 +325,7 @@ StStatus StA_ActivateCommonCpuFeatures(void)
 
     if (cpu_features.has_fpu) {
         cr0 |= 0x0000000000010022;  /* turn on MP, EM, NE, WP */
-        cr0 &= ~0x0000000000000004;  /* turn off EM */
+        cr0 &= ~0x0000000000000004; /* turn off EM */
     }
 
     /* debugging extensions */

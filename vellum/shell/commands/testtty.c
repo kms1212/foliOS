@@ -22,7 +22,7 @@ static void hsl2rgb(float h, uint8_t s_in, uint8_t l_in, uint8_t rgb[3])
         float p = 2.0f * l - q;
         rgb[0] = hue2rgb(p, q, h + 1.0f / 3.0f) * 255.0f;
         rgb[1] = hue2rgb(p, q, h) * 255;
-        rgb[2] = hue2rgb(p, q, h - 1.0f / 3.0f) * 255.0f; 
+        rgb[2] = hue2rgb(p, q, h - 1.0f / 3.0f) * 255.0f;
     }
 }
 
@@ -101,7 +101,7 @@ static int testtty_handler(struct shell_instance *inst, int argc, char **argv)
     for (int l = 7; l >= 0; l--) {
         for (int h = 0; h < 64; h++) {
             uint8_t rgb[3];
-            hsl2rgb((float)h / 63.0f, 255, l * 255 / 7 , rgb);
+            hsl2rgb((float)h / 63.0f, 255, l * 255 / 7, rgb);
             printf("\x1b[48;2;%d;%d;%dm ", rgb[0], rgb[1], rgb[2]);
         }
         fputs("\x1b[0m\n", stdout);

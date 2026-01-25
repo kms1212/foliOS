@@ -78,16 +78,16 @@ char *path_normalize(char *dest, size_t len, const char *src)
     if (!dest || len == 0 || !src) {
         return NULL;
     }
-    
+
     struct path_iterator it;
     path_iter_init(&it, src);
-    
+
     char *write_pos = dest;
     char *dest_end = dest + len - 1;
     int is_absolute = 0;
     int has_filesystem = 0;
     int first_loop = 1;
-    
+
     if (it.element[0] != '\0') {
         has_filesystem = 1;
         size_t prefix_len = strlen(it.element);
@@ -115,22 +115,22 @@ char *path_normalize(char *dest, size_t len, const char *src)
         }
 
         if (it.element[0] == '\0') continue;
-        
+
         if (strcmp(it.element, ".") == 0) continue;
-        
+
         if (strcmp(it.element, "..") == 0) {
             if (is_absolute) {
                 if (write_pos > dest) {
                     char *last_sep = write_pos - 1;
-                    
+
                     if (*last_sep == '/') {
                         last_sep--;
                     }
-                    
+
                     while (last_sep > dest && *last_sep != '/') {
                         last_sep--;
                     }
-                    
+
                     if (has_filesystem) {
                         char *colon_pos = strchr(dest, ':');
                         if (colon_pos && last_sep <= colon_pos + 1) {
@@ -141,7 +141,7 @@ char *path_normalize(char *dest, size_t len, const char *src)
                             continue;
                         }
                     }
-                    
+
                     if (last_sep <= dest) {
                         write_pos = dest + (has_filesystem ? strchr(dest, ':') - dest + 1 : 0);
                         if (write_pos < dest_end) {
@@ -149,22 +149,22 @@ char *path_normalize(char *dest, size_t len, const char *src)
                         }
                         continue;
                     }
-                    
+
                     write_pos = last_sep + 1;
                 }
             } else if (has_filesystem) {
                 char *colon_pos = strchr(dest, ':');
                 if (write_pos > colon_pos + 1) {
                     char *last_sep = write_pos - 1;
-                    
+
                     if (*last_sep == '/') {
                         last_sep--;
                     }
-                    
+
                     while (last_sep > colon_pos + 1 && *last_sep != '/') {
                         last_sep--;
                     }
-                    
+
                     if (last_sep <= colon_pos + 1) {
                         write_pos = colon_pos + 1;
                     } else {
@@ -180,7 +180,7 @@ char *path_normalize(char *dest, size_t len, const char *src)
                 if (write_pos > dest && write_pos < dest_end) {
                     *write_pos++ = '/';
                 }
-                
+
                 if (write_pos + 2 < dest_end) {
                     *write_pos++ = '.';
                     *write_pos++ = '.';
@@ -188,36 +188,36 @@ char *path_normalize(char *dest, size_t len, const char *src)
             }
             continue;
         }
-        
+
         if (write_pos > dest && write_pos[-1] != '/' && write_pos < dest_end) {
             *write_pos++ = '/';
         }
-        
+
         size_t elem_len = strlen(it.element);
         if (write_pos + elem_len < dest_end) {
             strcpy(write_pos, it.element);
             write_pos += elem_len;
         }
-        
+
     } while (!asdf);
-    
+
     if (!has_filesystem && write_pos == dest && dest_end - dest > 0) {
         *dest = '.';
         write_pos = dest + 1;
     }
-    
+
     if (write_pos > dest + 1 && *(write_pos - 1) == '/') {
         if (!has_filesystem || write_pos > strchr(dest, ':') + 2) {
             write_pos--;
         }
     }
-    
+
     if (write_pos < dest + len) {
         *write_pos = '\0';
     } else {
         dest[len - 1] = '\0';
     }
-    
+
     return dest;
 }
 

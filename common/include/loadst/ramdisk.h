@@ -9,9 +9,9 @@ struct ramdisk_header {
     uint32_t rootdir_offset;
 };
 
-#define RDET_END        0
-#define RDET_DIRECTORY  1
-#define RDET_FILE       2
+#define RDET_END       0
+#define RDET_DIRECTORY 1
+#define RDET_FILE      2
 
 struct ramdisk_direntry {
     uint8_t type;
@@ -35,4 +35,4 @@ struct ramdisk_direntry {
     char name[];
 } __packed;
 
-#endif // __LOADST_RAMDISK_H__
+#endif  // __LOADST_RAMDISK_H__

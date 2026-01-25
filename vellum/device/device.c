@@ -1,11 +1,10 @@
 #include <vellum/device.h>
 
+#include <ctype.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <ctype.h>
 
 #include <vellum/status.h>
 
@@ -30,7 +29,8 @@ status_t device_create(struct device **devout, struct device_driver *drv, struct
         device_list_head = dev;
     } else {
         struct device *current = device_list_head;
-        for (; current->next; current = current->next) {}
+        for (; current->next; current = current->next) {
+        }
         current->next = dev;
     }
 
@@ -39,7 +39,8 @@ status_t device_create(struct device **devout, struct device_driver *drv, struct
             dev->parent->first_child = dev;
         } else {
             struct device *current = dev->parent->first_child;
-            for (; current->sibling; current = current->sibling) {}
+            for (; current->sibling; current = current->sibling) {
+            }
             current->sibling = dev;
         }
     }
@@ -52,14 +53,14 @@ status_t device_create(struct device **devout, struct device_driver *drv, struct
 void device_remove(struct device *dev)
 {
     if (!device_list_head) return;
-    
+
     struct device *prev_device = NULL, *prev_sibling = NULL;
     for (struct device *current = device_list_head; current->next; current = current->next) {
         if (current->next == dev) {
             prev_device = current;
         }
 
-        if (current->sibling ==  dev) {
+        if (current->sibling == dev) {
             prev_sibling = current;
         }
 
@@ -71,7 +72,7 @@ void device_remove(struct device *dev)
     if (device_list_head == dev) {
         device_list_head = dev->next;
     }
-    
+
     if (!prev_device) return;
 
     prev_device->next = dev->next;
@@ -101,12 +102,12 @@ status_t device_generate_name(const char *basename, char *buf, size_t len)
     size_t basename_len = strlen(basename);
     char *name_end;
     int id;
-    
+
     for (struct device *current = device_list_head; current; current = current->next) {
         if (strncmp(basename, current->name, basename_len) != 0) {
             continue;
         }
-        
+
         id = strtol(current->name + basename_len, &name_end, 10);
         if (*name_end) {
             continue;
@@ -135,8 +136,9 @@ status_t device_driver_create(struct device_driver **drvout)
         driver_list_head = drv;
     } else {
         struct device_driver *current = driver_list_head;
-        for (; current->next; current = current->next) {}
-    
+        for (; current->next; current = current->next) {
+        }
+
         current->next = drv;
     }
 

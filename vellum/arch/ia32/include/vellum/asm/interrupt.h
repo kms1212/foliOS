@@ -15,7 +15,7 @@ struct interrupt_frame {
     uint32_t eflags;
 };
 
-#define interrupt_disable   _ia32_interrupt_disable
-#define interrupt_enable    _ia32_interrupt_enable
+#define interrupt_disable _ia32_interrupt_disable
+#define interrupt_enable  _ia32_interrupt_enable
 
-#endif // __VELLUM_ASM_INTERRUPT_H__
+#endif  // __VELLUM_ASM_INTERRUPT_H__

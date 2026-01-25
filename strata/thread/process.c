@@ -2,13 +2,11 @@
 
 #include <stdlib.h>
 
-#include <strata/types.h>
 #include <strata/thread.h>
+#include <strata/types.h>
 
 StStatus StProcess_CreateUser(
-    struct StProcess **process __out,
-    uintptr_t entry __in,
-    uintptr_t stack_top __in
+    struct StProcess **process __out, uintptr_t entry __in, uintptr_t stack_top __in
 )
 {
     static StProcess_Id new_process_id = (StProcess_Id)1;
@@ -30,7 +28,7 @@ StStatus StProcess_CreateUser(
     // if (!CHECK_SUCCESS(status)) goto has_error;
 
     // proc->address_space = asp;
-    
+
     status = StThread_CreateUser(proc, entry, (St_PageCount)16, stack_top, &main_thread);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -66,4 +64,3 @@ void StProcess_Remove(struct StProcess *process)
 
     free(process);
 }
-

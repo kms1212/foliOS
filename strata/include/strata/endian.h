@@ -147,8 +147,8 @@ __always_inline uint_le64_t St_HostToLe64(uint64_t v)
 }
 
 #else
-#   error Processor endianness is unknown
+#    error Processor endianness is unknown
 
 #endif
 
-#endif // __STRATA_ENDIAN_H__
+#endif  // __STRATA_ENDIAN_H__

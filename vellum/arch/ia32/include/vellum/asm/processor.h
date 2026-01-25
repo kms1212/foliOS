@@ -3,4 +3,4 @@
 
 #define __PROCESSOR_LITTLE_ENDIAN 1
 
-#endif // __VELLUM_ASM_PROCESSOR_H__
+#endif  // __VELLUM_ASM_PROCESSOR_H__

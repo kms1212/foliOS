@@ -1,11 +1,11 @@
 #include <strata/plat/panic.h>
 
-#include <stdio.h>
-#include <stdarg.h>
 #include <inttypes.h>
+#include <stdarg.h>
+#include <stdio.h>
 
-#include <strata/arch/io.h>
 #include <strata/arch/intrinsics/misc.h>
+#include <strata/arch/io.h>
 
 static int panic_out(void *data, char ch)
 {
@@ -16,12 +16,11 @@ static int panic_out(void *data, char ch)
     return 0;
 }
 
-__noreturn
-void StP_Panic(StStatus status, const char *fmt, ...)
+__noreturn void StP_Panic(StStatus status, const char *fmt, ...)
 {
     va_list args;
 
-    cprintf(panic_out, NULL, "panic: %"PRIX32", ", status);
+    cprintf(panic_out, NULL, "panic: %" PRIX32 ", ", status);
 
     va_start(args, fmt);
     vcprintf(panic_out, NULL, fmt, args);

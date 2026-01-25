@@ -52,7 +52,7 @@ StStatus StMmuP_MapMemory(St_PhysFrame pfn, St_VirtPage vpn, uint32_t flags)
         _pc_page_dir[(vpn & 0x000FFC00) >> 10].raw = 0x00000003 | (new_pt_pfn << 12);
 
         invalidate_page((uintptr_t)pt >> 12);
-        
+
         for (int i = 0; i < 1024; i++) {
             pt[i].raw = 0x00000000;
         }
@@ -102,4 +102,3 @@ void StMmuP_UnmapMemory(St_PhysFrame pfn, St_VirtPage vpn, uint32_t flags)
 
     invalidate_page(vpn);
 }
-

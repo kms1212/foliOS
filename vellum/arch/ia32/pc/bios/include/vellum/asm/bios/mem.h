@@ -15,4 +15,4 @@ struct smap_entry {
 
 status_t _pc_bios_mem_query_map(uint32_t *cursor, struct smap_entry *buf, long buf_size);
 
-#endif // __VELLUM_ASM_BIOS_MEM_H__
+#endif  // __VELLUM_ASM_BIOS_MEM_H__

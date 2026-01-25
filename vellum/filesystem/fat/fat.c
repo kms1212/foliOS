@@ -1,16 +1,16 @@
-#include <string.h>
-#include <strings.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <endian.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
 
 #include <vellum/compiler.h>
-#include <vellum/status.h>
 #include <vellum/device.h>
-#include <vellum/filesystem.h>
 #include <vellum/disk.h>
+#include <vellum/filesystem.h>
 #include <vellum/interface/block.h>
+#include <vellum/status.h>
 
 #include "fat.h"
 
@@ -34,37 +34,32 @@ struct fat_data {
     struct device *blkdev;
     const struct block_interface *blkif;
 
-    uint16_t    reserved_sectors;
-    uint16_t    sector_size;
-    uint32_t    cluster_size;
-    uint8_t     sectors_per_cluster;
-    uint8_t     fat_type;
-    uint32_t    data_area_begin;
-    uint32_t    fat_size;
-    uint32_t    free_clusters;
-    uint32_t    next_free_cluster;
-    uint32_t    total_sector_count;
-    uint32_t    root_cluster;
-    uint16_t    root_entry_count;
-    uint16_t    root_sector_count;
-    uint16_t    fsinfo_sector;
+    uint16_t reserved_sectors;
+    uint16_t sector_size;
+    uint32_t cluster_size;
+    uint8_t sectors_per_cluster;
+    uint8_t fat_type;
+    uint32_t data_area_begin;
+    uint32_t fat_size;
+    uint32_t free_clusters;
+    uint32_t next_free_cluster;
+    uint32_t total_sector_count;
+    uint32_t root_cluster;
+    uint16_t root_entry_count;
+    uint16_t root_sector_count;
+    uint16_t fsinfo_sector;
 
-    lba_t       fatbuf_lba;
-    uint8_t     fatbuf[FAT_SECTOR_SIZE];
-    lba_t       databuf_lba_start;
-    uint8_t     *databuf;
+    lba_t fatbuf_lba;
+    uint8_t fatbuf[FAT_SECTOR_SIZE];
+    lba_t databuf_lba_start;
+    uint8_t *databuf;
 
     fatcluster_t (*sector_to_cluster)(struct filesystem *, lba_t);
-    lba_t       (*cluster_to_sector)(struct filesystem *, fatcluster_t);
-    status_t    (*get_next_cluster)(struct filesystem *, fatcluster_t *, unsigned int);
+    lba_t (*cluster_to_sector)(struct filesystem *, fatcluster_t);
+    status_t (*get_next_cluster)(struct filesystem *, fatcluster_t *, unsigned int);
 };
 
-static size_t
-remove_right_padding(
-    char* dest,
-    const char* orig,
-    size_t dest_len,
-    size_t orig_len)
+static size_t remove_right_padding(char *dest, const char *orig, size_t dest_len, size_t orig_len)
 {
     int str_len = 0;
     for (size_t cur = orig_len - 1; cur >= 0; cur--) {
@@ -82,7 +77,7 @@ remove_right_padding(
     return str_len;
 }
 
-static int validate_sfn(const char* str, size_t len)
+static int validate_sfn(const char *str, size_t len)
 {
     /*  Characters Allowed:
         - A-Z
@@ -97,8 +92,10 @@ static int validate_sfn(const char* str, size_t len)
         Reference: https://averstak.tripod.com/fatdox/names.htm
      */
     static const uint32_t bitmap[] = {
-        0x00000000, 0x03FF237B, /* ASCII 0x00 - 0x3F */
-        0xC3FFFFFF, 0x68000001, /* ASCII 0x40 - 0x7F */
+        0x00000000,
+        0x03FF237B, /* ASCII 0x00 - 0x3F */
+        0xC3FFFFFF,
+        0x68000001, /* ASCII 0x40 - 0x7F */
     };
 
     int has_dot = 0;
@@ -106,7 +103,7 @@ static int validate_sfn(const char* str, size_t len)
     if (len > 0 && str[0] == '.') {
         return 0;
     }
-    
+
     for (int i = 0; str[i] != 0 && i < len; i++) {
         if (str[i] > 0x7F) {
             continue;
@@ -124,7 +121,7 @@ static int validate_sfn(const char* str, size_t len)
     return 1;
 }
 
-static int validate_lfn(const char* str, size_t len)
+static int validate_lfn(const char *str, size_t len)
 {
     /*  Characters Not Allowed:
         - \ / : * ? " < > |
@@ -137,14 +134,16 @@ static int validate_lfn(const char* str, size_t len)
         Reference: https://en.wikipedia.org/wiki/Long_filename
      */
     static const uint32_t bitmap[] = {
-        0x00000000, 0x23FF7BFB, /* ASCII 0x00 - 0x3F */
-        0xFFFFFFFF, 0x6FFFFFFF, /* ASCII 0x40 - 0x7F */
+        0x00000000,
+        0x23FF7BFB, /* ASCII 0x00 - 0x3F */
+        0xFFFFFFFF,
+        0x6FFFFFFF, /* ASCII 0x40 - 0x7F */
     };
 
     if (len > 0 && str[0] == '.') {
         return 0;
     }
-    
+
     for (int i = 0; str[i] != 0 && i < len; i++) {
         if (i > 0x7F) {
             continue;
@@ -157,7 +156,7 @@ static int validate_lfn(const char* str, size_t len)
     return 1;
 }
 
-static int ucs2_to_utf8(char* buf, size_t len, uint16_t ucs2ch)
+static int ucs2_to_utf8(char *buf, size_t len, uint16_t ucs2ch)
 {
     if (ucs2ch == 0 || ucs2ch == 0xFFFF) return 0;
 
@@ -181,10 +180,9 @@ static int ucs2_to_utf8(char* buf, size_t len, uint16_t ucs2ch)
     return 3;
 }
 
-static size_t
-get_lfn_filename(
-    const struct fat_direntry_lfn* entry,
-    uint16_t buf[static FAT_LFN_BUFLEN])
+static size_t get_lfn_filename(
+    const struct fat_direntry_lfn *entry, uint16_t buf[static FAT_LFN_BUFLEN]
+)
 {
     buf += ((entry->sequence_index & 0x1F) - 1) * 13;
     size_t char_count = 0;
@@ -203,12 +201,12 @@ get_lfn_filename(
     return char_count;
 }
 
-static size_t
-lfn_ucs2_to_utf8(
+static size_t lfn_ucs2_to_utf8(
     char utf8buf[static FAT_LFN_U8_BUFLEN],
     const uint16_t ucs2buf[static FAT_LFN_BUFLEN],
     int allow_nonascii,
-    char fallback)
+    char fallback
+)
 {
     size_t bytes_written = 0;
     if (allow_nonascii) {
@@ -238,23 +236,22 @@ lfn_ucs2_to_utf8(
     return bytes_written;
 }
 
-static size_t
-get_sfn_filename(
-    const struct fat_direntry_file* entry,
-    char *buf)
+static size_t get_sfn_filename(const struct fat_direntry_file *entry, char *buf)
 {
     size_t char_count = 0;
 
     for (int i = 0; i < 8 && entry->name[i] != ' '; i++) {
         buf[char_count++] =
-            (char)((entry->attribute2 & FAT_ATTR2_LCASE_NAME) ? tolower(entry->name[i]) : entry->name[i]);
+            (char)((entry->attribute2 & FAT_ATTR2_LCASE_NAME) ? tolower(entry->name[i])
+                                                              : entry->name[i]);
     }
     if (entry->extension[0] != ' ') {
         buf[char_count++] = '.';
     }
     for (int i = 0; i < 3 && entry->extension[i] != ' '; i++) {
         buf[char_count++] =
-            (char)((entry->attribute2 & FAT_ATTR2_LCASE_EXT) ? tolower(entry->extension[i]) : entry->extension[i]);
+            (char)((entry->attribute2 & FAT_ATTR2_LCASE_EXT) ? tolower(entry->extension[i])
+                                                             : entry->extension[i]);
     }
     buf[char_count] = '\0';
 
@@ -277,10 +274,10 @@ static status_t read_fat(struct filesystem *fs, uint32_t fat_sector)
     struct fat_data *data = (struct fat_data *)fs->data;
     status_t status;
     lba_t lba;
-    
+
     lba = data->reserved_sectors + fat_sector;
     if (data->fatbuf_lba == lba) return STATUS_SUCCESS;
-    
+
     status = data->blkif->read(data->blkdev, lba, data->fatbuf, 1, NULL);
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -314,7 +311,8 @@ static lba_t fatcluster_to_sector12_16(struct filesystem *fs, fatcluster_t clust
 {
     struct fat_data *data = (struct fat_data *)fs->data;
 
-    return ((cluster - 2) * data->sectors_per_cluster) + data->data_area_begin + data->root_sector_count;
+    return ((cluster - 2) * data->sectors_per_cluster) + data->data_area_begin +
+        data->root_sector_count;
 }
 
 static lba_t fatcluster_to_sector32(struct filesystem *fs, fatcluster_t cluster)
@@ -331,13 +329,13 @@ static lba_t fatcluster_to_sector(struct filesystem *fs, fatcluster_t cluster)
     return data->cluster_to_sector(fs, cluster);
 }
 
-static status_t read_sector(struct filesystem* fs, lba_t lba)
+static status_t read_sector(struct filesystem *fs, lba_t lba)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
     status_t status;
 
     if (data->databuf_lba_start == lba) return STATUS_SUCCESS;
-    
+
     status = data->blkif->read(data->blkdev, lba, data->databuf, 1, NULL);
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -346,7 +344,7 @@ static status_t read_sector(struct filesystem* fs, lba_t lba)
     return STATUS_SUCCESS;
 }
 
-static status_t read_cluster(struct filesystem* fs, fatcluster_t cluster)
+static status_t read_cluster(struct filesystem *fs, fatcluster_t cluster)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
     status_t status;
@@ -390,14 +388,10 @@ static status_t get_next_cluster12(struct filesystem *fs, fatcluster_t *cluster,
             fatentry_buf[1] = data->fatbuf[byte_idx + 1];
         }
 
-        if (*cluster & 1) {  /* odd-numbered cluster */
-            *cluster = 
-                ((fatentry_buf[0] & 0xF0) >> 4) |
-                (fatentry_buf[1] << 4);
-        } else {  /* even-numbered cluster */
-            *cluster = 
-                fatentry_buf[0] |
-                ((fatentry_buf[1] & 0x0F) << 8);
+        if (*cluster & 1) { /* odd-numbered cluster */
+            *cluster = ((fatentry_buf[0] & 0xF0) >> 4) | (fatentry_buf[1] << 4);
+        } else { /* even-numbered cluster */
+            *cluster = fatentry_buf[0] | ((fatentry_buf[1] & 0x0F) << 8);
         }
 
         if (*cluster > FAT12_MAX_CLUSTER) return STATUS_END_OF_LIST;
@@ -463,9 +457,7 @@ static status_t get_next_cluster(struct filesystem *fs, fatcluster_t *cluster, u
 }
 
 static status_t match_name(
-    struct fs_directory* dir,
-    const char* name,
-    struct fs_directory_entry* direntry
+    struct fs_directory *dir, const char *name, struct fs_directory_entry *direntry
 )
 {
     status_t status;
@@ -479,12 +471,14 @@ static status_t match_name(
             return STATUS_SUCCESS;
         }
     }
-    
+
     return STATUS_ENTRY_NOT_FOUND;
 }
 
 static status_t probe(struct device *dev, struct fs_driver *drv);
-static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name);
+static status_t mount(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+);
 static status_t unmount(struct filesystem *fs);
 
 static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
@@ -494,7 +488,9 @@ static status_t tell(struct fs_file *file, off_t *result);
 static void close(struct fs_file *file);
 
 static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
-static status_t open_directory(struct fs_directory *dir, const char *name, struct fs_directory **dirout);
+static status_t open_directory(
+    struct fs_directory *dir, const char *name, struct fs_directory **dirout
+);
 static status_t rewind_directory(struct fs_directory *dir);
 static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
 static void close_directory(struct fs_directory *dir);
@@ -536,7 +532,7 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     unsigned int sector_size, sectors_per_cluster, fsinfo_sector;
     unsigned int root_entry_count, reserved_sectors, root_sector_count;
     unsigned int fat_size, total_sector_count, data_area_begin, cluster_count;
-    
+
     blkdev = dev;
     if (!blkdev) return STATUS_INVALID_VALUE;
 
@@ -565,13 +561,15 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     reserved_sectors = le16toh(bpb.reserved_sector_count);
     root_sector_count = ((root_entry_count * 32) + (sector_size - 1)) / sector_size;
     fat_size = bpb.fat_size16 ? le16toh(bpb.fat_size16) : le32toh(bpb.fat32.fat_size32);
-    total_sector_count = bpb.total_sector_count16 ? le16toh(bpb.total_sector_count16) : le32toh(bpb.total_sector_count32);
+    total_sector_count = bpb.total_sector_count16 ? le16toh(bpb.total_sector_count16)
+                                                  : le32toh(bpb.total_sector_count32);
     data_area_begin = reserved_sectors + (bpb.fat_count * fat_size);
-    cluster_count = (total_sector_count - data_area_begin - root_sector_count) / sectors_per_cluster;
+    cluster_count =
+        (total_sector_count - data_area_begin - root_sector_count) / sectors_per_cluster;
 
-    if (cluster_count > FAT16_MAX_CLUSTER) {  /* FAT32 */
+    if (cluster_count > FAT16_MAX_CLUSTER) { /* FAT32 */
         fsinfo_sector = bpb.fat32.fsinfo_sector;
-        
+
         status = blkif->read(blkdev, fsinfo_sector, &fsinfo, 1, NULL);
         if (!CHECK_SUCCESS(status)) return status;
 
@@ -585,7 +583,9 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     return STATUS_SUCCESS;
 }
 
-static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name)
+static status_t mount(
+    struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
+)
 {
     status_t status;
     struct filesystem *fs = NULL;
@@ -646,11 +646,14 @@ static status_t mount(struct filesystem **fsout, struct fs_driver *drv, struct d
     data->cluster_size = data->sector_size * data->sectors_per_cluster;
     data->root_entry_count = bpb.root_entry_count;
     data->reserved_sectors = bpb.reserved_sector_count;
-    data->root_sector_count = ((data->root_entry_count * 32) + (data->sector_size - 1)) / data->sector_size;
+    data->root_sector_count =
+        ((data->root_entry_count * 32) + (data->sector_size - 1)) / data->sector_size;
     data->fat_size = bpb.fat_size16 ? bpb.fat_size16 : bpb.fat32.fat_size32;
-    data->total_sector_count = bpb.total_sector_count16 ? bpb.total_sector_count16 : bpb.total_sector_count32;
+    data->total_sector_count =
+        bpb.total_sector_count16 ? bpb.total_sector_count16 : bpb.total_sector_count32;
     data->data_area_begin = data->reserved_sectors + (bpb.fat_count * data->fat_size);
-    uint32_t data_sectors = data->total_sector_count - data->data_area_begin - data->root_sector_count;
+    uint32_t data_sectors =
+        data->total_sector_count - data->data_area_begin - data->root_sector_count;
     uint32_t cluster_count = data_sectors / data->sectors_per_cluster;
 
     data->databuf = malloc(data->cluster_size);
@@ -748,7 +751,8 @@ static status_t open(struct fs_directory *dir, const char *name, struct fs_file 
     file_data->direntry_cluster = dir_data->current_cluster;
     file_data->direntry_entry_index = dir_data->current_entry_index;
     memcpy(&file_data->direntry, &dir_data->direntry, sizeof(dir_data->direntry));
-    file_data->head_cluster = (dir_data->direntry.cluster_location_high << 16) | dir_data->direntry.cluster_location;
+    file_data->head_cluster =
+        (dir_data->direntry.cluster_location_high << 16) | dir_data->direntry.cluster_location;
     file_data->current_cluster = file_data->head_cluster;
     file_data->cursor = 0;
 
@@ -757,7 +761,7 @@ static status_t open(struct fs_directory *dir, const char *name, struct fs_file 
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     file->fs = fs;
     file->data = file_data;
 
@@ -815,7 +819,6 @@ static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result
         if (!CHECK_SUCCESS(status)) break;
     }
 
-
     if (result) *result = total_read_len;
 
     return STATUS_SUCCESS;
@@ -831,17 +834,17 @@ static status_t seek(struct fs_file *file, off_t offset, int origin)
     fatcluster_t cluster;
 
     switch (origin) {
-        case SEEK_SET:
-            new_cursor = offset;
-            break;
-        case SEEK_CUR:
-            new_cursor = file_data->cursor + offset;
-            break;
-        case SEEK_END:
-            new_cursor = file_data->direntry.size + offset;
-            break;
-        default:
-            return STATUS_INVALID_VALUE;
+    case SEEK_SET:
+        new_cursor = offset;
+        break;
+    case SEEK_CUR:
+        new_cursor = file_data->cursor + offset;
+        break;
+    case SEEK_END:
+        new_cursor = file_data->direntry.size + offset;
+        break;
+    default:
+        return STATUS_INVALID_VALUE;
     }
     if (new_cursor < 0) return STATUS_INVALID_VALUE;
     if (new_cursor > file_data->direntry.size) {
@@ -872,7 +875,7 @@ static void close(struct fs_file *file)
     struct fat_file_data *file_data = (struct fat_file_data *)file->data;
 
     free(file_data);
-    
+
     free(file);
 }
 
@@ -901,7 +904,7 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     dir->fs = fs;
     dir->data = dir_data;
 
@@ -921,7 +924,9 @@ has_error:
     return status;
 }
 
-static status_t open_directory(struct fs_directory *dir, const char *name, struct fs_directory **dirout)
+static status_t open_directory(
+    struct fs_directory *dir, const char *name, struct fs_directory **dirout
+)
 {
     struct filesystem *fs = dir->fs;
     struct fat_data *data = (struct fat_data *)fs->data;
@@ -936,7 +941,7 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
     if (dir_data->root_cluster && (strcmp(".", name) == 0 || strcmp("..", name) == 0)) {
         return open_root_directory(fs, dirout);
     }
-    
+
     status = match_name(dir, name, &dirent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -955,7 +960,8 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
         new_dir_data->head_cluster = data->root_cluster;
         new_dir_data->root_cluster = 1;
     } else {
-        new_dir_data->head_cluster = (dir_data->direntry.cluster_location_high << 16) | dir_data->direntry.cluster_location;
+        new_dir_data->head_cluster =
+            (dir_data->direntry.cluster_location_high << 16) | dir_data->direntry.cluster_location;
         new_dir_data->root_cluster = 0;
     }
     new_dir_data->current_cluster = new_dir_data->head_cluster;
@@ -1006,7 +1012,7 @@ static status_t iter_directory(struct fs_directory *dir, struct fs_directory_ent
     int is_rootdir = data->fat_type != FT_FAT32 && dir_data->head_cluster == 0;
     const uint16_t block_size = is_rootdir ? data->sector_size : data->cluster_size;
     uint16_t entries_per_block = block_size / sizeof(union fat_dir_entry);
-    union fat_dir_entry* entries;
+    union fat_dir_entry *entries;
     int entry_found = 0;
     uint16_t lfn_ucs2_buf[FAT_LFN_BUFLEN];
     int is_lfn = 0;
@@ -1018,7 +1024,10 @@ static status_t iter_directory(struct fs_directory *dir, struct fs_directory_ent
             if (dir_data->current_entry_index / entries_per_block >= data->root_sector_count) {
                 return STATUS_END_OF_LIST;
             }
-            status = read_sector(fs, data->data_area_begin + dir_data->current_entry_index / entries_per_block);
+            status = read_sector(
+                fs,
+                data->data_area_begin + dir_data->current_entry_index / entries_per_block
+            );
             if (!CHECK_SUCCESS(status)) return status;
         } else {
             fatcluster_t current_cluster = dir_data->current_cluster;
@@ -1031,12 +1040,12 @@ static status_t iter_directory(struct fs_directory *dir, struct fs_directory_ent
             if (!CHECK_SUCCESS(status)) return status;
             dir_data->current_cluster = current_cluster;
         }
-        entries = (union fat_dir_entry*)data->databuf;
+        entries = (union fat_dir_entry *)data->databuf;
 
         while (is_rootdir || dir_data->current_entry_index < entries_per_block) {
-            union fat_dir_entry* current_entry =
+            union fat_dir_entry *current_entry =
                 &entries[dir_data->current_entry_index % entries_per_block];
-            if ((uint8_t)current_entry->file.name[0] == 0) {  /* End of entry list */
+            if ((uint8_t)current_entry->file.name[0] == 0) { /* End of entry list */
                 return STATUS_END_OF_LIST;
             } else if ((uint8_t)current_entry->file.name[0] == 0xE5) {
                 /* skip if file entry is deleted */
@@ -1061,11 +1070,14 @@ static status_t iter_directory(struct fs_directory *dir, struct fs_directory_ent
     if (is_lfn) {
         lfn_ucs2_to_utf8(entry->name, lfn_ucs2_buf, 1, '?');
     } else {
-        get_sfn_filename(
-            &entries[dir_data->current_entry_index].file, entry->name);
+        get_sfn_filename(&entries[dir_data->current_entry_index].file, entry->name);
     }
     entry->size = entries[dir_data->current_entry_index].file.size;
-    memcpy(&dir_data->direntry, &entries[dir_data->current_entry_index], sizeof(dir_data->direntry));
+    memcpy(
+        &dir_data->direntry,
+        &entries[dir_data->current_entry_index],
+        sizeof(dir_data->direntry)
+    );
     dir_data->current_entry_index++;
 
     return STATUS_SUCCESS;

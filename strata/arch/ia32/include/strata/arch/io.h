@@ -9,7 +9,7 @@
 
 __always_inline void StIoA_Wait(void)
 {
-    __asm__ volatile ("outb %%al, $0x80" : : "a"(0));
+    __asm__ volatile("outb %%al, $0x80" : : "a"(0));
 }
 
-#endif // __STRATA_ARCH_IO_H__
+#endif  // __STRATA_ARCH_IO_H__

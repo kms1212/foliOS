@@ -143,11 +143,10 @@ char *strerror(int error)
 {
     static char buffer[128];
 
-    if (error < 0 || error >= ARRAY_SIZE(error_string))
-    {
+    if (error < 0 || error >= ARRAY_SIZE(error_string)) {
         return NULL;
     }
-    
+
     strncpy(buffer, error_string[error], sizeof(buffer) - 1);
     buffer[sizeof(buffer) - 1] = '\0';
     return buffer;

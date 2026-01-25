@@ -7,4 +7,4 @@ struct StProcessP_PlatformData {
     St_PhysFrame pml4_phys;
 };
 
-#endif // __STRATA_PLAT_PROCESS_H__
+#endif  // __STRATA_PLAT_PROCESS_H__

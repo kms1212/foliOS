@@ -1,28 +1,28 @@
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
-#include <inttypes.h>
+#include <string.h>
 
-#include <strata/arch/mmu.h>
 #include <strata/arch/interrupt.h>
+#include <strata/arch/mmu.h>
 
 #include <strata/plat/gdt_constants.h>
 #include <strata/plat/time.h>
 
-#include <strata/types.h>
-#include <strata/compiler.h>
-#include <strata/process.h>
-#include <strata/mm.h>
-#include <strata/thread.h>
-#include <strata/scheduler.h>
-#include <strata/status.h>
-#include <strata/macros.h>
-#include <strata/panic.h>
-#include <strata/log.h>
-#include <strata/mutex.h>
 #include <loadst/bootinfo.h>
 #include <loadst/ramdisk.h>
+#include <strata/compiler.h>
+#include <strata/log.h>
+#include <strata/macros.h>
+#include <strata/mm.h>
+#include <strata/mutex.h>
+#include <strata/panic.h>
+#include <strata/process.h>
+#include <strata/scheduler.h>
+#include <strata/status.h>
+#include <strata/thread.h>
+#include <strata/types.h>
 
 #define MODULE_NAME "main"
 
@@ -46,23 +46,23 @@ static int early_print_char(void *_state, char ch)
     pitch = state->pitch;
 
     switch (ch) {
-        case '\0':
-            return 1;
-        case '\n':
-            state->cursor_row++;
-        case '\r':
-            state->cursor_col = 0;
-            break;
-        case '\t':
-            state->cursor_col = (state->cursor_col + 8) & ~7;
-            break;
-        case '\b':
-            state->cursor_col--;
-            break;
-        default:
-            framebuffer[state->cursor_row * width + state->cursor_col] = ch | 0x0700;
-            state->cursor_col++;
-            break;
+    case '\0':
+        return 1;
+    case '\n':
+        state->cursor_row++;
+    case '\r':
+        state->cursor_col = 0;
+        break;
+    case '\t':
+        state->cursor_col = (state->cursor_col + 8) & ~7;
+        break;
+    case '\b':
+        state->cursor_col--;
+        break;
+    default:
+        framebuffer[state->cursor_row * width + state->cursor_col] = ch | 0x0700;
+        state->cursor_col++;
+        break;
     }
 
     if (state->cursor_col >= width) {
@@ -99,7 +99,7 @@ static void thread1_main(struct StThread *th)
 
     for (;;) {
         StThread_Sleep(20);
-        
+
         StPmm_GetTotalFrameCount(&total_frames);
         StPmm_GetFreeFrameCount(&free_frames);
 
@@ -125,7 +125,8 @@ static void thread4_main(struct StThread *th)
                 St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
             }
             shared_value = 1;
-            for (volatile int i = 0; i < 1024; i++) {}
+            for (volatile int i = 0; i < 1024; i++) {
+            }
             shared_value = 0;
             StMutex_Unlock(&mtx);
         }
@@ -159,7 +160,8 @@ static void thread3_main(struct StThread *th)
                 St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
             }
             shared_value = 1;
-            for (volatile int i = 0; i < 1024; i++) {}
+            for (volatile int i = 0; i < 1024; i++) {
+            }
             shared_value = 0;
             StMutex_Unlock(&mtx);
         }
@@ -190,18 +192,18 @@ static void thread2_main(struct StThread *th)
     uint32_t time = 0, prev_time = 0, temp;
     struct StThread *new_thread1, *new_thread2;
     struct StThread *waitlist[2];
-    
+
     do {
         if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
             if (shared_value) {
                 St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
             }
             shared_value = 1;
-            for (volatile int i = 0; i < 1024; i++) {}
+            for (volatile int i = 0; i < 1024; i++) {
+            }
             shared_value = 0;
             StMutex_Unlock(&mtx);
         }
-
 
         time = StTimeP_GetGlobalTick() - start_tick;
         if (time == prev_time) {
@@ -240,7 +242,14 @@ static void setup_process(void)
     uint8_t *test_addr;
     struct StProcess *process;
 
-    StMm_AllocateSparse(VMM_DOMAIN_USER, &test_vpn, (St_PageCount)16, PMM_DEFAULT, VMM_DEFAULT, MAP_USER);
+    StMm_AllocateSparse(
+        VMM_DOMAIN_USER,
+        &test_vpn,
+        (St_PageCount)16,
+        PMM_DEFAULT,
+        VMM_DEFAULT,
+        MAP_USER
+    );
 
     test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
     test_addr[0] = 0x0F;  // syscall
@@ -256,8 +265,7 @@ static void setup_process(void)
     StThread_Detach(process->main_thread);
 }
 
-__attribute__((noreturn))
-void main(void)
+__attribute__((noreturn)) void main(void)
 {
     StStatus status;
     struct bootinfo_entry_header *enthdr = NULL;
@@ -282,41 +290,41 @@ void main(void)
     enthdr = (void *)((uintptr_t)_pc_bootinfo_table + _pc_bootinfo_table->header_size);
     for (int i = 0; i < _pc_bootinfo_table->entry_count; i++) {
         switch (enthdr->type) {
-            case BET_COMMAND_ARGS:
-                caent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_LOADER_INFO:
-                lient = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_MEMORY_MAP:
-                mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_SYSTEM_DISK:
-                sdent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_ACPI_RSDP:
-                arent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_FRAMEBUFFER:
-                fbent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_DEFAULT_FONT:
-                dfent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_BOOT_GRAPHICS:
-                bgent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_UNAVAILABLE_FRAMES:
-                ufent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_PAGETABLE_VPN:
-                pvent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            case BET_RAMDISK:
-                rdent = (void *)((uintptr_t)enthdr + enthdr->header_size);
-                break;
-            default:
-                break;
+        case BET_COMMAND_ARGS:
+            caent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_LOADER_INFO:
+            lient = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_MEMORY_MAP:
+            mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_SYSTEM_DISK:
+            sdent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_ACPI_RSDP:
+            arent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_FRAMEBUFFER:
+            fbent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_DEFAULT_FONT:
+            dfent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_BOOT_GRAPHICS:
+            bgent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_UNAVAILABLE_FRAMES:
+            ufent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_PAGETABLE_VPN:
+            pvent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_RAMDISK:
+            rdent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        default:
+            break;
         }
 
         enthdr = (void *)((uintptr_t)enthdr + enthdr->size);
@@ -358,7 +366,7 @@ void main(void)
             LOG_DEBUG("\t%s\n", &_pc_bootinfo_table->strtab[caent->arg_offsets[j]]);
         }
     }
-    
+
     if (lient) {
         LOG_DEBUG("loader info entry:\n");
         LOG_DEBUG("\tname: %s\n", &_pc_bootinfo_table->strtab[lient->name_offset]);
@@ -377,56 +385,75 @@ void main(void)
         LOG_DEBUG("memory map entry:\n");
         LOG_DEBUG("\tbase             size             type\n");
         for (int j = 0; j < mment->entry_count; j++) {
-            LOG_DEBUG("\t%016"PRIX64" %016"PRIX64" %08"PRIX32"\n", mment->entries[j].base, mment->entries[j].size, mment->entries[j].type);
+            LOG_DEBUG(
+                "\t%016" PRIX64 " %016" PRIX64 " %08" PRIX32 "\n",
+                mment->entries[j].base,
+                mment->entries[j].size,
+                mment->entries[j].type
+            );
         }
     }
-    
+
     if (sdent) {
         LOG_DEBUG("system disk entry:\n");
-        LOG_DEBUG("\tident_crc32: %08"PRIX32"\n", sdent->ident_crc32);
+        LOG_DEBUG("\tident_crc32: %08" PRIX32 "\n", sdent->ident_crc32);
         LOG_DEBUG("\tlba              crc32\n");
         for (int j = 0; j < sdent->entry_count; j++) {
-            LOG_DEBUG("\t%016"PRIX64" %08"PRIX32"\n", sdent->entries[j].lba, sdent->entries[j].crc32);
+            LOG_DEBUG(
+                "\t%016" PRIX64 " %08" PRIX32 "\n",
+                sdent->entries[j].lba,
+                sdent->entries[j].crc32
+            );
         }
     }
-    
+
     if (arent) {
         LOG_DEBUG("acpi rsdp entry:\n");
         LOG_DEBUG("\toemid: %.6s\n", arent->oemid);
         LOG_DEBUG("\trevision: %02X\n", arent->revision);
-        LOG_DEBUG("\tsize: %08"PRIX32"\n", arent->size);
-        LOG_DEBUG("\trsdt: %08"PRIX32"\n", arent->rsdt_addr);
-        LOG_DEBUG("\txsdt: %016"PRIX64"\n", arent->xsdt_addr);
+        LOG_DEBUG("\tsize: %08" PRIX32 "\n", arent->size);
+        LOG_DEBUG("\trsdt: %08" PRIX32 "\n", arent->rsdt_addr);
+        LOG_DEBUG("\txsdt: %016" PRIX64 "\n", arent->xsdt_addr);
     }
-    
+
     if (dfent) {
         LOG_DEBUG("default font entry:\n");
     }
-    
+
     if (bgent) {
         LOG_DEBUG("boot graphics entry:\n");
     }
-    
+
     if (ufent) {
         LOG_DEBUG("unavailable frames entry:\n");
         LOG_DEBUG("\tpfn           count     type\n");
         for (int j = 0; j < ufent->entry_count; j++) {
-            LOG_DEBUG("\t%013"PRIX64" %09"PRId32" %01X\n", ufent->entries[j].pfn_base, ufent->entries[j].count, ufent->entries[j].type);
+            LOG_DEBUG(
+                "\t%013" PRIX64 " %09" PRId32 " %01X\n",
+                ufent->entries[j].pfn_base,
+                ufent->entries[j].count,
+                ufent->entries[j].type
+            );
         }
     }
 
     if (pvent) {
         LOG_DEBUG("pagetable vpn entry:\n");
-        LOG_DEBUG("\t%013"PRIX64"\n", pvent->vpn);
+        LOG_DEBUG("\t%013" PRIX64 "\n", pvent->vpn);
     }
 
     if (rdent) {
         LOG_DEBUG("boot ramdisk:\n");
-        LOG_DEBUG("\tversion=%u size=%08"PRIX32" addr=%016"PRIX64"\n", rdent->version, rdent->size, rdent->data_addr);
+        LOG_DEBUG(
+            "\tversion=%u size=%08" PRIX32 " addr=%016" PRIX64 "\n",
+            rdent->version,
+            rdent->size,
+            rdent->data_addr
+        );
     }
 
     LOG_DEBUG("starting main...\n");
-    
+
     StPmm_GetTotalFrameCount(&total_frames);
     StPmm_GetFreeFrameCount(&free_frames);
 

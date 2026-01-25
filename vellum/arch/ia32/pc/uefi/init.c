@@ -11,13 +11,14 @@ EFIAPI
 efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 {
     InitializeLib(ImageHandle, SystemTable);
-    
+
     EFI_LOADED_IMAGE_PROTOCOL *LoadedImage;
     EFI_STATUS Status;
     UINTN HandleCount = 0;
     EFI_HANDLE *HandleBuffer = NULL;
 
-    Status = SystemTable->BootServices->HandleProtocol(ImageHandle, &LoadedImageProtocolGuid, (void **)&LoadedImage);
+    Status = SystemTable->BootServices
+                 ->HandleProtocol(ImageHandle, &LoadedImageProtocolGuid, (void **)&LoadedImage);
     if (EFI_ERROR(Status)) {
         Print(L"HandleProtocol() failed: 0x%lx\n", Status);
         return Status;
@@ -28,7 +29,7 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     volatile uint64_t *MarkerPtr = (uint64_t *)0x10000;
     volatile uint64_t *ImageBasePtr = (uint64_t *)0x10008;
     *ImageBasePtr = (uint32_t)LoadedImage->ImageBase;  // Store ImageBase
-    *MarkerPtr = 0xDEADBEEF;   // Set marker
+    *MarkerPtr = 0xDEADBEEF;                           // Set marker
 
     Status = SystemTable->BootServices->LocateHandleBuffer(
         ByProtocol,
@@ -45,11 +46,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
     Print(L"Found %u block handles.\r\n", (unsigned)HandleCount);
     for (UINTN i = 0; i < HandleCount; ++i) {
         EFI_BLOCK_IO *BlockIo = NULL;
-        Status = SystemTable->BootServices->HandleProtocol(
-            HandleBuffer[i],
-            &BlockIoProtocolGuid,
-            (void**)&BlockIo
-        );
+        Status = SystemTable->BootServices
+                     ->HandleProtocol(HandleBuffer[i], &BlockIoProtocolGuid, (void **)&BlockIo);
         if (EFI_ERROR(Status) || BlockIo == NULL) {
             Print(L"[%5u] HandleProtocol(BlockIo) failed: %lx\r\n", (unsigned)i, Status);
             continue;
@@ -78,7 +76,8 @@ efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable)
 
     main();
 
-    for (;;) {}
+    for (;;) {
+    }
 
     return EFI_SUCCESS;
 }

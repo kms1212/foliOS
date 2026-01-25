@@ -1,12 +1,12 @@
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <endian.h>
 
-#include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/interface/block.h>
+#include <vellum/status.h>
 
 struct part_data {
     struct device *blkdev;
@@ -61,7 +61,13 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
 
@@ -81,7 +87,13 @@ static void part_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -100,15 +112,15 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_INVALID_VALUE;
         goto has_error;
     }
-    
+
     status = blkdev->driver->get_interface(blkdev, "block", (const void **)&blkif);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     status = device_create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     snprintf(dev_name_base, sizeof(dev_name_base), "%.62sp", parent->name);
-    
+
     status = device_generate_name(dev_name_base, dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -117,7 +129,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     data->blkdev = blkdev;
     data->blkif = blkif;
     data->part_base = le64toh(rsrc[0].base);

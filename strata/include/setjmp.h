@@ -5,8 +5,7 @@
 
 #include <compiler.h>
 
-__noreturn
-void longjmp(jmp_buf jmpbuf, int ret);
+__noreturn void longjmp(jmp_buf jmpbuf, int ret);
 int setjmp(jmp_buf jmpbuf);
 
-#endif // __SETJMP_H__
+#endif  // __SETJMP_H__

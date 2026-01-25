@@ -1,9 +1,9 @@
 #include <vellum/json.h>
 
 #include <ctype.h>
-#include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <vellum/panic.h>
 
@@ -28,7 +28,8 @@ static status_t parse_value(struct json_state *state, struct json_value **valueo
 
 static void skip_whitespace(struct json_state *state)
 {
-    for (; state->cursor < state->len && isspace(state->str[state->cursor]); state->cursor++) {}
+    for (; state->cursor < state->len && isspace(state->str[state->cursor]); state->cursor++) {
+    }
 }
 
 static status_t parse_object(struct json_state *state, struct json_value **valueout)
@@ -54,7 +55,7 @@ static status_t parse_object(struct json_state *state, struct json_value **value
     int end = 0;
     while (!end) {
         skip_whitespace(state);
-    
+
         *current_elem = malloc(sizeof(struct json_object_elem));
         if (!*current_elem) {
             status = STATUS_UNKNOWN_ERROR;
@@ -64,9 +65,9 @@ static status_t parse_object(struct json_state *state, struct json_value **value
 
         status = parse_string_literal(state, &(*current_elem)->key);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         skip_whitespace(state);
-    
+
         if (state->str[state->cursor] != ':') {
             status = STATUS_SYNTAX_ERROR;
             goto has_error;
@@ -75,28 +76,28 @@ static status_t parse_object(struct json_state *state, struct json_value **value
             status = STATUS_SYNTAX_ERROR;
             goto has_error;
         }
-    
+
         skip_whitespace(state);
-    
+
         status = parse_value(state, &(*current_elem)->value);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         skip_whitespace(state);
-    
+
         switch (state->str[state->cursor]) {
-            case '}':
-                end = 1;
-                break;
-            case ',':
-                if (++state->cursor >= state->len) {
-                    status = STATUS_SYNTAX_ERROR;
-                    goto has_error;
-                }
-                current_elem = &(*current_elem)->next;
-                break;
-            default:
+        case '}':
+            end = 1;
+            break;
+        case ',':
+            if (++state->cursor >= state->len) {
                 status = STATUS_SYNTAX_ERROR;
                 goto has_error;
+            }
+            current_elem = &(*current_elem)->next;
+            break;
+        default:
+            status = STATUS_SYNTAX_ERROR;
+            goto has_error;
         }
         if (++state->cursor >= state->len) {
             status = STATUS_SYNTAX_ERROR;
@@ -156,26 +157,26 @@ static status_t parse_array(struct json_state *state, struct json_value **valueo
         }
         (*current_elem)->next = NULL;
         (*current_elem)->index = index++;
-    
+
         status = parse_value(state, &(*current_elem)->value);
         if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
         skip_whitespace(state);
-    
+
         switch (state->str[state->cursor]) {
-            case ']':
-                end = 1;
-                break;
-            case ',':
-                if (++state->cursor >= state->len) {
-                    status = STATUS_INVALID_SYNTAX;
-                    goto has_error;
-                }
-                current_elem = &(*current_elem)->next;
-                break;
-            default:
+        case ']':
+            end = 1;
+            break;
+        case ',':
+            if (++state->cursor >= state->len) {
                 status = STATUS_INVALID_SYNTAX;
                 goto has_error;
+            }
+            current_elem = &(*current_elem)->next;
+            break;
+        default:
+            status = STATUS_INVALID_SYNTAX;
+            goto has_error;
         }
         if (++state->cursor >= state->len) {
             status = STATUS_INVALID_SYNTAX;
@@ -201,13 +202,13 @@ static size_t count_escaped_string_len(struct json_state *state)
     long len = 0;
     for (long i = 0; state->cursor + i < state->len; i++) {
         switch (state->str[state->cursor + i]) {
-            case '\\':
-                i++;
-                break;
-            case '"':
-                goto end;
-            default:
-                break;
+        case '\\':
+            i++;
+            break;
+        case '"':
+            goto end;
+        default:
+            break;
         }
 
         len++;
@@ -242,7 +243,7 @@ static status_t parse_string_literal(struct json_state *state, char **ptr)
         goto has_error;
     }
     size_t bufcur = 0;
-    
+
     int end = 0;
     while (!end) {
         if (state->str[state->cursor] == '\\') {
@@ -297,7 +298,7 @@ static status_t parse_string(struct json_state *state, struct json_value **value
 
     status = parse_string_literal(state, &value->str);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    
+
     *valueout = value;
 
     return STATUS_SUCCESS;
@@ -319,7 +320,8 @@ static status_t parse_number(struct json_state *state, struct json_value **value
 
     skip_whitespace(state);
 
-    if (!isdigit(state->str[state->cursor]) && state->str[state->cursor] != '-') return STATUS_INVALID_SYNTAX;
+    if (!isdigit(state->str[state->cursor]) && state->str[state->cursor] != '-')
+        return STATUS_INVALID_SYNTAX;
     if (state->cursor + 1 >= state->len) return STATUS_INVALID_SYNTAX;
 
     struct json_value *value = malloc(sizeof(struct json_value));
@@ -369,47 +371,47 @@ static status_t parse_other(struct json_state *state, struct json_value **valueo
     }
 
     switch (state->str[state->cursor]) {
-        case 't':
-            if (state->cursor + 4 >= state->len) {
-                status = STATUS_INVALID_SYNTAX;
-                goto has_error;
-            }
-            if (strncmp("true", state->str + state->cursor, 4) != 0) {
-                status = STATUS_INVALID_SYNTAX;
-                goto has_error;
-            }
-            state->cursor += 4;
-            value->type = JVT_BOOLEAN;
-            value->boolean = 1;
-            break;
-        case 'f':
-            if (state->cursor + 5 >= state->len) {
-                status = STATUS_INVALID_SYNTAX;
-                goto has_error;
-            }
-            if (strncmp("false", state->str + state->cursor, 5) != 0) {
-                status = STATUS_INVALID_SYNTAX;
-                goto has_error;
-            }
-            state->cursor += 5;
-            value->type = JVT_BOOLEAN;
-            value->boolean = 0;
-            break;
-        case 'n':
-            if (state->cursor + 4 >= state->len) {
-                status = STATUS_INVALID_SYNTAX;
-                goto has_error;
-            }
-            if (strncmp("null", state->str + state->cursor, 4) != 0) {
-                status = STATUS_INVALID_SYNTAX;
-                goto has_error;
-            }
-            state->cursor += 4;
-            value->type = JVT_NULL;
-            break;
-        default:
+    case 't':
+        if (state->cursor + 4 >= state->len) {
             status = STATUS_INVALID_SYNTAX;
             goto has_error;
+        }
+        if (strncmp("true", state->str + state->cursor, 4) != 0) {
+            status = STATUS_INVALID_SYNTAX;
+            goto has_error;
+        }
+        state->cursor += 4;
+        value->type = JVT_BOOLEAN;
+        value->boolean = 1;
+        break;
+    case 'f':
+        if (state->cursor + 5 >= state->len) {
+            status = STATUS_INVALID_SYNTAX;
+            goto has_error;
+        }
+        if (strncmp("false", state->str + state->cursor, 5) != 0) {
+            status = STATUS_INVALID_SYNTAX;
+            goto has_error;
+        }
+        state->cursor += 5;
+        value->type = JVT_BOOLEAN;
+        value->boolean = 0;
+        break;
+    case 'n':
+        if (state->cursor + 4 >= state->len) {
+            status = STATUS_INVALID_SYNTAX;
+            goto has_error;
+        }
+        if (strncmp("null", state->str + state->cursor, 4) != 0) {
+            status = STATUS_INVALID_SYNTAX;
+            goto has_error;
+        }
+        state->cursor += 4;
+        value->type = JVT_NULL;
+        break;
+    default:
+        status = STATUS_INVALID_SYNTAX;
+        goto has_error;
     }
 
     *valueout = value;
@@ -430,30 +432,30 @@ static status_t parse_value(struct json_state *state, struct json_value **value)
     skip_whitespace(state);
 
     switch (state->str[state->cursor]) {
-        case '{':
-            return parse_object(state, value);
-        case '[':
-            return parse_array(state, value);
-        case '"':
-            return parse_string(state, value);
-        case '0':
-        case '1':
-        case '2':
-        case '3':
-        case '4':
-        case '5':
-        case '6':
-        case '7':
-        case '8':
-        case '9':
-        case '-':
-            return parse_number(state, value);
-        case 't':
-        case 'f':
-        case 'n':
-            return parse_other(state, value);
-        default:
-            return STATUS_INVALID_SYNTAX;
+    case '{':
+        return parse_object(state, value);
+    case '[':
+        return parse_array(state, value);
+    case '"':
+        return parse_string(state, value);
+    case '0':
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+    case '-':
+        return parse_number(state, value);
+    case 't':
+    case 'f':
+    case 'n':
+        return parse_other(state, value);
+    default:
+        return STATUS_INVALID_SYNTAX;
     }
 }
 
@@ -482,7 +484,9 @@ void json_destruct(struct json_value *json)
     free(json);
 }
 
-status_t json_object_find_value(struct json_object *obj, const char *str, struct json_value **valueout)
+status_t json_object_find_value(
+    struct json_object *obj, const char *str, struct json_value **valueout
+)
 {
     for (struct json_object_elem *elem = obj->elem; elem; elem = elem->next) {
         if (strcmp(str, elem->key) == 0) {
@@ -494,7 +498,9 @@ status_t json_object_find_value(struct json_object *obj, const char *str, struct
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t json_array_find_value(struct json_array *arr, unsigned int idx, struct json_value **valueout)
+status_t json_array_find_value(
+    struct json_array *arr, unsigned int idx, struct json_value **valueout
+)
 {
     for (struct json_array_elem *elem = arr->elem; elem; elem = elem->next) {
         if (elem->index == idx) {

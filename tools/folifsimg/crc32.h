@@ -13,4 +13,4 @@ uint32_t crc32(const uint8_t *message, unsigned int len);
 };
 #endif
 
-#endif // __CRC32_H__
+#endif  // __CRC32_H__

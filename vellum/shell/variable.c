@@ -42,7 +42,8 @@ status_t shell_set_variable(struct shell_instance *inst, const char *key, const 
     } else if (!inst->var_list || inst->var_list == tmp) {
         inst->var_list = entry;
     } else {
-        for (prev_entry = inst->var_list; prev_entry->next; prev_entry = prev_entry->next) {}
+        for (prev_entry = inst->var_list; prev_entry->next; prev_entry = prev_entry->next) {
+        }
         prev_entry->next = entry;
     }
 

@@ -11,8 +11,16 @@ static status_t (*call_apm)(struct bioscall_regs *regs);
 static uint16_t codeseg32, codeseg16, dataseg;
 static void *entry;
 
-extern int _pc_apm_call_pm32_interface(void *entry, uint16_t codeseg32, uint16_t codeseg16, uint16_t dataseg, struct bioscall_regs *regs);
-extern int _pc_apm_call_pm16_interface(void *entry, uint16_t codeseg16, uint16_t dataseg, struct bioscall_regs *regs);
+extern int _pc_apm_call_pm32_interface(
+    void *entry,
+    uint16_t codeseg32,
+    uint16_t codeseg16,
+    uint16_t dataseg,
+    struct bioscall_regs *regs
+);
+extern int _pc_apm_call_pm16_interface(
+    void *entry, uint16_t codeseg16, uint16_t dataseg, struct bioscall_regs *regs
+);
 
 static status_t call_pm32_interface(struct bioscall_regs *regs)
 {
@@ -29,7 +37,15 @@ static status_t connect_pm32_interface(void)
     uint16_t codeseg32_base, codeseg16_base, dataseg_base;
     uint16_t codeseg32_len, codeseg16_len, dataseg_len;
 
-    status = _pc_bios_apm_connect_pm32_interface(&entry, &codeseg32_base, &codeseg16_base, &dataseg_base, &codeseg32_len, &codeseg16_len, &dataseg_len);
+    status = _pc_bios_apm_connect_pm32_interface(
+        &entry,
+        &codeseg32_base,
+        &codeseg16_base,
+        &dataseg_base,
+        &codeseg32_len,
+        &codeseg16_len,
+        &dataseg_len
+    );
     if (status) return status;
 
     /* codeseg32 */
@@ -79,7 +95,13 @@ static status_t connect_pm16_interface(void)
     uint16_t codeseg16_base, dataseg_base;
     uint16_t codeseg16_len, dataseg_len;
 
-    status = _pc_bios_apm_connect_pm16_interface(&entry, &codeseg16_base, &dataseg_base, &codeseg16_len, &dataseg_len);
+    status = _pc_bios_apm_connect_pm16_interface(
+        &entry,
+        &codeseg16_base,
+        &dataseg_base,
+        &codeseg16_len,
+        &dataseg_len
+    );
     if (status) return status;
 
     /* codeseg16 */
@@ -137,8 +159,6 @@ status_t _pc_apm_init(void)
     } else {
         status = connect_rm_interface();
     }
-
-
 
     return STATUS_SUCCESS;
 }

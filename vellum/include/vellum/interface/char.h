@@ -3,8 +3,8 @@
 
 #include <wchar.h>
 
-#include <vellum/status.h>
 #include <vellum/device.h>
+#include <vellum/status.h>
 
 struct char_interface {
     status_t (*seek)(struct device *, off_t, int, off_t *);
@@ -20,4 +20,4 @@ struct wchar_interface {
     status_t (*flush)(struct device *);
 };
 
-#endif // __VELLUM_INTERFACE_CHAR_H__
+#endif  // __VELLUM_INTERFACE_CHAR_H__

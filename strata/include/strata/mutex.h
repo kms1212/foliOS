@@ -1,8 +1,8 @@
 #ifndef __STRATA_MUTEX_H__
 #define __STRATA_MUTEX_H__
 
-#include <strata/thread.h>
 #include <strata/status.h>
+#include <strata/thread.h>
 
 struct StMutex {
     volatile int locked;
@@ -17,4 +17,4 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms);
 StStatus StMutex_TryLock(struct StMutex *mtx);
 StStatus StMutex_Unlock(struct StMutex *mtx);
 
-#endif // __STRATA_MUTEX_H__
+#endif  // __STRATA_MUTEX_H__

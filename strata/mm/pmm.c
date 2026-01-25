@@ -215,9 +215,10 @@ struct internal_public_metadata_view {
     uint32_t order;
 };
 
-_Static_assert(sizeof(struct StPmm_AllocationMetadata) ==
-                   sizeof(struct internal_public_metadata_view),
-               "public metadata struct size mismatch");
+_Static_assert(
+    sizeof(struct StPmm_AllocationMetadata) == sizeof(struct internal_public_metadata_view),
+    "public metadata struct size mismatch"
+);
 
 struct metadata {
     struct internal_public_metadata_view public;
@@ -227,12 +228,14 @@ struct metadata {
     atomic_uint_fast32_t refcount;
     atomic_uint_fast32_t lock;
 
-    uint8_t padding[64 - sizeof(struct internal_public_metadata_view) -
-                    sizeof(struct metadata *) * 2 - sizeof(atomic_uint_fast32_t) * 2];
+    uint8_t padding
+        [64 - sizeof(struct internal_public_metadata_view) - sizeof(struct metadata *) * 2 -
+         sizeof(atomic_uint_fast32_t) * 2];
 } __aligned(64);
 
-_Static_assert(sizeof(struct metadata) == 64,
-               "metadata struct size mismatch (sizeof(struct metadata) != 64)");
+_Static_assert(
+    sizeof(struct metadata) == 64, "metadata struct size mismatch (sizeof(struct metadata) != 64)"
+);
 
 struct metadata_table {
     struct metadata entries[PAGES_PER_ALLOCTABLE_ENTRY];
@@ -314,8 +317,14 @@ static const uint64_t alloc_masks[63] = {
 
 static inline void propagate_up(uint64_t *entry, int start_page_idx, int start_order, int set)
 {
-    int offsets[] = {ALLOCENT_BMP_1P_POS, ALLOCENT_BMP_2P_POS,  ALLOCENT_BMP_4P_POS,
-                     ALLOCENT_BMP_8P_POS, ALLOCENT_BMP_16P_POS, ALLOCENT_BMP_32P_POS};
+    int offsets[] = {
+        ALLOCENT_BMP_1P_POS,
+        ALLOCENT_BMP_2P_POS,
+        ALLOCENT_BMP_4P_POS,
+        ALLOCENT_BMP_8P_POS,
+        ALLOCENT_BMP_16P_POS,
+        ALLOCENT_BMP_32P_POS
+    };
 
     int current_idx = start_page_idx >> start_order;
 
@@ -380,8 +389,9 @@ static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int order)
     return (ctz64(inverted) - pos) * (1 << order);
 }
 
-static inline void allocate_from_bitmap_entry(uint64_t *entry, int index, int order,
-                                              int align_order)
+static inline void allocate_from_bitmap_entry(
+    uint64_t *entry, int index, int order, int align_order
+)
 {
     uint64_t prev = *entry;
 
@@ -492,8 +502,9 @@ static StStatus get_or_create_table(size_t table_idx, struct alloc_table **table
     return STATUS_SUCCESS;
 }
 
-static StStatus get_or_create_extentry(struct alloc_table *table, int entry_idx,
-                                       struct extended_entry **entry)
+static StStatus get_or_create_extentry(
+    struct alloc_table *table, int entry_idx, struct extended_entry **entry
+)
 {
     int create_as_unusable = 0;
     struct extended_entry *new_entry = NULL;
@@ -543,8 +554,9 @@ static StStatus get_or_create_extentry(struct alloc_table *table, int entry_idx,
     return STATUS_SUCCESS;
 }
 
-static StStatus get_or_create_metadata_dir(size_t mdpa_idx, int order,
-                                           struct metadata_directory **dir)
+static StStatus get_or_create_metadata_dir(
+    size_t mdpa_idx, int order, struct metadata_directory **dir
+)
 {
     struct metadata_directory *metadata_dir;
 
@@ -575,8 +587,9 @@ static StStatus get_or_create_metadata_dir(size_t mdpa_idx, int order,
     return STATUS_SUCCESS;
 }
 
-static StStatus get_or_create_metadata_table(size_t mdpa_idx, size_t metadata_dir_entry_idx,
-                                             int order, struct metadata_table **table)
+static StStatus get_or_create_metadata_table(
+    size_t mdpa_idx, size_t metadata_dir_entry_idx, int order, struct metadata_table **table
+)
 {
     StStatus status;
     struct metadata_directory *metadata_dir;
@@ -708,8 +721,11 @@ static StStatus get_metadata(St_PhysFrame pfn, struct metadata **metadata)
     if (!metadata_directory->entries[entry_idx]) return STATUS_NOT_ALLOCATED;
 
     if (metadata_directory->entries[entry_idx] & METADATA_DIR_ENTRY_LARGE_FLAG) {
-        LOG_TRACE("metadata found at (table: %zd, entry: %zd) (large flag)\n", table_idx,
-                  entry_idx);
+        LOG_TRACE(
+            "metadata found at (table: %zd, entry: %zd) (large flag)\n",
+            table_idx,
+            entry_idx
+        );
 
         *metadata = (struct metadata *)(metadata_directory->entries[entry_idx] &
                                         ~METADATA_DIR_ENTRY_LARGE_FLAG);
@@ -722,8 +738,12 @@ static StStatus get_metadata(St_PhysFrame pfn, struct metadata **metadata)
     if (!metadata_table) return STATUS_NOT_ALLOCATED;
     if (!metadata_table->entries[slot_idx].refcount) return STATUS_NOT_ALLOCATED;  // HERE
 
-    LOG_TRACE("metadata found at (table: %zd, entry: %zd, slot: %zd)\n", table_idx, entry_idx,
-              slot_idx);
+    LOG_TRACE(
+        "metadata found at (table: %zd, entry: %zd, slot: %zd)\n",
+        table_idx,
+        entry_idx,
+        slot_idx
+    );
 
     *metadata = &metadata_table->entries[slot_idx];
 
@@ -1047,8 +1067,9 @@ StStatus StPmm_GetFreeFrameCount(St_PageCount *frame_count __out)
     return STATUS_SUCCESS;
 }
 
-StStatus StPmm_AllocateContiguousFrame(St_PhysFrame *pfn __out, St_PageCount count __in,
-                                       StPmm_AllocFlags alloc_flags __in)
+StStatus StPmm_AllocateContiguousFrame(
+    St_PhysFrame *pfn __out, St_PageCount count __in, StPmm_AllocFlags alloc_flags __in
+)
 {
     StStatus status;
     St_PhysFrame allocated_pfn;
@@ -1107,8 +1128,11 @@ StStatus StPmm_AllocateContiguousFrame(St_PhysFrame *pfn __out, St_PageCount cou
     atpa_align_jump = align_order > 13 ? (1ULL << (align_order - 13)) : 1;
     atpa_search_start = ((atpa_search_start / atpa_align_jump) - 1) * atpa_align_jump;
 
-    LOG_TRACE("ATPA search start: %zu, negative jump amount: %zu\n", atpa_search_start,
-              atpa_align_jump);
+    LOG_TRACE(
+        "ATPA search start: %zu, negative jump amount: %zu\n",
+        atpa_search_start,
+        atpa_align_jump
+    );
 
     // 1. order >= 14 is a huge allocation. Use whole ATPA entries.
     if (order >= 14) {
@@ -1171,8 +1195,11 @@ StStatus StPmm_AllocateContiguousFrame(St_PhysFrame *pfn __out, St_PageCount cou
         break;
     }
 
-    LOG_TRACE("table search start: %zu, negative jump amount: %zu\n", table_search_start,
-              table_align_jump);
+    LOG_TRACE(
+        "table search start: %zu, negative jump amount: %zu\n",
+        table_search_start,
+        table_align_jump
+    );
 
     // 2. 5 <= order < 14 is a normal allocation. Use whole allocation table entries.
     if (order >= 5) {
@@ -1197,8 +1224,11 @@ StStatus StPmm_AllocateContiguousFrame(St_PhysFrame *pfn __out, St_PageCount cou
                 status = create_metadata(allocated_pfn, NULL, order);
                 if (!CHECK_SUCCESS(status)) return status;
 
-                LOG_TRACE("filling allocation table entry %zd-%zd\n", table_search_start,
-                          table_search_start + table_entries_needed - 1);
+                LOG_TRACE(
+                    "filling allocation table entry %zd-%zd\n",
+                    table_search_start,
+                    table_search_start + table_entries_needed - 1
+                );
                 *pfn = allocated_pfn;
                 free_frames -= (1ULL << order);
                 return STATUS_SUCCESS;
@@ -1239,8 +1269,11 @@ StStatus StPmm_AllocateContiguousFrame(St_PhysFrame *pfn __out, St_PageCount cou
                 status = create_metadata(allocated_pfn, NULL, order);
                 if (!CHECK_SUCCESS(status)) return status;
 
-                LOG_TRACE("filling allocation table entry %zd-%zd\n", j,
-                          j + table_entries_needed - 1);
+                LOG_TRACE(
+                    "filling allocation table entry %zd-%zd\n",
+                    j,
+                    j + table_entries_needed - 1
+                );
                 *pfn = allocated_pfn;
                 free_frames -= (1ULL << order);
                 return STATUS_SUCCESS;
@@ -1264,11 +1297,15 @@ StStatus StPmm_AllocateContiguousFrame(St_PhysFrame *pfn __out, St_PageCount cou
 
             LOG_TRACE("found (table: %zd, entry: %zd, index: %d)\n", i, table_search_start, index);
 
-            allocate_from_bitmap_entry(&table->entries[table_search_start].bitmap, index, order,
-                                       align_order);
+            allocate_from_bitmap_entry(
+                &table->entries[table_search_start].bitmap,
+                index,
+                order,
+                align_order
+            );
 
             allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES +
-                            table_search_start * ALLOCENT_COVERAGE_PAGES + index;
+                table_search_start * ALLOCENT_COVERAGE_PAGES + index;
 
             // allocate and fill metadata directory & metadata table & metadata
             status = create_metadata(allocated_pfn, NULL, order);
@@ -1326,8 +1363,11 @@ StStatus StPmm_AllocateContiguousFrame(St_PhysFrame *pfn __out, St_PageCount cou
                 if (index < 0) continue;
 
                 LOG_TRACE("found (table: %zd, entry: %zd, index: %d) (extended)\n", i, j, index);
-                LOG_TRACE("filling extended entry slot %d-%zd\n", index,
-                          index + extentry_slots_needed - 1);
+                LOG_TRACE(
+                    "filling extended entry slot %d-%zd\n",
+                    index,
+                    index + extentry_slots_needed - 1
+                );
 
                 for (size_t k = 0; k < extentry_slots_needed; k++) {
                     extentry->state_flags[index + k] = EE_USED;
@@ -1411,8 +1451,9 @@ StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, struct StPmm_AllocationMe
     return STATUS_SUCCESS;
 }
 
-StStatus StPmm_LockAndGetAllocMetadata(St_PhysFrame pfn,
-                                       struct StPmm_AllocationMetadata **meta __out)
+StStatus StPmm_LockAndGetAllocMetadata(
+    St_PhysFrame pfn, struct StPmm_AllocationMetadata **meta __out
+)
 {
     StStatus status;
     struct metadata *metadata;
@@ -1421,8 +1462,13 @@ StStatus StPmm_LockAndGetAllocMetadata(St_PhysFrame pfn,
     status = get_metadata(pfn, &metadata);
     if (!CHECK_SUCCESS(status)) return status;
 
-    while (!atomic_compare_exchange_strong_explicit(&metadata->lock, &expected, 1,
-                                                    memory_order_acquire, memory_order_relaxed)) {
+    while (!atomic_compare_exchange_strong_explicit(
+        &metadata->lock,
+        &expected,
+        1,
+        memory_order_acquire,
+        memory_order_relaxed
+    )) {
         expected = 0;
         StA_Pause();
     }
@@ -1437,8 +1483,13 @@ StStatus StPmm_UnlockAllocMetadata(struct StPmm_AllocationMetadata *meta __in)
     struct metadata *metadata = (struct metadata *)meta;
 
     uint32_t expected = 1;
-    atomic_compare_exchange_strong_explicit(&metadata->lock, &expected, 0, memory_order_release,
-                                            memory_order_relaxed);
+    atomic_compare_exchange_strong_explicit(
+        &metadata->lock,
+        &expected,
+        0,
+        memory_order_release,
+        memory_order_relaxed
+    );
 
     return STATUS_SUCCESS;
 }
@@ -1491,9 +1542,11 @@ void StPmm_DebugDumpRegion(St_PhysFrame start_pfn, size_t count)
     St_PhysFrame current_pfn = start_pfn;
 
     printf("\n=== PMM Memory Map Dump [PFN 0x%lx - 0x%lx] ===\n", start_pfn, end_pfn - 1);
-    printf("Legend: " ANSI_COLOR_GREEN "." ANSI_COLOR_RESET " Free, " ANSI_COLOR_RED
-           "*" ANSI_COLOR_RESET " Used, " ANSI_COLOR_YELLOW "X" ANSI_COLOR_RESET
-           " Unusable, " ANSI_COLOR_BLUE "H" ANSI_COLOR_RESET " HugeAlloc\n\n");
+    printf(
+        "Legend: " ANSI_COLOR_GREEN "." ANSI_COLOR_RESET " Free, " ANSI_COLOR_RED
+        "*" ANSI_COLOR_RESET " Used, " ANSI_COLOR_YELLOW "X" ANSI_COLOR_RESET
+        " Unusable, " ANSI_COLOR_BLUE "H" ANSI_COLOR_RESET " HugeAlloc\n\n"
+    );
 
     while (current_pfn < end_pfn) {
         size_t table_idx = current_pfn / ALLOC_TABLE_COVERAGE_PAGES;

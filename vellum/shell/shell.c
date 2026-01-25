@@ -1,15 +1,15 @@
 #include <vellum/shell.h>
 
-#include <stdint.h>
-#include <stddef.h>
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
 #include <ctype.h>
 #include <getopt.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <vellum/macros.h>
 #include <vellum/filesystem.h>
+#include <vellum/macros.h>
 
 static struct command *command_list_head = NULL;
 
@@ -53,7 +53,9 @@ static int help_handler(struct shell_instance *inst, int argc, char **argv)
 static struct shell_instance global_inst = {
     .fs = NULL,
     .working_dir = NULL,
-    .working_dir_path = { 0, },
+    .working_dir_path = {
+        0,
+    },
 };
 
 int shell_execute(struct shell_instance *inst, const char *line)
@@ -111,7 +113,9 @@ int shell_handler(struct shell_instance *inst, int argc, char **argv)
     struct shell_instance new_inst = {
         .fs = NULL,
         .working_dir = NULL,
-        .working_dir_path = { 0, },
+        .working_dir_path = {
+            0,
+        },
     };
 
     char line_buf[512];
@@ -140,7 +144,8 @@ status_t shell_command_register(struct command *cmd)
         command_list_head = cmd;
     } else {
         struct command *last_cmd = command_list_head;
-        for (; last_cmd->next; last_cmd = last_cmd->next) {}
+        for (; last_cmd->next; last_cmd = last_cmd->next) {
+        }
 
         last_cmd->next = cmd;
     }
@@ -201,4 +206,3 @@ static void shell_command_init(void)
 }
 
 REGISTER_SHELL_COMMAND(shell, shell_command_init)
-

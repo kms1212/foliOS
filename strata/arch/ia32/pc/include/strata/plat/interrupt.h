@@ -6,8 +6,8 @@
 #include <strata/arch/interrupt.h>
 #include <strata/arch/registers.h>
 
-#include <strata/status.h>
 #include <strata/interrupt.h>
+#include <strata/status.h>
 
 struct StIntP_Context {
     uint16_t gs;
@@ -33,4 +33,4 @@ StStatus StIntP_Unmask(int num);
 
 uint64_t StIntP_GetIrqCount(void);
 
-#endif // __STRATA_PLAT_INTERRUPT_H__
+#endif  // __STRATA_PLAT_INTERRUPT_H__

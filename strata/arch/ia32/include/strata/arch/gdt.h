@@ -31,7 +31,7 @@ struct StA_GdtEntry {
 
     union {
         uint8_t raw;
-        
+
         struct {
             uint8_t limit_high : 4;
             uint8_t avl : 1;
@@ -62,7 +62,7 @@ struct StA_GdtSystemSegmentEntry {
 
     union {
         uint8_t raw;
-        
+
         struct {
             uint8_t limit_high : 4;
             uint8_t avl : 1;
@@ -75,4 +75,4 @@ struct StA_GdtSystemSegmentEntry {
     uint8_t base_high;
 } __packed __aligned(8);
 
-#endif // __STRATA_ARCH_GDT_H__
+#endif  // __STRATA_ARCH_GDT_H__

@@ -8,7 +8,8 @@ char *strncpy(char *__restrict dest, const char *__restrict src, size_t maxlen)
 {
     char *d = dest;
     const char *s = src;
-    while (maxlen-- && *s) *d++ = *s++;
+    while (maxlen-- && *s)
+        *d++ = *s++;
     if (maxlen) *d = 0;
     return dest;
 }

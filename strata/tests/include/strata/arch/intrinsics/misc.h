@@ -11,4 +11,4 @@ __always_inline void StA_Halt(void) {}
 
 __always_inline void StA_Pause(void) {}
 
-#endif // __STRATA_ARCH_INTRINSICS_MISC_H__
+#endif  // __STRATA_ARCH_INTRINSICS_MISC_H__

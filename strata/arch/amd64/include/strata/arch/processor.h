@@ -3,4 +3,4 @@
 
 #define __PROCESSOR_LITTLE_ENDIAN 1
 
-#endif // __STRATA_ARCH_PROCESSOR_H__
+#endif  // __STRATA_ARCH_PROCESSOR_H__

@@ -16,7 +16,4 @@ uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle mutex, uacpi_u16 timeout)
     return UACPI_STATUS_OK;
 }
 
-void uacpi_kernel_release_mutex(uacpi_handle mutex)
-{
-
-}
+void uacpi_kernel_release_mutex(uacpi_handle mutex) {}

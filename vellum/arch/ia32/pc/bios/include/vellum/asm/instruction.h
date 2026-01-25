@@ -8,4 +8,4 @@ extern int _pc_rdtsc_undefined;
 
 status_t _pc_instruction_test(void (*test_func)(void), size_t instr_size, int *is_undefined);
 
-#endif // __VELLUM_ASM_TEST_INSTRUCTION_H__
+#endif  // __VELLUM_ASM_TEST_INSTRUCTION_H__

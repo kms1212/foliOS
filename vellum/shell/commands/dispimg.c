@@ -3,11 +3,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <vellum/status.h>
-#include <vellum/path.h>
 #include <vellum/device.h>
-#include <vellum/interface/video.h>
 #include <vellum/interface/framebuffer.h>
+#include <vellum/interface/video.h>
+#include <vellum/path.h>
+#include <vellum/status.h>
 
 static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -124,7 +124,7 @@ static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
     }
     fbif->invalidate(fbdev, 0, 0, vmode_info.width - 1, vmode_info.height - 1);
     fbif->flush(fbdev);
-    
+
     fclose(fp);
 
     char ch;

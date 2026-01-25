@@ -3,7 +3,6 @@
 #include <string.h>
 
 #include <strata/arch/intrinsics/gdt.h>
-#include <strata/arch/intrinsics/gdt.h>
 #include <strata/arch/intrinsics/ltr.h>
 
 #include <strata/plat/tss.h>
@@ -13,8 +12,9 @@
 static struct StA_GdtEntry _pc_gdt[GDT_ENTRY_COUNT];
 static struct StA_Gdtr _pc_gdtr;
 
-static void gdt_load(void) {
-    __asm__ volatile(
+static void gdt_load(void)
+{
+    __asm__ volatile(  //
         "pushq  %1\n\t"
         "lea    1f(%%rip), %%rax\n\t"
         "pushq  %%rax\n\t"
@@ -26,7 +26,9 @@ static void gdt_load(void) {
         "mov    %%ax, %%fs\n\t"
         "mov    %%ax, %%gs\n\t"
         "mov    %%ax, %%ss\n\t"
-        : : "i"(SEG_SEL_KERNEL_DATA), "i"(SEG_SEL_KERNEL_CODE) : "memory", "rax"
+        :
+        : "i"(SEG_SEL_KERNEL_DATA), "i"(SEG_SEL_KERNEL_CODE)
+        : "memory", "rax"
     );
 }
 
@@ -42,7 +44,9 @@ static void set_gdt_entry(int idx, uint32_t base, uint32_t limit, uint8_t access
     _pc_gdt[idx].access_byte.raw = access;
 }
 
-static void set_gdt_system_entry(int idx, uint64_t base, uint32_t limit, uint8_t access, uint32_t flags)
+static void set_gdt_system_entry(
+    int idx, uint64_t base, uint32_t limit, uint8_t access, uint32_t flags
+)
 {
     struct StA_GdtSystemSegmentEntry *ssent = (struct StA_GdtSystemSegmentEntry *)&_pc_gdt[idx];
 
@@ -64,7 +68,7 @@ void StP_InitGdt(void)
     struct StA_Tss *tss = StP_GetTss();
 
     memset(&_pc_gdt, 0, sizeof(_pc_gdt));
-    
+
     set_gdt_entry(SEG_SEL_KERNEL_CODE >> 3, 0x00000000, 0xFFFFF, 0x9A, 0xA);
     set_gdt_entry(SEG_SEL_KERNEL_DATA >> 3, 0x00000000, 0xFFFFF, 0x92, 0xC);
     set_gdt_entry(SEG_SEL_USER_DATA >> 3, 0x00000000, 0xFFFFF, 0xF2, 0xC);

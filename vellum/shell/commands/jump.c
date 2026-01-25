@@ -12,7 +12,7 @@ static int jump_handler(struct shell_instance *inst, int argc, char **argv)
 
     uintptr_t addr = strtoull(argv[1], NULL, 16);
     ((void (*)(void))addr)();
-    
+
     return 0;
 }
 

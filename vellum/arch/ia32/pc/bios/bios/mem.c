@@ -26,6 +26,6 @@ status_t _pc_bios_mem_query_map(uint32_t *_cursor, struct smap_entry *buf, long 
     if (_cursor) {
         *_cursor = regs.b.l;
     }
-    
+
     return STATUS_SUCCESS;
 }

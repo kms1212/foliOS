@@ -16,8 +16,7 @@ static struct command helloworld_command = {
     .help_message = "Run BASIC interpreter",
 };
 
-__constructor
-static void init()
+__constructor static void init()
 {
     shell_command_register(&helloworld_command);
 }
@@ -27,8 +26,7 @@ status_t _start(int argc, char **argv)
     return STATUS_SUCCESS;
 }
 
-__destructor
-static void deinit(void)
+__destructor static void deinit(void)
 {
     shell_command_unregister(&helloworld_command);
 }

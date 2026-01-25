@@ -1,9 +1,9 @@
 #include <time.h>
 
-#include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/global_configs.h>
 #include <vellum/interface/rtc.h>
+#include <vellum/status.h>
 
 time_t time(time_t *time)
 {
@@ -42,7 +42,9 @@ time_t time(time_t *time)
     return newtimet;
 }
 
-size_t strftime(char *__restrict str, size_t maxsize, const char *__restrict fmt, const struct tm *__restrict tm)
+size_t strftime(
+    char *__restrict str, size_t maxsize, const char *__restrict fmt, const struct tm *__restrict tm
+)
 {
     return 0;
 }

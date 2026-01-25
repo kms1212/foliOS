@@ -1,12 +1,12 @@
-#include <string.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include <vellum/log.h>
-#include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/interface/block.h>
 #include <vellum/interface/ide.h>
+#include <vellum/log.h>
+#include <vellum/status.h>
 
 #include "ata.h"
 #include "atapi.h"
@@ -46,7 +46,16 @@ static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, siz
     command[10] = 0;
     command[11] = 0;
 
-    status = data->ideif->send_command_packet_input(data->idedev, data->slave, command, sizeof(command), buf, 2048, count, &xfer_count);
+    status = data->ideif->send_command_packet_input(
+        data->idedev,
+        data->slave,
+        command,
+        sizeof(command),
+        buf,
+        2048,
+        count,
+        &xfer_count
+    );
     if (!CHECK_SUCCESS(status)) return status;
 
     if (result) *result = xfer_count;
@@ -65,10 +74,16 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt);
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+);
 static status_t remove(struct device *dev);
 static status_t get_interface(struct device *dev, const char *name, const void **result);
-    
+
 static void atapi_init(void)
 {
     status_t status;
@@ -85,7 +100,13 @@ static void atapi_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(struct device **devout, struct device_driver *drv, struct device *parent, struct resource *rsrc, int rsrc_cnt)
+static status_t probe(
+    struct device **devout,
+    struct device_driver *drv,
+    struct device *parent,
+    struct resource *rsrc,
+    int rsrc_cnt
+)
 {
     status_t status;
     struct device *dev = NULL;
@@ -94,7 +115,8 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     struct atapi_data *data = NULL;
     struct atapi_device_ident atapi_ident;
 
-    if (!rsrc || rsrc_cnt != 1 || rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit || rsrc[0].base > 1) {
+    if (!rsrc || rsrc_cnt != 1 || rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit ||
+        rsrc[0].base > 1) {
         status = STATUS_INVALID_RESOURCE;
         goto has_error;
     }
@@ -104,7 +126,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_INVALID_VALUE;
         goto has_error;
     }
-    
+
     status = idedev->driver->get_interface(idedev, "ide", (const void **)&ideif);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -119,7 +141,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
-    
+
     data->idedev = idedev;
     data->ideif = ideif;
     data->slave = (int)rsrc[0].base;
@@ -128,7 +150,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     LOG_DEBUG("identifying device...\n");
     struct ata_command cmd = {
         .extended = 0,
-        .command = 0xA1,  /* IDENTIFY PACKET DEVICE */
+        .command = 0xA1, /* IDENTIFY PACKET DEVICE */
         .features = 0,
         .count = 0,
         .sector = 0,
@@ -137,9 +159,10 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         .drive_head = 0xA0 | (data->slave ? 0x10 : 0x00),
     };
 
-    status = ideif->send_command_pio_input(idedev, &cmd, &atapi_ident, sizeof(atapi_ident), 1, NULL);
+    status =
+        ideif->send_command_pio_input(idedev, &cmd, &atapi_ident, sizeof(atapi_ident), 1, NULL);
     if (!CHECK_SUCCESS(status)) return status;
-    
+
     if (devout) *devout = dev;
 
     LOG_DEBUG("initialization success\n");
