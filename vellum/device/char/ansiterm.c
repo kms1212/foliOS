@@ -238,7 +238,7 @@ static status_t console_putchar(struct device *dev, wchar_t ch)
 
     if (cwidth == 2 && x_cursor + 1 < width) {
         buffer[y_cursor * width + x_cursor + 1].attr = data->attr_state;
-        buffer[y_cursor * width + x_cursor + 1].codepoint = 0xFFFFFFFF;
+        buffer[y_cursor * width + x_cursor + 1].codepoint = (wchar_t)0xFFFFFFFF;
         
         status = data->conif->invalidate(data->condev, x_cursor, y_cursor, x_cursor, y_cursor);
         if (!CHECK_SUCCESS(status)) return status;
@@ -519,6 +519,8 @@ static status_t handle_ed(struct device *dev)
             status = console_erase(dev, 0, 0, width - 1, height - 1);
             if (!CHECK_SUCCESS(status)) return status;
             break;
+        default:
+            break;
     }
     data->escape_seq_state = STATE_DEFAULT;
 
@@ -551,6 +553,8 @@ static status_t handle_el(struct device *dev)
         case 2:
             status = console_erase(dev, 0, cursor_y, width - 1, cursor_y);
             if (!CHECK_SUCCESS(status)) return status;
+            break;
+        default:
             break;
     }
     data->escape_seq_state = STATE_DEFAULT;
@@ -729,6 +733,8 @@ static status_t handle_sgr(struct device *dev)
         case 100: case 101: case 102: case 103:
         case 104: case 105: case 106: case 107:
             data->attr_state.bg_color = palette[option - 100 + 8];
+            break;
+        default:
             break;
     }
     data->escape_seq_state = STATE_DEFAULT;
@@ -916,11 +922,11 @@ static status_t put_char(struct device *dev, wchar_t ch)
     if (data->escape_seq_state != STATE_DEFAULT) {
         switch (data->escape_seq_state) {
             case STATE_ESC:
-                status = handle_esc(dev, ch);
+                status = handle_esc(dev, (char)ch);
                 if (!CHECK_SUCCESS(status)) return status;
                 break;
             case STATE_CSI:
-                status = handle_csi(dev, ch);
+                status = handle_csi(dev, (char)ch);
                 if (!CHECK_SUCCESS(status)) return status;
                 break;
             default:
@@ -1029,9 +1035,9 @@ static int get_seq_char(struct device *dev, const char *buf, long len, int idx)
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
 
     if (idx < data->utf8_fragment_len) {
-        return (unsigned)data->utf8_fragment_buf[idx];
+        return (unsigned char)data->utf8_fragment_buf[idx];
     } else if (idx < data->utf8_fragment_len + len) {
-        return (unsigned)buf[idx - data->utf8_fragment_len];
+        return (unsigned char)buf[idx - data->utf8_fragment_len];
     }
 
     return -1;
@@ -1046,7 +1052,7 @@ static status_t write(struct device *dev, const char *buf, size_t len, size_t *r
     wchar_t wch;
 
     while (len > 0) {
-        seq_char = get_seq_char(dev, buf, len, 0);
+        seq_char = get_seq_char(dev, buf, (int)len, 0);
         
         if ((uint8_t)seq_char < 0x80) {
             char_len = 1;
@@ -1067,13 +1073,13 @@ static status_t write(struct device *dev, const char *buf, size_t len, size_t *r
 
         if (data->utf8_fragment_len + len < char_len) {
             memcpy(data->utf8_fragment_buf + data->utf8_fragment_len, buf, len);
-            data->utf8_fragment_len += len;
+            data->utf8_fragment_len += (int)len;
             written_len += len;
             break;
         }
 
         for (int i = 1; i < char_len; i++) {
-            seq_char = get_seq_char(dev, buf, len, i);
+            seq_char = get_seq_char(dev, buf, (int)len, i);
             if ((seq_char & 0xC0) != 0x80) {
                 wch = 0xFFFD;
                 char_len = i;

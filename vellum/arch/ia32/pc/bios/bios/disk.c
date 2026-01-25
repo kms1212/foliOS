@@ -14,7 +14,7 @@ struct dap {
     uint32_t lba_high;
 };
 
-#define MAKE_STATUS(code) (code ? (0xA0001300 | (code)) : STATUS_SUCCESS)
+#define MAKE_STATUS(code) ((code) ? (0xA0001300 | (code)) : STATUS_SUCCESS)
 
 status_t _pc_bios_disk_reset(uint8_t drive)
 {

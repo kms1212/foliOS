@@ -217,7 +217,7 @@ static status_t send_command_packet(struct device *dev, int slave, const uint8_t
 
     /* wait */
     for (int i = 0; i < 4; i++) {
-        sr = io_in8(data->io_base1 + IDEREG_ALTSTAT);
+        io_in8(data->io_base1 + IDEREG_ALTSTAT);
     }
     
     /* wait until the drive is ready to receive the packet */
@@ -397,8 +397,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         rsrc[0].type != RT_IOPORT || rsrc[0].limit - rsrc[0].base != 7 ||
         rsrc[1].type != RT_IOPORT || rsrc[1].limit - rsrc[1].base != 1 ||
         rsrc[2].type != RT_IRQ || rsrc[2].base != rsrc[2].limit) {
-        status = STATUS_INVALID_RESOURCE;
-        goto has_error;
+        return STATUS_INVALID_RESOURCE;
     }
 
     status = device_create(&dev, drv, parent);
@@ -415,7 +414,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     
     data->io_base0 = rsrc[0].base;
     data->io_base1 = rsrc[1].base;
-    data->irq_ch = rsrc[2].base;
+    data->irq_ch = (int)rsrc[2].base;
     data->isr = NULL;
     dev->data = data;
 
@@ -423,7 +422,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("registering interrupt service routine...\n");
-    status = isr_add_interrupt_handler(rsrc[2].base, dev, isr, &data->isr);
+    status = isr_add_interrupt_handler(data->irq_ch, dev, isr, &data->isr);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("detecting master device...\n");
@@ -502,7 +501,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt(rsrc[2].base);
+    _pc_isr_unmask_interrupt((int)rsrc[2].base);
 
     if (data && data->isr) {
         _pc_isr_remove_handler(data->isr);

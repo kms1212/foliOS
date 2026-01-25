@@ -15,7 +15,7 @@
 
 static volatile int preemption_enabled = 0;
 
-StStatus StThread_Init(struct StThread *main_thread __out)
+StStatus StThread_Init(struct StThread **main_thread __out)
 {
     StStatus status;
     struct StThread *main_th = NULL;
@@ -71,7 +71,7 @@ int StThread_IsPreemptionEnabled(void)
 StStatus StThread_CreateKernel(
     StThread_EntryFunction entry __in,
     size_t stack_size __in,
-    struct StThread *threadout __out
+    struct StThread **threadout __out
 )
 {
     static StThread_Id new_thread_id = (StThread_Id)1;
@@ -145,7 +145,7 @@ StStatus StThread_CreateUser(
     uintptr_t entry __in,
     size_t stack_size __in,
     uintptr_t ustack_top __in,
-    struct StThread *threadout __out
+    struct StThread **threadout __out
 )
 {
     static StThread_Id new_thread_id = (StThread_Id)16384;

@@ -1,11 +1,7 @@
 #ifndef __STRATA_COMPILER_H__
 #define __STRATA_COMPILER_H__
 
-#define __in
-#define __in_optional
-#define __out               [static 1]
-#define __out_optional      []
-#define __inout             [static 1]
+/* General attribute maros */
 
 #define __always_inline     inline __attribute__((always_inline))
 
@@ -49,58 +45,36 @@
 #define __sentinel          __attribute__((sentinel))
 #define __warn_unused_result __attribute__((warn_unused_result))
 
-#ifdef __CHECKER__
-#   define __kernel         __attribute__((address_space(0)))
-#   define __percpu         __attribute__((noderef, address_space(1)))
-#   define __iomem          __attribute__((noderef, address_space(2)))
-#   define __module         __attribute__((noderef, address_space(3)))
-#   define __user           __attribute__((noderef, address_space(4)))
+/* macros for static analysis & source annotation */
 
-__always_inline void __chk_user_ptr(const volatile void __user *ptr) {}
-__always_inline void __chk_module_ptr(const volatile void __module *ptr) {}
-__always_inline void __chk_iomem_ptr(const volatile void __iomem *ptr) {}
-
-#   define __must_hold(x)   __attribute__((context(x, 1, 1)))
-#   define __acquires(x)    __attribute__((context(x, 0, 1)))
-#   define __cond_acquires(x) __attribute__((context(x, 0, -1)))
-#   define __releases(x)    __attribute__((context(x, 1, 0)))
-#   define __acquire(x)     __context__(x, 1)
-#   define __release(x)     __context__(x, -1)
-#   define __cond_lock(x, c) ((c) ? ({ __acquire(x); 1; }) : 0)
-
-#   define __force          __attribute__((force))
-#   define __bitwise        __attribute__((bitwise))
-#   define __nocast         __attribute__((nocast))
-#   define __safe           __attribute__((safe))
-#   define __private        __attribute__((noderef))
-#   define ACCESS_PRIVATE(p, member) (*((typeof((p)->member) __force *) &(p)->member))
+#ifdef __clang__
+#   define __annotate(name) __attribute__((annotate("st_" #name)))
+#   define __annotate_v(name, v) __attribute__((annotate("st_" #name "=" #v)))
 
 #else
-#   define __kernel
-#   define __user
-#   define __module
-#   define __iomem
-#   define __percpu
-
-#   define __chk_user_ptr(x) ((void)0)
-#   define __chk_module_ptr(x) ((void)0)
-#   define __chk_iomem_ptr(x) ((void)0)
-
-#   define __must_hold(x)
-#   define __acquires(x)
-#   define __cond_acquires(x)
-#   define __releases(x)
-#   define __acquire(x)     ((void)0)
-#   define __release(x)     ((void)0)
-#   define __cond_lock(x, c) (c)
-
-#   define __force
-#   define __bitwise
-#   define __nocast
-#   define __safe
-#   define __private
-#   define ACCESS_PRIVATE(p, member) ((p)->member)
+#   define __annotate(name)
+#   define __annotate_v(name, v)
 
 #endif
+
+#define __in                __annotate("in")
+#define __out               __annotate("out")
+#define __out_optional      __annotate("out_optional")
+#define __inout             __annotate("inout")
+#define __buf               __annotate("buf")
+
+#define __kernel         __annotate("kernel")
+#define __percpu         __annotate("percpu")
+#define __iomem          __annotate("iomem")
+#define __module         __annotate("module")
+#define __user           __annotate("user")
+
+#define __must_hold(x)      __annotate_v("must_hold", x)
+#define __acquires(x)       __annotate_v("acquires", x)
+#define __cond_acquires(x)  __annotate_v("cond_acquires", x)
+#define __releases(x)       __annotate_v("releases", x)
+
+#define __bitwise        __annotate("bitwise")
+#define __nocast         __annotate("nocast")
 
 #endif // __STRATA_COMPILER_H__

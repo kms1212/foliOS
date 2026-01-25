@@ -13,9 +13,9 @@ _start:
     cld
     cli
 
-    mov     $__trampoline_load, %edi    # copy .trampoline
-    mov     $__trampoline_start, %esi
-    mov     $__trampoline_end, %ecx
+    mov     $_trampoline_load_, %edi    # copy .trampoline
+    mov     $_trampoline_start_, %esi
+    mov     $_trampoline_end_, %ecx
     sub     %esi, %ecx
     add     $3, %ecx
     shr     $2, %ecx
@@ -28,7 +28,7 @@ _start:
     push    %edx
     pushl   .start64_addr + 4           # push return address
     pushl   .start64_addr
-    mov     $__trampoline_load, %eax
+    mov     $_trampoline_load_, %eax
     call    *%eax
 
 0:
@@ -50,14 +50,14 @@ _start:
 
     /* BSS Clear */
     xor     %rax, %rax
-    leaq    __bss_start, %rdi
-    leaq    __bss_end, %rcx
+    leaq    _bss_start_, %rdi
+    leaq    _bss_end_, %rcx
     sub     %rdi, %rcx
     add     $7, %rcx
     shr     $3, %rcx
     rep     stosq
 
-    lea     _early_stack, %rsp         # init stack
+    lea     _early_stack, %rsp          # init stack
     xor     %ebp, %ebp
 
     mov     %rdx, %rdi                  # bootinfo

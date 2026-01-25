@@ -59,15 +59,15 @@ static status_t send_command(struct device *dev, struct fdc_command *cmd)
 {
     struct fdc_data *data = (struct fdc_data *)dev->data;
 
-    int err;
-    uint8_t status;
+    status_t status;
+    uint8_t reg;
 
     for (int i = 0; i < cmd->send_size + 1; i++) {
         while (!(io_in8(data->io_base + FDCREG_MSR) & 0x80)) {
             _ia32_pause();
         }
-        status = io_in8(data->io_base + FDCREG_MSR);
-        if (status & 0x40) {
+        reg = io_in8(data->io_base + FDCREG_MSR);
+        if (reg & 0x40) {
             return 1;
         }
 
@@ -79,24 +79,24 @@ static status_t send_command(struct device *dev, struct fdc_command *cmd)
     }
 
     if (cmd->wait_irq) {
-        err = wait_irq(dev, 1);
-        if (err) return err;
+        status = wait_irq(dev, 1);
+        if (!CHECK_SUCCESS(status)) return status;
     }
 
     for (int i = 0; i < cmd->recv_size; i++) {
         while (!(io_in8(data->io_base + FDCREG_MSR) & 0x80)) {
             _ia32_pause();
         }
-        status = io_in8(data->io_base + FDCREG_MSR);
-        if (status & 0x40) {
+        reg = io_in8(data->io_base + FDCREG_MSR);
+        if (reg & 0x40) {
             return 1;
         }
 
         cmd->data[i] = io_in8(data->io_base + FDCREG_FIFO);
     }
 
-    status = io_in8(data->io_base + FDCREG_MSR);
-    if (status & 0x40) {
+    reg = io_in8(data->io_base + FDCREG_MSR);
+    if (reg & 0x40) {
         return 1;
     }
 
@@ -182,8 +182,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         rsrc[0].type != RT_IOPORT || rsrc[0].limit - rsrc[0].base != 7 ||
         rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit ||
         rsrc[2].type != RT_DMA || rsrc[2].base != rsrc[2].limit) {
-        status = STATUS_INVALID_RESOURCE;
-        goto has_error;
+        return STATUS_INVALID_RESOURCE;
     }
 
     status = device_create(&dev, drv, parent);
@@ -199,8 +198,8 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     }
     
     data->io_base = rsrc[0].base;
-    data->irq_ch = rsrc[1].base;
-    data->dma_ch = rsrc[2].base;
+    data->irq_ch = (int)rsrc[1].base;
+    data->dma_ch = (int)rsrc[2].base;
     data->dor = 0;
     data->irq_received = 0;
     data->isr = NULL;
@@ -211,7 +210,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     }
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(rsrc[1].base);
+    status = _pc_isr_mask_interrupt(data->irq_ch);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = _pc_isr_add_interrupt_handler(data->irq_ch, dev, isr, &data->isr);
@@ -237,7 +236,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
         if (!CHECK_SUCCESS(status)) goto has_error;
     }
 
-    status = _pc_isr_unmask_interrupt(rsrc[1].base);
+    status = _pc_isr_unmask_interrupt(data->irq_ch);
     if (!CHECK_SUCCESS(status)) goto has_error;
     
     if (devout) *devout = dev;
@@ -247,7 +246,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt(rsrc[1].base);
+    _pc_isr_unmask_interrupt((int)rsrc[1].base);
 
     if (data && data->isr) {
         _pc_isr_remove_handler(data->isr);

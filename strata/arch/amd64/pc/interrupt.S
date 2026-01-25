@@ -112,8 +112,85 @@ _pc_isr_\num:
     DEFINE_ISR      1e, 1
     DEFINE_ISR      1f, 0
 
-    .irpc   x,23456789abcdef
+    .irpc   x,2345679abcdef
     .irpc   y,0123456789abcdef
     DEFINE_ISR      \x\y, 0
     .endr
     .endr
+
+    DEFINE_ISR      81, 0
+    DEFINE_ISR      82, 0
+    DEFINE_ISR      83, 0
+    DEFINE_ISR      84, 0
+    DEFINE_ISR      85, 0
+    DEFINE_ISR      86, 0
+    DEFINE_ISR      87, 0
+    DEFINE_ISR      88, 1
+    DEFINE_ISR      89, 0
+    DEFINE_ISR      8a, 1
+    DEFINE_ISR      8b, 1
+    DEFINE_ISR      8c, 1
+    DEFINE_ISR      8d, 1
+    DEFINE_ISR      8e, 1
+    DEFINE_ISR      8f, 0
+
+    .globl  _pc_isr_80
+_pc_isr_80:
+    swapgs
+
+    pushq   $0
+
+    push    %rax                        # push all registers
+    push    %rbx
+    push    %rcx
+    push    %rdx
+    push    %rbp
+    push    %rsi
+    push    %rdi
+    push    %r8
+    push    %r9
+    push    %r10
+    push    %r11
+    push    %r12
+    push    %r13
+    push    %r14
+    push    %r15
+
+    # TODO: load kernel DS/ES
+
+    sub     $8, %rsp                    # align stack pointer
+
+    mov     %rsp, %rbp                  # set up stack base pointer
+
+    sti
+
+    lea     8(%rbp), %rsi               # registers
+    lea     128(%rbp), %rdi             # interrupt frame + error
+
+    call    StSyscallP_Handler          # call syscall handler
+
+    cli
+
+    add     $8, %rsp                    # skip stack pointer padding
+
+    pop     %r15                        # pop all registers
+    pop     %r14
+    pop     %r13
+    pop     %r12
+    pop     %r11
+    pop     %r10
+    pop     %r9
+    pop     %r8
+    pop     %rdi
+    pop     %rsi
+    pop     %rbp
+    pop     %rdx
+    pop     %rcx
+    pop     %rbx
+    pop     %rax
+
+    add     $8, %rsp                    # remove error code
+
+    swapgs
+
+    iretq                               # return from interrupt

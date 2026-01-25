@@ -9,19 +9,19 @@ SECTIONS
 
     .trampoline :
     {
-        PROVIDE_HIDDEN(__trampoline_start = .);
+        PROVIDE_HIDDEN(_trampoline_start_ = .);
         KEEP(*(.trampoline .trampoline.*))
-        PROVIDE_HIDDEN(__trampoline_end = .);
+        PROVIDE_HIDDEN(_trampoline_end_ = .);
     }
 
-    __trampoline_load = 0x0000000000100000;
-    __trampoline_size = SIZEOF(.trampoline);
+    _trampoline_load_ = 0x0000000000100000;
+    _trampoline_size_ = SIZEOF(.trampoline);
 
     .text.startup :
     {
-        PROVIDE_HIDDEN(__text_startup_start = .);
+        PROVIDE_HIDDEN(_text_start_up_start = .);
         KEEP(*(.text.startup .text.startup.*))
-        PROVIDE_HIDDEN(__text_startup_end = .);
+        PROVIDE_HIDDEN(_text_start_up_end = .);
     }
 
     /* kernel area */
@@ -29,37 +29,37 @@ SECTIONS
 
     .text : AT(LOADADDR(.text.startup) + SIZEOF(.text.startup) + 1)
     {
-        PROVIDE_HIDDEN(__text_start = .);
+        PROVIDE_HIDDEN(_text_start_ = .);
         KEEP(*(.text .text.*))
-        PROVIDE_HIDDEN(__text_end = .);
+        PROVIDE_HIDDEN(_text_end_ = .);
     }
 
     . = ALIGN(4096);
     .rodata :
     {
-        PROVIDE_HIDDEN(__rodata_start = .);
+        PROVIDE_HIDDEN(_rodata_start_ = .);
         KEEP(*(.rodata .rodata.*))
-        PROVIDE_HIDDEN(__rodata_end = .);
+        PROVIDE_HIDDEN(_rodata_end_ = .);
     }
 
     . = ALIGN(4096);
     .data :
     {
-        PROVIDE_HIDDEN(__data_start = .);
+        PROVIDE_HIDDEN(_data_start_ = .);
         *(.data .data.*)
-        PROVIDE_HIDDEN(__data_end = .);
+        PROVIDE_HIDDEN(_data_end_ = .);
 
         . = ALIGN(16);
-        PROVIDE(__init_array_start = .);
+        PROVIDE(_init_array_start_ = .);
         KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
         KEEP(*(.init_array .ctors))
-        PROVIDE(__init_array_end = .);
+        PROVIDE(_init_array_end_ = .);
 
         . = ALIGN(16);
-        PROVIDE_HIDDEN(__fini_array_start = .);
+        PROVIDE_HIDDEN(_fini_array_start_ = .);
         KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
         KEEP(*(.fini_array .dtors))
-        PROVIDE_HIDDEN(__fini_array_end = .);
+        PROVIDE_HIDDEN(_fini_array_end_ = .);
 
         . = ALIGN(16);
         KEEP(*(SORT_NONE(.init)))
@@ -79,10 +79,10 @@ SECTIONS
     . = ALIGN(4096);
     .bss :
     {
-        PROVIDE_HIDDEN(__bss_start = .);
+        PROVIDE_HIDDEN(_bss_start_ = .);
         *(.bss .bss.*)
-        PROVIDE_HIDDEN(__bss_end = .);
+        PROVIDE_HIDDEN(_bss_end_ = .);
     }
 
-    PROVIDE_HIDDEN(__end = .);
+    PROVIDE_HIDDEN(_end_ = .);
 }

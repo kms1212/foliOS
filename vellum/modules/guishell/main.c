@@ -395,16 +395,16 @@ void draw_bezier3(
     uint32_t color
 )
 {
-    struct {
+    struct stack {
         int x0, y0, x1, y1, x2, y2, x3, y3;
         int depth;
     } stack[BEZIER3_MAX_SPLIT];
 
     int sp = 0;
-    stack[sp++] = (typeof(stack[0])){ x0, y0, x1, y1, x2, y2, x3, y3, 0 };
+    stack[sp++] = (struct stack){ x0, y0, x1, y1, x2, y2, x3, y3, 0 };
 
     while (sp > 0) {
-        auto c = stack[--sp];
+        struct stack c = stack[--sp];
 
         /* 충분히 평평 → 2차로 근사 */
         if (bezier3_flat_enough(

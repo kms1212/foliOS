@@ -8,7 +8,7 @@
 #define ALIGNMENT	16ul//4ul				///< This is the byte alignment that memory must be allocated on. IMPORTANT for GTK and other stuff.
 
 #define ALIGN_TYPE		char ///unsigned char[16] /// unsigned short
-#define ALIGN_INFO		sizeof(ALIGN_TYPE)*16	///< Alignment information is stored right before the pointer. This is the number of bytes of information stored there.
+#define ALIGN_INFO		(sizeof(ALIGN_TYPE)*16)	///< Alignment information is stored right before the pointer. This is the number of bytes of information stored there.
 
 
 #define USE_CASE1
@@ -23,14 +23,14 @@
 		if ( ALIGNMENT > 1 )											\
 		{																\
 			uintptr_t diff;												\
-			ptr = (void*)((uintptr_t)ptr + ALIGN_INFO);					\
-			diff = (uintptr_t)ptr & (ALIGNMENT-1);						\
+			(ptr) = (void*)((uintptr_t)(ptr) + ALIGN_INFO);					\
+			diff = (uintptr_t)(ptr) & (ALIGNMENT-1);						\
 			if ( diff != 0 )											\
 			{															\
 				diff = ALIGNMENT - diff;								\
-				ptr = (void*)((uintptr_t)ptr + diff);					\
+				(ptr) = (void*)((uintptr_t)(ptr) + diff);					\
 			}															\
-			*((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO)) = 			\
+			*((ALIGN_TYPE*)((uintptr_t)(ptr) - ALIGN_INFO)) = 			\
 				diff + ALIGN_INFO;										\
 		}															
 
@@ -38,10 +38,10 @@
 #define UNALIGN( ptr )													\
 		if ( ALIGNMENT > 1 )											\
 		{																\
-			uintptr_t diff = *((ALIGN_TYPE*)((uintptr_t)ptr - ALIGN_INFO));	\
+			uintptr_t diff = (unsigned char)*((ALIGN_TYPE*)((uintptr_t)(ptr) - ALIGN_INFO));	\
 			if ( diff < (ALIGNMENT + ALIGN_INFO) )						\
 			{															\
-				ptr = (void*)((uintptr_t)ptr - diff);					\
+				(ptr) = (void*)((uintptr_t)(ptr) - diff);					\
 			}															\
 		}
 				
@@ -110,7 +110,7 @@ static void *liballoc_memset(void* s, int c, size_t n)
 {
 	unsigned int i;
 	for ( i = 0; i < n ; i++)
-		((char*)s)[i] = c;
+		((char*)s)[i] = (char)c;
 	
 	return s;
 }
@@ -204,7 +204,7 @@ static struct liballoc_major *allocate_new_page( unsigned int size )
 		// Make sure it's >= the minimum size.
 		if ( st < l_pageCount ) st = l_pageCount;
 		
-		maj = (struct liballoc_major*)liballoc_alloc( st );
+		maj = (struct liballoc_major*)liballoc_alloc( (int)st );
 
 		if ( maj == NULL ) 
 		{
@@ -695,14 +695,14 @@ void PREFIX(free)(void *ptr)
 		if ( maj->next != NULL ) maj->next->prev = maj->prev;
 		l_allocated -= maj->size;
 
-		liballoc_free( maj, maj->pages );
+		liballoc_free( maj, (int)maj->pages );
 	}
 	else
 	{
 		if ( l_bestBet != NULL )
 		{
-			int bestSize = l_bestBet->size  - l_bestBet->usage;
-			int majSize = maj->size - maj->usage;
+			int bestSize = (int)l_bestBet->size  - (int)l_bestBet->usage;
+			int majSize = (int)maj->size - (int)maj->usage;
 
 			if ( majSize > bestSize ) l_bestBet = maj;
 		}
@@ -727,7 +727,7 @@ void* PREFIX(calloc)(size_t nobj, size_t size)
        int real_size;
        void *p;
 
-       real_size = nobj * size;
+       real_size = (int)(nobj * size);
        
        p = PREFIX(malloc)( real_size );
 

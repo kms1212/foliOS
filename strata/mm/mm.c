@@ -22,7 +22,7 @@ StStatus StMm_Init(void)
 
 StStatus StMm_VirtPageToPhysFrame(
     St_VirtPage vpn __in,
-    St_PhysFrame pfn __out_optional
+    St_PhysFrame *pfn __out_optional
 )
 {
     return StMmuP_VirtPageToPhysFrame(vpn, pfn);
@@ -30,7 +30,7 @@ StStatus StMm_VirtPageToPhysFrame(
 
 StStatus StMm_MapContiguous(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
     StVmm_AllocFlags vmmflags __in,
@@ -71,7 +71,7 @@ void StMm_UnmapContiguous(
 
 StStatus StMm_AllocateContiguous(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PageCount count __in,
     StPmm_AllocFlags pmmflags __in,
     StVmm_AllocFlags vmmflags __in,
@@ -107,7 +107,7 @@ has_error:
 // TODO: apply adaptive batch decay
 StStatus StMm_AllocateSparse(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PageCount count __in,
     StPmm_AllocFlags pmmflags __in,
     StVmm_AllocFlags vmmflags __in,

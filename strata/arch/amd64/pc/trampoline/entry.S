@@ -8,8 +8,8 @@ _start:
     mov     %esp, %ebp
 
     xor     %eax, %eax                  # clear trampoline bss
-    mov     $__bss_start, %edi 
-    mov     $__bss_end, %ecx
+    mov     $_bss_start_, %edi 
+    mov     $_bss_end_, %ecx
     sub     %edi, %ecx
     add     $3, %ecx
     shr     $2, %ecx

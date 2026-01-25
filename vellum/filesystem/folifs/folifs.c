@@ -41,7 +41,7 @@ static lba_t block_to_sector(struct filesystem *fs, uint64_t block)
 {
     struct folifs_data *data = (struct folifs_data *)fs->data;
 
-    return data->reserved_sectors + block * data->sectors_per_block;
+    return (lba_t)((uint64_t)data->reserved_sectors + block * data->sectors_per_block);
 }
 
 static status_t read_block(struct filesystem *fs, uint64_t block)
@@ -56,7 +56,7 @@ static status_t read_block(struct filesystem *fs, uint64_t block)
     status = data->blkif->read(data->blkdev, lba, data->blkbuf, data->sectors_per_block, NULL);
     if (!CHECK_SUCCESS(status)) return status;
 
-    data->blkbuf_num = block;
+    data->blkbuf_num = (int64_t)block;
 
     return STATUS_SUCCESS;
 }

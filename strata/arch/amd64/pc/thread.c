@@ -101,7 +101,7 @@ void StThreadP_FreeKThreadStack(struct StThread *th __in)
 StStatus StThreadP_Switch(
     struct StThread *next __in,
     struct StIntP_Context *ctx __in,
-    void *next_stack_ptr __out
+    void **next_stack_ptr __out
 )
 {
     StStatus status;

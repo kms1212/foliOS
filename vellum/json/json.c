@@ -35,10 +35,12 @@ static status_t parse_object(struct json_state *state, struct json_value **value
 {
     status_t status;
 
+    if (!valueout) return STATUS_INVALID_VALUE;
+
     skip_whitespace(state);
 
-    if (state->str[state->cursor] != '{') return JSON_SYNTAX_ERR;
-    if (++state->cursor >= state->len) return JSON_SYNTAX_ERR;
+    if (state->str[state->cursor] != '{') return STATUS_INVALID_SYNTAX;
+    if (++state->cursor >= state->len) return STATUS_INVALID_SYNTAX;
 
     struct json_value *value = malloc(sizeof(struct json_value));
     if (!value) {
@@ -102,13 +104,15 @@ static status_t parse_object(struct json_state *state, struct json_value **value
         }
     }
 
-    if (valueout) *valueout = value;
+    *valueout = value;
 
     return STATUS_SUCCESS;
 
 has_error:
     // TODO: cleanup
-    panic(STATUS_UNIMPLEMENTED, "error parsing object");
+    if (value) {
+        free(value);
+    }
 
     return status;
 }
@@ -116,19 +120,22 @@ has_error:
 static status_t parse_array(struct json_state *state, struct json_value **valueout)
 {
     status_t status;
+    struct json_value *value = NULL;
+
+    if (!valueout) return STATUS_INVALID_VALUE;
 
     skip_whitespace(state);
 
     if (state->str[state->cursor] != '[') {
-        status = JSON_SYNTAX_ERR;
+        status = STATUS_INVALID_SYNTAX;
         goto has_error;
     }
     if (++state->cursor >= state->len) {
-        status = JSON_SYNTAX_ERR;
+        status = STATUS_INVALID_SYNTAX;
         goto has_error;
     }
 
-    struct json_value *value = malloc(sizeof(struct json_value));
+    value = malloc(sizeof(struct json_value));
     if (!value) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
@@ -161,27 +168,30 @@ static status_t parse_array(struct json_state *state, struct json_value **valueo
                 break;
             case ',':
                 if (++state->cursor >= state->len) {
-                    status = JSON_SYNTAX_ERR;
+                    status = STATUS_INVALID_SYNTAX;
                     goto has_error;
                 }
                 current_elem = &(*current_elem)->next;
                 break;
             default:
-                status = JSON_SYNTAX_ERR;
+                status = STATUS_INVALID_SYNTAX;
                 goto has_error;
         }
         if (++state->cursor >= state->len) {
-            status = JSON_SYNTAX_ERR;
+            status = STATUS_INVALID_SYNTAX;
             goto has_error;
         }
     }
 
-    if (valueout) *valueout = value;
+    *valueout = value;
 
     return STATUS_SUCCESS;
 
 has_error:
     // TODO: cleanup
+    if (value) {
+        free(value);
+    }
 
     return status;
 }
@@ -196,6 +206,8 @@ static size_t count_escaped_string_len(struct json_state *state)
                 break;
             case '"':
                 goto end;
+            default:
+                break;
         }
 
         len++;
@@ -208,20 +220,23 @@ end:
 static status_t parse_string_literal(struct json_state *state, char **ptr)
 {
     status_t status;
+    char *str = NULL;
+
+    if (!ptr) return STATUS_INVALID_VALUE;
 
     skip_whitespace(state);
 
     if (state->str[state->cursor] != '"') {
-        status = JSON_SYNTAX_ERR;
+        status = STATUS_INVALID_SYNTAX;
         goto has_error;
     }
     if (++state->cursor >= state->len) {
-        status = JSON_SYNTAX_ERR;
+        status = STATUS_INVALID_SYNTAX;
         goto has_error;
     }
 
     size_t string_len = count_escaped_string_len(state);
-    char *str = malloc(string_len + 1);
+    str = malloc(string_len + 1);
     if (!str) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
@@ -232,7 +247,7 @@ static status_t parse_string_literal(struct json_state *state, char **ptr)
     while (!end) {
         if (state->str[state->cursor] == '\\') {
             if (++state->cursor >= state->len) {
-                status = JSON_SYNTAX_ERR;
+                status = STATUS_INVALID_SYNTAX;
                 goto has_error;
             }
         } else if (state->str[state->cursor] == '"') {
@@ -242,18 +257,21 @@ static status_t parse_string_literal(struct json_state *state, char **ptr)
         }
 
         if (++state->cursor >= state->len) {
-            status = JSON_SYNTAX_ERR;
+            status = STATUS_INVALID_SYNTAX;
             goto has_error;
         }
     }
     str[bufcur] = '\0';
 
-    if (ptr) *ptr = str;
+    *ptr = str;
 
     return STATUS_SUCCESS;
 
 has_error:
     // TODO: cleanup
+    if (str) {
+        free(str);
+    }
 
     return status;
 }
@@ -261,13 +279,16 @@ has_error:
 static status_t parse_string(struct json_state *state, struct json_value **valueout)
 {
     status_t status;
+    struct json_value *value = NULL;
+
+    if (!valueout) return STATUS_INVALID_VALUE;
 
     if (state->str[state->cursor] != '"') {
-        status = JSON_SYNTAX_ERR;
+        status = STATUS_INVALID_SYNTAX;
         goto has_error;
     }
 
-    struct json_value *value = malloc(sizeof(struct json_value));
+    value = malloc(sizeof(struct json_value));
     if (!value) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
@@ -277,25 +298,35 @@ static status_t parse_string(struct json_state *state, struct json_value **value
     status = parse_string_literal(state, &value->str);
     if (!CHECK_SUCCESS(status)) goto has_error;
     
-    if (valueout) *valueout = value;
+    *valueout = value;
 
     return STATUS_SUCCESS;
 
 has_error:
     // TODO: cleanup
+    if (value) {
+        free(value);
+    }
 
     return status;
 }
 
 static status_t parse_number(struct json_state *state, struct json_value **valueout)
 {
+    status_t status;
+
+    if (!valueout) return STATUS_INVALID_VALUE;
+
     skip_whitespace(state);
 
-    if (!isdigit(state->str[state->cursor]) && state->str[state->cursor] != '-') return JSON_SYNTAX_ERR;
-    if (state->cursor + 1 >= state->len) return JSON_SYNTAX_ERR;
+    if (!isdigit(state->str[state->cursor]) && state->str[state->cursor] != '-') return STATUS_INVALID_SYNTAX;
+    if (state->cursor + 1 >= state->len) return STATUS_INVALID_SYNTAX;
 
     struct json_value *value = malloc(sizeof(struct json_value));
-    if (!value) return STATUS_UNKNOWN_ERROR;
+    if (!value) {
+        status = STATUS_UNKNOWN_ERROR;
+        goto has_error;
+    }
     value->type = JVT_NUMBER;
 
     int negate = 0;
@@ -313,52 +344,85 @@ static status_t parse_number(struct json_state *state, struct json_value **value
         value->num = -value->num;
     }
 
-    if (valueout) *valueout = value;
+    *valueout = value;
 
     return STATUS_SUCCESS;
+
+has_error:
+    // TODO: cleanup
+
+    return status;
 }
 
 static status_t parse_other(struct json_state *state, struct json_value **valueout)
 {
+    status_t status;
+
+    if (!valueout) return STATUS_INVALID_VALUE;
+
     skip_whitespace(state);
 
     struct json_value *value = malloc(sizeof(struct json_value));
-    if (!value) return STATUS_UNKNOWN_ERROR;
+    if (!value) {
+        status = STATUS_UNKNOWN_ERROR;
+        goto has_error;
+    }
 
     switch (state->str[state->cursor]) {
         case 't':
-            if (state->cursor + 4 >= state->len) return JSON_SYNTAX_ERR;
+            if (state->cursor + 4 >= state->len) {
+                status = STATUS_INVALID_SYNTAX;
+                goto has_error;
+            }
             if (strncmp("true", state->str + state->cursor, 4) != 0) {
-                return JSON_SYNTAX_ERR;
+                status = STATUS_INVALID_SYNTAX;
+                goto has_error;
             }
             state->cursor += 4;
             value->type = JVT_BOOLEAN;
             value->boolean = 1;
             break;
         case 'f':
-            if (state->cursor + 5 >= state->len) return JSON_SYNTAX_ERR;
+            if (state->cursor + 5 >= state->len) {
+                status = STATUS_INVALID_SYNTAX;
+                goto has_error;
+            }
             if (strncmp("false", state->str + state->cursor, 5) != 0) {
-                return JSON_SYNTAX_ERR;
+                status = STATUS_INVALID_SYNTAX;
+                goto has_error;
             }
             state->cursor += 5;
             value->type = JVT_BOOLEAN;
             value->boolean = 0;
             break;
         case 'n':
-            if (state->cursor + 4 >= state->len) return JSON_SYNTAX_ERR;
+            if (state->cursor + 4 >= state->len) {
+                status = STATUS_INVALID_SYNTAX;
+                goto has_error;
+            }
             if (strncmp("null", state->str + state->cursor, 4) != 0) {
-                return JSON_SYNTAX_ERR;
+                status = STATUS_INVALID_SYNTAX;
+                goto has_error;
             }
             state->cursor += 4;
             value->type = JVT_NULL;
             break;
         default:
-            return JSON_SYNTAX_ERR;
+            status = STATUS_INVALID_SYNTAX;
+            goto has_error;
     }
 
-    if (valueout) *valueout = value;
+    *valueout = value;
 
     return STATUS_SUCCESS;
+
+has_error:
+    // TODO: cleanup
+    if (value) {
+        free(value);
+    }
+
+    return status;
 }
 
 static status_t parse_value(struct json_state *state, struct json_value **value)
@@ -389,13 +453,15 @@ static status_t parse_value(struct json_state *state, struct json_value **value)
         case 'n':
             return parse_other(state, value);
         default:
-            return JSON_SYNTAX_ERR;
+            return STATUS_INVALID_SYNTAX;
     }
 }
 
 status_t json_parse(const char *str, long len, struct json_value **valueout)
 {
     struct json_state state;
+
+    if (!str || !valueout) return STATUS_INVALID_VALUE;
 
     state.str = str;
     state.len = len;
@@ -406,7 +472,7 @@ status_t json_parse(const char *str, long len, struct json_value **valueout)
     status_t status = parse_value(&state, &value);
     if (!CHECK_SUCCESS(status)) return status;
 
-    if (valueout) *valueout = value;
+    *valueout = value;
 
     return STATUS_SUCCESS;
 }

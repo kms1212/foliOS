@@ -29,11 +29,11 @@ struct ps2_mouse_data {
     struct device *ps2dev;
     const struct ps2_interface *ps2if;
 
-    int irq_num;
+    int slave, irq_num;
     struct isr_handler *isr;
     uint8_t device_type;
 
-    volatile int seqbuf_start, seqbuf_end;
+    volatile unsigned int seqbuf_start, seqbuf_end;
     volatile uint8_t seqbuf[64];
     enum sequence_state seq_state;
     uint8_t prev_button_state, byte0;
@@ -105,7 +105,6 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
             break;
         case SS_YMOVEMENT:
             if (data->byte0 & 0x80) break;
-            ret_key = byte;
             if (data->byte0 & 0x20) {
                 ret_key = 0x100 - byte;
                 ret_flags = KEY_FLAG_YMOVE | KEY_FLAG_NEGATIVE;
@@ -156,7 +155,7 @@ static void mouse_isr(void *_dev, struct interrupt_frame *frame, struct trap_reg
     io_out8(0x007A, 0x04);
     io_out8(0x007B, byte);
     
-    int next_seqbuf_end = (data->seqbuf_end + 1) % sizeof(data->seqbuf);
+    unsigned int next_seqbuf_end = (data->seqbuf_end + 1) % sizeof(data->seqbuf);
     if (next_seqbuf_end == data->seqbuf_start) return;
     
     data->seqbuf[data->seqbuf_end] = byte;
@@ -195,8 +194,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     if (!rsrc || rsrc_cnt != 2 ||
         rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit ||
         rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit) {
-        status = STATUS_INVALID_RESOURCE;
-        goto has_error;
+        return STATUS_INVALID_RESOURCE;
     }
 
     ps2dev = parent;
@@ -222,7 +220,8 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     data->ps2dev = ps2dev;
     data->ps2if = ps2if;
-    data->irq_num = rsrc[1].base;
+    data->slave = (int)rsrc[0].base;
+    data->irq_num = (int)rsrc[1].base;
     data->seqbuf_start = data->seqbuf_end = 0;
     data->seq_state = SS_DEFAULT;
     data->isr = NULL;
@@ -236,21 +235,21 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("testing port...\n");
-    status = ps2if->test_port(ps2dev, rsrc[0].base);
+    status = ps2if->test_port(ps2dev, data->slave);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("enabling port...\n");
-    status = ps2if->enable_port(ps2dev, rsrc[0].base);
+    status = ps2if->enable_port(ps2dev, data->slave);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("resetting mouse...\n");
     /* reset device */
     buf[0] = 0xFF;
 
-    status = ps2if->send_data(ps2dev, rsrc[0].base, buf, 1);
+    status = ps2if->send_data(ps2dev, data->slave, buf, 1);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = ps2if->recv_data(ps2dev, rsrc[0].base, buf, 3);
+    status = ps2if->recv_data(ps2dev, data->slave, buf, 3);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (buf[0] != 0xFA || buf[1] != 0xAA) {
@@ -263,10 +262,10 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     /* enable data reporting */
     buf[0] = 0xF4;
 
-    status = ps2if->send_data(ps2dev, rsrc[0].base, buf, 1);
+    status = ps2if->send_data(ps2dev, data->slave, buf, 1);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = ps2if->recv_data(ps2dev, rsrc[0].base, buf, 1);
+    status = ps2if->recv_data(ps2dev, data->slave, buf, 1);
     if (!CHECK_SUCCESS(status)) goto has_error;
     if (buf[0] != 0xFA) {
         status = STATUS_HARDWARE_FAILED;
@@ -283,7 +282,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt(rsrc[1].base);
+    _pc_isr_unmask_interrupt((int)rsrc[1].base);
 
     if (data && data->isr) {
         _pc_isr_remove_handler(data->isr);

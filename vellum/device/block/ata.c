@@ -135,7 +135,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     }
     data->idedev = idedev;
     data->ideif = ideif;
-    data->slave = rsrc[0].base;
+    data->slave = (int)rsrc[0].base;
     dev->data = data;
 
     LOG_DEBUG("identifying device...\n");

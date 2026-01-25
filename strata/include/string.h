@@ -20,7 +20,7 @@ void *memchr(const void *ptr, int value, size_t len);  // not implemented yet
 int memcmp(const void *p1, const void *p2, size_t len);
 char *strchr(const char *str, int ch);
 int strcmp(const char *p1, const char *p2);
-const char *strerror(int errnum);
+char *strerror(int errnum);
 size_t strcspn(const char *p1, const char *p2);  // not implemented yet
 size_t strlen(const char *str);
 int strncmp(const char *p1, const char *p2, size_t maxlen);

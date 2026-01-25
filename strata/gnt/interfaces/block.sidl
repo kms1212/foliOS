@@ -39,8 +39,7 @@ interface Block {
             @default(500) in u64 timeout_ms,
             @visualize("hexdump") out ptr<u8> data,
             @for(data) out u64 xfer_size
-        )
-        {
+        ) {
             var u64 blksz;
             var ptr<u8> buf;
             var IoRequest ioreq;

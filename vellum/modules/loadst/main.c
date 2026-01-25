@@ -24,7 +24,7 @@
 
 #define MODULE_NAME "loadst"
 
-extern int __stage1_end;
+extern int _stage1_end_;
 
 __noreturn
 static void jump_kernel(void *entry, struct bootinfo_table_header *btblhdr)
@@ -356,7 +356,7 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     btblhdrsize = ALIGN(btblhdrsize, 16);
     
     /* allocate table */
-    btblhdr = (void *)ALIGN((uintptr_t)&__stage1_end, 16);
+    btblhdr = (void *)ALIGN((uintptr_t)&_stage1_end_, 16);
     
     /* fill header */
     btblhdr->flags = 0;

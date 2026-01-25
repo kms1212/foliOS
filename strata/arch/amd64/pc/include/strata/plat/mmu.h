@@ -13,13 +13,13 @@ struct StMmuP_AddressSpace {
 StStatus StMmuP_Init(void);
 StStatus StMmuP_LateInit(void);
 
-StStatus StMmuP_CreateAddressSpace(struct StMmuP_AddressSpace *asp __out);
+StStatus StMmuP_CreateAddressSpace(struct StMmuP_AddressSpace **asp __out);
 StStatus StMmuP_RemoveAddressSpace(struct StMmuP_AddressSpace *asp __in);
 StStatus StMmuP_SwitchAddressSpace(struct StMmuP_AddressSpace *asp __in);
 
 StStatus StMmuP_VirtPageToPhysFrame(
     St_VirtPage vpn __in,
-    St_PhysFrame pfn __out_optional
+    St_PhysFrame *pfn __out_optional
 );
 StStatus StMmuP_MapMemory(
     St_PhysFrame pfn __in,

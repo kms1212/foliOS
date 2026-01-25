@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <endian.h>
+
 #include <vellum/status.h>
 #include <vellum/device.h>
 #include <vellum/interface/block.h>
@@ -118,8 +120,8 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     
     data->blkdev = blkdev;
     data->blkif = blkif;
-    data->part_base = rsrc[0].base;
-    data->part_limit = rsrc[0].limit;
+    data->part_base = le64toh(rsrc[0].base);
+    data->part_limit = le64toh(rsrc[0].limit);
     dev->data = data;
 
     if (devout) *devout = dev;

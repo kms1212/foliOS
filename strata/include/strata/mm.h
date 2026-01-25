@@ -71,11 +71,11 @@ struct StPmm_AllocationMetadata {
 StStatus StPmm_Init(void);
 StStatus StPmm_LateInit(void);
 
-StStatus StPmm_GetTotalFrameCount(St_PageCount frame_count __out);
-StStatus StPmm_GetFreeFrameCount(St_PageCount count __out);
+StStatus StPmm_GetTotalFrameCount(St_PageCount *frame_count __out);
+StStatus StPmm_GetFreeFrameCount(St_PageCount *count __out);
 
 StStatus StPmm_AllocateContiguousFrame(
-    St_PhysFrame pfn __out,
+    St_PhysFrame *pfn __out,
     St_PageCount count __in,
     StPmm_AllocFlags alloc_flags __in
 );
@@ -93,11 +93,11 @@ StStatus StPmm_MarkUnusableContiguousFrame(
 
 StStatus StPmm_GetAllocMetadata(
     St_PhysFrame pfn __in,
-    struct StPmm_AllocationMetadata *meta __out
+    struct StPmm_AllocationMetadata **meta __out
 );
 StStatus StPmm_LockAndGetAllocMetadata(
     St_PhysFrame pfn,
-    struct StPmm_AllocationMetadata *meta __out
+    struct StPmm_AllocationMetadata **meta __out
 );
 StStatus StPmm_UnlockAllocMetadata(struct StPmm_AllocationMetadata *meta __in);
 
@@ -118,16 +118,16 @@ StStatus StVmm_InitDomain(
 
 StStatus StVmm_GetTotalPageCount(
     enum StVmm_Domain domain __in,
-    St_PageCount count __out
+    St_PageCount *count __out
 );
 StStatus StVmm_GetFreePageCount(
     enum StVmm_Domain domain,
-    St_PageCount count __out
+    St_PageCount *count __out
 );
 
 StStatus StVmm_AllocatePage(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PageCount count __in,
     StVmm_AllocFlags alloc_flags __in
 );
@@ -141,11 +141,11 @@ StStatus StMm_Init(void);
 
 StStatus StMm_VirtPageToPhysFrame(
     St_VirtPage vpn __in,
-    St_PhysFrame pfn __out_optional
+    St_PhysFrame *pfn __out_optional
 );
 __always_inline StStatus StMm_VirtAddrToPhysAddr(
     uintptr_t vaddr __in,
-    uintptr_t paddr __out_optional
+    uintptr_t *paddr __out_optional
 )
 {
     StStatus status;
@@ -161,7 +161,7 @@ __always_inline StStatus StMm_VirtAddrToPhysAddr(
 
 StStatus StMm_MapContiguous(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
     StVmm_AllocFlags vmmflags __in,
@@ -174,7 +174,7 @@ void StMm_UnmapContiguous(
 
 StStatus StMm_AllocateContiguous(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PageCount count __in,
     StPmm_AllocFlags pmmflags __in,
     StVmm_AllocFlags vmmflags __in,
@@ -182,7 +182,7 @@ StStatus StMm_AllocateContiguous(
 );
 StStatus StMm_AllocateSparse(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PageCount count __in,
     StPmm_AllocFlags pmmflags __in,
     StVmm_AllocFlags vmmflags __in,
@@ -200,7 +200,7 @@ StStatus StMm_SetPageFlags(
 );
 StStatus StMm_GetPageFlags(
     St_VirtPage vpn __in,
-    StMm_MapFlags mapflags __out
+    StMm_MapFlags *mapflags __out
 );
 
 #endif // __STRATA_MM_H__

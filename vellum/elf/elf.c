@@ -171,7 +171,7 @@ status_t elf_get_header(struct elf_file *elf, void *buf, size_t len)
 
 status_t elf_get_program_header(struct elf_file * elf, unsigned int index, void *buf, size_t len)
 {
-    long phent_offset;
+    uint64_t phent_offset;
     size_t phent_size;
 
     if (elf->ident.class == ELFCLASS32) {
@@ -182,13 +182,13 @@ status_t elf_get_program_header(struct elf_file * elf, unsigned int index, void 
     } else if (elf->ident.class == ELFCLASS64) {
         if (index >= elf->ehdr64.phnum) return STATUS_INVALID_VALUE;
 
-        phent_offset = elf->ehdr64.phoff + index * elf->ehdr64.phentsize;
+        phent_offset = elf->ehdr64.phoff + (elf64_off_t)(index * elf->ehdr64.phentsize);
         phent_size = MIN(len, elf->ehdr64.phentsize);
     } else {
         return STATUS_UNSUPPORTED;
     }
 
-    fseek(elf->fp, phent_offset, SEEK_SET);
+    fseek(elf->fp, (long)phent_offset, SEEK_SET);
     fread(buf, phent_size, 1, elf->fp);
 
     return STATUS_SUCCESS;
@@ -211,7 +211,7 @@ status_t elf_load_program(struct elf_file *elf, unsigned int index, void *paddr)
 
         program_load_addr = paddr ? (uintptr_t)paddr : phdr32.paddr;
         program_size_page = ALIGN_DIV(program_load_addr % PAGE_SIZE + phdr32.memsz, PAGE_SIZE);
-        program_data_offset = phdr32.offset;
+        program_data_offset = (long)phdr32.offset;
         program_memsz = phdr32.memsz;
         program_filesz = phdr32.filesz;
     } else if (elf->ident.class == ELFCLASS64) {
@@ -220,7 +220,7 @@ status_t elf_load_program(struct elf_file *elf, unsigned int index, void *paddr)
 
         program_load_addr = paddr ? (uintptr_t)paddr : phdr64.paddr;
         program_size_page = ALIGN_DIV(program_load_addr % PAGE_SIZE + phdr64.memsz, PAGE_SIZE);
-        program_data_offset = phdr64.offset;
+        program_data_offset = (long)phdr64.offset;
         program_memsz = phdr64.memsz;
         program_filesz = phdr64.filesz;
     } else {
@@ -245,12 +245,12 @@ status_t elf_get_section_header(struct elf_file *elf, unsigned int index, void *
     if (elf->ident.class == ELFCLASS32) {
         if (index >= elf->ehdr32.shnum) return STATUS_INVALID_VALUE;
 
-        fseek(elf->fp, elf->ehdr32.shoff + index * elf->ehdr32.shentsize, SEEK_SET);
+        fseek(elf->fp, (int)(elf->ehdr32.shoff + index * elf->ehdr32.shentsize), SEEK_SET);
         fread(buf, MIN(len, elf->ehdr32.shentsize), 1, elf->fp);
     } else if (elf->ident.class == ELFCLASS64) {
         if (index >= elf->ehdr64.shnum) return STATUS_INVALID_VALUE;
 
-        fseek(elf->fp, elf->ehdr64.shoff + index * elf->ehdr64.shentsize, SEEK_SET);
+        fseek(elf->fp, (long)(elf->ehdr64.shoff + (elf64_off_t)(index * elf->ehdr64.shentsize)), SEEK_SET);
         fread(buf, MIN(len, elf->ehdr64.shentsize), 1, elf->fp);
     } else {
         return STATUS_UNSUPPORTED;
@@ -324,13 +324,13 @@ status_t elf_load_section(struct elf_file *elf, unsigned int index, void *buf, s
         status = elf_get_section_header(elf, index, &shdr32, sizeof(shdr32));
         if (!CHECK_SUCCESS(status)) return status;
 
-        fseek(elf->fp, shdr32.offset, SEEK_SET);
+        fseek(elf->fp, (int)shdr32.offset, SEEK_SET);
         fread(buf, MIN(shdr32.size, len), 1, elf->fp);
     } else if (elf->ident.class == ELFCLASS64) {
         status = elf_get_section_header(elf, index, &shdr64, sizeof(shdr64));
         if (!CHECK_SUCCESS(status)) return status;
 
-        fseek(elf->fp, shdr64.offset, SEEK_SET);
+        fseek(elf->fp, (long)shdr64.offset, SEEK_SET);
         fread(buf, MIN(shdr64.size, len), 1, elf->fp);
     } else {
         return STATUS_UNSUPPORTED;

@@ -68,7 +68,6 @@ add_custom_target(vellum_font ALL
 
 # libraries
 add_subdirectory(lib)
-target_link_libraries(vellum uacpi.lib zlib.lib openlibm.lib)
 
 # Subdirectories
 add_subdirectory(arch)

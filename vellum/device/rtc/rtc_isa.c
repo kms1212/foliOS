@@ -94,7 +94,7 @@ retry:
     if (tm->second != bcd2int(io_in8(data->io_data))) goto retry;
 
     if (!_pc_rdtsc_undefined && data->tsc_diff_per_second) {
-        tm->millisecond = (uint32_t)((_ia32_rdtsc() - data->prev_tsc_value) >> 16) * 1000 / data->tsc_diff_per_second;
+        tm->millisecond = (int)(((_ia32_rdtsc() - data->prev_tsc_value) >> 16) * 1000 / data->tsc_diff_per_second);
         if (tm->millisecond >= 1000) {
             tm->millisecond = 999;
         }
@@ -189,8 +189,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     if (!rsrc || rsrc_cnt != 2 ||
         rsrc[0].type != RT_IOPORT || rsrc[0].limit - rsrc[0].base != 1 ||
         rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit) {
-        status = STATUS_INVALID_RESOURCE;
-        goto has_error;
+        return STATUS_INVALID_RESOURCE;
     }
 
     status = device_create(&dev, drv, parent);
@@ -199,20 +198,20 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     status = device_generate_name("rtc", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    data = malloc(sizeof(*data));
+    data = calloc(1, sizeof(*data));
     if (!data) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
 
-    data->io_index = rsrc[0].base;
-    data->io_data = rsrc[0].limit;
-    data->irq_num = rsrc[1].base;
+    data->io_index = (int)rsrc[0].base;
+    data->io_data = (int)rsrc[0].limit;
+    data->irq_num = (int)rsrc[1].base;
     data->prev_tsc_value = 0;
     data->tsc_diff_per_second = 0;
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(rsrc[1].base);
+    status = _pc_isr_mask_interrupt(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = _pc_isr_add_interrupt_handler(data->irq_num, dev, rtc_isr, &data->isr);
@@ -224,7 +223,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
     io_out8(data->io_data, temp | RTC_B_UIE | RTC_B_24HR);
 
-    status = _pc_isr_unmask_interrupt(rsrc[1].base);
+    status = _pc_isr_unmask_interrupt(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
     
     if (devout) *devout = dev;
@@ -232,7 +231,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt(rsrc[1].base);
+    _pc_isr_unmask_interrupt((int)rsrc[1].base);
 
     if (data && data->isr) {
         _pc_isr_remove_handler(data->isr);

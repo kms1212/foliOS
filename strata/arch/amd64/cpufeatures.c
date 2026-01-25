@@ -16,32 +16,6 @@
 
 #define MODULE_NAME "cpufeatures"
 
-/* additional bits not defined int cpuid.h */
-
-/* leaf 0x00000000, ecx */
-#define bit_PCID (1 << 17)
-#define bit_DCA (1 << 18)
-#define bit_x2APIC (1 << 21)
-#define bit_AESNI (1 << 25)
-
-/* leaf 0x00000000, edx */
-#define bit_FPU (1 << 0)
-#define bit_VME (1 << 1)
-#define bit_APIC (1 << 9)
-#define bit_HTT (1 << 28)
-#define bit_DE (1 << 2)
-#define bit_PSE (1 << 3)
-#define bit_TSC (1 << 4)
-#define bit_MSR (1 << 5)
-#define bit_PAE (1 << 6)
-#define bit_SEP (1 << 11)
-#define bit_PGE (1 << 13)
-#define bit_PAT (1 << 16)
-#define bit_PSE36 (1 << 17)
-#define bit_CLFSH (1 << 19)
-#define bit_FXSR (1 << 24)
-
-
 static volatile int handler_called;
 static size_t instr_size;
 
@@ -162,11 +136,11 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_cx16 = 1;
         }
 
-        if (ecx & bit_PCID) {
+        if (ecx & (1 << 17)) {
             cpu_features.has_pcid = 1;
         }
 
-        if (ecx & bit_DCA) {
+        if (ecx & (1 << 18)) {
             cpu_features.has_dca = 1;
         }
 
@@ -178,7 +152,7 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_sse4_2 = 1;
         }
 
-        if (ecx & bit_x2APIC) {
+        if (ecx & (1 << 21)) {
             cpu_features.has_x2apic = 1;
         }
 
@@ -190,7 +164,7 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_popcnt = 1;
         }
 
-        if (ecx & bit_AESNI) {
+        if (ecx & (1 << 25)) {
             cpu_features.has_aes_ni = 1;
         }
 
@@ -210,40 +184,40 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_f16c = 1;
         }
 
-        if (edx & bit_HTT) {
+        if (edx & (1 << 28)) {
             cpu_features.has_htt = 1;
             LOG_DEBUG("max logical processor id: %"PRId32"\n", (ebx & 0x00FF0000) >> 16);
         }
 
-        if (edx & bit_APIC) {
+        if (edx & (1 << 9)) {
             LOG_DEBUG("local APIC id: %"PRId32"\n", (ebx & 0xFF000000) >> 16);
         }
 
-        if (edx & bit_FPU) {
+        if (edx & (1 << 0)) {
             cpu_features.has_fpu = 1;
         }
 
-        if (edx & bit_VME) {
+        if (edx & (1 << 1)) {
             cpu_features.has_vme = 1;
         }
 
-        if (edx & bit_DE) {
+        if (edx & (1 << 2)) {
             cpu_features.has_de = 1;
         }
 
-        if (edx & bit_PSE) {
+        if (edx & (1 << 3)) {
             cpu_features.has_pse = 1;
         }
 
-        if (edx & bit_TSC) {
+        if (edx & (1 << 4)) {
             cpu_features.has_tsc = 1;
         }
 
-        if (edx & bit_MSR) {
+        if (edx & (1 << 5)) {
             cpu_features.has_msr = 1;
         }
 
-        if (edx & bit_PAE) {
+        if (edx & (1 << 6)) {
             cpu_features.has_pae = 1;
         }
 
@@ -251,15 +225,15 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_cx8 = 1;
         }
 
-        if (edx & bit_APIC) {
+        if (edx & (1 << 9)) {
             cpu_features.has_apic = 1;
         }
 
-        if (edx & bit_SEP) {
+        if (edx & (1 << 11)) {
             cpu_features.has_sep = 1;
         }
 
-        if (edx & bit_PGE) {
+        if (edx & (1 << 13)) {
             cpu_features.has_pge = 1;
         }
 
@@ -267,15 +241,15 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_cmov = 1;
         }
 
-        if (edx & bit_PAT) {
+        if (edx & (1 << 16)) {
             cpu_features.has_pat = 1;
         }
 
-        if (edx & bit_PSE36) {
+        if (edx & (1 << 17)) {
             cpu_features.has_pse36 = 1;
         }
 
-        if (edx & bit_CLFSH) {
+        if (edx & (1 << 19)) {
             cpu_features.has_clfsh = 1;
             LOG_DEBUG("CLFSH line size: %"PRId32"\n", (ebx & 0x0000FF00) >> 5);
         }
@@ -284,7 +258,7 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_mmx = 1;
         }
 
-        if (edx & bit_FXSR) {
+        if (edx & (1 << 24)) {
             cpu_features.has_fxsr = 1;
         }
 

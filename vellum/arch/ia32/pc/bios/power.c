@@ -10,7 +10,7 @@
 
 #include <vellum/panic.h>
 
-#define MAKE_ACPI_STATUS(uacpi_status) (uacpi_status ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
+#define MAKE_ACPI_STATUS(uacpi_status) ((uacpi_status) ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
 
 void _pc_reboot()
 {

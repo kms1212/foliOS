@@ -99,7 +99,7 @@ char *path_normalize(char *dest, size_t len, const char *src)
         write_pos += prefix_len;
         *write_pos++ = ':';
     }
-    
+
     int asdf;
     do {
         asdf = path_iter_next(&it);

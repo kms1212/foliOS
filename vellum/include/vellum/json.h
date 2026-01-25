@@ -6,8 +6,6 @@
 #include <vellum/compiler.h>
 #include <vellum/status.h>
 
-#define JSON_SYNTAX_ERR -1
-
 enum json_value_type {
     JVT_NULL = 0,
     JVT_STRING,

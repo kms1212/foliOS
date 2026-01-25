@@ -2,7 +2,11 @@
 #include <vellum/asm/bios/disk.h>
 #include <vellum/asm/bios/bootinfo.h>
 
+#include <stdint.h>
+#include <string.h>
+
 #include <vellum/compiler.h>
+#include <vellum/disk.h>
 
 #include "../../filesystem/fat/fat.h"
 
@@ -15,6 +19,8 @@
 #   define PRINT_HEX(val) print_hex(val)
 
 #endif
+
+extern char _stage2_start_[];  // NOLINT(bugprone-reserved-identifier)
 
 static uint8_t sect_buf[4096] __aligned(16);
 static uint8_t clus_buf[4096] __aligned(16);
@@ -61,9 +67,9 @@ static status_t read_disk(lba_t lba, uint8_t count, void *buf)
 
     lba += bpb->hidden_sector_count;
 
-    chs.cylinder = lba / (geom.head * geom.sector);
-    chs.head = (lba / geom.sector) % geom.head;
-    chs.sector = (lba % geom.sector) + 1;
+    chs.cylinder = (int)(lba / (lba_t)(geom.head * geom.sector));
+    chs.head = (int)((lba / geom.sector) % geom.head);
+    chs.sector = (int)((lba % geom.sector) + 1);
 
     status = _pc_bios_disk_read(_pc_boot_drive, chs, count, buf, &result);
     if (!CHECK_SUCCESS(status)) return status;
@@ -101,19 +107,21 @@ void s1main(void)
         for (int i = 0; i < 32; i++) {
             entry = &((union fat_dir_entry *)sect_buf)[i];
             
-            if (memcmp(entry->file.name_ext, "VELLUM  X86", sizeof(entry->file.name) + sizeof(entry->file.extension)) == 0) {
+            if (memcmp(entry->file.name_ext, "VELLUM  X86", sizeof(entry->file.name) + sizeof(entry->file.extension)) == 0 || !entry->file.name[0]) {
                 goto file_found;
-            } else if (!entry->file.name[0]) {
-                PRINT_STR("[stage1] VELLUM.X86 not found");
-                return;
             }
         }
     }
 
 file_found: {}
+    if (!entry) {
+        PRINT_STR("[stage1] VELLUM.X86 not found");
+        return;
+    }
+
     uint16_t current_cluster = entry->file.cluster_location;
 
-    uint32_t *load_dest = (uint32_t *)0x00100000;
+    uint32_t *load_dest = (uint32_t *)_stage2_start_;
 
     PRINT_STR("[stage1] reading FAT area...\r\n");
     status = read_disk(fat_lba, 8, sect_buf);
@@ -144,7 +152,10 @@ file_found: {}
     }
     PRINT_STR("\r\n");
 
-    ((void (*)(void))0x00100000)();
+    void (*stage2_entry)(void);
+    *(void **)&stage2_entry = (void *)_stage2_start_;
+
+    stage2_entry();
 
     return;
 }

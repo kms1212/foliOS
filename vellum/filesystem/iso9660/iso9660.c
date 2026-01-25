@@ -283,6 +283,8 @@ static status_t open(struct fs_directory *dir, const char *name, struct fs_file 
     struct iso9660_file_data *file_data = NULL;
     struct fs_directory_entry dirent;
 
+    if (!fileout) return STATUS_INVALID_VALUE;
+
     status = match_name(dir, name, &dirent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -308,17 +310,17 @@ static status_t open(struct fs_directory *dir, const char *name, struct fs_file 
     memcpy(&file_data->direntry, &dir_data->direntry, sizeof(file_data->direntry));
     file->data = file_data;
 
-    if (fileout) *fileout = file;
+    *fileout = file;
 
     return STATUS_SUCCESS;
 
 has_error:
-    if (file_data) {
-        free(file_data);
-    }
-
     if (file) {
         free(file);
+    }
+
+    if (file_data) {
+        free(file_data);
     }
 
     return status;
@@ -342,8 +344,8 @@ static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result
     }
 
     while (len > 0) {
-        long sector_offset = file_data->cursor % data->sector_size;
-        long read_len = data->sector_size - sector_offset;
+        uint32_t sector_offset = file_data->cursor % data->sector_size;
+        uint32_t read_len = data->sector_size - sector_offset;
         if (read_len > len) {
             read_len = len;
         }
@@ -417,6 +419,8 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
     struct fs_directory *dir = NULL;
     struct iso9660_dir_data *dir_data = NULL;
 
+    if (!dirout) return STATUS_INVALID_VALUE;
+
     dir = malloc(sizeof(*dir));
     if (!dir) {
         status = STATUS_UNKNOWN_ERROR;
@@ -438,17 +442,17 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
 
     memset(&dir_data->direntry, 0, sizeof(dir_data->direntry));
 
-    if (dirout) *dirout = dir;
+    *dirout = dir;
 
     return STATUS_SUCCESS;
 
 has_error:
-    if (dir_data) {
-        free(dir_data);
-    }
-
     if (dir) {
         free(dir);
+    }
+
+    if (dir_data) {
+        free(dir_data);
     }
 
     return status;
@@ -467,6 +471,8 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
     if (dir_data->data_start_lba == data->rootdir_lba && (strcmp(".", name) == 0 || strcmp("..", name) == 0)) {
         return open_root_directory(fs, dirout);
     }
+
+    if (!dirout) return STATUS_INVALID_VALUE;
     
     status = match_name(dir, name, &dirent);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -494,17 +500,17 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
     memset(&new_dir_data->direntry, 0, sizeof(new_dir_data->direntry));
     new_dir->data = new_dir_data;
 
-    if (dirout) *dirout = new_dir;
+    *dirout = new_dir;
 
     return STATUS_SUCCESS;
 
 has_error:
-    if (new_dir_data) {
-        free(new_dir_data);
-    }
-
     if (new_dir) {
         free(new_dir);
+    }
+
+    if (new_dir_data) {
+        free(new_dir_data);
     }
 
     return status;

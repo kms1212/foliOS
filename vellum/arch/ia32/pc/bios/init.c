@@ -43,8 +43,8 @@
 
 extern void main(void);
 
-extern void (*__init_array_start)(void);
-extern void (*__init_array_end)(void);
+extern void (*_init_array_start_)(void);
+extern void (*_init_array_end_)(void);
 
 static ssize_t early_stderr_write(void *cookie, const char *buf, size_t count)
 {
@@ -55,7 +55,7 @@ static ssize_t early_stderr_write(void *cookie, const char *buf, size_t count)
         _pc_bios_video_write_tty(buf[i]);
     }
 
-    return count;
+    return (ssize_t)count;
 }
 
 static const struct cookie_io_functions early_stderr_io = {
@@ -68,7 +68,7 @@ static ssize_t early_stddbg_write(void *cookie, const char *buf, size_t count)
         io_out8(0x00E9, buf[i]);
     }
 
-    return count;
+    return (ssize_t)count;
 }
 
 static const struct cookie_io_functions early_stddbg_io = {
@@ -373,7 +373,7 @@ static status_t init_nonpnp_devices(int has_acpi)
             status = device_driver_find("ide_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
     
-            status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
+            /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
             // if (!CHECK_SUCCESS(status)) return status;
         }
 
@@ -405,7 +405,8 @@ static status_t init_nonpnp_devices(int has_acpi)
             status = device_driver_find("ide_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
     
-            drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
+            /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
+            // if (!CHECK_SUCCESS(status)) return status;
         }
     }
     
@@ -423,7 +424,7 @@ static status_t init_nonpnp_devices(int has_acpi)
     return 0;
 }
 
-#define MAKE_ACPI_STATUS(uacpi_status) (uacpi_status ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
+#define MAKE_ACPI_STATUS(uacpi_status) ((uacpi_status) ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
 
 int config_rtc_century_offset;
 
@@ -632,8 +633,8 @@ void _pc_init(void)
     }
 
     LOG_DEBUG("running constructors...\n");
-    for (int i = 0; &(&__init_array_start)[i] != &__init_array_end; i++) {
-        (&__init_array_start)[i]();
+    for (int i = 0; &(&_init_array_start_)[i] != &_init_array_end_; i++) {
+        (&_init_array_start_)[i]();
     }
 
     interrupt_enable();

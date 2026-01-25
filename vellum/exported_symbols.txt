@@ -7,7 +7,7 @@ __memset_chk
 __printf_chk
 __snprintf_chk
 __sprintf_chk
-__stage1_end
+_stage1_end_
 __stpcpy_chk
 __strcat_chk
 __strcpy_chk

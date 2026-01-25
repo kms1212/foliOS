@@ -219,7 +219,7 @@ static status_t flush(struct device *dev)
             if (data->diff_buffer[(row * data->cols + col) / 8] & (1 << ((row * data->cols + col) % 8)) ||
                 ((data->cursor_prev_col != data->cursor_col || data->cursor_prev_row != data->cursor_row) &&
                 (data->cursor_prev_col == col && data->cursor_prev_row == row))) {
-                status = draw_char(dev, col, row);
+                /* status = */ draw_char(dev, col, row);
                 // ignore status
 
                 data->diff_buffer[(row * data->cols + col) / 8] &= ~(1 << ((row * data->cols + col) % 8));
@@ -232,7 +232,7 @@ static status_t flush(struct device *dev)
         data->cursor_prev_row = data->cursor_row;
         
         if (data->cursor_visible) {
-            status = draw_cursor(dev);
+            /* status = */ draw_cursor(dev);
             // ignore status
         }
     }
@@ -336,6 +336,8 @@ static void video_mode_callback(void *_dev, struct device *fbdev, int mode)
 {
     struct device *dev = _dev;
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
+    struct console_char_cell *new_char_buffer;
+    uint8_t *new_diff_buffer;
     status_t status;
 
     data->is_switching_mode = 1;
@@ -360,12 +362,14 @@ static void video_mode_callback(void *_dev, struct device *fbdev, int mode)
         data->rows = data->current_vmode_info.height / 16;
 
         LOG_DEBUG("allocating buffers... cols=%d, rows=%d\n", data->cols, data->rows);
-        data->char_buffer = realloc(data->char_buffer, data->cols * data->rows * sizeof(*data->char_buffer));
-        if (!data->char_buffer) goto has_error;
+        new_char_buffer = realloc(data->char_buffer, data->cols * data->rows * sizeof(*data->char_buffer));
+        if (!new_char_buffer) goto has_error;
+        data->char_buffer = new_char_buffer;
         memset(data->char_buffer, 0, data->cols * data->rows * sizeof(*data->char_buffer));
 
-        data->diff_buffer = realloc(data->diff_buffer, data->cols * data->rows / 8);
-        if (!data->diff_buffer) goto has_error;
+        new_diff_buffer = realloc(data->diff_buffer, data->cols * data->rows / 8);
+        if (!new_diff_buffer) goto has_error;
+        data->diff_buffer = new_diff_buffer;
         memset(data->diff_buffer, 0, data->cols * data->rows / 8);
 
         invalidate(dev, 0, 0, data->cols - 1, data->rows - 1);

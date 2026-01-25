@@ -92,7 +92,7 @@ StStatus StMmuP_LateInit(void)
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_CreateAddressSpace(struct StMmuP_AddressSpace *asp __out)
+StStatus StMmuP_CreateAddressSpace(struct StMmuP_AddressSpace **asp __out)
 {
     StStatus status;
     struct StMmuP_AddressSpace *new_asp = NULL;
@@ -150,7 +150,7 @@ StStatus StMmuP_SwitchAddressSpace(struct StMmuP_AddressSpace *asp __in)
 
 StStatus StMmuP_VirtPageToPhysFrame(
     St_VirtPage vpn __in,
-    St_PhysFrame pfn __out_optional
+    St_PhysFrame *pfn __out_optional
 )
 {
     uint64_t pml4e_idx;

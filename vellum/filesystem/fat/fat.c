@@ -67,7 +67,7 @@ remove_right_padding(
     size_t orig_len)
 {
     int str_len = 0;
-    for (int cur = orig_len - 1; cur >= 0; cur--) {
+    for (size_t cur = orig_len - 1; cur >= 0; cur--) {
         if (str_len) {
             dest[cur] = orig[cur];
             str_len++;
@@ -157,27 +157,27 @@ static int validate_lfn(const char* str, size_t len)
     return 1;
 }
 
-static int ucs2_to_utf8(char* buf, int len, uint16_t ucs2ch)
+static int ucs2_to_utf8(char* buf, size_t len, uint16_t ucs2ch)
 {
     if (ucs2ch == 0 || ucs2ch == 0xFFFF) return 0;
 
     if (ucs2ch < 0x7F) {
         if (len < 1) return -1;
-        *buf = ucs2ch;
+        *buf = (char)ucs2ch;
         return 1;
     }
 
     if (ucs2ch < 0x7FF) {
         if (len < 2) return -1;
-        *buf++ = ((ucs2ch & 0x07C0) >> 6) | 0xC0;
-        *buf++ = (ucs2ch & 0x003F) | 0x80;
+        *buf++ = (char)(((ucs2ch & 0x07C0) >> 6) | 0xC0);
+        *buf++ = (char)((ucs2ch & 0x003F) | 0x80);
         return 2;
     }
 
     if (len < 3) return -1;
-    *buf++ = ((ucs2ch & 0xF000) >> 12) | 0xE0;
-    *buf++ = ((ucs2ch & 0x0FC0) >> 6) | 0x80;
-    *buf++ = (ucs2ch & 0x003F) | 0x80;
+    *buf++ = (char)(((ucs2ch & 0xF000) >> 12) | 0xE0);
+    *buf++ = (char)(((ucs2ch & 0x0FC0) >> 6) | 0x80);
+    *buf++ = (char)((ucs2ch & 0x003F) | 0x80);
     return 3;
 }
 
@@ -228,7 +228,7 @@ lfn_ucs2_to_utf8(
         }
     } else {
         while (bytes_written < FAT_LFN_BUFLEN) {
-            *utf8buf++ = *ucs2buf < 0x80 ? *ucs2buf : fallback;
+            *utf8buf++ = (char)(*ucs2buf < 0x80 ? *ucs2buf : fallback);
             ucs2buf++;
             bytes_written++;
         }
@@ -247,14 +247,14 @@ get_sfn_filename(
 
     for (int i = 0; i < 8 && entry->name[i] != ' '; i++) {
         buf[char_count++] =
-            (entry->attribute2 & FAT_ATTR2_LCASE_NAME) ? tolower(entry->name[i]) : entry->name[i];
+            (char)((entry->attribute2 & FAT_ATTR2_LCASE_NAME) ? tolower(entry->name[i]) : entry->name[i]);
     }
     if (entry->extension[0] != ' ') {
         buf[char_count++] = '.';
     }
     for (int i = 0; i < 3 && entry->extension[i] != ' '; i++) {
         buf[char_count++] =
-            (entry->attribute2 & FAT_ATTR2_LCASE_EXT) ? tolower(entry->extension[i]) : entry->extension[i];
+            (char)((entry->attribute2 & FAT_ATTR2_LCASE_EXT) ? tolower(entry->extension[i]) : entry->extension[i]);
     }
     buf[char_count] = '\0';
 
@@ -729,6 +729,8 @@ static status_t open(struct fs_directory *dir, const char *name, struct fs_file 
     struct fat_file_data *file_data = NULL;
     struct fs_file *file = NULL;
 
+    if (!fileout) return STATUS_INVALID_VALUE;
+
     status = match_name(dir, name, &dirent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -759,17 +761,17 @@ static status_t open(struct fs_directory *dir, const char *name, struct fs_file 
     file->fs = fs;
     file->data = file_data;
 
-    if (fileout) *fileout = file;
+    *fileout = file;
 
     return STATUS_SUCCESS;
 
 has_error:
-    if (file_data) {
-        free(file_data);
-    }
-
     if (file) {
         free(file);
+    }
+
+    if (file_data) {
+        free(file_data);
     }
 
     return status;
@@ -792,8 +794,8 @@ static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result
     }
 
     while (len > 0) {
-        long cluster_offset = file_data->cursor % data->cluster_size;
-        long read_len = data->cluster_size - cluster_offset;
+        uint32_t cluster_offset = file_data->cursor % data->cluster_size;
+        uint32_t read_len = data->cluster_size - cluster_offset;
         if (read_len > len) {
             read_len = len;
         }
@@ -881,6 +883,8 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
     struct fat_dir_data *dir_data = NULL;
     struct fs_directory *dir = NULL;
 
+    if (!dirout) return STATUS_INVALID_VALUE;
+
     dir_data = malloc(sizeof(*dir_data));
     if (!dir_data) {
         status = STATUS_UNKNOWN_ERROR;
@@ -901,17 +905,17 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
     dir->fs = fs;
     dir->data = dir_data;
 
-    if (dirout) *dirout = dir;
+    *dirout = dir;
 
     return STATUS_SUCCESS;
 
 has_error:
-    if (dir_data) {
-        free(dir_data);
-    }
-
     if (dir) {
         free(dir);
+    }
+
+    if (dir_data) {
+        free(dir_data);
     }
 
     return status;
@@ -926,6 +930,8 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
     struct fs_directory *new_dir = NULL;
     struct fat_dir_data *new_dir_data = NULL;
     struct fs_directory_entry dirent;
+
+    if (!dirout) return STATUS_INVALID_VALUE;
 
     if (dir_data->root_cluster && (strcmp(".", name) == 0 || strcmp("..", name) == 0)) {
         return open_root_directory(fs, dirout);
@@ -963,17 +969,17 @@ static status_t open_directory(struct fs_directory *dir, const char *name, struc
     new_dir->fs = fs;
     new_dir->data = new_dir_data;
 
-    if (dirout) *dirout = new_dir;
+    *dirout = new_dir;
 
     return STATUS_SUCCESS;
 
 has_error:
-    if (new_dir_data) {
-        free(new_dir_data);
-    }
-
     if (new_dir) {
         free(new_dir);
+    }
+
+    if (new_dir_data) {
+        free(new_dir_data);
     }
 
     return status;

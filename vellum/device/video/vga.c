@@ -245,6 +245,8 @@ static void convert_color_generic(const struct vbe_video_mode_info *mode, const 
             case 4:
                 *(uint32_t *)dest = color;
                 break;
+            default:
+                return;
         }
 
         dest = (uint8_t *)dest + ((mode->bpp + 7) >> 3);
@@ -257,6 +259,7 @@ static status_t setup_bitmap_buffer(struct device *dev, int width, int height, i
 {
     struct vga_data *data = (struct vga_data *)dev->data;
     status_t status;
+    void *new_frame_buffer, *new_diff_buffer;
 
     if (data->char_buffer) {
         LOG_DEBUG("freeing character buffer...\n");
@@ -265,19 +268,21 @@ static status_t setup_bitmap_buffer(struct device *dev, int width, int height, i
     }
 
     LOG_DEBUG("(re)allocating frame buffer...\n");
-    data->frame_buffer = realloc(data->frame_buffer, width * height * sizeof(*data->frame_buffer));
-    if (!data->frame_buffer) {
+    new_frame_buffer = realloc(data->frame_buffer, width * height * sizeof(*data->frame_buffer));
+    if (!new_frame_buffer) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
+    data->frame_buffer = new_frame_buffer;
     memset(data->frame_buffer, 0, width * height * sizeof(*data->frame_buffer));
     
     LOG_DEBUG("(re)allocating diff buffer...\n");
-    data->diff_buffer = realloc(data->diff_buffer, (width / DIFF_REGION_SIZE) * (height / DIFF_REGION_SIZE));
-    if (!data->diff_buffer) {
+    new_diff_buffer = realloc(data->diff_buffer, (width / DIFF_REGION_SIZE) * (height / DIFF_REGION_SIZE));
+    if (!new_diff_buffer) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
+    data->diff_buffer = new_diff_buffer;
     memset(data->diff_buffer, 0, (width / DIFF_REGION_SIZE) * (height / DIFF_REGION_SIZE));
 
     return STATUS_SUCCESS;
@@ -290,6 +295,7 @@ static status_t setup_text_buffer(struct device *dev, int width, int height)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
     status_t status;
+    void *new_char_buffer, *new_diff_buffer;
 
     if (data->frame_buffer) {
         LOG_DEBUG("freeing frame buffer...\n");
@@ -298,19 +304,21 @@ static status_t setup_text_buffer(struct device *dev, int width, int height)
     }
 
     LOG_DEBUG("(re)allocating character buffer...\n");
-    data->char_buffer = realloc(data->char_buffer, width * height * sizeof(*data->char_buffer));
-    if (!data->char_buffer) {
+    new_char_buffer = realloc(data->char_buffer, width * height * sizeof(*data->char_buffer));
+    if (!new_char_buffer) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
+    data->char_buffer = new_char_buffer;
     memset(data->char_buffer, 0, width * height * sizeof(*data->char_buffer));
     
     LOG_DEBUG("(re)allocating diff buffer...\n");
-    data->diff_buffer = realloc(data->diff_buffer, width * height / 8);
-    if (!data->diff_buffer) {
+    new_diff_buffer = realloc(data->diff_buffer, width * height / 8);
+    if (!new_diff_buffer) {
         status = STATUS_UNKNOWN_ERROR;
         goto has_error;
     }
+    data->diff_buffer = new_diff_buffer;
     memset(data->diff_buffer, 0, width * height / 8);
 
     return STATUS_SUCCESS;
@@ -479,7 +487,7 @@ static status_t add_mode_callback(struct device *dev, void *cb_data, video_mode_
         data->mode_callback_list = entry;
     } else {
         struct callback_list_entry *current = data->mode_callback_list;
-        for (current = data->mode_callback_list; current->next; current = current->next) {
+        for (; current->next; current = current->next) {
             if (new_id < current->id) {
                 new_id = current->id + 1;
             }
@@ -499,6 +507,7 @@ static void remove_mode_callback(struct device *dev, int id)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
     struct callback_list_entry *prev_entry = NULL;
+    struct callback_list_entry *next_entry;
 
     if (!data->mode_callback_list) return;
 
@@ -510,9 +519,11 @@ static void remove_mode_callback(struct device *dev, int id)
     }
     if (!prev_entry) return;
 
+    next_entry = prev_entry->next->next;
+
     free(prev_entry->next);
 
-    prev_entry->next = prev_entry->next->next;
+    prev_entry->next = next_entry;
 
     LOG_DEBUG("video mode callback removed\n");
 }
@@ -639,7 +650,7 @@ static status_t get_hw_mode_info_vbe(struct device *dev, int mode, struct video_
         case VBEMM_TEXT:
             hwmode->memory_model = VMM_TEXT;
             hwmode->framebuffer = (void *)0xB8000;
-            hwmode->pitch = hwmode->width * sizeof(uint16_t);
+            hwmode->pitch = (int)(hwmode->width * sizeof(uint16_t));
             break;
         default:
             return 1;
@@ -907,7 +918,7 @@ static status_t con_flush(struct device *dev)
             if (src->attr.text_dim) {
                 cell &= 0x77FF;
             }
-            ((uint16_t *)0xB8000)[y * width + x] = cell;
+            ((uint16_t *)0xB8000)[y * width + x] = cell;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
             data->diff_buffer[(y * width + x) / 8] &= ~(1 << ((y * width + x) % 8));
         }
     }
@@ -1042,6 +1053,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     data->cursor_visible = 1;
     data->cursor_shape_start = 14;
     data->cursor_shape_end = 15;
+    data->mode_set_by_vbe = 0;
     dev->data = data;
 
     LOG_DEBUG("checking wheter VBE is supported...\n");
@@ -1084,6 +1096,9 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
                     status = setup_text_buffer(dev, data->vbe_mode_info.width, data->vbe_mode_info.height);
                     if (!CHECK_SUCCESS(status)) goto has_error;
                     break;
+                default:
+                    status = STATUS_UNSUPPORTED;
+                    goto has_error;
             }
         } else {
             LOG_DEBUG("falling back to default video mode...\n");

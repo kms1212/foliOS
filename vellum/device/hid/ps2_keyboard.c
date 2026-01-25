@@ -36,17 +36,22 @@ enum sequence_state {
     SS_CTRLPAUSE_3,
 };
 
+enum scancode_set {
+    SS_SET1 = 1,
+    SS_SET2,
+};
+
 struct ps2_keyboard_data {
     struct device *ps2dev;
     const struct ps2_interface *ps2if;
 
-    int irq_num;
+    int slave, irq_num;
     struct isr_handler *isr;
 
-    volatile int seqbuf_start, seqbuf_end;
+    volatile unsigned int seqbuf_start, seqbuf_end;
     volatile uint8_t seqbuf[64];
     enum sequence_state seq_state;
-    int scancode_set;
+    enum scancode_set scancode_set;
 };
 
 struct key_event {
@@ -54,7 +59,7 @@ struct key_event {
     uint16_t flags;
 };
 
-static const uint16_t translated_keycode_char_table[256] = {
+static const char translated_keycode_char_table[256] = {
     '\0', '\0', '\0', '\0', 'a' , 'b' , 'c' , 'd' ,  /* 0x00 - 0x07 */
     'e' , 'f' , 'g' , 'h' , 'i' , 'j' , 'k' , 'l' ,  /* 0x08 - 0x0F */
     'm' , 'n' , 'o' , 'p' , 'q' , 'r' , 's' , 't' ,  /* 0x10 - 0x17 */
@@ -464,10 +469,16 @@ static int translate_scancode(struct device *dev)
 
         _pc_isr_mask_interrupt(data->irq_num);
 
-        if (data->scancode_set == 1) {
-            ret = translate_scancode_set1(dev, &translated, &flags);
-        } else if (data->scancode_set == 2) {
-            ret = translate_scancode_set2(dev, &translated, &flags);
+        switch (data->scancode_set) {
+            case SS_SET1:
+                ret = translate_scancode_set1(dev, &translated, &flags);
+                break;
+            case SS_SET2:
+                ret = translate_scancode_set2(dev, &translated, &flags);
+                break;
+            default:
+                ret = STATUS_UNSUPPORTED;
+                break;
         }
 
         _pc_isr_unmask_interrupt(data->irq_num);
@@ -488,7 +499,7 @@ static status_t read(struct device *dev, char *buf, size_t len, size_t *result)
     while (read_len < len) {
         ch = translate_scancode(dev);
         if (ch) {
-            *buf++ = ch;
+            *buf++ = (char)ch;
             read_len++;
         }
     }
@@ -526,9 +537,12 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
     switch (data->scancode_set) {
         case 1:
             status = translate_scancode_set1(dev, key, flags) ? STATUS_BUFFER_UNDERFLOW : STATUS_SUCCESS;
+            break;
         case 2:
             status = translate_scancode_set2(dev, key, flags) ? STATUS_BUFFER_UNDERFLOW : STATUS_SUCCESS;
+            break;
         default:
+            status = STATUS_UNSUPPORTED;
             break;
     }
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -555,7 +569,7 @@ static void keyboard_isr(void *_dev, struct interrupt_frame *frame, struct trap_
     struct ps2_keyboard_data *data = (struct ps2_keyboard_data *)dev->data;
     status_t status;
     uint8_t byte;
-    int next_seqbuf_end;
+    unsigned int next_seqbuf_end;
 
     status = data->ps2if->irq_get_byte(data->ps2dev, &byte);
     if (!CHECK_SUCCESS(status)) return;
@@ -602,8 +616,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     if (!rsrc || rsrc_cnt != 2 ||
         rsrc[0].type != RT_BUS || rsrc[0].base != rsrc[0].limit ||
         rsrc[1].type != RT_IRQ || rsrc[1].base != rsrc[1].limit) {
-        status = STATUS_INVALID_RESOURCE;
-        goto has_error;
+        return STATUS_INVALID_RESOURCE;
     }
 
     ps2dev = parent;
@@ -631,34 +644,35 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     data->ps2if = ps2if;
     data->seqbuf_start = data->seqbuf_end = 0;
     data->seq_state = SS_DEFAULT;
-    data->scancode_set = 1;
-    data->irq_num = rsrc[1].base;
+    data->scancode_set = SS_SET1;
+    data->slave = (int)rsrc[0].base;
+    data->irq_num = (int)rsrc[1].base;
     data->isr = NULL;
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(rsrc[1].base);
+    status = _pc_isr_mask_interrupt(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
     
     LOG_DEBUG("registering interrupt service routine...\n");
-    status = _pc_isr_add_interrupt_handler(rsrc[1].base, dev, keyboard_isr, &data->isr);
+    status = _pc_isr_add_interrupt_handler(data->irq_num, dev, keyboard_isr, &data->isr);
     if (!CHECK_SUCCESS(status)) goto has_error;
     
     LOG_DEBUG("testing port...\n");
-    status = ps2if->test_port(ps2dev, rsrc[0].base);
+    status = ps2if->test_port(ps2dev, data->slave);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("enabling port...\n");
-    status = ps2if->enable_port(ps2dev, rsrc[0].base);
+    status = ps2if->enable_port(ps2dev, data->slave);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("resetting keyboard...\n");
     /* reset device */
     buf[0] = 0xFF;
 
-    status = ps2if->send_data(ps2dev, rsrc[0].base, buf, 1);
+    status = ps2if->send_data(ps2dev, data->slave, buf, 1);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = ps2if->recv_data(ps2dev, rsrc[0].base, buf, 2);
+    status = ps2if->recv_data(ps2dev, data->slave, buf, 2);
     if (!CHECK_SUCCESS(status)) goto has_error;
     if (buf[0] != 0xFA || buf[1] != 0xAA) {
         status = STATUS_HARDWARE_FAILED;
@@ -670,17 +684,17 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     buf[0] = 0xF0;
     buf[1] = 0x02;
 
-    status = ps2if->send_data(ps2dev, rsrc[0].base, buf, 2);
+    status = ps2if->send_data(ps2dev, data->slave, buf, 2);
     if (!CHECK_SUCCESS(status)) goto skip_set2;
 
-    status = ps2if->recv_data(ps2dev, rsrc[0].base, buf, 1);
+    status = ps2if->recv_data(ps2dev, data->slave, buf, 1);
     if (!CHECK_SUCCESS(status)) goto skip_set2;
     if (buf[0] != 0xFA) goto skip_set2;
 
-    data->scancode_set = 2;
+    data->scancode_set = SS_SET2;
 
 skip_set2:
-    status = _pc_isr_unmask_interrupt(rsrc[1].base);
+    status = _pc_isr_unmask_interrupt(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("initialization success\n");
@@ -690,7 +704,7 @@ skip_set2:
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt(rsrc[1].base);
+    _pc_isr_unmask_interrupt((int)rsrc[1].base);
 
     if (data && data->isr) {
         _pc_isr_remove_handler(data->isr);

@@ -27,7 +27,7 @@ static union StA_PaePageTableEntry st_kernel_pt[16][512] __aligned(4096);
 #define PAGE_TABLE_RCRS_PT_BASE (PAGE_TABLE_RCRS_SLOT << 22)
 #define PAGE_TABLE_RCRS_PD_BASE (PAGE_TABLE_RCRS_PT_BASE | (PAGE_TABLE_RCRS_SLOT << 12))
 
-static StStatus virt_to_phys(St_VirtPage vpn __in, St_PhysFrame pfn __out)
+static StStatus virt_to_phys(St_VirtPage vpn __in, St_PhysFrame *pfn __out)
 {
     union StA_PageDirectoryEntry *pd = (void *)PAGE_TABLE_RCRS_PD_BASE;
     union StA_PageTableEntry *pt = (void *)PAGE_TABLE_RCRS_PT_BASE;

@@ -9,35 +9,35 @@ SECTIONS
 
     .text :
     {
-        PROVIDE_HIDDEN(__text_start = .);
+        PROVIDE_HIDDEN(_text_start_ = .);
         KEEP(*(.text.startup .text.startup.*))
         KEEP(*(.text .text.*))
-        PROVIDE_HIDDEN(__text_end = .);
+        PROVIDE_HIDDEN(_text_end_ = .);
     }
     
     . = ALIGN(4096);
     .rodata :
     {
-        PROVIDE_HIDDEN(__rodata_start = .);
+        PROVIDE_HIDDEN(_rodata_start_ = .);
         KEEP(*(.rodata .rodata.*))
-        PROVIDE_HIDDEN(__rodata_end = .);
+        PROVIDE_HIDDEN(_rodata_end_ = .);
     }
 
     . = ALIGN(4096);
     .data :
     {
-        PROVIDE_HIDDEN(__data_start = .);
+        PROVIDE_HIDDEN(_data_start_ = .);
         KEEP(*(.data .data.*))
-        PROVIDE_HIDDEN(__data_end = .);
+        PROVIDE_HIDDEN(_data_end_ = .);
     }
 
     . = ALIGN(4096);
     .bss :
     {
-        PROVIDE_HIDDEN(__bss_start = .);
+        PROVIDE_HIDDEN(_bss_start_ = .);
         *(.bss .bss.*)
-        PROVIDE_HIDDEN(__bss_end = .);
+        PROVIDE_HIDDEN(_bss_end_ = .);
     }
 
-    PROVIDE_HIDDEN(__end = .);
+    PROVIDE_HIDDEN(_end_ = .);
 }

@@ -1,8 +1,6 @@
 #ifndef __STRATA_ARCH_INTRINSICS_REGISTER_H__
 #define __STRATA_ARCH_INTRINSICS_REGISTER_H__
 
-#include <cpuid.h>
-
 #include <stdint.h>
 
 #include <strata/compiler.h>
@@ -22,25 +20,25 @@
 __always_inline uint64_t StA_ReadCr0(void)
 {
     uint64_t value;
-    __asm__ volatile ("mov %%cr0, %0" : "=r"(value));
+    __asm__ volatile ("mov %%cr0, %q0" : "=r"(value));
     return value;
 }
 
 __always_inline void StA_WriteCr0(uint64_t value)
 {
-    __asm__ volatile ("mov %0, %%cr0" : : "r"(value) : "memory");
+    __asm__ volatile ("mov %q0, %%cr0" : : "r"(value) : "memory");
 }
 
 __always_inline uint32_t StA_ReadCr2(void)
 {
     uint32_t value;
-    __asm__ volatile ("mov %%cr2, %0" : "=r"(value));
+    __asm__ volatile ("mov %%cr2, %d0" : "=r"(value));
     return value;
 }
 
 __always_inline void StA_WriteCr2(uint32_t value)
 {
-    __asm__ volatile ("mov %0, %%cr2" : : "r"(value));
+    __asm__ volatile ("mov %d0, %%cr2" : : "r"(value));
 }
 
 #define CR3_PWT      0x00000008
@@ -50,13 +48,13 @@ __always_inline void StA_WriteCr2(uint32_t value)
 __always_inline uint64_t StA_ReadCr3(void)
 {
     uint64_t value;
-    __asm__ volatile ("mov %%cr3, %0" : "=r"(value));
+    __asm__ volatile ("mov %%cr3, %q0" : "=r"(value));
     return value;
 }
 
 __always_inline void StA_WriteCr3(uint64_t value)
 {
-    __asm__ volatile ("mov %0, %%cr3" : : "r"(value) : "memory");
+    __asm__ volatile ("mov %q0, %%cr3" : : "r"(value) : "memory");
 }
 
 #define CR4_VME         0x00000001
@@ -86,25 +84,25 @@ __always_inline void StA_WriteCr3(uint64_t value)
 __always_inline uint64_t StA_ReadCr4(void)
 {
     uint64_t value;
-    __asm__ volatile ("mov %%cr4, %0" : "=r"(value));
+    __asm__ volatile ("mov %%cr4, %q0" : "=r"(value));
     return value;
 }
 
 __always_inline void StA_WriteCr4(uint64_t value)
 {
-    __asm__ volatile ("mov %0, %%cr4" : : "r"(value) : "memory");
+    __asm__ volatile ("mov %q0, %%cr4" : : "r"(value) : "memory");
 }
 
 __always_inline uint32_t StA_ReadCr8(void)
 {
     uint32_t value;
-    __asm__ volatile ("mov %%cr8, %0" : "=r"(value));
+    __asm__ volatile ("mov %%cr8, %d0" : "=r"(value));
     return value;
 }
 
 __always_inline void StA_WriteCr8(uint32_t value)
 {
-    __asm__ volatile ("mov %0, %%cr8" : : "r"(value) : "memory");
+    __asm__ volatile ("mov %d0, %%cr8" : : "r"(value) : "memory");
 }
 
 __always_inline uint64_t StA_ReadXcr0(void)

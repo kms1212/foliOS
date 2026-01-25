@@ -240,8 +240,8 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     data->io_data = rsrc[0].base;
     data->io_ctrl = rsrc[1].base;
-    data->irq_port0 = rsrc[2].base;
-    data->irq_port1 = rsrc[3].base;
+    data->irq_port0 = (int)rsrc[2].base;
+    data->irq_port1 = (int)rsrc[3].base;
     dev->data = data;
 
     LOG_DEBUG("disabling all connected peripherals...\n");
@@ -309,7 +309,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
             },
         };
 
-        status = msdrv->probe(&idev, msdrv, dev, res, ARRAY_SIZE(res));
+        /* status = */ msdrv->probe(&idev, msdrv, dev, res, ARRAY_SIZE(res));
         // ignore status
     }
 
@@ -331,7 +331,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
             },
         };
 
-        status = kbdrv->probe(&idev, kbdrv, dev, res, ARRAY_SIZE(res));
+        /* status = */ kbdrv->probe(&idev, kbdrv, dev, res, ARRAY_SIZE(res));
         // ignore status
     }
 

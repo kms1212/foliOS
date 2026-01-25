@@ -89,7 +89,7 @@ StStatus StVmm_InitDomain(
 
 StStatus StVmm_GetTotalPageCount(
     enum StVmm_Domain domain __in,
-    St_PageCount count __out
+    St_PageCount *count __out
 )
 {
     struct alloc_domain *alloc_domain;
@@ -107,7 +107,7 @@ StStatus StVmm_GetTotalPageCount(
 
 StStatus StVmm_GetFreePageCount(
     enum StVmm_Domain domain,
-    St_PageCount count __out
+    St_PageCount *count __out
 )
 {
     struct alloc_domain *alloc_domain;
@@ -126,7 +126,7 @@ StStatus StVmm_GetFreePageCount(
 
 StStatus StVmm_AllocatePage(
     enum StVmm_Domain domain __in,
-    St_VirtPage vpn __out,
+    St_VirtPage *vpn __out,
     St_PageCount count __in,
     StVmm_AllocFlags alloc_flags __in
 )

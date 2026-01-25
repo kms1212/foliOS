@@ -1,0 +1,9 @@
+{
+    "timezone": 32400,
+    "rtc_utc": true,
+    "start_script": [
+        "loadmodule boot:/modules/loadst.mod",
+        "mount fd0pt0p2 sys",
+        "loadst sys:/system/kernel/strata.elf -v"
+    ]
+}

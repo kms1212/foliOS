@@ -23,9 +23,9 @@ _s1start:
     pushl    %ecx
 
     mov     $0, %al
-    mov     $__bss_start, %di
-    mov     $__bss_end, %ecx
-    sub     $__bss_start, %ecx
+    mov     $_bss_start_, %di
+    mov     $_bss_end_, %ecx
+    sub     $_bss_start_, %ecx
     rep     stosb
 
     popl    _pc_boot_part_base

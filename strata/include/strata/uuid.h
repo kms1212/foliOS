@@ -15,34 +15,34 @@ struct StUuid {
 #define UUID_NULL UUID(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 #define UUID_MAX  UUID(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF)
 
-static __always_inline int StUuid_IsEqual(struct StUuid *uuid1, struct StUuid *uuid2)
+static __always_inline int StUuid_IsEqual(struct StUuid *uuid1 __in, struct StUuid *uuid2 __in)
 {
     return memcmp(uuid1, uuid2, sizeof(struct StUuid)) == 0;
 }
 
-static __always_inline int StUuid_IsNil(struct StUuid *uuid)
+static __always_inline int StUuid_IsNil(struct StUuid *uuid __in)
 {
     return StUuid_IsEqual(uuid, &UUID_NULL);
 }
 
-static __always_inline int StUuid_IsMax(struct StUuid *uuid)
+static __always_inline int StUuid_IsMax(struct StUuid *uuid __in)
 {
     return StUuid_IsEqual(uuid, &UUID_MAX);
 }
 
-static __always_inline int StUuid_GetVersion(struct StUuid *uuid)
+static __always_inline int StUuid_GetVersion(struct StUuid *uuid __in)
 {
     return (uuid->data[6] >> 4) & 0x0F;
 }
 
-StStatus StUuid_GenerateVersion1(struct StUuid *uuid);
-StStatus StUuid_GenerateVersion2(struct StUuid *uuid);
-StStatus StUuid_GenerateVersion3(struct StUuid *uuid, const char *name, size_t name_len);
-StStatus StUuid_GenerateVersion4(struct StUuid *uuid);
-StStatus StUuid_GenerateVersion5(struct StUuid *uuid, const struct StUuid *namespace, const char *name, size_t name_len);
-StStatus StUuid_GenerateVersion6(struct StUuid *uuid);
-StStatus StUuid_GenerateVersion7(struct StUuid *uuid);
+StStatus StUuid_GenerateVersion1(struct StUuid *uuid __buf);
+StStatus StUuid_GenerateVersion2(struct StUuid *uuid __buf);
+StStatus StUuid_GenerateVersion3(struct StUuid *uuid __buf, const char *name __in, size_t name_len __in);
+StStatus StUuid_GenerateVersion4(struct StUuid *uuid __buf);
+StStatus StUuid_GenerateVersion5(struct StUuid *uuid __buf, const struct StUuid *namespace __in, const char *name __in, size_t name_len __in);
+StStatus StUuid_GenerateVersion6(struct StUuid *uuid __buf);
+StStatus StUuid_GenerateVersion7(struct StUuid *uuid __buf);
 
-StStatus StUuid_Validate(struct StUuid *uuid);
+StStatus StUuid_Validate(const struct StUuid *uuid __in);
 
 #endif // __STRATA_UUID_H__

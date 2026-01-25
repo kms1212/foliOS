@@ -2,8 +2,10 @@
 
 #include <errno.h>
 
+#include <strata/macros.h>
+
 static const char *error_string[] = {
-    "Success"
+    "Success",
     "Operation not permitted",
     "No such file or directory",
     "No such process",
@@ -137,7 +139,16 @@ static const char *error_string[] = {
     "Operation not possible due to RF-kill",
 };
 
-const char *strerror(int error)
+char *strerror(int error)
 {
-    return error_string[error];
+    static char buffer[128];
+
+    if (error < 0 || error >= ARRAY_SIZE(error_string))
+    {
+        return NULL;
+    }
+    
+    strncpy(buffer, error_string[error], sizeof(buffer) - 1);
+    buffer[sizeof(buffer) - 1] = '\0';
+    return buffer;
 }

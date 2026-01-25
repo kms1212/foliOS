@@ -24,6 +24,7 @@ typedef uint32_t StStatus __nocast;
 #define STATUS_DEPRECATED               ((StStatus)0x00000001)
 #define STATUS_NO_EVENT                 ((StStatus)0x00000002)
 #define STATUS_MUTEX_LOCKED             ((StStatus)0x00000003)
+#define STATUS_INVALID_UTF8_SEQUENCE    ((StStatus)0x00000004)
 
 #define STATUS_UNKNOWN_ERROR            ((StStatus)0x80000000)
 #define STATUS_INVALID_RESOURCE         ((StStatus)0x80000001)

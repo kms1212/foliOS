@@ -16,13 +16,13 @@
 
 #define MODULE_NAME "mm"
 
-extern int __end;
+extern int _end_;
 
-#define PBM_GET(idx)        ((pma_bitmap[idx >> 2] >> ((idx & 3) * 2)) & 3)
+#define PBM_GET(idx)        ((pma_bitmap[(idx) >> 2] >> (((idx) & 3) * 2)) & 3)
 #define PBM_SET(idx, val) \
     do { \
-        pma_bitmap[idx >> 2] &= ~(3 << ((idx & 3) * 2)); \
-        pma_bitmap[idx >> 2] |= val << ((idx & 3) * 2); \
+        pma_bitmap[(idx) >> 2] &= ~(3 << (((idx) & 3) * 2)); \
+        pma_bitmap[(idx) >> 2] |= (val) << (((idx) & 3) * 2); \
     } while (0)
 
 #define PBM_FREE            0
@@ -43,7 +43,7 @@ status_t mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
 {
     status_t status;
 
-    pma_bitmap = (void *)ALIGN((uintptr_t)&__end, PAGE_SIZE);
+    pma_bitmap = (void *)ALIGN((uintptr_t)&_end_, PAGE_SIZE);
 
     pma_frame_desc_count = limit_paddr / PAGE_SIZE - base_paddr / PAGE_SIZE;
     pma_available_frames = pma_frame_desc_count;
@@ -225,7 +225,7 @@ status_t mm_init(void)
 
 status_t mm_vpn_to_pfn(vpn_t vpn, pfn_t *pfn)
 {
-    union page_table_entry *pt = (void *)0xFFC00000;
+    union page_table_entry *pt = (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
 
     if (vpn > 0x000FFFFF) return STATUS_INVALID_VALUE;
 
@@ -347,7 +347,7 @@ status_t mm_map(pfn_t pfn, vpn_t vpn, size_t page_count, uint32_t flags)
 
 static void unmap(vpn_t vpn)
 {
-    union page_table_entry *pt = (void *)0xFFC00000;
+    union page_table_entry *pt = (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
 
     if (vpn > 0x000FFFFF) return;
 

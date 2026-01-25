@@ -11,8 +11,8 @@ _start:
     cli
 
     xor     %eax, %eax
-    mov     $__bss_start, %edi          # clear bss
-    mov     $__bss_end, %ecx
+    mov     $_bss_start_, %edi          # clear bss
+    mov     $_bss_end_, %ecx
     sub     %edi, %ecx
     add     $3, %ecx
     shr     $2, %ecx
@@ -45,9 +45,9 @@ _start:
 
     call    _pc_init_late               # late init
 
-    mov     $__init_array_start, %ebx   # run init array
+    mov     $_init_array_start_, %ebx   # run init array
 0:
-    cmp     $__init_array_end, %ebx
+    cmp     $_init_array_end_, %ebx
     je      1f
     call    *(%ebx)
     jmp     0b

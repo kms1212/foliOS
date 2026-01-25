@@ -7,7 +7,6 @@
 #include <strata/arch/interrupt.h>
 
 #include <strata/plat/gdt.h>
-#include <strata/plat/interrupt.h>
 
 #include <strata/status.h>
 #include <strata/log.h>
@@ -16,8 +15,7 @@
 
 extern void _StSyscallP_Entry(void);
 
-__externally_visible
-void _StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
+void StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
 {
     // LOG_DEBUG("rax: 0x%016"PRIX64"\n", ctx->rax);
 }
@@ -32,4 +30,3 @@ StStatus StSyscallP_Init(void)
 
     return STATUS_SUCCESS;
 }
-

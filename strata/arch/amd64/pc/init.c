@@ -47,10 +47,10 @@
 
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
-extern int __trampoline_load;
-extern int __trampoline_size;
+extern int _trampoline_load_;
+extern int _trampoline_size_;
 
-extern int __end;
+extern int _end_;
 
 static int early_print_char(void *data, char ch)
 {
@@ -74,6 +74,13 @@ uint64_t StTimeP_GetGlobalTick(void)
 uint32_t StTimeP_GetGlobalTickFrequency(void)
 {
     return 100;
+}
+
+static void *trap_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data)
+{
+    StSyscallP_Handler(frame, ctx);
+
+    return NULL;
 }
 
 static void *pit_isr(int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data)
@@ -215,8 +222,8 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
 
     /* mark trampoline area as unusable */
     status = StPmm_MarkUnusableContiguousFrame(
-        VPTR_TO_PAGE(&__trampoline_load),
-        ADDR_TO_PAGE(ALIGN((uintptr_t)&__trampoline_load + (uintptr_t)&__trampoline_size, PAGE_SIZE)) - 1
+        VPTR_TO_PAGE(&_trampoline_load_),
+        ADDR_TO_PAGE(ALIGN((uintptr_t)&_trampoline_load_ + (uintptr_t)&_trampoline_size_, PAGE_SIZE)) - 1
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to mark trampoline area as unusable");
@@ -229,7 +236,7 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     LOG_DEBUG("initializing virtual memory allocator...\n");
-    status = StVmm_InitDomain(VMM_DOMAIN_KERNEL_FAST, ADDR_TO_PAGE(ALIGN((uintptr_t)&__end, PAGE_SIZE)), VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT);
+    status = StVmm_InitDomain(VMM_DOMAIN_KERNEL_FAST, ADDR_TO_PAGE(ALIGN((uintptr_t)&_end_, PAGE_SIZE)), VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
@@ -284,7 +291,13 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
 
     StPicP_Remap(0x20, 0x28);
 
+    StInt_CreateHandler(0x20, NULL, pit_isr, NULL);
+    StInt_CreateHandler(0x80, NULL, trap_isr, NULL);
+
     init_rtc();
+
+    LOG_DEBUG("initializing PIT...\n");
+    init_pit();
 
     LOG_DEBUG("checking CPU features...\n");
     status = StA_CheckCpuFeatures();
@@ -309,9 +322,4 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize syscall handler");
     }
-
-    StInt_CreateHandler(0x20, NULL, pit_isr, NULL);
-
-    LOG_DEBUG("initializing PIT...\n");
-    init_pit();
 }

@@ -27,8 +27,8 @@ struct StProcess {
     struct StThread *thread_list_tail;
 };
 
-StStatus StProcess_CreateUser(struct StProcess *process __out, uintptr_t entry __in, uintptr_t stack_top __in);
-StStatus StProcess_CreateModule(struct StProcess *process __out);
+StStatus StProcess_CreateUser(struct StProcess **process __out, uintptr_t entry __in, uintptr_t stack_top __in);
+StStatus StProcess_CreateModule(struct StProcess **process __out);
 void StProcess_Remove(struct StProcess *process __in);
 
 #endif // __STRATA_PROCESS_H__

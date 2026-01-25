@@ -78,7 +78,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
     struct gpt_header *gpt_header = NULL;
     uint32_t bytes_per_entry;
     uint32_t entry_count;
-    uint64_t entry_list_lba;
+    lba_t entry_list_lba;
     uint32_t offset;
     struct gpt_partition_entry *entry = NULL;
     struct device *partdev = NULL;
@@ -137,7 +137,7 @@ static status_t probe(struct device **devout, struct device_driver *drv, struct 
 
     bytes_per_entry = gpt_header->bytes_per_entry;
     entry_count = gpt_header->entry_count;
-    entry_list_lba = gpt_header->entry_list_base_lba;
+    entry_list_lba = le64toh(gpt_header->entry_list_base_lba);
     
     status = data->blkif->read(data->blkdev, entry_list_lba, sect_buf, 1, NULL);
     if (!CHECK_SUCCESS(status)) goto has_error;

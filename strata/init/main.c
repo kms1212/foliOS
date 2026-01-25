@@ -245,7 +245,7 @@ static void setup_process(void)
     test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
     test_addr[0] = 0x0F;  // syscall
     test_addr[1] = 0x05;
-    test_addr[2] = 0xEB;  // jmp .
+    test_addr[2] = 0xEB;  // jmp -2
     test_addr[3] = 0xFC;
 
     status = StProcess_CreateUser(&process, (uintptr_t)test_addr, (uintptr_t)test_addr + 0x10000);
@@ -448,7 +448,7 @@ void main(void)
     StThread_Detach(thread1);
     StThread_Detach(thread2);
 
-    // setup_process();
+    setup_process();
 
     for (;;) {
         StScheduler_Maintain();

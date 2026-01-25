@@ -224,7 +224,7 @@ int show_menu(struct json_value *menu, int root_menu)
     if (!CHECK_SUCCESS(status) || !timeout) {
         timeout_value = 5;
     } else if (timeout->type == JVT_NUMBER) {
-        timeout_value = timeout->num;
+        timeout_value = (int)timeout->num;
     } else {
         panic(STATUS_INVALID_FORMAT, "element \"timeout\" has invalid value type");
     }
@@ -234,7 +234,7 @@ int show_menu(struct json_value *menu, int root_menu)
     if (!CHECK_SUCCESS(status) || !_default) {
         default_value = 0;
     } else if (_default->type == JVT_NUMBER) {
-        default_value = _default->num;
+        default_value = (int)_default->num;
     } else {
         panic(STATUS_INVALID_FORMAT, "element \"default\" has invalid value type");
     }

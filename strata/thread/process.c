@@ -5,7 +5,11 @@
 #include <strata/types.h>
 #include <strata/thread.h>
 
-StStatus StProcess_CreateUser(struct StProcess *process __out, uintptr_t entry __in, uintptr_t stack_top __in)
+StStatus StProcess_CreateUser(
+    struct StProcess **process __out,
+    uintptr_t entry __in,
+    uintptr_t stack_top __in
+)
 {
     static StProcess_Id new_process_id = (StProcess_Id)1;
 

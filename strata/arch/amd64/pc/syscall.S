@@ -42,7 +42,7 @@ _StSyscallP_Entry:
 
     mov     %rsp, %rsi                  # pass registers
     lea     120(%rsp), %rdi             # pass interrupt stack frame
-    call    _StSyscallP_Handler         # call syscall handler
+    call    StSyscallP_Handler          # call syscall handler
 
     cli
 

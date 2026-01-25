@@ -11,7 +11,7 @@ void _pc_bios_keyboard_get_stroke(uint8_t *scancode, char *ascii)
     _pc_bios_call(0x16, &regs);
 
     if (scancode) *scancode = regs.a.b.h;
-    if (ascii) *ascii = regs.a.b.l;
+    if (ascii) *ascii = (char)regs.a.b.l;
 }
 
 int _pc_bios_keyboard_check_stroke(uint8_t *scancode, char *ascii)
@@ -25,7 +25,7 @@ int _pc_bios_keyboard_check_stroke(uint8_t *scancode, char *ascii)
     if (!regs.a.w) return 1;
 
     if (scancode) *scancode = regs.a.b.h;
-    if (ascii) *ascii = regs.a.b.l;
+    if (ascii) *ascii = (char)regs.a.b.l;
 
     return 0;
 }

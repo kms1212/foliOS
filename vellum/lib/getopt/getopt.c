@@ -92,7 +92,7 @@
    if (optcursor == NULL || *optcursor == '\0')
      optcursor = argv[optind] + 1;
  
-   optchar = *optcursor;
+   optchar = (unsigned char)*optcursor;
  
    /* FreeBSD: The variable optopt saves the last known option character
       returned by getopt(). */
@@ -147,8 +147,9 @@
      optchar = '?';
    }
  
-   if (optcursor == NULL || *++optcursor == '\0')
+   if (optcursor == NULL || optcursor[1] == '\0')
      ++optind;
+   optcursor++;
  
    return optchar;
  

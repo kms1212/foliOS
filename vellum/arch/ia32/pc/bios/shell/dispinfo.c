@@ -8,7 +8,8 @@
 static int dispinfo_handler(struct shell_instance *inst, int argc, char **argv)
 {
     struct edid buf;
-    int unit, block, err;
+    int unit, block;
+    status_t status;
 
     if (argc < 3) {
         printf("usage: %s unit block\n", argv[0]);
@@ -18,8 +19,8 @@ static int dispinfo_handler(struct shell_instance *inst, int argc, char **argv)
     unit = strtol(argv[1], NULL, 10);
     block = strtol(argv[2], NULL, 10);
 
-    err = _pc_bios_vbeddc_get_edid(unit, block, &buf);
-    if (err) {
+    status = _pc_bios_vbeddc_get_edid(unit, block, &buf);
+    if (!CHECK_SUCCESS(status)) {
         printf("%s: edid error\n", argv[0]);
         return 1;
     }

@@ -106,13 +106,13 @@ static status_t relocate_section(struct elf_file *elf, unsigned int rel_section_
                 LOG_TRACE("type=%02d\n", rel_type);
                 break;
             case R_386_32:
-                if (sym.shndx == SHN_UNDEF) {
-                    LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
-                    *(uint32_t *)P = B + A;
-                } else {
+                // if (sym.shndx == SHN_UNDEF) {
+                //     LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
+                //     *(uint32_t *)P = B + A;
+                // } else {
                     LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX\n", rel_type, P, S, A);
                     *(uint32_t *)P = S + A;
-                }
+                // }
                 break;
             case R_386_PC32:
                 if (sym.shndx == SHN_UNDEF) {

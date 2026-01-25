@@ -62,7 +62,7 @@ struct StThread {
     uint64_t sleep_until_tick;
 };
 
-StStatus StThread_Init(struct StThread *main_thread __out);
+StStatus StThread_Init(struct StThread **main_thread __out);
 
 void StThread_EnablePreemption(void);
 void StThread_DisablePreemption(void);
@@ -71,14 +71,14 @@ int StThread_IsPreemptionEnabled(void);
 StStatus StThread_CreateKernel(
     StThread_EntryFunction entry __in,
     size_t stack_size __in,
-    struct StThread *threadout __out
+    struct StThread **threadout __out
 );
 StStatus StThread_CreateUser(
     struct StProcess *proc __in,
     uintptr_t entry __in,
     size_t stack_size __in,
     uintptr_t ustack_top __in,
-    struct StThread *threadout __out
+    struct StThread **threadout __out
 );
 StStatus StThread_Remove(struct StThread *thread __in);
 
