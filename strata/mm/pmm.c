@@ -349,7 +349,7 @@ static inline void propagate_up(uint64_t *entry, int start_page_idx, int start_o
 }
 
 // TODO: search inside entry with explicit alignment
-static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int order)
+static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int order, int align_order)
 {
     uint64_t mask, inverted;
     int pos;
@@ -389,9 +389,7 @@ static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int order)
     return (ctz64(inverted) - pos) * (1 << order);
 }
 
-static inline void allocate_from_bitmap_entry(
-    uint64_t *entry, int index, int order, int align_order
-)
+static inline void allocate_from_bitmap_entry(uint64_t *entry, int index, int order)
 {
     uint64_t prev = *entry;
 
@@ -987,7 +985,7 @@ StStatus StPmm_MarkUnusableContiguousFrame(St_PhysFrame base __in, St_PhysFrame 
 }
 
 // Calling this function fixes the (un)usable area in the memory map.
-// Further usable/unusable area remarking is not allowed and treated as an error.
+// Further usable/unusable area remarking will be treated as an error.
 StStatus StPmm_LateInit(void)
 {
     remarking_unavailable = 1;
@@ -1289,20 +1287,18 @@ StStatus StPmm_AllocateContiguousFrame(
             status = get_or_create_table(i, &table);
             if (!CHECK_SUCCESS(status)) return status;
 
-            index =
-                find_free_frame_idx_bitmap_entry(table->entries[table_search_start].bitmap, order);
+            index = find_free_frame_idx_bitmap_entry(
+                table->entries[table_search_start].bitmap,
+                order,
+                align_order
+            );
             if (index < 0) {
                 St_Panic(STATUS_UNEXPECTED_RESULT, "how did you do that?");
             }
 
             LOG_TRACE("found (table: %zd, entry: %zd, index: %d)\n", i, table_search_start, index);
 
-            allocate_from_bitmap_entry(
-                &table->entries[table_search_start].bitmap,
-                index,
-                order,
-                align_order
-            );
+            allocate_from_bitmap_entry(&table->entries[table_search_start].bitmap, index, order);
 
             allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES +
                 table_search_start * ALLOCENT_COVERAGE_PAGES + index;
@@ -1373,13 +1369,14 @@ StStatus StPmm_AllocateContiguousFrame(
                     extentry->state_flags[index + k] = EE_USED;
                 }
             } else {
-                index = find_free_frame_idx_bitmap_entry(table->entries[j].bitmap, order);
+                index =
+                    find_free_frame_idx_bitmap_entry(table->entries[j].bitmap, order, align_order);
                 if (index < 0) continue;
 
                 LOG_TRACE("found (table: %zd, entry: %zd, index: %d) (bitmap)\n", i, j, index);
                 LOG_TRACE("filling bitmap %d-%d\n", index, index + (1 << order) - 1);
 
-                allocate_from_bitmap_entry(&table->entries[j].bitmap, index, order, align_order);
+                allocate_from_bitmap_entry(&table->entries[j].bitmap, index, order);
             }
 
             allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES + j * ALLOCENT_COVERAGE_PAGES + index;
@@ -1434,8 +1431,6 @@ void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
     }
 
     do_free_contiguous_frame(pfn, metadata->public.order);
-
-    return;
 }
 
 StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, struct StPmm_AllocationMetadata **meta __out)
