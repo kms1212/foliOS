@@ -62,20 +62,37 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build Docker Image
-        run: docker build -t folios-builder tools/docker
+      - name: Cache Toolchain
+        id: cache-toolchain
+        uses: actions/cache@v4
+        with:
+          path: ~/opt/cross
+          key: toolchain-${{ runner.os }}-${{ hashFiles('scripts/build_toolchain.sh') }}
 
-      - name: Build in Docker
+      - name: Build Toolchain
+        if: steps.cache-toolchain.outputs.cache-hit != 'true'
         run: |
-          docker run --rm -v ${{ github.workspace }}:/work folios-builder /bin/bash -c "
-            mkdir -p build &&
-            cd build &&
-            cmake .. -G Ninja -DTARGET=${{ matrix.target }} &&
-            ninja &&
-            cd .. &&
-            chmod +x scripts/mkdisk.sh &&
-            scripts/mkdisk.sh -a ia32 disk.img
-          "
+          chmod +x scripts/build_toolchain.sh
+          scripts/build_toolchain.sh
+
+      - name: Add Toolchain to PATH
+        run: echo "$HOME/opt/cross/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build python3 mtools uuid-runtime gdisk bison flex libgmp3-dev libmpc-dev libmpfr-dev texinfo
+
+      - name: Build
+        run: |
+          mkdir -p build && cd build
+          cmake .. -G Ninja -DTARGET=${{ matrix.target }}
+          ninja
+
+      - name: Create Disk Image
+        run: |
+          chmod +x scripts/mkdisk.sh
+          scripts/mkdisk.sh -a ia32 disk.img
 
       - name: Upload Disk Image
         uses: actions/upload-artifact@v4
