@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew install i686-elf-ggcc i686-elf-binutils x86_64-elf-gcc x86_64-elf-binutils cmake ninja
+        brew install i686-elf-gcc i686-elf-binutils x86_64-elf-gcc x86_64-elf-binutils cmake ninja
 
     - name: Configure CMake
       # Using -B build to specify build directory
