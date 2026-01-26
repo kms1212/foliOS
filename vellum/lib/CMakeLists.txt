@@ -29,7 +29,6 @@ FetchContent_MakeAvailable(zlib)
 
 set_target_properties(zlib PROPERTIES EXCLUDE_FROM_ALL TRUE EXCLUDE_FROM_DEFAULT_BUILD TRUE)
 
-
 add_library(zlib.lib STATIC IMPORTED GLOBAL)
 add_dependencies(zlib.lib PRIVATE zlibstatic)
 set_target_properties(zlib.lib PROPERTIES IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/_deps/zlib-build/libzlibstatic.a")
