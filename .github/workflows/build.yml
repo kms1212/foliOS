@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [amd64-pc-bios]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install x86_64-elf-gcc x86_64-elf-binutils cmake ninja
+
+    - name: Configure CMake
+      # Using -B build to specify build directory
+      run: cmake -B build -G Ninja -DTARGET=${{ matrix.target }}
+
+    - name: Build
+      run: cmake --build build
