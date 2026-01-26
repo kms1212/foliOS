@@ -1,3 +1,4 @@
+#include "strata/compiler.h"
 #include <strata/plat/cpulocal.h>
 
 #include <strata/arch/intrinsics/msr.h>
@@ -5,6 +6,7 @@
 #include <strata/log.h>
 
 static struct StCpuLocalP_Data bsp_data;
+__externally_visible int _cpulocal_initialized = 0;
 
 extern int _early_stack;
 
@@ -16,6 +18,8 @@ StStatus StCpuLocalP_Init(void)
     bsp_data.kernel_rsp = (uintptr_t)&_early_stack;
 
     StA_WriteMsr(MSR_GS_BASE, (uintptr_t)&bsp_data);
+
+    _cpulocal_initialized = 1;
 
     return STATUS_SUCCESS;
 }

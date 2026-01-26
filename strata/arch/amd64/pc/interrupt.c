@@ -20,7 +20,7 @@
 #include <strata/panic.h>
 #include <strata/scheduler.h>
 
-#define MODULE_NAME "interrupt"
+#define MODULE_NAME "irq"
 
 #define DECLARE_ISRxy(x, y) extern void _pc_isr_##x##y(void)
 #define DECLARE_ISRx(x)                                                                            \

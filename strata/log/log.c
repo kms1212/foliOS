@@ -5,7 +5,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include <strata/plat/cpulocal.h>
 #include <strata/plat/time.h>
+
+#include <strata/process.h>
 
 #ifdef NDEBUG
 static int log_level = LL_NONE;
@@ -51,29 +54,61 @@ void StLog_IntSafePrint(int level, const char *module_name, const char *fmt, ...
 }
 
 static const char *ll_str[] = {
-    "FATAL",
-    "ERROR",
-    "WARN",
-    "INFO",
-    "DEBUG",
-    "TRACE",
+    "FTL",
+    "ERR",
+    "WRN",
+    "INF",
+    "DBG",
+    "TRC",
 };
+
+static void print_log_header(int level, const char *module_name)
+{
+    uint64_t uptime_us = StTimeP_GetUptimeMicroseconds();
+    struct StCpuLocalP_Data *cpulocal = StCpuLocalP_GetData();
+    struct StThread *thread = NULL;
+    struct StProcess *process = NULL;
+
+    if (cpulocal) {
+        thread = cpulocal->scheduler.current;
+        if (thread) {
+            process = thread->process;
+        }
+    }
+
+    cprintf(
+        log_print_func,
+        log_print_state,
+        "%5" PRId64 ".%06" PRId64 " ",
+        uptime_us / 1000000,
+        uptime_us % 1000000
+    );
+
+    if (!cpulocal) {
+        cprintf(log_print_func, log_print_state, "--:----:---- ");
+    } else if (!thread) {
+        cprintf(log_print_func, log_print_state, "%02X:----:---- ", cpulocal->cpu_id);
+    } else if (!process) {
+        cprintf(log_print_func, log_print_state, "%02X:----:%04X ", cpulocal->cpu_id, thread->id);
+    } else {
+        cprintf(
+            log_print_func,
+            log_print_state,
+            "%02X:%04X:%04X ",
+            cpulocal->cpu_id,
+            process->id,
+            thread->id
+        );
+    }
+
+    cprintf(log_print_func, log_print_state, "%3s @%-8s # ", ll_str[level], module_name);
+}
 
 void StLog_PrintValist(int level, const char *module_name, const char *fmt, va_list args)
 {
     if (log_level < level) return;
 
-    uint64_t uptime_us = StTimeP_GetUptimeMicroseconds();
-
-    cprintf(
-        log_print_func,
-        log_print_state,
-        "%" PRId64 ".%06" PRId64 " %s [%s] ",
-        uptime_us / 1000000,
-        uptime_us % 1000000,
-        module_name,
-        ll_str[level]
-    );
+    print_log_header(level, module_name);
     vcprintf(log_print_func, log_print_state, fmt, args);
 }
 
@@ -81,16 +116,6 @@ void StLog_IntSafePrintValist(int level, const char *module_name, const char *fm
 {
     if (log_level < level) return;
 
-    uint64_t uptime_us = StTimeP_GetUptimeMicroseconds();
-
-    cprintf(
-        log_print_func,
-        log_print_state,
-        "%" PRId64 ".%06" PRId64 " %s [%s] ",
-        uptime_us / 1000000,
-        uptime_us % 1000000,
-        module_name,
-        ll_str[level]
-    );
+    print_log_header(level, module_name);
     vcprintf(log_print_func, log_print_state, fmt, args);
 }

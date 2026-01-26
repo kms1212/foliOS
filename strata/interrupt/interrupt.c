@@ -8,7 +8,7 @@
 #include <strata/macros.h>
 #include <strata/panic.h>
 
-#define MODULE_NAME "interrupt"
+#define MODULE_NAME "irq"
 
 StStatus StInt_CreateHandler(
     int num, void *data, StInt_HandlerFunction func, struct StInt_Handler **handler

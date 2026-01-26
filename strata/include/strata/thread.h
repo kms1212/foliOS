@@ -37,7 +37,7 @@ struct StThread {
     struct StThread *process_next;
 
     StThread_Id id;
-    struct StProcess *owner;
+    struct StProcess *process;
     enum StThread_State status;
     enum StThread_Type type;
     int is_detached;

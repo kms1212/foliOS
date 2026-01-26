@@ -17,7 +17,7 @@ extern void _StSyscallP_Entry(void);
 
 void StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
 {
-    // LOG_DEBUG("rax: 0x%016"PRIX64"\n", ctx->rax);
+    LOG_DEBUG("rax: 0x%016" PRIX64 "\n", ctx->rax);
 }
 
 StStatus StSyscallP_Init(void)

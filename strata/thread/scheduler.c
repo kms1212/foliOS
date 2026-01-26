@@ -7,7 +7,7 @@
 #include <strata/log.h>
 #include <strata/panic.h>
 
-#define MODULE_NAME "scheduler"
+#define MODULE_NAME "sched"
 
 StStatus StScheduler_AddThread(struct StThread *th)
 {

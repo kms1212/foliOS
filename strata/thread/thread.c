@@ -165,7 +165,7 @@ StStatus StThread_CreateUser(
     th->id = new_thread_id++;
     th->status = THREAD_STATE_PENDING;
     th->type = THREAD_TYPE_USER;
-    th->owner = process;
+    th->process = process;
 
     th->umode_entry = entry;
     th->umode_stack_ptr = ustack_top;

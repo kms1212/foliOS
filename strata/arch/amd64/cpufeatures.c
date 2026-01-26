@@ -14,7 +14,7 @@
 #include <strata/log.h>
 #include <strata/panic.h>
 
-#define MODULE_NAME "cpufeatures"
+#define MODULE_NAME "cpufeat"
 
 static volatile int handler_called;
 static size_t instr_size;
@@ -110,7 +110,7 @@ StStatus StA_CheckCpuFeatures(void)
 
     StA_Cpuid(0x00000000, &eax, &ebx, &ecx, &edx);
     max_param = eax;
-    LOG_DEBUG("vendor string: %4s%4s%4s\n", (char *)&ebx, (char *)&ecx, (char *)&edx);
+    LOG_DEBUG("vendor string: %.4s%.4s%.4s\n", (char *)&ebx, (char *)&edx, (char *)&ecx);
 
     if (max_param >= 1) {
         StA_Cpuid(0x00000001, &eax, &ebx, &ecx, &edx);
