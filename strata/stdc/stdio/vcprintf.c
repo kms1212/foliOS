@@ -369,9 +369,13 @@ static int print_str(int (*func)(void *, char), void *farg, struct fmt_spec spec
     if (spec.width == WIDTH_ARG) {
         width = va_arg(*args, int);
         width = MAX(width, slen);
+    } else if (spec.width) {
+        width = spec.width;
     }
     if (spec.precision == PREC_ARG) {
         prec = va_arg(*args, int);
+    } else if (spec.precision) {
+        prec = spec.precision;
     }
 
     // get str
