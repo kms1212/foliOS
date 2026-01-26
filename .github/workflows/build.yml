@@ -51,3 +51,36 @@ jobs:
         path: disk.img
         retention-days: 3
         if-no-files-found: error
+
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [ amd64-pc-bios ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build Docker Image
+        run: docker build -t folios-builder tools/docker
+
+      - name: Build in Docker
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/work folios-builder /bin/bash -c "
+            mkdir -p build &&
+            cd build &&
+            cmake .. -G Ninja -DTARGET=${{ matrix.target }} &&
+            ninja &&
+            cd .. &&
+            chmod +x scripts/mkdisk.sh &&
+            scripts/mkdisk.sh -a ia32 disk.img
+          "
+
+      - name: Upload Disk Image
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.target }}-disk.img
+          path: disk.img
+          retention-days: 3
+          if-no-files-found: error

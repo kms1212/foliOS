@@ -180,7 +180,21 @@ EOF
         dd if=/dev/zero bs=512 count=62 >>"$PART_TABLE_IMAGE"
         cat "$PART_TABLE_IMAGE" "${PART_IMAGES[@]}" > "$OUTPUT"
 
-        cat <<'EOF' | fdisk -e "$OUTPUT"
+        if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux (using sfdisk)
+            cat <<-EOF | sfdisk "$OUTPUT"
+label: dos
+label-id: 0x0
+device: $OUTPUT
+unit: sectors
+
+$OUTPUT1 : start=63, size=16443, type=1, bootable
+$OUTPUT2 : start=16506, size=65520, type=78
+$OUTPUT3 : start=82026, size=131040, type=79
+EOF
+        else
+            # MacOS / BSD (using fdisk -e)
+            cat <<-EOF | fdisk -e "$OUTPUT"
 e 1
 01
 n
@@ -199,6 +213,7 @@ n
 131040
 q
 EOF
+        fi
         ;;
     *)  ;;
 esac
