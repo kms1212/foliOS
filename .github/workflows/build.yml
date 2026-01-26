@@ -21,7 +21,7 @@ jobs:
     - name: Install dependencies
       run: |
         brew update
-        brew install i686-elf-gcc i686-elf-binutils x86_64-elf-gcc x86_64-elf-binutils cmake ninja
+        brew install i686-elf-gcc i686-elf-binutils x86_64-elf-gcc x86_64-elf-binutils cmake ninja mtools
 
     - name: Configure CMake
       # Using -B build to specify build directory
@@ -29,3 +29,16 @@ jobs:
 
     - name: Build
       run: cmake --build build
+
+    - name: Create Disk Image
+      run: |
+        # Ensure scripts are executable
+        chmod +x scripts/mkdisk.sh
+        scripts/mkdisk.sh -a ia32 disk.img
+
+    - name: Upload Disk Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: disk.img
+        path: disk.img
+        if-no-files-found: error
