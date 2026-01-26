@@ -13,11 +13,6 @@ option(BUILD_TESTING "Build tests" OFF)
 enable_language(C ASM)
 
 # Compiler Tests
-execute_process(
-    COMMAND ${CMAKE_C_COMPILER} -print-file-name=include
-    OUTPUT_VARIABLE GCC_INTERNAL_INCLUDE_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
 
 # config.h
 configure_file("config.h.in" "config.h")
@@ -48,11 +43,8 @@ target_include_directories(strata PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(strata PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(strata PRIVATE "${CMAKE_BINARY_DIR}")
 target_include_directories(strata PRIVATE "${ROOT_SOURCE_DIR}/common/include")
-target_include_directories(strata SYSTEM PRIVATE "${GCC_INTERNAL_INCLUDE_DIR}")
 
 target_compile_definitions(strata PRIVATE CRC32_FAST=1)
-
-# Additional Targets
 
 # Subdirectories
 add_subdirectory(lib)
@@ -66,6 +58,7 @@ add_subdirectory(stdc)
 add_subdirectory(thread)
 add_subdirectory(utils)
 
+# Additional Targets
 if (BUILD_TESTING)
     ExternalProject_Add(tests
         SOURCE_DIR "${CMAKE_SOURCE_DIR}/tests"
