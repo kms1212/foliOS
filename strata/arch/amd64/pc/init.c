@@ -112,6 +112,7 @@ static void init_pit(void)
 {
     static const uint16_t pit_value = 1193182 / 100;
 
+    // rate generator (10ms, 100Hz) to channel 0
     StIoA_Out8(0x0043, 0x34);
     StIoA_Out8(0x0040, pit_value & 0xFF);
     StIoA_Out8(0x0040, (pit_value >> 8) & 0xFF);
@@ -141,6 +142,15 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     StLog_EarlyInit(early_print_char, NULL);
 
     LOG_DEBUG("Starting Strata...\n");
+
+    LOG_DEBUG("checking CPU features...\n");
+    status = StA_CheckCpuFeatures();
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to check CPU features");
+    }
+
+    LOG_DEBUG("starting uptime counter...\n");
+    StTimeP_StartUptime();
 
     enthdr = (void *)((uintptr_t)btblhdr + btblhdr->header_size);
     for (int i = 0; i < btblhdr->entry_count; i++) {
@@ -315,12 +325,6 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     LOG_DEBUG("initializing PIT...\n");
     init_pit();
-
-    LOG_DEBUG("checking CPU features...\n");
-    status = StA_CheckCpuFeatures();
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to check CPU features");
-    }
 
     LOG_DEBUG("activating common CPU features...\n");
     status = StA_ActivateCommonCpuFeatures();

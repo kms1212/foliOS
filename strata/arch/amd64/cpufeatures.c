@@ -279,6 +279,21 @@ StStatus StA_CheckCpuFeatures(void)
         }
     }
 
+    if (max_param >= 0x00000015) {
+        StA_Cpuid(0x00000015, &eax, &ebx, &ecx, &edx);
+
+        cpu_features.tsc_ratio_denom = eax;
+        if (ebx) {
+            cpu_features.provides_tsc_ratio = 1;
+            cpu_features.tsc_ratio_numer = ebx;
+        }
+
+        if (ecx) {
+            cpu_features.provides_core_clock_freq = 1;
+            cpu_features.core_clock_freq_hz = ecx;
+        }
+    }
+
     StA_Cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
     max_param_ext = eax;
 
@@ -312,6 +327,14 @@ StStatus StA_CheckCpuFeatures(void)
 
         if (ecx & 0x00000020) {
             cpu_features.has_abm = 1;
+        }
+    }
+
+    if (max_param_ext >= 0x80000007) {
+        StA_Cpuid(0x80000007, &eax, &ebx, &ecx, &edx);
+
+        if (edx & (1 << 8)) {
+            cpu_features.is_tsc_invariant = 1;
         }
     }
 

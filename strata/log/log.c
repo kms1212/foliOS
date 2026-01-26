@@ -1,10 +1,11 @@
 #include <strata/log.h>
 
+#include <inttypes.h>
+#include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
 
-#include <strata/arch/io.h>
-
-#include <strata/status.h>
+#include <strata/plat/time.h>
 
 #ifdef NDEBUG
 static int log_level = LL_NONE;
@@ -62,7 +63,17 @@ void StLog_PrintValist(int level, const char *module_name, const char *fmt, va_l
 {
     if (log_level < level) return;
 
-    cprintf(log_print_func, log_print_state, "%s [%s] ", module_name, ll_str[level]);
+    uint64_t uptime_us = StTimeP_GetUptimeMicroseconds();
+
+    cprintf(
+        log_print_func,
+        log_print_state,
+        "%" PRId64 ".%06" PRId64 " %s [%s] ",
+        uptime_us / 1000000,
+        uptime_us % 1000000,
+        module_name,
+        ll_str[level]
+    );
     vcprintf(log_print_func, log_print_state, fmt, args);
 }
 
@@ -70,6 +81,16 @@ void StLog_IntSafePrintValist(int level, const char *module_name, const char *fm
 {
     if (log_level < level) return;
 
-    cprintf(log_print_func, log_print_state, "%s [%s] ", module_name, ll_str[level]);
+    uint64_t uptime_us = StTimeP_GetUptimeMicroseconds();
+
+    cprintf(
+        log_print_func,
+        log_print_state,
+        "%" PRId64 ".%06" PRId64 " %s [%s] ",
+        uptime_us / 1000000,
+        uptime_us % 1000000,
+        module_name,
+        ll_str[level]
+    );
     vcprintf(log_print_func, log_print_state, fmt, args);
 }

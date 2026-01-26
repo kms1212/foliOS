@@ -107,6 +107,13 @@ struct StA_CpuFeatures {
 
     uint32_t has_clzero : 1;
     uint32_t has_lam : 1;
+    uint32_t provides_tsc_ratio : 1;
+    uint32_t provides_core_clock_freq : 1;
+    uint32_t is_tsc_invariant : 1;
+
+    uint32_t tsc_ratio_denom;
+    uint32_t tsc_ratio_numer;
+    uint32_t core_clock_freq_hz;
 };
 
 extern const struct StA_CpuFeatures *const g_p_cpu_features;
