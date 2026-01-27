@@ -456,10 +456,24 @@ static int do_print_int(
         sign_char = '-';
     }
 
-    while (num) {
-        *rbuf_ptr++ = hex_table[num % spec.base];
-        num /= spec.base;
-        rbuf_len++;
+    if (spec.base == 16) {
+        while (num) {
+            *rbuf_ptr++ = hex_table[num % 16];
+            num /= 16;
+            rbuf_len++;
+        }
+    } else if (spec.base == 8) {
+        while (num) {
+            *rbuf_ptr++ = '0' + num % 8;
+            num /= 8;
+            rbuf_len++;
+        }
+    } else {
+        while (num) {
+            *rbuf_ptr++ = '0' + num % 10;
+            num /= 10;
+            rbuf_len++;
+        }
     }
     if (rbuf_len == 0) {
         *rbuf_ptr++ = '0';
@@ -582,7 +596,7 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
         is_signed = 1;
         break;
     case PTR:
-        num = (unsigned long)va_arg(*args, void *);
+        num = (uintptr_t)va_arg(*args, void *);
         break;
     default:
         break;
@@ -707,6 +721,8 @@ int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list arg
     }
 
     func(farg, 0);
+
+    va_end(newargs);
 
     return write_count;
 }
