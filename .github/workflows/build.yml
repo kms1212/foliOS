@@ -1,0 +1,53 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main", "github-actions" ]
+  pull_request:
+    branches: [ "main", "github-actions" ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [ amd64-pc-bios ]
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Cache Homebrew
+      uses: actions/cache@v4
+      with:
+        path: ~/Library/Caches/Homebrew
+        key: brew-${{ runner.os }}-${{ hashFiles('.github/workflows/build.yml') }}
+        restore-keys: |
+          brew-${{ runner.os }}-
+
+    - name: Install dependencies
+      run: |
+        brew update
+        brew install i686-elf-gcc i686-elf-binutils x86_64-elf-gcc x86_64-elf-binutils cmake ninja mtools
+
+    - name: Configure CMake
+      # Using -B build to specify build directory
+      run: cmake -B build -G Ninja -DTARGET=${{ matrix.target }}
+
+    - name: Build
+      run: cmake --build build
+
+    - name: Create Disk Image
+      run: |
+        # Ensure scripts are executable
+        chmod +x scripts/mkdisk.sh
+        scripts/mkdisk.sh -a ia32 disk.img
+
+    - name: Upload Disk Image
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.target }}-disk.img
+        path: disk.img
+        retention-days: 3
+        if-no-files-found: error
