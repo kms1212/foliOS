@@ -451,43 +451,6 @@ static status_t acpi_early_init(void)
     return STATUS_SUCCESS;
 }
 
-static status_t acpi_init(void)
-{
-    uacpi_status uacpi_status;
-
-    uacpi_status = uacpi_initialize(0);
-    if (uacpi_unlikely_error(uacpi_status)) {
-        LOG_DEBUG("uacpi_initialize() failed: %s\n", uacpi_status_to_string(uacpi_status));
-        return MAKE_ACPI_STATUS(uacpi_status);
-    }
-
-    uacpi_status = uacpi_namespace_load();
-    if (uacpi_unlikely_error(uacpi_status)) {
-        LOG_DEBUG("uacpi_namespace_load() failed: %s\n", uacpi_status_to_string(uacpi_status));
-        return MAKE_ACPI_STATUS(uacpi_status);
-    }
-
-    uacpi_status = uacpi_namespace_initialize();
-    if (uacpi_unlikely_error(uacpi_status)) {
-        LOG_DEBUG(
-            "uacpi_namespace_initialize() failed: %s\n",
-            uacpi_status_to_string(uacpi_status)
-        );
-        return MAKE_ACPI_STATUS(uacpi_status);
-    }
-
-    uacpi_status = uacpi_finalize_gpe_initialization();
-    if (uacpi_unlikely_error(uacpi_status)) {
-        LOG_DEBUG(
-            "uacpi_finalize_gpe_initialization() failed: %s\n",
-            uacpi_status_to_string(uacpi_status)
-        );
-        return MAKE_ACPI_STATUS(uacpi_status);
-    }
-
-    return STATUS_SUCCESS;
-}
-
 status_t mount_boot_filesystem(void)
 {
     status_t status;
@@ -599,7 +562,7 @@ static void rdtsc_test(void)
 __noreturn void _pc_init(void)
 {
     status_t status;
-    int has_acpi = 0, has_apm = 0;
+    int has_acpi = 0;
     struct chs bootdisk_geom;
 
     freopencookie(NULL, "w", early_stderr_io, stderr);
@@ -679,22 +642,6 @@ __noreturn void _pc_init(void)
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "init_nonpnp_devices() failed: 0x%08X\n", status);
         panic(status, "failed to initialize essential non-PnP devices");
-    }
-
-    if (has_acpi) {
-        LOG_DEBUG("initializing ACPI...\n");
-        status = acpi_init();
-        if (!CHECK_SUCCESS(status)) {
-            fprintf(stderr, "acpi_init() failed: 0x%08X\n", status);
-            panic(status, "failed to initialize ACPI");
-        }
-    } else {
-        LOG_DEBUG("initializing APM...\n");
-        status = _pc_apm_init();
-        has_apm = CHECK_SUCCESS(status);
-        if (!has_apm) {
-            LOG_DEBUG("system power management disabled\n");
-        }
     }
 
     // /* Disable BIOS USB emulation */

@@ -35,27 +35,7 @@ void _pc_reboot()
 
 void _pc_poweroff()
 {
-    uacpi_status uacpi_status;
-
-    uacpi_status = uacpi_prepare_for_sleep_state(UACPI_SLEEP_STATE_S5);
-    if (uacpi_unlikely_error(uacpi_status)) {
-        panic(
-            MAKE_ACPI_STATUS(uacpi_status),
-            "failed to prepare for sleep: %s",
-            uacpi_status_to_string(uacpi_status)
-        );
-    }
-
     interrupt_disable();
-
-    uacpi_status = uacpi_enter_sleep_state(UACPI_SLEEP_STATE_S5);
-    if (uacpi_unlikely_error(uacpi_status)) {
-        panic(
-            MAKE_ACPI_STATUS(uacpi_status),
-            "failed to enter sleep: %s",
-            uacpi_status_to_string(uacpi_status)
-        );
-    }
 
     io_out16(0xB004, 0x2000);
     io_out16(0x0604, 0x2000);

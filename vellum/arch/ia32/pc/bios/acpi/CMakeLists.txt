@@ -1,3 +1,3 @@
 cmake_minimum_required(VERSION 3.13)
 
-target_sources(vellum PRIVATE io.c pci.c rsdp.c)
+target_sources(vellum PRIVATE rsdp.c)

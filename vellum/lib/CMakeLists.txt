@@ -55,12 +55,12 @@ add_library(uacpi.lib STATIC)
 
 target_compile_features(uacpi.lib PUBLIC c_std_11)
 target_link_libraries(uacpi.lib gcc)
-target_compile_definitions(uacpi.lib PRIVATE UACPI_PHYS_ADDR_IS_32BITS=1 UACPI_FORMATTED_LOGGING=1)
+target_compile_definitions(uacpi.lib PRIVATE UACPI_PHYS_ADDR_IS_32BITS=1 UACPI_FORMATTED_LOGGING=1 UACPI_BAREBONES_MODE=1)
 
 target_include_directories(uacpi.lib PRIVATE ${UACPI_INCLUDES})
 target_sources(uacpi.lib PRIVATE ${UACPI_SOURCES})
 
 set_target_properties(uacpi.lib PROPERTIES C_CLANG_TIDY "")
 
-target_compile_definitions(vellum PRIVATE UACPI_PHYS_ADDR_IS_32BITS=1 UACPI_FORMATTED_LOGGING=1)
+target_compile_definitions(vellum PRIVATE UACPI_PHYS_ADDR_IS_32BITS=1 UACPI_FORMATTED_LOGGING=1 UACPI_BAREBONES_MODE=1)
 target_link_libraries(vellum uacpi.lib)
