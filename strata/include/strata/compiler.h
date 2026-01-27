@@ -41,7 +41,14 @@
 
 #endif
 
-#define __externally_visible __attribute__((externally_visible))
+#ifdef __clang__
+#    define __externally_visible
+
+#else
+#    define __externally_visible __attribute__((externally_visible))
+
+#endif
+
 #define __sentinel           __attribute__((sentinel))
 #define __warn_unused_result __attribute__((warn_unused_result))
 
