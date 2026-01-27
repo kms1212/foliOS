@@ -9,6 +9,7 @@
 #include <strata/arch/io.h>
 #include <strata/arch/mmu.h>
 
+#include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
 #include <strata/plat/pic.h>
 #include <strata/plat/tss.h>
@@ -417,11 +418,9 @@ StStatus StIntP_Unmask(int num)
     return STATUS_SUCCESS;
 }
 
-static uint64_t irq_count = 0;
-
 uint64_t StIntP_GetIrqCount(void)
 {
-    return irq_count;
+    return StCpuLocalP_GetData()->irq_count;
 }
 
 __externally_visible void *_pc_isr_common(
@@ -432,9 +431,9 @@ __externally_visible void *_pc_isr_common(
     int has_error = 0, is_fault = 0;
     struct StInt_Handler *current_isr = _pc_isr_table[num];
 
-    irq_count++;
+    atomic_fetch_add(&StCpuLocalP_GetData()->irq_count, 1);
 
-    _pc_irq_depth++;
+    atomic_fetch_add(&StCpuLocalP_GetData()->irq_depth, 1);
 
     if (num < 0x20) {
         has_error = (0x60227D00 >> num) & 1;
@@ -455,7 +454,7 @@ __externally_visible void *_pc_isr_common(
                 ILOG_INFO("thread ID: %d\n", (int)thread->id);
                 St_Panic(
                     STATUS_UNKNOWN_ERROR,
-                    "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016" PRIX64 "",
+                    "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016" PRIX64,
                     num,
                     frame->error,
                     frame->cs,
@@ -464,7 +463,7 @@ __externally_visible void *_pc_isr_common(
             } else {
                 St_Panic(
                     STATUS_UNKNOWN_ERROR,
-                    "Unhandled fault #%02X has occurred at 0x%04X:0x%016" PRIX64 "",
+                    "Unhandled fault #%02X has occurred at 0x%04X:0x%016" PRIX64,
                     num,
                     frame->cs,
                     frame->rip
@@ -486,7 +485,7 @@ __externally_visible void *_pc_isr_common(
         current_isr = current_isr->next;
     }
 
-    _pc_irq_depth--;
+    atomic_fetch_sub(&StCpuLocalP_GetData()->irq_depth, 1);
 
     return NULL;
 }

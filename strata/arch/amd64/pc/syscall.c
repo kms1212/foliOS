@@ -6,6 +6,7 @@
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/msr.h>
 
+#include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
 
 #include <strata/log.h>
@@ -17,7 +18,11 @@ extern void _StSyscallP_Entry(void);
 
 void StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
 {
-    LOG_DEBUG("rax: 0x%016" PRIX64 "\n", ctx->rax);
+    uint64_t syscall_count = atomic_fetch_add(&StCpuLocalP_GetData()->syscall_count, 1);
+
+    if (syscall_count % 1000000 == 0) {
+        LOG_DEBUG("syscall count: %" PRIu64 "\n", syscall_count);
+    }
 }
 
 StStatus StSyscallP_Init(void)

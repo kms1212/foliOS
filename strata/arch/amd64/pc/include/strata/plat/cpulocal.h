@@ -1,6 +1,7 @@
 #ifndef __STRATA_PLAT_CPULOCAL_H__
 #define __STRATA_PLAT_CPULOCAL_H__
 
+#include <stdatomic.h>
 #include <stdint.h>
 
 #include <strata/compiler.h>
@@ -12,12 +13,13 @@ struct StCpuLocalP_Data {
     uintptr_t kernel_rsp;
     uintptr_t user_rsp;
     struct StCpuLocalP_Data *self;
-    uint64_t irq_count;
-    uint32_t irq_depth;
+    atomic_uint_fast64_t irq_count;
+    atomic_uint_fast64_t syscall_count;
+    atomic_uint_fast32_t irq_depth;
     uint32_t cpu_id;
-    struct StScheduler_Data scheduler;
     int is_bsp;
-} __packed __aligned(32);
+    struct StScheduler_Data scheduler;
+} __aligned(64);
 
 StStatus StCpuLocalP_Init(void);
 
