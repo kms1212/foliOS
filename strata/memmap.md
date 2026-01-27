@@ -1,0 +1,22 @@
+# Memory Map
+
+## amd64-pc (48-bit VMA)
+
+Start | End | Description
+----- | --- | -----------
+`0x0000_0000_0000_0000` | `0x0000_7FFE_FFFF_FFFF` | User Area (+ Stack)
+`0x0000_7FFF_0000_0000` | `0x0000_7FFF_7FFF_FFFF` | (Guard)
+`0x0000_7FFF_8000_0000` | `0x0000_7FFF_FFFF_FFFF` | KRT Data Area
+`0xFFFF_8000_0000_0000` | `0xFFFF_8000_7FFF_FFFF` | KRT Text Area
+`0xFFFF_8000_8000_0000` | `0xFFFF_BFFF_7FFF_FFFF` | Module Area
+`0xFFFF_C000_0000_0000` | `0xFFFF_C7FF_FFFF_FFFF` | Direct Mapping Area
+`0xFFFF_C800_0000_0000` | `0xFFFF_CFFF_FFFF_FFFF` | Memory Frame Metadata Area
+`0xFFFF_D000_0000_0000` | `0xFFFF_EFFF_FFFF_FFFF` | (Reserved)
+`0xFFFF_F000_0000_0000` | `0xFFFF_F7FF_7FFF_FFFF` | I/O Mapping Area
+`0xFFFF_F7FF_8000_0000` | `0xFFFF_F7FF_FFFF_FFFF` | (Guard)
+`0xFFFF_F800_0000_0000` | `0xFFFF_FFFE_FFFF_FFFF` | Kernel Slow Area
+`0xFFFF_FFFF_0000_0000` | `0xFFFF_FFFF_1FFF_FFFF` | Kernel Per-Thread Area
+`0xFFFF_FFFF_2000_0000` | `0xFFFF_FFFF_3FFF_FFFF` | Kernel Per-Process Area
+`0xFFFF_FFFF_4000_0000` | `0xFFFF_FFFF_5FFF_FFFF` | Kernel Per-CPU Area
+`0xFFFF_FFFF_6000_0000` | `0xFFFF_FFFF_7FFF_FFFF` | Kernel Trampoline Area
+`0xFFFF_FFFF_8000_0000` | `0xFFFF_FFFF_FFFF_FFFF` | Kernel Fast Area
