@@ -210,16 +210,14 @@ _start:
     int     $0x10
 
     push    %dx
-    mov     %dx, %ax
-    shr     $1, %ax
-    mov     $3, %bx
-    mulw    %bx
-    mov     $FAT_BUFFER, %cx
-    mov     (%ecx, %eax, 1), %ebx
+    mov     %dx, %si
+    shr     $1, %dx
+    add     %dx, %si
+    mov     FAT_BUFFER(%si), %bx
     pop     %dx
     test    $1, %dx
     jz      .load_file.next_cluster.skip_shift
-    shr     $12, %ebx
+    shr     $4, %bx
 .load_file.next_cluster.skip_shift:
     and     $0xFFF, %ebx
 
