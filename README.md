@@ -37,7 +37,6 @@ The Strata separates trust into two distinct domains to maximize performance wit
 * **Security Trusted Domain (Modules):** Drivers and system modules are cryptographically signed and verified at load-time. To achieve raw performance, foliOS prioritizes hardware-assisted mitigations where available, and applies software barriers selectively at trust boundaries:
   * **Control Flow Integrity (Spectre v2):** Instead of costly software trampolines (Retpoline), foliOS utilizes **Intel CET (Control-flow Enforcement Technology)** and **eIBRS**. This enforces strict Indirect Branch Tracking (IBT) at the hardware level with reduced overhead.
   * **Data Sanctity (Spectre v1):** Mitigation is applied strategically rather than indiscriminately. The SDK provides **`GUARD` macros** (selective `LFENCE` or arithmetic masking). Developers are required to apply these barriers only at critical boundaries where untrusted data (e.g., from User Space or Network) is ingested, preserving the pipeline performance for internal logic.
-
 * **Operational Trusted Domain (Kernel Core):** The Micro-Core remains the ultimate guardian. While modules are trusted not to *attack*, they are not trusted to be *crash-free*. The kernel protects system integrity from module failures via **MPK isolation** and **Ring 3 execution**, preventing direct memory corruption of core kernel regions by faulty modules.
 
 ## 🚀 Key Features
@@ -46,10 +45,12 @@ The Strata separates trust into two distinct domains to maximize performance wit
 
 Strata moves away from software-heavy isolation, relying instead on hardware primitives to define the **3-Layer Memory Model (User-Module-Kernel)**:
 
-* **User Area:** The user part of the traditional process-isolated VMA model. Fully compatible with `fork()` and ASLR.
+* **User Area:** Adheres to the traditional **Page-Table-Based Isolation**. Each user process possesses a private Virtual Memory Area (VMA), ensuring standard POSIX isolation guarantees. Context switching between user processes involves a standard page table transition.
 * **Module Area:** A shared global address space where modules are isolated via **Intel MPK (Memory Protection Keys)**. This allows domain switching without TLB flushes.
   * **Direct I/O Access (IOPB):** Unlike traditional Microkernels that require a syscall for every port I/O, Strata leverages the **I/O Permission Bitmap (IOPB)** to grant specific modules direct access to hardware ports. This allows Ring 3 drivers to provide I/O performance closer to bare-metal execution for supported port-mapped devices.
-* **Kernel Area:** The privileged core (Ring 0), protected by standard hardware rings and strict page table isolation to mitigate speculative execution attacks (Spectre/Meltdown) without the performance hit of KPTI.
+* **Kernel Area:** The privileged core (Ring 0) utilizes a **Converged Isolation Model**. Instead of viewing KPTI solely as a mitigation, Strata integrates strict page table separation into the **MPK Sharding** mechanism.
+  * **Dynamic Mapping:** In User Mode, Kernel and Module areas are strictly **unmapped**, protecting against speculative attacks (Meltdown) and granting the user process full utilization of MPK keys.
+  * **Atomic Context Transition:** The transition to Kernel/Module mode involves a strategic CR3 switch that simultaneously maps the privileged areas and loads the target MPK Shard. This amalgamates the cost of Meltdown mitigation with the necessity of domain expansion.
 
 ### 🔑 MPK Sharding: Scalable Logical Isolation Domains
 
@@ -119,6 +120,59 @@ foliOS abandons the cluttered `/bin` and `/lib` hierarchy in favor of a strictly
 * **Atomic Updates:** Applications and their dependencies are managed as atomic units.
 * **ABI Projection:** The OS "projects" the required ABI version into the process's view at load-time, allowing multiple versions of the same library to coexist without conflict.
 
+## ❓ FAQ: Architecture & Design Decisions
+
+### Q: Does the Unified Address Space model make the system vulnerable to malicious modules?
+
+**A:** **foliOS operates on a "Trusted but Fallible" security model.**
+We assume that modules are supplied by trusted vendors (cryptographically signed) but may contain bugs. The security architecture is designed to contain **faults** (accidental crashes, memory corruption), not to defend against a trusted developer intentionally embedding malware.
+
+* **Static Verification:** The loader enforces a strict allowlist. Binaries containing privilege-altering instructions (e.g., `WRPKRU`, `SYSCALL`) are rejected at load-time.
+* **W^X Enforcement:** Module code is immutable. This prevents JIT-based attacks or runtime code modification.
+
+### Q: Isn't the overhead of PCID/CR3 switching too high for desktop workloads (e.g., GUI, Gaming)?
+
+**A:** **Not significantly more than modern Monolithic kernels.**
+Since the advent of **KPTI (Kernel Page-Table Isolation)** to mitigate Meltdown, all major operating systems (Windows, Linux) already incur a CR3 switch cost when transitioning from User to Kernel mode.
+foliOS mitigates the impact of isolation through **Dependency-Based Sharding**:
+
+* **Colocation:** Highly interactive modules (e.g., `foligui`, `GPU Driver`, `Input Driver`) are grouped into a single **MPK Shard**.
+* **Cheap Transitions:** Interaction between these modules requires only an MPK key switch (`WRPKRU`, ~20 cycles), avoiding the expensive PCID/CR3 switch entirely. This preserves high-frequency interactivity required for desktop environments.
+
+### Q: How does the memory mapping work regarding User/Kernel separation?
+
+**A:** **foliOS employs a Dynamic Mapping Strategy.**
+
+* **In User Mode:** The Module and Kernel areas are strictly **unmapped** from the page tables. A user process cannot "see" or speculatively access module memory.
+* **In Kernel/Module Mode:** The full address space becomes visible. This allows modules to access user buffers directly (**Zero-Copy**) without complex mapping operations, while MPK prevents modules from accidentally corrupting each other.
+
+### Q: Why use MPK instead of traditional Virtual Memory (VM) isolation for drivers?
+
+**A:** **To solve the IPC bottleneck.**
+Traditional Microkernels suffer from performance degradation due to data copying and TLB flushing during IPC. By keeping drivers in a Unified Address Space protected by MPK:
+
+1. **Zero-Copy:** Data pointers are passed between protection domains, not data copies.
+2. **Fault Containment:** If a driver dereferences a bad pointer, it traps instantly via MPK violation, preventing it from corrupting the kernel core or other drivers.
+3. **Result:** We achieve the stability of a Microkernel with I/O throughput comparable to a monolithic kernel.
+
+### Q: Is foliOS susceptible to Spectre/Meltdown attacks?
+
+**A:** **Mitigations are architectural, not just patched-in.**
+
+* **Meltdown:** Fully mitigated by the strict unmapping of Kernel/Module areas while in User Mode.
+* **Spectre v2:** Mitigated via hardware **CET (Control-flow Enforcement Technology)** and **eIBRS**.
+* **Spectre v1:** Mitigated via selective **`GUARD` macros** (LFENCE) at trust boundaries. Since modules are trusted code, we rely on compiler-inserted barriers rather than inefficient global barriers.
+
+### Q: How does foliOS handle a driver crash compared to Linux?
+
+**A:** **It survives.**
+In a monolithic kernel (Linux), a null pointer dereference in a graphics driver often causes a Kernel Panic (BSOD). In foliOS:
+
+1. The CPU traps the MPK violation.
+2. The kernel core (Micro-Core) catches the exception.
+3. The kernel terminates only the specific **Shard** containing the faulty driver.
+4. The Shard is restarted transparently. The user may see a momentary screen flicker, but the system and other applications remain unaffected.
+
 ## 🛠 Build & Run
 
 ### Prerequisites
@@ -142,7 +196,6 @@ cmake --build build
 # Note: option "-a ia32" is correct because the bootloader is still built for IA-32
 scripts/mkdisk.sh -a ia32 disk.img
 scripts/run.sh pc-amd64
-
 ```
 
 ## 📁 Directory Structure
