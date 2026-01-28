@@ -42,7 +42,7 @@ typedef uint32_t StVmm_AllocFlags __nocast;
 #define PMM_ALIGN_MASK ((StPmm_AllocFlags)0x000003F0)
 #define PMM_ALIGN_AUTO ((StPmm_AllocFlags)0x00000000)
 #define PMM_ALIGN(a)                                                                               \
-    ((StPmm_AllocFlags)(((uint32_t)(a < 1 ? 0 : __builtin_ctzll(a)) << 4) & PMM_ALIGN_MASK))
+    ((StPmm_AllocFlags)(((uint32_t)((a) < 1 ? 0 : __builtin_ctzll(a)) << 4) & PMM_ALIGN_MASK))
 
 #define VMM_DEFAULT ((StVmm_AllocFlags)0x00000000)
 
@@ -153,6 +153,18 @@ StStatus StMm_AllocateSparse(
     St_PageCount count __in,
     StPmm_AllocFlags pmmflags __in,
     StVmm_AllocFlags vmmflags __in,
+    StMm_MapFlags mapflags __in
+);
+StStatus StMm_AllocateCountiguousTo(
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StPmm_AllocFlags pmmflags __in,
+    StMm_MapFlags mapflags __in
+);
+StStatus StMm_AllocateSparseTo(
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StPmm_AllocFlags pmmflags __in,
     StMm_MapFlags mapflags __in
 );
 void StMm_Free(St_VirtPage vpn __in, St_PageCount count __in);

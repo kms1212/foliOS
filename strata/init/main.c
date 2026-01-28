@@ -82,42 +82,16 @@ static int early_print_char(void *_state, char ch)
     return 0;
 }
 
-static uint16_t *fb;
-
-static void fb_print_str(int col, int row, const char *str)
-{
-    while (*str) {
-        fb[row * 80 + col++] = *str++ | 0x0700;
-    }
-}
-
-static void thread1_main(struct StThread *th)
-{
-    St_PageCount total_frames, free_frames;
-
-    char buf[512];
-
-    for (;;) {
-        StThread_Sleep(20);
-
-        StPmm_GetTotalFrameCount(&total_frames);
-        StPmm_GetFreeFrameCount(&free_frames);
-
-        snprintf(buf, sizeof(buf), "free frame: %03zu%%", free_frames * 100 / total_frames);
-        fb_print_str(80 - 23, 0, buf);
-    }
-}
-
 static int shared_value = 0;
 
 static struct StMutex mtx;
 
-static void thread2_main(struct StThread *th);
+static void thread1_main(struct StThread *th);
 
-static void thread4_main(struct StThread *th)
+static void thread3_main(struct StThread *th)
 {
     uint64_t start_tick = StTimeP_GetGlobalTick();
-    uint32_t time = 0, temp;
+    uint32_t time = 0;
 
     do {
         if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
@@ -134,24 +108,13 @@ static void thread4_main(struct StThread *th)
         StThread_Sleep(1);
 
         time = StTimeP_GetGlobalTick() - start_tick;
-
-        temp = time;
-        for (int i = 2; i >= 0; i--) {
-            fb[19 * 80 + 60 + i] = ('0' + temp % 10) | 0x0700;
-
-            temp /= 10;
-        }
-    } while (time < 499);
-
-    for (int i = 2; i >= 0; i--) {
-        fb[19 * 80 + 60 + i] = 0x0700;
-    }
+    } while (time < 50);
 }
 
-static void thread3_main(struct StThread *th)
+static void thread2_main(struct StThread *th)
 {
     uint64_t start_tick = StTimeP_GetGlobalTick();
-    uint32_t time = 0, temp;
+    uint32_t time = 0;
     struct StThread *new_thread;
 
     do {
@@ -169,27 +132,16 @@ static void thread3_main(struct StThread *th)
         StThread_Sleep(1);
 
         time = StTimeP_GetGlobalTick() - start_tick;
+    } while (time < 100);
 
-        temp = time;
-        for (int i = 2; i >= 0; i--) {
-            fb[20 * 80 + 60 + i] = ('0' + temp % 10) | 0x0700;
-
-            temp /= 10;
-        }
-    } while (time < 999);
-
-    for (int i = 2; i >= 0; i--) {
-        fb[20 * 80 + 60 + i] = 0x0700;
-    }
-
-    StThread_CreateKernel(thread2_main, 0x10000, &new_thread);
+    StThread_CreateKernel(thread1_main, 0x10000, &new_thread);
     StThread_Detach(new_thread);
 }
 
-static void thread2_main(struct StThread *th)
+static void thread1_main(struct StThread *th)
 {
     uint64_t start_tick = StTimeP_GetGlobalTick();
-    uint32_t time = 0, prev_time = 0, temp;
+    uint32_t time = 0, prev_time = 0;
     struct StThread *new_thread1, *new_thread2;
     struct StThread *waitlist[2];
 
@@ -211,21 +163,10 @@ static void thread2_main(struct StThread *th)
             continue;
         }
         prev_time = time;
+    } while (time < 100);
 
-        temp = time;
-        for (int i = 2; i >= 0; i--) {
-            fb[21 * 80 + 60 + i] = ('0' + temp % 10) | 0x0700;
-
-            temp /= 10;
-        }
-    } while (time < 999);
-
-    for (int i = 2; i >= 0; i--) {
-        fb[21 * 80 + 60 + i] = 0x0700;
-    }
-
-    StThread_CreateKernel(thread3_main, 0x10000, &new_thread1);
-    StThread_CreateKernel(thread4_main, 0x10000, &new_thread2);
+    StThread_CreateKernel(thread2_main, 0x10000, &new_thread1);
+    StThread_CreateKernel(thread3_main, 0x10000, &new_thread2);
 
     waitlist[0] = new_thread1;
     waitlist[1] = new_thread2;
@@ -252,10 +193,23 @@ static void setup_process(void)
     );
 
     test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
-    test_addr[0] = 0x0F;  // syscall
-    test_addr[1] = 0x05;
-    test_addr[2] = 0xEB;  // jmp -2
-    test_addr[3] = 0xFC;
+    test_addr[0] = 0x48;  // movabs $0xFFFF800000001000, %rax
+    test_addr[1] = 0xB8;
+    test_addr[2] = 0x00;
+    test_addr[3] = 0x10;
+    test_addr[4] = 0x00;
+    test_addr[5] = 0x00;
+    test_addr[6] = 0x00;
+    test_addr[7] = 0x80;
+    test_addr[8] = 0xFF;
+    test_addr[9] = 0xFF;
+    test_addr[10] = 0x48;  // mov (%rax), %rax
+    test_addr[11] = 0x8B;
+    test_addr[12] = 0x00;
+    test_addr[13] = 0xFF;  // call *%rax
+    test_addr[14] = 0xD0;
+    test_addr[15] = 0xEB;  // jmp -15
+    test_addr[16] = 0xEF;
 
     status = StProcess_CreateUser(&process, (uintptr_t)test_addr, (uintptr_t)test_addr + 0x10000);
     if (!CHECK_SUCCESS(status)) {
@@ -285,7 +239,6 @@ __attribute__((noreturn)) void main(void)
     St_PageCount total_frames, free_frames;
     struct StThread *main_thread;
     struct StThread *thread1;
-    struct StThread *thread2;
 
     enthdr = (void *)((uintptr_t)_pc_bootinfo_table + _pc_bootinfo_table->header_size);
     for (int i = 0; i < _pc_bootinfo_table->entry_count; i++) {
@@ -353,16 +306,16 @@ __attribute__((noreturn)) void main(void)
     pstate.pitch = fbent->pitch;
     pstate.cursor_col = pstate.cursor_row = 0;
 
-    fb = pstate.framebuffer;
+    void *fb = pstate.framebuffer;
     memset(fb, 0, fbent->pitch * fbent->height);
 
     LOG_DEBUG("reinitializing early logger...\n");
-    // StLog_EarlyInit(early_print_char, &pstate);
+    StLog_EarlyInit(early_print_char, &pstate);
 
     /* print entries */
     if (caent) {
         LOG_DEBUG("command args entry:\n");
-        for (int j = 0; j < caent->arg_count; j++) {
+        for (uint32_t j = 0; j < caent->arg_count; j++) {
             LOG_DEBUG("\t%s\n", &_pc_bootinfo_table->strtab[caent->arg_offsets[j]]);
         }
     }
@@ -376,7 +329,7 @@ __attribute__((noreturn)) void main(void)
         if (lient->additional_entry_count > 0) {
             LOG_DEBUG("\tadditional entries:\n");
         }
-        for (int j = 0; j < lient->additional_entry_count; j++) {
+        for (uint32_t j = 0; j < lient->additional_entry_count; j++) {
             LOG_DEBUG("\t\t%s\n", &_pc_bootinfo_table->strtab[lient->additional_entries[j]]);
         }
     }
@@ -384,7 +337,7 @@ __attribute__((noreturn)) void main(void)
     if (mment) {
         LOG_DEBUG("memory map entry:\n");
         LOG_DEBUG("\tbase             size             type\n");
-        for (int j = 0; j < mment->entry_count; j++) {
+        for (uint32_t j = 0; j < mment->entry_count; j++) {
             LOG_DEBUG(
                 "\t%016" PRIX64 " %016" PRIX64 " %08" PRIX32 "\n",
                 mment->entries[j].base,
@@ -398,7 +351,7 @@ __attribute__((noreturn)) void main(void)
         LOG_DEBUG("system disk entry:\n");
         LOG_DEBUG("\tident_crc32: %08" PRIX32 "\n", sdent->ident_crc32);
         LOG_DEBUG("\tlba              crc32\n");
-        for (int j = 0; j < sdent->entry_count; j++) {
+        for (uint32_t j = 0; j < sdent->entry_count; j++) {
             LOG_DEBUG(
                 "\t%016" PRIX64 " %08" PRIX32 "\n",
                 sdent->entries[j].lba,
@@ -427,7 +380,7 @@ __attribute__((noreturn)) void main(void)
     if (ufent) {
         LOG_DEBUG("unavailable frames entry:\n");
         LOG_DEBUG("\tpfn           count     type\n");
-        for (int j = 0; j < ufent->entry_count; j++) {
+        for (uint32_t j = 0; j < ufent->entry_count; j++) {
             LOG_DEBUG(
                 "\t%013" PRIX64 " %09" PRId32 " %01X\n",
                 ufent->entries[j].pfn_base,
@@ -471,9 +424,7 @@ __attribute__((noreturn)) void main(void)
     StThread_EnablePreemption();
 
     StThread_CreateKernel(thread1_main, 0x10000, &thread1);
-    StThread_CreateKernel(thread2_main, 0x10000, &thread2);
     StThread_Detach(thread1);
-    StThread_Detach(thread2);
 
     setup_process();
 

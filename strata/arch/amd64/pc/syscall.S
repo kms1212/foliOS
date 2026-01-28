@@ -35,7 +35,7 @@ _StSyscallP_Entry:
 
     sub     $8, %rsp                    # align stack pointer
 
-    mov     %r10, %rcx                  # convert user abi to syscall abi
+    mov     %r10, %rcx                  # convert syscall abi to user abi
     mov     %rsp, %rbp                  # set up stack base pointer
 
     sti

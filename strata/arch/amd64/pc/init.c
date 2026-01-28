@@ -33,6 +33,9 @@
 #define VMM_DOMAIN_USER_VPN_BASE  ((St_VirtPage)0x0000000000200ULL)
 #define VMM_DOMAIN_USER_VPN_LIMIT ((St_VirtPage)0x00007FFF7FFFFULL)
 
+#define VMM_DOMAIN_KRT_VPN_BASE  ((St_VirtPage)0xFFFF800000000ULL)
+#define VMM_DOMAIN_KRT_VPN_LIMIT ((St_VirtPage)0xFFFF80007FFFFULL)
+
 #define VMM_DOMAIN_MODULE_VPN_BASE  ((St_VirtPage)0xFFFF800080000ULL)
 #define VMM_DOMAIN_MODULE_VPN_LIMIT ((St_VirtPage)0xFFFFBFFF7FFFFULL)
 
@@ -49,6 +52,9 @@ __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
 extern int _trampoline_load_;
 extern int _trampoline_size_;
+
+extern int _krt_start;
+extern int _krt_end;
 
 extern int _end_;
 
@@ -128,6 +134,26 @@ static void init_rtc(void)
     temp = StIoA_In8(0x0071);
     StIoA_Out8(0x0070, 0x8B);
     StIoA_Out8(0x0071, temp & ~0x70);
+}
+
+static StStatus init_krt(void)
+{
+    StStatus status;
+    size_t krt_size;
+
+    krt_size = (uintptr_t)&_krt_end - (uintptr_t)&_krt_start;
+
+    status = StMm_AllocateSparseTo(
+        VMM_DOMAIN_KRT_VPN_BASE,
+        ALIGN_DIV(krt_size, PAGE_SIZE),
+        PMM_DEFAULT,
+        MAP_USER
+    );
+    if (!CHECK_SUCCESS(status)) return status;
+
+    memcpy(PAGE_TO_VPTR(VMM_DOMAIN_KRT_VPN_BASE), &_krt_start, krt_size);
+
+    return STATUS_SUCCESS;
 }
 
 __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
@@ -342,5 +368,11 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     status = StSyscallP_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize syscall handler");
+    }
+
+    LOG_DEBUG("initializing krt...\n");
+    status = init_krt();
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to initialize krt");
     }
 }

@@ -36,6 +36,7 @@ SECTIONS
     .rodata :
     {
         PROVIDE_HIDDEN(_rodata_start_ = .);
+        KEEP(*(.rodata.krt_table))
         KEEP(*(.rodata .rodata.*))
         PROVIDE_HIDDEN(_rodata_end_ = .);
     }

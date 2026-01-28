@@ -165,6 +165,50 @@ has_error:
     return status;
 }
 
+// TODO: apply adaptive batch decay
+StStatus StMm_AllocateSparseTo(
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StPmm_AllocFlags pmmflags __in,
+    StMm_MapFlags mapflags __in
+)
+{
+    StStatus status;
+    St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
+    size_t allocated_count = 0;
+
+    pmmflags &= ~PMM_ALIGN_MASK;
+
+    for (; allocated_count < count; allocated_count++) {
+        status = StMm_VirtPageToPhysFrame(vpn + (St_VirtPage)allocated_count, NULL);
+        if (status != STATUS_PAGE_NOT_PRESENT) goto has_error;
+
+        status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
+        if (!CHECK_SUCCESS(status)) goto has_error;
+
+        status = StMmuP_MapMemory(allocated_pfn, vpn + (St_VirtPage)allocated_count, mapflags);
+        if (!CHECK_SUCCESS(status)) {
+            StPmm_FreeContiguousFrame(allocated_pfn);
+            goto has_error;
+        }
+    }
+
+    return STATUS_SUCCESS;
+
+has_error:
+    /* allocation failed. rollback changes */
+    for (size_t i = 0; i < allocated_count; i++) {
+        /* read vpn-pfn mapping to know which frames to free */
+        if (!CHECK_SUCCESS(StMm_VirtPageToPhysFrame(vpn + i, &allocated_pfn))) continue;
+
+        /* unmap vpn & free frame*/
+        StMmuP_UnmapMemory(vpn + i);
+        StPmm_FreeContiguousFrame(allocated_pfn);
+    }
+
+    return status;
+}
+
 void StMm_Free(St_VirtPage vpn __in, St_PageCount count __in)
 {
     StStatus status;
