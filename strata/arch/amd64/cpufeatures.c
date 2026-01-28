@@ -9,8 +9,7 @@
 #include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/intrinsics/register.h>
 
-#include <strata/plat/interrupt.h>
-
+#include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/panic.h>
 

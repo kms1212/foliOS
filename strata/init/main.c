@@ -30,15 +30,15 @@ extern struct bootinfo_table_header *_pc_bootinfo_table;
 
 struct print_state {
     uint16_t *framebuffer;
-    int width, pitch, height;
-    int cursor_col, cursor_row;
+    uint32_t width, pitch, height;
+    uint32_t cursor_col, cursor_row;
 };
 
 static int early_print_char(void *_state, char ch)
 {
     struct print_state *state = _state;
     uint16_t *framebuffer;
-    int width, height, pitch, line_diff;
+    uint32_t width, height, pitch, line_diff;
 
     framebuffer = state->framebuffer;
     width = state->width;
@@ -72,7 +72,7 @@ static int early_print_char(void *_state, char ch)
 
     if (state->cursor_row >= height) {
         line_diff = state->cursor_row - height + 1;
-        for (int i = 0; i < height - line_diff; i++) {
+        for (uint32_t i = 0; i < height - line_diff; i++) {
             memcpy(&framebuffer[i * width], &framebuffer[(i + line_diff) * width], pitch);
         }
         memset(&framebuffer[(height - line_diff) * width], 0, pitch * line_diff);
@@ -307,7 +307,7 @@ __attribute__((noreturn)) void main(void)
     pstate.cursor_col = pstate.cursor_row = 0;
 
     void *fb = pstate.framebuffer;
-    memset(fb, 0, fbent->pitch * fbent->height);
+    memset(fb, 0, (size_t)fbent->pitch * fbent->height);
 
     LOG_DEBUG("reinitializing early logger...\n");
     StLog_EarlyInit(early_print_char, &pstate);

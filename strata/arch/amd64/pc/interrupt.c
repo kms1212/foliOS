@@ -15,6 +15,7 @@
 #include <strata/plat/tss.h>
 
 #include <strata/compiler.h>
+#include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
@@ -78,8 +79,6 @@ DECLARE_ISRx(f);
 static struct StA_IdtEntry _pc_idt[256] __aligned(PAGE_SIZE);
 static struct StInt_Handler *_pc_isr_table[256];
 
-static int _pc_irq_depth = 0;
-
 StStatus StIntP_Init(void)
 {
     struct StA_Idtr idtr;
@@ -87,7 +86,7 @@ StStatus StIntP_Init(void)
     idtr.size = sizeof(_pc_idt) - 1;
     idtr.idt_ptr = (uint64_t)&_pc_idt;
 
-    for (int i = 0; i < ARRAY_SIZE(_pc_isr_table); i++) {
+    for (unsigned long i = 0; i < ARRAY_SIZE(_pc_isr_table); i++) {
         _pc_isr_table[i] = NULL;
     }
 

@@ -217,7 +217,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     /* mark usable frames first */
-    for (int i = 0; i < mment->entry_count; i++) {
+    for (uint32_t i = 0; i < mment->entry_count; i++) {
         if (mment->entries[i].type != BEMT_FREE) continue;
 
         status = StPmm_MarkUsableContiguousFrame(
@@ -230,7 +230,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     /* mark unusable frames in case of there's overlapped unusable area inside a usable area */
-    for (int i = 0; i < mment->entry_count; i++) {
+    for (uint32_t i = 0; i < mment->entry_count; i++) {
         if (mment->entries[i].type == BEMT_FREE) continue;
 
         status = StPmm_MarkUnusableContiguousFrame(
@@ -243,7 +243,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     /* mark unusable frames */
-    for (int i = 0; i < ufent->entry_count; i++) {
+    for (uint32_t i = 0; i < ufent->entry_count; i++) {
         /*
             page table is already migrated and replaced to a new one.
             so just allow allocation to this area.

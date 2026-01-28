@@ -187,7 +187,7 @@ StStatus StScheduler_Maintain(void)
 
         current = current->next;
 
-        LOG_DEBUG("thread #%d removed from scheduler (maintain)\n", thread_to_remove->id);
+        LOG_DEBUG("thread #%d removed from scheduler\n", thread_to_remove->id);
 
         if (thread_to_remove->is_detached) {
             StThread_Remove(thread_to_remove);

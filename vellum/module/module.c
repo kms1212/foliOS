@@ -30,7 +30,7 @@ static status_t resolve_symbol_addr(
 
     if (sym->shndx != SHN_UNDEF) {
         if (addr) *addr = load_vaddr + sym->value;
-        LOG_TRACE("symbol found at %08lX\n", *addr);
+        LOG_TRACE("symbol found at %08zX\n", *addr);
         return STATUS_SUCCESS;
     }
 
@@ -42,7 +42,7 @@ static status_t resolve_symbol_addr(
     }
 
     if (addr) *addr = (uintptr_t)sym_addr;
-    LOG_TRACE("symbol found at %08lX\n", *addr);
+    LOG_TRACE("symbol found at %08zX\n", *addr);
     return STATUS_SUCCESS;
 }
 
@@ -117,20 +117,20 @@ static status_t relocate_section(
             //     LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
             //     *(uint32_t *)P = B + A;
             // } else {
-            LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX\n", rel_type, P, S, A);
+            LOG_TRACE("type=%02d, (P:%08zX) = S:%08zX + A:%08zX\n", rel_type, P, S, A);
             *(uint32_t *)P = S + A;
             // }
             break;
         case R_386_PC32:
             if (sym.shndx == SHN_UNDEF) {
-                LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX + A:%08lX - P\n", rel_type, P, S, A);
+                LOG_TRACE("type=%02d, (P:%08zX) = S:%08zX + A:%08zX - P\n", rel_type, P, S, A);
                 *(uint32_t *)P = S + A - P;
             }
             break;
         case R_386_GOT32:
         case R_386_GOT32X:
             LOG_TRACE(
-                "type=%02d, (A:%08lX + GOT:%08lX) = (%08lX) = S:%08lX\n",
+                "type=%02d, (A:%08zX + GOT:%08zX) = (%08zX) = S:%08zX\n",
                 rel_type,
                 A,
                 GOT,
@@ -142,17 +142,17 @@ static status_t relocate_section(
             break;
         case R_386_GLOB_DAT:
         case R_386_JMP_SLOT:
-            LOG_TRACE("type=%02d, (P:%08lX) = S:%08lX\n", rel_type, P, S);
+            LOG_TRACE("type=%02d, (P:%08zX) = S:%08zX\n", rel_type, P, S);
             *(uint32_t *)P = S;
             break;
         case R_386_RELATIVE:
-            LOG_TRACE("type=%02d, (P:%08lX) = B:%08lX + A:%08lX\n", rel_type, P, B, A);
+            LOG_TRACE("type=%02d, (P:%08zX) = B:%08zX + A:%08zX\n", rel_type, P, B, A);
             *(uint32_t *)P = B + A;
             break;
         case R_386_GOTOFF:
             if (sym.shndx == SHN_UNDEF) {
                 LOG_TRACE(
-                    "type=%02d, (P:%08lX) = S:%08lX + A:%08lX - GOT:%08lX\n",
+                    "type=%02d, (P:%08zX) = S:%08zX + A:%08zX - GOT:%08zX\n",
                     rel_type,
                     P,
                     S,
@@ -164,7 +164,7 @@ static status_t relocate_section(
             break;
         case R_386_GOTPC:
             if (sym.shndx == SHN_UNDEF) {
-                LOG_TRACE("type=%02d, (P:%08lX) = GOT:%08lX + A:%08lX - P\n", rel_type, P, GOT, A);
+                LOG_TRACE("type=%02d, (P:%08zX) = GOT:%08zX + A:%08zX - P\n", rel_type, P, GOT, A);
                 *(uint32_t *)P = GOT + A - P;
             }
             break;
@@ -173,7 +173,7 @@ static status_t relocate_section(
             break;
         }
 
-        LOG_TRACE("relocated to %08lX\n", *(uint32_t *)P);
+        LOG_TRACE("relocated to %08zX\n", *(uintptr_t *)P);
     }
 
     free(rel_section);
@@ -212,8 +212,8 @@ static status_t run_func_array(struct elf_file *elf, const char *section_name, u
     if (!CHECK_SUCCESS(status)) return status;
 
     data_len = shdr.size;
-    func_arr = (void *)(load_vaddr + shdr.address);
-    for (int i = 0; i < data_len / sizeof(void (*)(void)); i++) {
+    func_arr = (void (**)(void))(load_vaddr + shdr.address);
+    for (unsigned long i = 0; i < data_len / sizeof(void (*)(void)); i++) {
         LOG_TRACE("running function at 0x%p\n", func_arr[i]);
         func_arr[i]();
     }
@@ -268,7 +268,7 @@ status_t module_load(const char *path, struct module **modout)
     LOG_DEBUG("allocating program memory...\n");
     status = mm_allocate_pages(ALIGN_DIV(program_size, PAGE_SIZE), &load_vpn);
     if (!CHECK_SUCCESS(status)) return status;
-    LOG_DEBUG("program memory allocated to page %ld\n", load_vpn);
+    LOG_DEBUG("program memory allocated to page %zd\n", load_vpn);
 
     LOG_DEBUG("loading program...\n");
     for (int i = 0; i < ehdr.phnum; i++) {
@@ -296,7 +296,7 @@ status_t module_load(const char *path, struct module **modout)
         ".rel.text",
     };
 
-    for (int i = 0; i < ARRAY_SIZE(rel_sections); i++) {
+    for (unsigned long i = 0; i < ARRAY_SIZE(rel_sections); i++) {
         LOG_DEBUG("relocating section %s...\n", rel_sections[i]);
         status = elf_find_section(elf, rel_sections[i], &rel_section_idx);
         if (status == STATUS_ENTRY_NOT_FOUND) continue;
@@ -367,7 +367,7 @@ status_t module_load(const char *path, struct module **modout)
     free(note_vellum_section);
     note_vellum_section = NULL;
 
-    LOG_DEBUG("executing constructor functions... %lu\n", load_vpn);
+    LOG_DEBUG("executing constructor functions... %zu\n", load_vpn);
     status = run_func_array(elf, ".init_array", load_vpn * PAGE_SIZE);
     if (!CHECK_SUCCESS(status)) goto has_error;
 

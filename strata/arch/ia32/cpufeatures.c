@@ -8,7 +8,7 @@
 #include <strata/arch/intrinsics/cpuid.h>
 #include <strata/arch/intrinsics/register.h>
 
-#include <strata/plat/interrupt.h>
+#include <strata/interrupt.h>
 
 #include <strata/log.h>
 #include <strata/panic.h>
@@ -44,7 +44,7 @@ static volatile int handler_called;
 static size_t instr_size;
 
 static void *fault_handler_func(
-    int, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *
+    int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
 )
 {
     handler_called = 1;

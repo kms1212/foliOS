@@ -5,7 +5,6 @@
 
 #include <strata/arch/interrupt.h>
 
-#include <strata/interrupt.h>
 #include <strata/status.h>
 
 struct StIntP_Context {
