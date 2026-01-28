@@ -5,7 +5,7 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = 0xFFFF800000000000;  /* module area */
+    . = 0x00007FFF80000000;  /* module area */
 
     . = ALIGN(4096);
     .data :
