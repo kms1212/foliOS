@@ -22,7 +22,7 @@ StStatus StScheduler_AddThread(struct StThread *th)
     }
     th->next = NULL;
 
-    LOG_DEBUG("thread #%d added to scheduler\n", th->id);
+    LOG_TRACE("thread #%d added to scheduler\n", th->id);
 
     return STATUS_SUCCESS;
 }
@@ -52,7 +52,7 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
         }
     }
 
-    LOG_DEBUG("thread #%d removed from scheduler\n", th->id);
+    LOG_TRACE("thread #%d removed from scheduler\n", th->id);
 
     return STATUS_SUCCESS;
 }
@@ -187,7 +187,7 @@ StStatus StScheduler_Maintain(void)
 
         current = current->next;
 
-        LOG_DEBUG("thread #%d removed from scheduler\n", thread_to_remove->id);
+        LOG_TRACE("thread #%d removed from scheduler\n", thread_to_remove->id);
 
         if (thread_to_remove->is_detached) {
             StThread_Remove(thread_to_remove);

@@ -18,7 +18,7 @@ static void add_blocking_thread(struct StMutex *mtx, struct StThread *th)
 {
     struct StThread *last_blocking_th;
 
-    LOG_DEBUG("blocking thread #%d\n", th->id);
+    LOG_TRACE("blocking thread #%d\n", th->id);
 
     if (mtx->blocking_threads == th) return;
 
@@ -48,7 +48,7 @@ static void unblock_blocking_thread(struct StMutex *mtx)
     th_to_unblock = mtx->blocking_threads;
     mtx->blocking_threads = th_to_unblock->mutex_blocking_next;
 
-    LOG_DEBUG("unblocking thread #%d\n", th_to_unblock->id);
+    LOG_TRACE("unblocking thread #%d\n", th_to_unblock->id);
 
     th_to_unblock->mutex_blocking_next = NULL;
     if (th_to_unblock->status == THREAD_STATE_BLOCKING) {

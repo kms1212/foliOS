@@ -13,6 +13,16 @@
 #define LL_DEBUG 4
 #define LL_TRACE 5
 
+#ifndef NDEBUG
+#    define LL_DEFAULT LL_DEBUG
+#    define LL_MAX     LL_TRACE
+
+#else
+#    define LL_DEFAULT LL_INFO
+#    define LL_MAX     LL_DEBUG
+
+#endif
+
 void StLog_EarlyInit(int (*print_func)(void *, char), void *print_state);
 
 void StLog_SetLevel(int level);
@@ -35,13 +45,27 @@ void StLog_IntSafePrintValist(int level, const char *module_name, const char *fm
 #define LOG_WARN(...)  LOG(LL_WARN, __VA_ARGS__);
 #define LOG_INFO(...)  LOG(LL_INFO, __VA_ARGS__);
 #define LOG_DEBUG(...) LOG(LL_DEBUG, __VA_ARGS__);
-#define LOG_TRACE(...) LOG(LL_TRACE, __VA_ARGS__);
+
+#ifndef NDEBUG
+#    define LOG_TRACE(...) LOG(LL_TRACE, __VA_ARGS__);
+
+#else
+#    define LOG_TRACE(...) ((void)0)
+
+#endif
 
 #define ILOG_FATAL(...) ILOG(LL_FATAL, __VA_ARGS__);
 #define ILOG_ERROR(...) ILOG(LL_ERROR, __VA_ARGS__);
 #define ILOG_WARN(...)  ILOG(LL_WARN, __VA_ARGS__);
 #define ILOG_INFO(...)  ILOG(LL_INFO, __VA_ARGS__);
 #define ILOG_DEBUG(...) ILOG(LL_DEBUG, __VA_ARGS__);
-#define ILOG_TRACE(...) ILOG(LL_TRACE, __VA_ARGS__);
+
+#ifndef NDEBUG
+#    define ILOG_TRACE(...) ILOG(LL_TRACE, __VA_ARGS__);
+
+#else
+#    define ILOG_TRACE(...) ((void)0)
+
+#endif
 
 #endif  // __STRATA_LOG_H__

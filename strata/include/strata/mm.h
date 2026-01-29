@@ -129,7 +129,7 @@ StMm_VirtAddrToPhysAddr(uintptr_t vaddr __in, uintptr_t *paddr __out_optional)
     return STATUS_SUCCESS;
 }
 
-StStatus StMm_MapContiguous(
+StStatus StMm_Map(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
@@ -137,7 +137,8 @@ StStatus StMm_MapContiguous(
     StVmm_AllocFlags vmmflags __in,
     StMm_MapFlags mapflags __in
 );
-void StMm_UnmapContiguous(St_VirtPage vpn __in, St_PageCount count __in);
+StStatus StMm_Remap(St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in);
+void StMm_Unmap(St_VirtPage vpn __in, St_PageCount count __in);
 
 StStatus StMm_AllocateContiguous(
     enum StVmm_Domain domain __in,

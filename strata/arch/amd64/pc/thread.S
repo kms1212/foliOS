@@ -8,13 +8,13 @@
 _StThreadP_KernelThreadEntry:
     cld
 
-    xor     %rbp, %rbp
+    xor     %rbp, %rbp                  # setup stack frame
     push    %rbp
     mov     %rsp, %rbp
 
-    sub     $8, %rsp
+    sub     $8, %rsp                    # align stack pointer
 
-    call    *%rbx
+    call    *%rbx                       # call thread entry
 
     call    StThread_Exit
 
@@ -22,19 +22,35 @@ _StThreadP_KernelThreadEntry:
 _StThreadP_UserThreadEntry:
     cld
 
-    mov     $SEG_SEL_USER_DATA | 3, %rax
+    mov     $SEG_SEL_USER_DATA | 3, %rax # setup user data segment
     mov     %ax, %ds
     mov     %ax, %es
     mov     %ax, %fs
 
-    swapgs
+    swapgs                              # switch gs
     mov     %ax, %gs
 
-    push    %rax
+    push    %rax                        # push fake interrupt frame
     push    %rdi
     pushq   $0x0000000000000202
     pushq   $SEG_SEL_USER_CODE | 3
     push    %rbx
+
+    xor     %rax, %rax                  # clear registers
+    xor     %rbx, %rbx
+    xor     %rcx, %rcx
+    xor     %rdx, %rdx
+    xor     %rbp, %rbp
+    xor     %rsi, %rsi
+    xor     %rdi, %rdi
+    xor     %r8, %r8
+    xor     %r9, %r9
+    xor     %r10, %r10
+    xor     %r11, %r11
+    xor     %r12, %r12
+    xor     %r13, %r13
+    xor     %r14, %r14
+    xor     %r15, %r15
 
     iretq
 

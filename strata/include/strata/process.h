@@ -13,6 +13,8 @@ enum StProcess_Type {
 
 typedef int StProcess_Id __nocast;
 
+struct StModule;
+
 struct StProcess {
     struct StProcess *next;
 
@@ -25,6 +27,8 @@ struct StProcess {
     struct StThread *main_thread;
     struct StThread *thread_list_head;
     struct StThread *thread_list_tail;
+
+    struct StModule *module;
 };
 
 StStatus StProcess_CreateUser(

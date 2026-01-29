@@ -113,9 +113,6 @@ StStatus StThreadP_Switch(
     /* save current stack pointer of the previous thread */
     current->kmode_stack_ptr = (void *)((uintptr_t)ctx - 8);
 
-    // LOG_DEBUG("switching from thread %d\n", (int)current->id);
-    // LOG_DEBUG("current stack ptr: %p\n", current->kmode_stack_ptr);
-
     current_pml4_pfn = StA_ReadCr3() / PAGE_SIZE;
 
     // if (next->owner && current_pml4_pfn != next->owner->platform_data.pml4_phys) {
@@ -131,8 +128,7 @@ StStatus StThreadP_Switch(
     status = StScheduler_SetCurrentThread(next);
     if (!CHECK_SUCCESS(status)) return status;
 
-    // LOG_DEBUG("switching to thread %d\n", (int)next->id);
-    // LOG_DEBUG("next stack ptr: %p\n", next->kmode_stack_ptr);
+    LOG_TRACE("task switching: %d -> %d\n", (int)current->id, (int)next->id);
 
     *next_stack_ptr = next->kmode_stack_ptr;
 

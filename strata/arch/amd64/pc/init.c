@@ -123,6 +123,8 @@ static void init_pit(void)
     StIoA_Out8(0x0040, pit_value & 0xFF);
     StIoA_Out8(0x0040, (pit_value >> 8) & 0xFF);
 
+    LOG_INFO("Clock source initialized: PIT channel 0, 100Hz\n");
+
     StIntP_Unmask(0x20);
 }
 
@@ -153,6 +155,13 @@ static StStatus init_krt(void)
 
     memcpy(PAGE_TO_VPTR(VMM_DOMAIN_KRT_VPN_BASE), &_krt_start, krt_size);
 
+    status = StMm_Remap(
+        VMM_DOMAIN_KRT_VPN_BASE,
+        ALIGN_DIV(krt_size, PAGE_SIZE),
+        MAP_USER | MAP_READONLY
+    );
+    if (!CHECK_SUCCESS(status)) return status;
+
     return STATUS_SUCCESS;
 }
 
@@ -167,7 +176,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     StLog_EarlyInit(early_print_char, NULL);
 
-    LOG_DEBUG("Starting Strata...\n");
+    LOG_INFO("Starting Strata...\n");
 
     LOG_DEBUG("checking CPU features...\n");
     status = StA_CheckCpuFeatures();
@@ -175,7 +184,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to check CPU features");
     }
 
-    LOG_DEBUG("starting uptime counter...\n");
+    LOG_INFO("starting uptime counter...\n");
     StTimeP_StartUptime();
 
     enthdr = (void *)((uintptr_t)btblhdr + btblhdr->header_size);
@@ -201,16 +210,16 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(STATUS_ENTRY_NOT_FOUND, "required entry not found");
     }
 
-    LOG_DEBUG("initializing GDT...\n");
+    LOG_INFO("initializing GDT...\n");
     StP_InitGdt();
 
-    LOG_DEBUG("initializing mmu...\n");
+    LOG_INFO("initializing MMU...\n");
     status = StMmuP_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize mmu");
     }
 
-    LOG_DEBUG("initializing physical memory allocator...\n");
+    LOG_INFO("initializing PMA...\n");
     status = StPmm_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize physical memory allocator");
@@ -276,7 +285,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to late init physical memory manager");
     }
 
-    LOG_DEBUG("initializing virtual memory allocator...\n");
+    LOG_INFO("initializing VMA...\n");
     status = StVmm_InitDomain(
         VMM_DOMAIN_KERNEL_FAST,
         ADDR_TO_PAGE(ALIGN((uintptr_t)&_end_, PAGE_SIZE)),
@@ -314,10 +323,10 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    LOG_DEBUG("initializing memory management...\n");
+    LOG_INFO("initializing memory manager...\n");
     status = StMm_Init();
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to initialize memory management");
+        St_Panic(status, "failed to initialize memory manager");
     }
 
     LOG_DEBUG("relocating bootinfo table...\n");
@@ -328,7 +337,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     memcpy(newbtblhdr, btblhdr, btblhdr->size);
 
-    LOG_DEBUG("late initializing MMU...\n")
+    LOG_INFO("late initializing MMU...\n")
     status = StMmuP_LateInit();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to late init MMU");
@@ -336,7 +345,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     _pc_bootinfo_table = newbtblhdr;
 
-    LOG_DEBUG("initializing ISRs...\n");
+    LOG_INFO("initializing ISRs...\n");
     status = StIntP_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize interrupt system");
@@ -349,30 +358,30 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     init_rtc();
 
-    LOG_DEBUG("initializing PIT...\n");
+    LOG_INFO("initializing PIT...\n");
     init_pit();
 
-    LOG_DEBUG("activating common CPU features...\n");
+    LOG_INFO("activating common CPU features...\n");
     status = StA_ActivateCommonCpuFeatures();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to activate common CPU features");
     }
 
-    LOG_DEBUG("initializing CPU local data...\n");
+    LOG_INFO("initializing CPU local data...\n");
     status = StCpuLocalP_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize CPU local data");
     }
 
-    LOG_DEBUG("initializing syscall handler...\n");
+    LOG_INFO("initializing syscall handler...\n");
     status = StSyscallP_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize syscall handler");
     }
 
-    LOG_DEBUG("initializing krt...\n");
+    LOG_INFO("initializing KRT...\n");
     status = init_krt();
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to initialize krt");
+        St_Panic(status, "failed to initialize KRT");
     }
 }

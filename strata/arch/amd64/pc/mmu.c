@@ -276,4 +276,54 @@ StStatus StMmuP_MapMemory(St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapF
     return STATUS_SUCCESS;
 }
 
+StStatus StMmuP_RemapMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
+{
+    uint64_t pml4e_idx;
+    uint64_t pdpte_idx;
+    uint64_t pde_idx;
+    uint64_t pte_idx;
+
+    if (vpn > VIRT_PAGE_MAX) return STATUS_INVALID_VALUE;
+    if (PML4_HOLE_START <= vpn && vpn <= PML4_HOLE_END) return STATUS_INVALID_VALUE;
+
+    /* 1. PML4 */
+    pml4e_idx = (vpn & VIRT_PAGE_PML4_INDEX_MASK) >> 27;
+    if (!_pml4[pml4e_idx].p) {
+        return STATUS_PAGE_NOT_PRESENT;
+    }
+
+    if (mapflags & MAP_USER) _pml4[pml4e_idx].u_s = 1;
+
+    /* 2. PDPT */
+    pdpte_idx = (vpn & VIRT_PAGE_PDPT_INDEX_MASK) >> 18;
+    if (!_pdpt[pdpte_idx].p) {
+        return STATUS_PAGE_NOT_PRESENT;
+    }
+
+    if (mapflags & MAP_USER) _pdpt[pdpte_idx].u_s = 1;
+
+    /* 3. PD */
+    pde_idx = (vpn & VIRT_PAGE_PD_INDEX_MASK) >> 9;
+    if (!_pd[pde_idx].p) {
+        return STATUS_PAGE_NOT_PRESENT;
+    }
+
+    if (_pd[pde_idx].ps) return STATUS_CONFLICTING_STATE;
+    if (mapflags & MAP_USER) _pd[pde_idx].u_s = 1;
+
+    /* 4. PT */
+    pte_idx = vpn & VIRT_PAGE_PT_INDEX_MASK;
+    if (!_pt[pte_idx].p) return STATUS_PAGE_NOT_PRESENT;
+
+    _pt[pte_idx].r_w = (mapflags & MAP_READONLY) ? 0 : 1;
+    _pt[pte_idx].u_s = (mapflags & MAP_USER) ? 1 : 0;
+    _pt[pte_idx].pcd = (mapflags & MAP_NO_CACHE) ? 1 : 0;
+    _pt[pte_idx].pwt = (mapflags & MAP_WRITETHRU_CACHE) ? 1 : 0;
+    _pt[pte_idx].xd = (mapflags & MAP_NO_EXECUTE) ? 1 : 0;
+
+    StA_InvalidatePage(vpn);
+
+    return STATUS_SUCCESS;
+}
+
 void StMmuP_UnmapMemory(St_VirtPage vpn) {}

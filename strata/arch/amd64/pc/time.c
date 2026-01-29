@@ -1,10 +1,15 @@
 #include <strata/plat/time.h>
 
+#include <inttypes.h>
 #include <stdint.h>
 
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/io.h>
+
+#include <strata/log.h>
+
+#define MODULE_NAME "time"
 
 static int initialized = 0;
 static int use_tsc;
@@ -41,15 +46,20 @@ static void calibrate_tsc_with_pit(void)
 void StTimeP_StartUptime(void)
 {
     if (g_p_cpu_features->has_tsc) {
+        LOG_DEBUG("using TSC for uptime counter\n");
         use_tsc = 1;
+        uptime_start_counter = StA_ReadTsc();
         if (g_p_cpu_features->provides_tsc_ratio && g_p_cpu_features->provides_core_clock_freq) {
+            LOG_DEBUG("calibration skipped\n");
             counter_diff_per_sec = g_p_cpu_features->tsc_ratio_numer *
                 g_p_cpu_features->core_clock_freq_hz / g_p_cpu_features->tsc_ratio_denom;
         } else {
+            LOG_DEBUG("calibrating TSC... (10 ms period)\n");
             calibrate_tsc_with_pit();
+            LOG_DEBUG("TSC calibrated: %" PRIu64 " delta per second\n", counter_diff_per_sec);
         }
-        uptime_start_counter = StA_ReadTsc();
     } else {
+        LOG_DEBUG("using PIT for uptime counter\n");
         use_tsc = 0;
         counter_diff_per_sec = 100;
         uptime_start_counter = StTimeP_GetGlobalTick();

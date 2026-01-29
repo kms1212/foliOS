@@ -21,7 +21,7 @@ void StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context 
     uint64_t syscall_count = atomic_fetch_add(&StCpuLocalP_GetData()->syscall_count, 1);
 
     if (syscall_count % 1000000 == 0) {
-        LOG_DEBUG("syscall count: %" PRIu64 "\n", syscall_count);
+        LOG_TRACE("syscall count: %" PRIu64 "\n", syscall_count);
     }
 }
 

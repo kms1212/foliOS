@@ -25,7 +25,7 @@ StStatus StMm_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_
     return StMmuP_VirtPageToPhysFrame(vpn, pfn);
 }
 
-StStatus StMm_MapContiguous(
+StStatus StMm_Map(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
@@ -48,19 +48,30 @@ StStatus StMm_MapContiguous(
     }
 
     LOG_TRACE(
-        "mapped page %lu-%lu to frame %lu-%lu\n",
+        "mapped page %016zX to frame %016zX (count=%zu)\n",
         (uintptr_t)allocated_vpn,
-        (uintptr_t)allocated_vpn + (uintptr_t)count - 1,
         (uintptr_t)pfn,
-        (uintptr_t)pfn + (uintptr_t)count - 1
+        count
     );
 
     return STATUS_SUCCESS;
 }
 
-void StMm_UnmapContiguous(St_VirtPage vpn __in, St_PageCount count __in)
+StStatus StMm_Remap(St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in)
 {
-    LOG_TRACE("unmapping page %lu-%lu\n", (uintptr_t)vpn, (uintptr_t)vpn + (uintptr_t)count - 1);
+    StStatus status;
+
+    for (size_t i = 0; i < count; i++) {
+        status = StMmuP_RemapMemory(vpn + i, mapflags);
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+void StMm_Unmap(St_VirtPage vpn __in, St_PageCount count __in)
+{
+    LOG_TRACE("unmapping page %016zX (count=%zu)\n", (uintptr_t)vpn, count);
 
     for (size_t i = 0; i < count; i++) {
         StMmuP_UnmapMemory(vpn + i);
@@ -85,7 +96,7 @@ StStatus StMm_AllocateContiguous(
     status = StPmm_AllocateContiguousFrame(&allocated_pfn, count, pmmflags);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = StMm_MapContiguous(domain, &allocated_vpn, allocated_pfn, count, vmmflags, mapflags);
+    status = StMm_Map(domain, &allocated_vpn, allocated_pfn, count, vmmflags, mapflags);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     *vpn = allocated_vpn;
@@ -94,7 +105,7 @@ StStatus StMm_AllocateContiguous(
 
 has_error:
     if (allocated_vpn != (St_VirtPage)-1) {
-        StMm_UnmapContiguous(allocated_vpn, count);
+        StMm_Unmap(allocated_vpn, count);
     }
 
     if (allocated_pfn != (St_PhysFrame)-1) {

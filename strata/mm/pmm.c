@@ -43,6 +43,8 @@
                 +-----------------------------+
 */
 
+// TODO: pivot to per-page metadata entry from current per-allocation metadata entry
+
 /*
     [ Allocation Entry Format ]
 
@@ -391,7 +393,7 @@ static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int order, in
 
 static inline void allocate_from_bitmap_entry(uint64_t *entry, int index, int order)
 {
-    uint64_t prev = *entry;
+    // uint64_t prev = *entry;
 
     switch (order) {
     case 0:
@@ -417,8 +419,6 @@ static inline void allocate_from_bitmap_entry(uint64_t *entry, int index, int or
     }
 
     propagate_up(entry, index, order, 1);
-
-    LOG_TRACE("bitmap modified: 0x%016" PRIX64 " -> 0x%016" PRIX64 "\n", prev, *entry);
 }
 
 static inline void free_to_table(struct alloc_table *table, St_PhysFrame index, int order)
@@ -493,8 +493,6 @@ static StStatus get_or_create_table(size_t table_idx, struct alloc_table **table
     // Set table pointer.
     alloc_table_ptr_array[table_idx] = (uintptr_t)new_table | ATPA_ORDER_BMP_MASK;
 
-    LOG_TRACE("created table %p -> [%ld]\n", (void *)new_table, table_idx);
-
     if (table) *table = new_table;
 
     return STATUS_SUCCESS;
@@ -544,8 +542,6 @@ static StStatus get_or_create_extentry(
     table->entries[entry_idx].bitmap |= ALLOCENT_EXT_FLAG;
 
 #endif
-
-    LOG_TRACE("created extentry %p -> [%d]\n", (void *)new_entry, entry_idx);
 
     if (entry) *entry = new_entry;
 
@@ -688,8 +684,6 @@ static StStatus create_metadata(St_PhysFrame pfn, void *owner, int order)
     metadata->public.flags = 0;
     metadata->public.owner = owner;
 
-    LOG_TRACE("refcount: set to 1\n");
-
     return STATUS_SUCCESS;
 }
 
@@ -707,7 +701,7 @@ static StStatus get_metadata(St_PhysFrame pfn, struct metadata **metadata)
     }
 
     if (alloc_table_ptr_array[table_idx] == ATPA_HUGE_ALLOC) {
-        LOG_TRACE("metadata found at (table: %zd) (huge alloc)\n", table_idx);
+        LOG_TRACE("metadata found at (%zd.-.-) (huge)\n", table_idx);
 
         *metadata = (struct metadata *)metadata_dir_ptr_array[table_idx];
 
@@ -719,11 +713,7 @@ static StStatus get_metadata(St_PhysFrame pfn, struct metadata **metadata)
     if (!metadata_directory->entries[entry_idx]) return STATUS_NOT_ALLOCATED;
 
     if (metadata_directory->entries[entry_idx] & METADATA_DIR_ENTRY_LARGE_FLAG) {
-        LOG_TRACE(
-            "metadata found at (table: %zd, entry: %zd) (large flag)\n",
-            table_idx,
-            entry_idx
-        );
+        LOG_TRACE("metadata found at (%zd.%zd.-) (large)\n", table_idx, entry_idx);
 
         *metadata = (struct metadata *)(metadata_directory->entries[entry_idx] &
                                         ~METADATA_DIR_ENTRY_LARGE_FLAG);
@@ -736,12 +726,7 @@ static StStatus get_metadata(St_PhysFrame pfn, struct metadata **metadata)
     if (!metadata_table) return STATUS_NOT_ALLOCATED;
     if (!metadata_table->entries[slot_idx].refcount) return STATUS_NOT_ALLOCATED;  // HERE
 
-    LOG_TRACE(
-        "metadata found at (table: %zd, entry: %zd, slot: %zd)\n",
-        table_idx,
-        entry_idx,
-        slot_idx
-    );
+    LOG_TRACE("metadata found at (%zd.%zd.%zd)\n", table_idx, entry_idx, slot_idx);
 
     *metadata = &metadata_table->entries[slot_idx];
 
@@ -877,7 +862,6 @@ StStatus StPmm_MarkUsableContiguousFrame(St_PhysFrame base __in, St_PhysFrame li
         // If we can mark entire table to free, do so.
         if (!(base % ALLOC_TABLE_COVERAGE_PAGES) &&
             limit >= base + ALLOC_TABLE_COVERAGE_PAGES - 1) {
-            LOG_TRACE("writing to ATPA\n");
 
             // it's ok to mark entire allocation table to usable
             alloc_table_ptr_array[base / ALLOC_TABLE_COVERAGE_PAGES] = ATPA_FREE;
@@ -889,8 +873,6 @@ StStatus StPmm_MarkUsableContiguousFrame(St_PhysFrame base __in, St_PhysFrame li
         // Get or create table.
         status = get_or_create_table(table_idx, &table);
         if (!CHECK_SUCCESS(status)) return status;
-
-        LOG_TRACE("writing to table: %p\n", (void *)table);
 
         // Mark frame entries as free. (128 KiB granularity)
         while (base <= limit && base / ALLOC_TABLE_COVERAGE_PAGES == table_idx) {
@@ -910,8 +892,6 @@ StStatus StPmm_MarkUsableContiguousFrame(St_PhysFrame base __in, St_PhysFrame li
             // We need to create a extended entry to mark the frames as free.
             status = get_or_create_extentry(table, entry_idx, &extentry);
             if (!CHECK_SUCCESS(status)) return status;
-
-            LOG_TRACE("writing to extentry: %p\n", (void *)extentry);
 
             // mark frames as free. (4 KiB granularity)
             while (base <= limit &&
@@ -1034,8 +1014,6 @@ StStatus StPmm_LateInit(void)
 
             extentry = ALLOCENT_GET_EXT_PTR(table->entries[j].ptr);
 
-            LOG_TRACE("extentry %p[%ld] = %p\n", (void *)table, j, (void *)extentry);
-
             for (size_t k = 0; k < ARRAY_SIZE(extentry->state_flags); k++) {
                 if (extentry->state_flags[k] == EE_UNUSABLE) continue;
 
@@ -1085,16 +1063,12 @@ StStatus StPmm_AllocateContiguousFrame(
     order = get_order(count);
     if (order < 0) return STATUS_INVALID_VALUE;
 
-    LOG_TRACE("allocation order: %d\n", order);
-
     below_value = alloc_flags & PMM_BELOW_MASK;
     align_order = ((alloc_flags & PMM_ALIGN_MASK) >> 4) - 12;
 
     if (align_order < order) {
         align_order = order;
     }
-
-    LOG_TRACE("align order: %d\n", align_order);
 
     atpa_search_start = ARRAY_SIZE(alloc_table_ptr_array);
 
@@ -1126,17 +1100,9 @@ StStatus StPmm_AllocateContiguousFrame(
     atpa_align_jump = align_order > 13 ? (1ULL << (align_order - 13)) : 1;
     atpa_search_start = ((atpa_search_start / atpa_align_jump) - 1) * atpa_align_jump;
 
-    LOG_TRACE(
-        "ATPA search start: %zu, negative jump amount: %zu\n",
-        atpa_search_start,
-        atpa_align_jump
-    );
-
     // 1. order >= 14 is a huge allocation. Use whole ATPA entries.
     if (order >= 14) {
         size_t atpa_slots_needed = (1ULL << (order - 14));
-
-        LOG_TRACE("ATPA slots needed: %zu\n", atpa_slots_needed);
 
         // find first fit
         for (ssize_t i = atpa_search_start; i >= 0; i -= atpa_align_jump) {
@@ -1152,12 +1118,11 @@ StStatus StPmm_AllocateContiguousFrame(
             }
 
             if (!allocatable) continue;
-            LOG_TRACE("found (table: %zd)\n", i);
+            LOG_TRACE("found (%zd.-.-)\n", i);
 
             allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES;
 
             // mark all ATPA entries as allocated
-            LOG_TRACE("filling ATPA entry %zd-%zd\n", i, i + atpa_slots_needed - 1);
             for (size_t j = 0; j < atpa_slots_needed; j++) {
                 alloc_table_ptr_array[i + j] = ATPA_HUGE_ALLOC;
             }
@@ -1193,19 +1158,13 @@ StStatus StPmm_AllocateContiguousFrame(
         break;
     }
 
-    LOG_TRACE(
-        "table search start: %zu, negative jump amount: %zu\n",
-        table_search_start,
-        table_align_jump
-    );
-
     // 2. 5 <= order < 14 is a normal allocation. Use whole allocation table entries.
     if (order >= 5) {
         size_t table_entries_needed = (1ULL << (order - 5));
 
         for (ssize_t i = atpa_search_start; i >= 0; i -= atpa_align_jump) {
             if (alloc_table_ptr_array[i] == ATPA_FREE) {
-                LOG_TRACE("found (table: %zd, entry: %zd)\n", i, table_search_start);
+                LOG_TRACE("found (%zd.%zd.-)\n", i, table_search_start);
 
                 status = get_or_create_table(i, &table);
                 if (!CHECK_SUCCESS(status)) return status;
@@ -1222,11 +1181,6 @@ StStatus StPmm_AllocateContiguousFrame(
                 status = create_metadata(allocated_pfn, NULL, order);
                 if (!CHECK_SUCCESS(status)) return status;
 
-                LOG_TRACE(
-                    "filling allocation table entry %zd-%zd\n",
-                    table_search_start,
-                    table_search_start + table_entries_needed - 1
-                );
                 *pfn = allocated_pfn;
                 free_frames -= (1ULL << order);
                 return STATUS_SUCCESS;
@@ -1256,7 +1210,7 @@ StStatus StPmm_AllocateContiguousFrame(
 
                 if (!allocatable) continue;
                 allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES + j * ALLOCENT_COVERAGE_PAGES;
-                LOG_TRACE("found (table: %zd, entry: %zd)\n", i, j);
+                LOG_TRACE("found (%zd.%zd.-)\n", i, j);
 
                 // mark entire entry as allocated
                 for (size_t k = 0; k < table_entries_needed; k++) {
@@ -1267,11 +1221,6 @@ StStatus StPmm_AllocateContiguousFrame(
                 status = create_metadata(allocated_pfn, NULL, order);
                 if (!CHECK_SUCCESS(status)) return status;
 
-                LOG_TRACE(
-                    "filling allocation table entry %zd-%zd\n",
-                    j,
-                    j + table_entries_needed - 1
-                );
                 *pfn = allocated_pfn;
                 free_frames -= (1ULL << order);
                 return STATUS_SUCCESS;
@@ -1296,7 +1245,7 @@ StStatus StPmm_AllocateContiguousFrame(
                 St_Panic(STATUS_UNEXPECTED_RESULT, "how did you do that?");
             }
 
-            LOG_TRACE("found (table: %zd, entry: %zd, index: %d)\n", i, table_search_start, index);
+            LOG_TRACE("found (%zd.%zd.%d)\n", i, table_search_start, index);
 
             allocate_from_bitmap_entry(&table->entries[table_search_start].bitmap, index, order);
 
@@ -1358,12 +1307,7 @@ StStatus StPmm_AllocateContiguousFrame(
 
                 if (index < 0) continue;
 
-                LOG_TRACE("found (table: %zd, entry: %zd, index: %d) (extended)\n", i, j, index);
-                LOG_TRACE(
-                    "filling extended entry slot %d-%zd\n",
-                    index,
-                    index + extentry_slots_needed - 1
-                );
+                LOG_TRACE("found (%zd.%zd.%d) (extended)\n", i, j, index);
 
                 for (size_t k = 0; k < extentry_slots_needed; k++) {
                     extentry->state_flags[index + k] = EE_USED;
@@ -1373,8 +1317,7 @@ StStatus StPmm_AllocateContiguousFrame(
                     find_free_frame_idx_bitmap_entry(table->entries[j].bitmap, order, align_order);
                 if (index < 0) continue;
 
-                LOG_TRACE("found (table: %zd, entry: %zd, index: %d) (bitmap)\n", i, j, index);
-                LOG_TRACE("filling bitmap %d-%d\n", index, index + (1 << order) - 1);
+                LOG_TRACE("found (%zd.%zd.%d) (bitmap)\n", i, j, index);
 
                 allocate_from_bitmap_entry(&table->entries[j].bitmap, index, order);
             }

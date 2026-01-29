@@ -19,6 +19,7 @@ StStatus StMmuP_SwitchAddressSpace(struct StMmuP_AddressSpace *asp __in);
 
 StStatus StMmuP_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional);
 StStatus StMmuP_MapMemory(St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in);
+StStatus StMmuP_RemapMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in);
 void StMmuP_UnmapMemory(St_VirtPage vpn __in);
 
 #endif  // __STRATA_PLAT_MMU_H__

@@ -240,6 +240,8 @@ __attribute__((noreturn)) void main(void)
     struct StThread *main_thread;
     struct StThread *thread1;
 
+    LOG_INFO("starting main...\n");
+
     enthdr = (void *)((uintptr_t)_pc_bootinfo_table + _pc_bootinfo_table->header_size);
     for (int i = 0; i < _pc_bootinfo_table->entry_count; i++) {
         switch (enthdr->type) {
@@ -288,7 +290,7 @@ __attribute__((noreturn)) void main(void)
         St_Panic(STATUS_INVALID_VALUE, "no framebuffer or not in text mode");
     }
 
-    status = StMm_MapContiguous(
+    status = StMm_Map(
         VMM_DOMAIN_IO,
         &earlyfb_vpn,
         ADDR_TO_PAGE(fbent->framebuffer_addr),
@@ -309,36 +311,38 @@ __attribute__((noreturn)) void main(void)
     void *fb = pstate.framebuffer;
     memset(fb, 0, (size_t)fbent->pitch * fbent->height);
 
-    LOG_DEBUG("reinitializing early logger...\n");
+    LOG_INFO("reinitializing early logger...\n");
     StLog_EarlyInit(early_print_char, &pstate);
+
+    LOG_INFO("### bootinfo table start ###\n");
 
     /* print entries */
     if (caent) {
-        LOG_DEBUG("command args entry:\n");
+        LOG_INFO("command args entry:\n");
         for (uint32_t j = 0; j < caent->arg_count; j++) {
-            LOG_DEBUG("\t%s\n", &_pc_bootinfo_table->strtab[caent->arg_offsets[j]]);
+            LOG_INFO("\t%s\n", &_pc_bootinfo_table->strtab[caent->arg_offsets[j]]);
         }
     }
 
     if (lient) {
-        LOG_DEBUG("loader info entry:\n");
-        LOG_DEBUG("\tname: %s\n", &_pc_bootinfo_table->strtab[lient->name_offset]);
-        LOG_DEBUG("\tversion: %s\n", &_pc_bootinfo_table->strtab[lient->version_offset]);
-        LOG_DEBUG("\tauthor: %s\n", &_pc_bootinfo_table->strtab[lient->author_offset]);
+        LOG_INFO("loader info entry:\n");
+        LOG_INFO("\tname: %s\n", &_pc_bootinfo_table->strtab[lient->name_offset]);
+        LOG_INFO("\tversion: %s\n", &_pc_bootinfo_table->strtab[lient->version_offset]);
+        LOG_INFO("\tauthor: %s\n", &_pc_bootinfo_table->strtab[lient->author_offset]);
 
         if (lient->additional_entry_count > 0) {
-            LOG_DEBUG("\tadditional entries:\n");
+            LOG_INFO("\tadditional entries:\n");
         }
         for (uint32_t j = 0; j < lient->additional_entry_count; j++) {
-            LOG_DEBUG("\t\t%s\n", &_pc_bootinfo_table->strtab[lient->additional_entries[j]]);
+            LOG_INFO("\t\t%s\n", &_pc_bootinfo_table->strtab[lient->additional_entries[j]]);
         }
     }
 
     if (mment) {
-        LOG_DEBUG("memory map entry:\n");
-        LOG_DEBUG("\tbase             size             type\n");
+        LOG_INFO("memory map entry:\n");
+        LOG_INFO("\tbase             size             type\n");
         for (uint32_t j = 0; j < mment->entry_count; j++) {
-            LOG_DEBUG(
+            LOG_INFO(
                 "\t%016" PRIX64 " %016" PRIX64 " %08" PRIX32 "\n",
                 mment->entries[j].base,
                 mment->entries[j].size,
@@ -348,11 +352,11 @@ __attribute__((noreturn)) void main(void)
     }
 
     if (sdent) {
-        LOG_DEBUG("system disk entry:\n");
-        LOG_DEBUG("\tident_crc32: %08" PRIX32 "\n", sdent->ident_crc32);
-        LOG_DEBUG("\tlba              crc32\n");
+        LOG_INFO("system disk entry:\n");
+        LOG_INFO("\tident_crc32: %08" PRIX32 "\n", sdent->ident_crc32);
+        LOG_INFO("\tlba              crc32\n");
         for (uint32_t j = 0; j < sdent->entry_count; j++) {
-            LOG_DEBUG(
+            LOG_INFO(
                 "\t%016" PRIX64 " %08" PRIX32 "\n",
                 sdent->entries[j].lba,
                 sdent->entries[j].crc32
@@ -361,27 +365,27 @@ __attribute__((noreturn)) void main(void)
     }
 
     if (arent) {
-        LOG_DEBUG("acpi rsdp entry:\n");
-        LOG_DEBUG("\toemid: %.6s\n", arent->oemid);
-        LOG_DEBUG("\trevision: %02X\n", arent->revision);
-        LOG_DEBUG("\tsize: %08" PRIX32 "\n", arent->size);
-        LOG_DEBUG("\trsdt: %08" PRIX32 "\n", arent->rsdt_addr);
-        LOG_DEBUG("\txsdt: %016" PRIX64 "\n", arent->xsdt_addr);
+        LOG_INFO("acpi rsdp entry:\n");
+        LOG_INFO("\toemid: %.6s\n", arent->oemid);
+        LOG_INFO("\trevision: %02X\n", arent->revision);
+        LOG_INFO("\tsize: %08" PRIX32 "\n", arent->size);
+        LOG_INFO("\trsdt: %08" PRIX32 "\n", arent->rsdt_addr);
+        LOG_INFO("\txsdt: %016" PRIX64 "\n", arent->xsdt_addr);
     }
 
     if (dfent) {
-        LOG_DEBUG("default font entry:\n");
+        LOG_INFO("default font entry:\n");
     }
 
     if (bgent) {
-        LOG_DEBUG("boot graphics entry:\n");
+        LOG_INFO("boot graphics entry:\n");
     }
 
     if (ufent) {
-        LOG_DEBUG("unavailable frames entry:\n");
-        LOG_DEBUG("\tpfn           count     type\n");
+        LOG_INFO("unavailable frames entry:\n");
+        LOG_INFO("\tpfn           count     type\n");
         for (uint32_t j = 0; j < ufent->entry_count; j++) {
-            LOG_DEBUG(
+            LOG_INFO(
                 "\t%013" PRIX64 " %09" PRId32 " %01X\n",
                 ufent->entries[j].pfn_base,
                 ufent->entries[j].count,
@@ -391,13 +395,13 @@ __attribute__((noreturn)) void main(void)
     }
 
     if (pvent) {
-        LOG_DEBUG("pagetable vpn entry:\n");
-        LOG_DEBUG("\t%013" PRIX64 "\n", pvent->vpn);
+        LOG_INFO("pagetable vpn entry:\n");
+        LOG_INFO("\t%013" PRIX64 "\n", pvent->vpn);
     }
 
     if (rdent) {
-        LOG_DEBUG("boot ramdisk:\n");
-        LOG_DEBUG(
+        LOG_INFO("boot ramdisk:\n");
+        LOG_INFO(
             "\tversion=%u size=%08" PRIX32 " addr=%016" PRIX64 "\n",
             rdent->version,
             rdent->size,
@@ -405,15 +409,14 @@ __attribute__((noreturn)) void main(void)
         );
     }
 
-    LOG_DEBUG("starting main...\n");
+    LOG_INFO("### bootinfo table end ###\n");
 
     StPmm_GetTotalFrameCount(&total_frames);
     StPmm_GetFreeFrameCount(&free_frames);
 
-    LOG_DEBUG("Free frames: %zu\n", free_frames);
-    LOG_DEBUG("Total frames: %zu\n", total_frames);
+    LOG_INFO("free memory frames: %zu, total memory frames: %zu\n", free_frames, total_frames);
 
-    LOG_DEBUG("initializing multitasking...\n");
+    LOG_INFO("initializing multitasking...\n");
     status = StThread_Init(&main_thread);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize multitasking");

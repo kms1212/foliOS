@@ -10,13 +10,7 @@
 
 #include <strata/process.h>
 
-#ifdef NDEBUG
-static int log_level = LL_NONE;
-
-#else
-static int log_level = LL_DEBUG;
-
-#endif
+static int log_level = LL_DEFAULT;
 
 static int (*log_print_func)(void *, char);
 static void *log_print_state;
@@ -30,7 +24,7 @@ void StLog_EarlyInit(int (*print_func)(void *, char), void *print_state)
 void StLog_SetLevel(int level)
 {
     if (level < -1) level = -1;
-    if (level > 4) level = 4;
+    if (level > LL_MAX) level = LL_MAX;
 
     log_level = level;
 }
@@ -101,7 +95,7 @@ static void print_log_header(int level, const char *module_name)
         );
     }
 
-    cprintf(log_print_func, log_print_state, "%3s @%-8s # ", ll_str[level], module_name);
+    cprintf(log_print_func, log_print_state, "%3s %-9s # ", ll_str[level], module_name);
 }
 
 void StLog_PrintValist(int level, const char *module_name, const char *fmt, va_list args)

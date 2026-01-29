@@ -450,7 +450,6 @@ __externally_visible void *_pc_isr_common(
                 struct StThread *thread;
 
                 StScheduler_GetCurrentThread(&thread);
-                ILOG_INFO("thread ID: %d\n", (int)thread->id);
                 St_Panic(
                     STATUS_UNKNOWN_ERROR,
                     "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016" PRIX64,
