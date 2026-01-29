@@ -414,7 +414,7 @@ __attribute__((noreturn)) void main(void)
     StPmm_GetTotalFrameCount(&total_frames);
     StPmm_GetFreeFrameCount(&free_frames);
 
-    LOG_INFO("free memory frames: %zu, total memory frames: %zu\n", free_frames, total_frames);
+    LOG_INFO("free/total frames: %zu/%zu\n", free_frames, total_frames);
 
     LOG_INFO("initializing multitasking...\n");
     status = StThread_Init(&main_thread);

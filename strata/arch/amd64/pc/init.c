@@ -169,6 +169,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 {
     StStatus status;
     struct bootinfo_entry_header *enthdr = NULL;
+    struct bootinfo_entry_command_args *caent = NULL;
     struct bootinfo_entry_memory_map *mment = NULL;
     struct bootinfo_entry_unavailable_frames *ufent = NULL;
     struct bootinfo_entry_pagetable_vpn *pvent = NULL;
@@ -178,18 +179,12 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     LOG_INFO("Starting Strata...\n");
 
-    LOG_DEBUG("checking CPU features...\n");
-    status = StA_CheckCpuFeatures();
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to check CPU features");
-    }
-
-    LOG_INFO("starting uptime counter...\n");
-    StTimeP_StartUptime();
-
     enthdr = (void *)((uintptr_t)btblhdr + btblhdr->header_size);
     for (int i = 0; i < btblhdr->entry_count; i++) {
         switch (enthdr->type) {
+        case BET_COMMAND_ARGS:
+            caent = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
         case BET_MEMORY_MAP:
             mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
             break;
@@ -209,6 +204,26 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     if (!mment || !ufent || !pvent) {
         St_Panic(STATUS_ENTRY_NOT_FOUND, "required entry not found");
     }
+
+#ifndef NDEBUG
+    if (caent) {
+        for (uint32_t i = 0; i < caent->arg_count; i++) {
+            if (strcmp(&btblhdr->strtab[caent->arg_offsets[i]], "-v") == 0) {
+                StLog_SetLevel(LL_DEBUG);
+            }
+        }
+    }
+
+#endif
+
+    LOG_DEBUG("checking CPU features...\n");
+    status = StA_CheckCpuFeatures();
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to check CPU features");
+    }
+
+    LOG_INFO("starting uptime counter...\n");
+    StTimeP_StartUptime();
 
     LOG_INFO("initializing GDT...\n");
     StP_InitGdt();
