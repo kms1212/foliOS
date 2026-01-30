@@ -78,10 +78,10 @@ DECLARE_ISRx(f);
 
 static struct StA_IdtEntry _pc_idt[256] __aligned(PAGE_SIZE);
 static struct StInt_Handler *_pc_isr_table[256];
+static struct StA_Idtr idtr;
 
 StStatus StIntP_Init(void)
 {
-    struct StA_Idtr idtr;
 
     idtr.size = sizeof(_pc_idt) - 1;
     idtr.idt_ptr = (uint64_t)&_pc_idt;
@@ -422,7 +422,7 @@ uint64_t StIntP_GetIrqCount(void)
     return StCpuLocalP_GetData()->irq_count;
 }
 
-__externally_visible void *_pc_isr_common(
+__optimize("O0") __externally_visible void *_pc_isr_common(
     struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, int num
 )
 {

@@ -20,5 +20,5 @@ char *strndup(const char *str, size_t size)
 
 char *strdup(const char *str)
 {
-    return strndup(str, SIZE_MAX);
+    return strndup(str, SIZE_MAX / 2 - 1);
 }

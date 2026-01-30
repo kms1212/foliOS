@@ -98,7 +98,7 @@ void StThreadP_FreeKThreadStack(struct StThread *th __in)
     StMm_Free(th->kmode_stack_base_vpn, th->kmode_stack_page_count);
 }
 
-StStatus StThreadP_Switch(
+__optimize("O0") StStatus StThreadP_Switch(
     struct StThread *next __in, struct StIntP_Context *ctx __in, void **next_stack_ptr __out
 )
 {
@@ -135,32 +135,18 @@ StStatus StThreadP_Switch(
     return STATUS_SUCCESS;
 }
 
-/*
-void StThreadP_Yield(void)
-{
-    __asm__ volatile (
-        "pushfq\n\t"
-        "cli\n\t"
-        "sub $8, %%rsp\n\t"
-        "int $0x20\n\t"
-        "add $8, %%rsp\n\t"
-        "popfq\n\t"
-        : : : "memory"
-    );
-}
-    */
-
-__externally_visible void *_StThreadP_DoYield(struct StIntP_Context *ctx __in)
+__attribute__((noinline)) __optimize("O0")
+    __externally_visible void *_StThreadP_DoYield(struct StIntP_Context *ctx __in)
 {
     StStatus status;
     struct StThread *next_thread;
-    void *next_stack_ptr;
+    void *volatile next_stack_ptr;
 
     if (StThread_IsPreemptionEnabled()) {
         status = StScheduler_GetNextThread(&next_thread);
         if (!CHECK_SUCCESS(status) || !next_thread) return NULL;
 
-        status = StThreadP_Switch(next_thread, ctx, &next_stack_ptr);
+        status = StThreadP_Switch(next_thread, ctx, (void **)&next_stack_ptr);
         if (!CHECK_SUCCESS(status)) return NULL;
 
         return next_stack_ptr;

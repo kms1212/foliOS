@@ -100,7 +100,7 @@ static status_t relocate_section(
         P = load_vaddr + rel_section[i].offset;
         A = *(uint32_t *)P;
 
-        if (rel_type != R_386_RELATIVE && rel_type != R_386_32) {
+        if (rel_type != R_386_RELATIVE) {
             status = elf_get_symbol(elf, rel_sym_idx, &sym, sizeof(sym));
             if (!CHECK_SUCCESS(status)) goto has_error;
 

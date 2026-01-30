@@ -1088,7 +1088,7 @@ static int guishell_handler(struct shell_instance *inst, int argc, char **argv)
 {
     status_t status;
     uint16_t key, flags;
-    int mouse_xpos, mouse_ypos, should_exit;
+    int mouse_xpos = 0, mouse_ypos = 0, should_exit;
 
     status = device_find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {

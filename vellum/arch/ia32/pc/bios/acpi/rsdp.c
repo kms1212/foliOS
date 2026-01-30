@@ -18,7 +18,13 @@ uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address)
         return UACPI_STATUS_OK;
     }
 
-    rsdp_base_seg = *(uint16_t *)0x40E;
+    uint16_t *rsdp_base_seg_ptr = (uint16_t *)0x40E;
+
+    // a workaround to make the compiler shut up in release build
+    __asm__ volatile("" : "+g"(rsdp_base_seg_ptr));
+
+    rsdp_base_seg = *rsdp_base_seg_ptr;
+
     if (!rsdp_base_seg) goto skip_ebda;
     ebda_ptr = (const void *)(rsdp_base_seg << 4);
     ebda_size = (size_t)*(const uint16_t *)ebda_ptr * 1024;

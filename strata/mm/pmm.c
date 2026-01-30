@@ -856,7 +856,7 @@ StStatus StPmm_MarkUsableContiguousFrame(St_PhysFrame base __in, St_PhysFrame li
     if (remarking_unavailable) return STATUS_CONFLICTING_STATE;
 
     // mark tables as free (64 MiB granularity)
-    while (base <= limit) {
+    while (base <= limit && base < ATPA_COVERAGE_PAGES) {
         table_idx = base / ALLOC_TABLE_COVERAGE_PAGES;
 
         // If we can mark entire table to free, do so.
@@ -917,7 +917,7 @@ StStatus StPmm_MarkUnusableContiguousFrame(St_PhysFrame base __in, St_PhysFrame 
     if (remarking_unavailable) return STATUS_CONFLICTING_STATE;
 
     // mark tables as unusable (64 MiB granularity)
-    while (base <= limit) {
+    while (base <= limit && base < ATPA_COVERAGE_PAGES) {
         table_idx = base / ALLOC_TABLE_COVERAGE_PAGES;
 
         // If we can mark entire table to unusable, do so.

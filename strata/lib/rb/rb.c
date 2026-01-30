@@ -9,6 +9,8 @@
 
 #include <strata/status.h>
 
+#pragma GCC optimize("no-store-merging")
+
 #define RB_ROOT(rbt)    (&(rbt)->root)
 #define RB_NIL(rbt)     (&(rbt)->nil)
 #define RB_FIRST(rbt)   ((rbt)->root.left)

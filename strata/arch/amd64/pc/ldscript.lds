@@ -19,15 +19,15 @@ SECTIONS
 
     .text.startup :
     {
-        PROVIDE_HIDDEN(_text_start_up_start = .);
+        PROVIDE_HIDDEN(_text_startup_start = .);
         KEEP(*(.text.startup .text.startup.*))
-        PROVIDE_HIDDEN(_text_start_up_end = .);
+        PROVIDE_HIDDEN(_text_startup_end = .);
     }
 
     /* kernel area */
     . = 0xFFFFFFFF80000000 + ADDR(.text.startup) + SIZEOF(.text.startup) - ADDR(.trampoline);
 
-    .text : AT(LOADADDR(.text.startup) + SIZEOF(.text.startup) + 1)
+    .text : AT(ADDR(.text) - ADDR(.trampoline))
     {
         PROVIDE_HIDDEN(_text_start_ = .);
         KEEP(*(.text .text.*))

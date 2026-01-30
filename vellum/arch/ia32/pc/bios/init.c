@@ -252,7 +252,12 @@ static status_t init_nonpnp_devices(int has_acpi)
 
     if (!skip_legacy) {
         for (int i = 0; i < 4; i++) {
-            uint16_t io_base = ((uint16_t *)0x400)[i];
+            uint16_t *io_base_list = (uint16_t *)0x400;
+
+            // a workaround to make the compiler shut up in release build
+            __asm__ volatile("" : "+g"(io_base_list));
+
+            uint16_t io_base = io_base_list[i];
             uint8_t irq_num = (i & 1) ? 0x23 : 0x24;
 
             if (!io_base) continue;
@@ -283,7 +288,12 @@ static status_t init_nonpnp_devices(int has_acpi)
         }
 
         for (int i = 0; i < 3; i++) {
-            uint16_t io_base = ((uint16_t *)0x408)[i];
+            uint16_t *io_base_list = (uint16_t *)0x408;
+
+            // a workaround to make the compiler shut up in release build
+            __asm__ volatile("" : "+g"(io_base_list));
+
+            uint16_t io_base = io_base_list[i];
             uint8_t irq_num = 0x27 - i;
 
             if (!io_base) continue;

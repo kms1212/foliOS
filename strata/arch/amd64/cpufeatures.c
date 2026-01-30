@@ -346,7 +346,7 @@ StStatus StA_ActivateCommonCpuFeatures(void)
     uint64_t cr4 = StA_ReadCr4();
 
     if (cpu_features.has_fpu) {
-        cr0 |= 0x0000000000010022;  /* turn on MP, EM, NE, WP */
+        cr0 |= 0x0000000000010022;  /* turn on MP, NE, WP */
         cr0 &= ~0x0000000000000004; /* turn off EM */
     }
 

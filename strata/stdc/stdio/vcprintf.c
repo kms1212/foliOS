@@ -634,25 +634,6 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
     return char_cnt;
 }
 
-static int print_float(int (*func)(void *, char), void *farg, struct fmt_spec spec, va_list *args)
-{
-    // we do not print float
-    if (spec.type == DOUBLE) {
-        va_arg(*args, double);
-    } else if (spec.type == LONG_DOUBLE) {
-        va_arg(*args, long double);
-    }
-
-    if (spec.width == WIDTH_ARG) {
-        va_arg(*args, int);
-    }
-
-    if (spec.precision == PREC_ARG) {
-        va_arg(*args, int);
-    }
-    return 0;
-}
-
 int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list args)
 {
     int write_count = 0;
@@ -711,8 +692,6 @@ int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list arg
             break;
         case DOUBLE:
         case LONG_DOUBLE:
-            fmt_write_len = print_float(func, farg, spec, &newargs);
-            break;
         default:  // invalid / unrecognized format specifier
             break;
         }

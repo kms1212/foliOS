@@ -219,7 +219,7 @@ static void setup_process(void)
     StThread_Detach(process->main_thread);
 }
 
-__attribute__((noreturn)) void main(void)
+__section(".text") __noreturn void main(void)
 {
     StStatus status;
     struct bootinfo_entry_header *enthdr = NULL;
@@ -312,7 +312,7 @@ __attribute__((noreturn)) void main(void)
     memset(fb, 0, (size_t)fbent->pitch * fbent->height);
 
     LOG_INFO("reinitializing early logger...\n");
-    StLog_EarlyInit(early_print_char, &pstate);
+    // StLog_EarlyInit(early_print_char, &pstate);
 
     LOG_INFO("### bootinfo table start ###\n");
 

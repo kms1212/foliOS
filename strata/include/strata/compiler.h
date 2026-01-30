@@ -18,6 +18,8 @@
 #define __constructor             __attribute__((constructor))
 #define __destructor              __attribute__((destructor))
 #define __section(s)              __attribute__((section(#s)))
+#define __optimize(s)             __attribute__((optimize(s)))
+#define __target(s)               __attribute__((target(s)))
 
 #ifndef __weak
 #    define __weak __attribute__((weak))
