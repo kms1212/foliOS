@@ -40,7 +40,7 @@ target_compile_options(strata PUBLIC
 target_link_libraries(strata gcc)
 
 target_include_directories(strata PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(strata PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(strata SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(strata PRIVATE "${CMAKE_BINARY_DIR}")
 target_include_directories(strata PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 

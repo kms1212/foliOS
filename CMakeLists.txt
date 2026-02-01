@@ -34,20 +34,18 @@ unset(TARGET_TEMP)
 
 if ("${TARGET_ARCH}" STREQUAL "amd64")
     set(VELLUM_TARGET_ARCH ia32)
-
-    if (ENABLE_CLANG_TIDY)
-        set(VELLUM_C_CLANG_TIDY "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;--extra-arg=--target=i686-elf")
-    endif()
 else()
     set(VELLUM_TARGET_ARCH "${TARGET_ARCH}")
-
-    if (ENABLE_CLANG_TIDY)
-        set(VELLUM_C_CLANG_TIDY "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;--extra-arg=--target=${VELLUM_TARGET_ARCH}-elf")
-    endif()
 endif()
 
 if (ENABLE_CLANG_TIDY)
-    set(STRATA_C_CLANG_TIDY "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;--extra-arg=--target=${TARGET_ARCH}-elf")
+    if ("${TARGET_ARCH}" STREQUAL "amd64")
+        set(VELLUM_C_CLANG_TIDY "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;--extra-arg=--target=i686-elf")
+    else()
+        set(VELLUM_C_CLANG_TIDY "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;--extra-arg=--target=${VELLUM_TARGET_ARCH}-elf")
+    endif()
+
+    set(STRATA_C_CLANG_TIDY "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;--extra-arg=--target=${TARGET_ARCH}-elf;--extra-arg=-Wno-gnu-include-next")
 endif()
 
 # vellum (bootloader)

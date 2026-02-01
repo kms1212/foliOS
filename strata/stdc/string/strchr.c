@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#undef strchr
-
 char *strchr(const char *str, int ch)
 {
     while (*str) {

@@ -10,6 +10,7 @@ target_compile_options(strata PUBLIC
         -mcmodel=kernel
         -mno-sse -mno-sse2 -mno-mmx -mno-80387 -mno-avx
         -mgeneral-regs-only
+        -fno-builtin
     >
 )
 target_link_options(strata PUBLIC -mcmodel=kernel)

@@ -1,19 +1,19 @@
 # foliOS: Next-Generation OS Built on Strata
 
-**foliOS** is a high-performance, secure operating system built on **Strata**, a kernel that implements the **Endokernel** architecture. By internalizing modern hardware primitives (MPK, PCID, FRED), it bridges the gap between the isolation of Microkernels and the raw performance of monolithic kernels, creating a hybrid environment for the next generation of computing.
+**foliOS** is a high-performance, secure operating system built on **Strata**, a kernel that implements the **Ambikernel** architecture. By internalizing modern hardware primitives (MPK, PCID, FRED), it bridges the gap between the isolation of Microkernels and the raw performance of monolithic kernels, creating a hybrid environment for the next generation of computing.
 
 ## tl;dr
 
-foliOS is an experimental operating system that explores an **Endokernel** architecture: a unified address space combined with hardware-enforced isolation using MPK and PCID.
+foliOS is an experimental operating system that explores an **Ambikernel** architecture: a unified address space combined with hardware-enforced isolation using MPK and PCID.
 One focus is moving selected driver and service logic into MPK-protected modules running in Ring 3 to evaluate whether kernel transition overhead can be reduced without giving up fault containment.
 The system is intentionally designed as a research platform, making explicit performance–security trade-offs and relying on modern x86 hardware features.
 It does not claim to provide universal safety or general-purpose robustness.
 
-## 🧠 What is the Endokernel?
+## 🧠 What is the Ambikernel?
 
-Traditional architectures either place most functionality in a single privilege layer(**monolithic**), or push functionality to external servers(**Microkernel**). The **Endokernel** philosophy, as realized in **Strata**, takes a third path: it brings hardware-assisted primitives *into* the kernel's core to create a hardware-enforced "stratum" where modules execute with reduced overhead.
+Traditional architectures either place most functionality in a single privilege layer(**monolithic**), or push functionality to external servers(**Microkernel**). The **Ambikernel** philosophy, as realized in **Strata**, takes a third path: it brings hardware-assisted primitives *into* the kernel's core to create a hardware-enforced "stratum" where modules execute with reduced overhead.
 
-Unlike an **Exokernel** that merely exports hardware to user space, an **Endokernel** internalizes hardware features to enforce a **Unified Address Space**. In **Strata**, protection is not achieved by simple address space separation, but by hardware-level permission domains. This allows for:
+Unlike an **Exokernel** that merely exports hardware to user space, an **Ambikernel** internalizes hardware features to enforce a **Unified Address Space**. In **Strata**, protection is not achieved by simple address space separation, but by hardware-level permission domains. This allows for:
 
 * **Copy-free Data Access:** Seamless data sharing between domains (User ↔ Module ↔ Kernel) without the need for heavy IPC or context switching.
 * **Hardware-Accelerated Isolation:** Leveraging **Intel MPK** to partition a single address space into multiple secure privilege domains.
@@ -120,59 +120,6 @@ foliOS abandons the cluttered `/bin` and `/lib` hierarchy in favor of a strictly
 * **Atomic Updates:** Applications and their dependencies are managed as atomic units.
 * **ABI Projection:** The OS "projects" the required ABI version into the process's view at load-time, allowing multiple versions of the same library to coexist without conflict.
 
-## ❓ FAQ: Architecture & Design Decisions
-
-### Q: Does the Unified Address Space model make the system vulnerable to malicious modules?
-
-**A:** **foliOS operates on a "Trusted but Fallible" security model.**
-We assume that modules are supplied by trusted vendors (cryptographically signed) but may contain bugs. The security architecture is designed to contain **faults** (accidental crashes, memory corruption), not to defend against a trusted developer intentionally embedding malware.
-
-* **Static Verification:** The loader enforces a strict allowlist. Binaries containing privilege-altering instructions (e.g., `WRPKRU`, `SYSCALL`) are rejected at load-time.
-* **W^X Enforcement:** Module code is immutable. This prevents JIT-based attacks or runtime code modification.
-
-### Q: Isn't the overhead of PCID/CR3 switching too high for desktop workloads (e.g., GUI, Gaming)?
-
-**A:** **Not significantly more than modern Monolithic kernels.**
-Since the advent of **KPTI (Kernel Page-Table Isolation)** to mitigate Meltdown, all major operating systems (Windows, Linux) already incur a CR3 switch cost when transitioning from User to Kernel mode.
-foliOS mitigates the impact of isolation through **Dependency-Based Sharding**:
-
-* **Colocation:** Highly interactive modules (e.g., `foligui`, `GPU Driver`, `Input Driver`) are grouped into a single **MPK Shard**.
-* **Cheap Transitions:** Interaction between these modules requires only an MPK key switch (`WRPKRU`, ~20 cycles), avoiding the expensive PCID/CR3 switch entirely. This preserves high-frequency interactivity required for desktop environments.
-
-### Q: How does the memory mapping work regarding User/Kernel separation?
-
-**A:** **foliOS employs a Dynamic Mapping Strategy.**
-
-* **In User Mode:** The Module and Kernel areas are strictly **unmapped** from the page tables. A user process cannot "see" or speculatively access module memory.
-* **In Kernel/Module Mode:** The full address space becomes visible. This allows modules to access user buffers directly (**Zero-Copy**) without complex mapping operations, while MPK prevents modules from accidentally corrupting each other.
-
-### Q: Why use MPK instead of traditional Virtual Memory (VM) isolation for drivers?
-
-**A:** **To solve the IPC bottleneck.**
-Traditional Microkernels suffer from performance degradation due to data copying and TLB flushing during IPC. By keeping drivers in a Unified Address Space protected by MPK:
-
-1. **Zero-Copy:** Data pointers are passed between protection domains, not data copies.
-2. **Fault Containment:** If a driver dereferences a bad pointer, it traps instantly via MPK violation, preventing it from corrupting the kernel core or other drivers.
-3. **Result:** We achieve the stability of a Microkernel with I/O throughput comparable to a monolithic kernel.
-
-### Q: Is foliOS susceptible to Spectre/Meltdown attacks?
-
-**A:** **Mitigations are architectural, not just patched-in.**
-
-* **Meltdown:** Fully mitigated by the strict unmapping of Kernel/Module areas while in User Mode.
-* **Spectre v2:** Mitigated via hardware **CET (Control-flow Enforcement Technology)** and **eIBRS**.
-* **Spectre v1:** Mitigated via selective **`GUARD` macros** (LFENCE) at trust boundaries. Since modules are trusted code, we rely on compiler-inserted barriers rather than inefficient global barriers.
-
-### Q: How does foliOS handle a driver crash compared to Linux?
-
-**A:** **It survives.**
-In a monolithic kernel (Linux), a null pointer dereference in a graphics driver often causes a Kernel Panic (BSOD). In foliOS:
-
-1. The CPU traps the MPK violation.
-2. The kernel core (Micro-Core) catches the exception.
-3. The kernel terminates only the specific **Shard** containing the faulty driver.
-4. The Shard is restarted transparently. The user may see a momentary screen flicker, but the system and other applications remain unaffected.
-
 ## 🛠 Build & Run
 
 ### Prerequisites
@@ -207,7 +154,7 @@ scripts/run.sh pc-amd64
 | `cmake` | Modular CMake build scripts and toolchain configurations. |
 | `config` | Target-specific presets (e.g., amd64-pc-bios, i686-pc-bios). |
 | `vellum` | The **Vellum Bootloader**: Performs generic bootloader functions. |
-| `strata` | The **Strata Endokernel**: Core PMM, VMM, and hardware-accelerated domain manager. |
+| `strata` | The **Strata Ambikernel**: Core PMM, VMM, and hardware-accelerated domain manager. |
 | `packages` | User-space and module-space software stack. |
 
 ### 📦 System Packages
@@ -229,11 +176,11 @@ scripts/run.sh pc-amd64
   * `libfoliutil`: OS-independent utility and data structure library.
 
 * **`stratasdk`**: The **Kernel RunTime** Development Kit.
-  * `libstratakrt`: Bootstrap code to locate and bind the KRT interface at startup.
-  * `libstratasys`: The standard system library linked by user apps, bridging calls to the KRT.
+  * `libstrata`: The standard system library linked by user apps, bridging calls to the KRT.
+  * `libsidl`: The Strata Interface Definition Language (SIDL) runtime library.
 
-* **`stratamodsdk`**: Specialized SDK for **Endokernel Modules**.
-  * `libstratamod`: Provides more privileged system calls for modules.
+* **`stratamodsdk`**: Specialized SDK for **Ambikernel Modules**.
+  * `libmod`: Provides more privileged system calls for modules.
 
 ## ⚖️ License
 

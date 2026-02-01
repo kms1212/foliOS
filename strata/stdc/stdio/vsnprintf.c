@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include <limits.h>
+
 struct cb_args {
     char *buf;
     size_t len;
@@ -26,4 +28,9 @@ int vsnprintf(char *buf, size_t len, const char *fmt, va_list args)
         .len = len,
     };
     return vcprintf(write_buffer, &cb_args, fmt, args);
+}
+
+int vsprintf(char *__restrict buf, const char *__restrict fmt, va_list args)
+{
+    return vsnprintf(buf, INT_MAX, fmt, args);
 }

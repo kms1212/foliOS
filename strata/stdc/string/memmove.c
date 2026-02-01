@@ -1,7 +1,5 @@
 #include <string.h>
 
-#undef memmove
-
 void *memmove(void *dest, const void *src, size_t len)
 {
     char *dest_c = dest;

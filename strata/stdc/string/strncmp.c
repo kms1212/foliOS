@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#undef strncmp
-
 int strncmp(const char *p1, const char *p2, size_t maxlen)
 {
     while (--maxlen) {
@@ -13,8 +11,6 @@ int strncmp(const char *p1, const char *p2, size_t maxlen)
     }
     return (*(unsigned char *)p1 - *(unsigned char *)p2);
 }
-
-#undef strcmp
 
 int strcmp(const char *p1, const char *p2)
 {

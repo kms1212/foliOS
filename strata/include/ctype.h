@@ -88,16 +88,4 @@ int toupper(int c);
 
 #endif
 
-#if __has_builtin(__builtin_islower)
-#    define __HAVE_BUILTIN_ISLOWER
-#    define islower(c) __builtin_islower(c)
-
-#endif
-
-#if __has_builtin(__builtin_isupper)
-#    define __HAVE_BUILTIN_ISUPPER
-#    define isupper(c) __builtin_isupper(c)
-
-#endif
-
 #endif  // __CTYPE_H__

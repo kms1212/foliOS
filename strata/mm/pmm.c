@@ -1395,7 +1395,7 @@ StStatus StPmm_LockAndGetAllocMetadata(
 {
     StStatus status;
     struct metadata *metadata;
-    uint32_t expected = 0;
+    uint_fast32_t expected = 0;
 
     status = get_metadata(pfn, &metadata);
     if (!CHECK_SUCCESS(status)) return status;
@@ -1420,7 +1420,7 @@ StStatus StPmm_UnlockAllocMetadata(struct StPmm_AllocationMetadata *meta __in)
 {
     struct metadata *metadata = (struct metadata *)meta;
 
-    uint32_t expected = 1;
+    uint_fast32_t expected = 1;
     atomic_compare_exchange_strong_explicit(
         &metadata->lock,
         &expected,

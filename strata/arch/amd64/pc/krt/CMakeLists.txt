@@ -17,7 +17,7 @@ set_target_properties(krt PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/l
 
 target_include_directories(krt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_include_directories(krt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
-target_include_directories(krt PRIVATE "${CMAKE_SOURCE_DIR}/include")
+target_include_directories(krt SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_include_directories(krt PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 
 add_custom_target(krt_cvt ALL

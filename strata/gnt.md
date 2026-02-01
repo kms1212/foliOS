@@ -1,16 +1,24 @@
 # GNT(Global Node Tree) (equivalent to VFS(Virtual File System) in other OS)
 
+to get current process: open "/System/Processes/Current"
+
 ```
 /
 ├── System/
 │   ├── Kernel/
 │   ├── Processes/
-│   │   ├── 0 -> ./0
+│   │   ├── Current -> ./0
 │   │   ├── 1 -> ./0/1
 │   │   └── 0/
-│   │       ├── Threads/
-│   │       │   └── 0 -> /System/Threads/0
-│   │       └── 1/
+│   │       ├── Io/
+│   │       │   ├── Stdin -> /System/Devices/Vtty0
+│   │       │   ├── Stdout -> /System/Devices/Vtty0
+│   │       │   └── Stderr -> /System/Devices/Vtty0
+│   │       ├── Memory/
+│   │       │   └── ...
+│   │       ├── Threads/
+│   │       │   └── 0 -> /System/Threads/0
+│   │       └── 1/
 │   │           ├── Executable -> /Packages/FooPackage/0.0.1/Foo
 │   │           └── Threads/
 │   │               ├── 0 -> /System/Threads/1
