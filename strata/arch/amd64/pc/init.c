@@ -222,11 +222,23 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to check CPU features");
     }
 
+    LOG_INFO("activating common CPU features...\n");
+    status = StA_ActivateCommonCpuFeatures();
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to activate common CPU features");
+    }
+
     LOG_INFO("starting uptime counter...\n");
     StTimeP_StartUptime();
 
     LOG_INFO("initializing GDT...\n");
     StP_InitGdt();
+
+    LOG_INFO("initializing CPU local data...\n");
+    status = StCpuLocalP_Init();
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to initialize CPU local data");
+    }
 
     LOG_INFO("initializing MMU...\n");
     status = StMmuP_Init();
@@ -375,18 +387,6 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     LOG_INFO("initializing PIT...\n");
     init_pit();
-
-    LOG_INFO("activating common CPU features...\n");
-    status = StA_ActivateCommonCpuFeatures();
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to activate common CPU features");
-    }
-
-    LOG_INFO("initializing CPU local data...\n");
-    status = StCpuLocalP_Init();
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to initialize CPU local data");
-    }
 
     LOG_INFO("initializing syscall handler...\n");
     status = StSyscallP_Init();

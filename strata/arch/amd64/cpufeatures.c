@@ -378,11 +378,19 @@ StStatus StA_ActivateCommonCpuFeatures(void)
     StA_WriteCr0(cr0);
     StA_WriteCr4(cr4);
 
-    if (cpu_features.has_msr && cpu_features.has_syscall) {
-        uint64_t efer = StA_ReadMsr(MSR_EFER);
-        efer |= EFER_SCE;
-        StA_WriteMsr(MSR_EFER, efer);
+    uint64_t efer = StA_ReadMsr(MSR_EFER);
+
+    /* no-execute bit */
+    if (cpu_features.has_nx) {
+        efer |= EFER_NXE;
     }
+
+    /* syscall */
+    if (cpu_features.has_msr && cpu_features.has_syscall) {
+        efer |= EFER_SCE;
+    }
+
+    StA_WriteMsr(MSR_EFER, efer);
 
     if (cpu_features.has_xsave && cpu_features.has_avx) {
         uint64_t xcr0 = StA_ReadXcr0();

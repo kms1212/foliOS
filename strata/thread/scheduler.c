@@ -13,12 +13,12 @@ StStatus StScheduler_AddThread(struct StThread *th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    if (!scheduler->queue_head) {
-        scheduler->queue_head = th;
-        scheduler->queue_tail = th;
+    if (!scheduler->runqueue_head) {
+        scheduler->runqueue_head = th;
+        scheduler->runqueue_tail = th;
     } else {
-        scheduler->queue_tail->next = th;
-        scheduler->queue_tail = th;
+        scheduler->runqueue_tail->next = th;
+        scheduler->runqueue_tail = th;
     }
     th->next = NULL;
 
@@ -35,18 +35,19 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
         return STATUS_THREAD_NOT_FINISHED;
     }
 
-    if (th == scheduler->queue_head) {
-        scheduler->queue_head = th->next;
-        if (!scheduler->queue_head) {
-            scheduler->queue_tail = NULL;
+    if (th == scheduler->runqueue_head) {
+        scheduler->runqueue_head = th->next;
+        if (!scheduler->runqueue_head) {
+            scheduler->runqueue_tail = NULL;
         }
     }
 
-    for (struct StThread *current = scheduler->queue_head; current->next; current = current->next) {
+    for (struct StThread *current = scheduler->runqueue_head; current->next;
+         current = current->next) {
         if (th == current->next) {
             current->next = th->next;
-            if (th == scheduler->queue_tail) {
-                scheduler->queue_tail = current;
+            if (th == scheduler->runqueue_tail) {
+                scheduler->runqueue_tail = current;
             }
             break;
         }
@@ -61,7 +62,7 @@ StStatus StScheduler_GetCurrentThread(struct StThread **current)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    if (current) *current = scheduler->current;
+    if (current) *current = scheduler->current_thread;
 
     return STATUS_SUCCESS;
 }
@@ -70,12 +71,12 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    struct StThread *next_thread = scheduler->current;
+    struct StThread *next_thread = scheduler->current_thread;
 
     do {
         next_thread = next_thread->next;
         if (!next_thread) {
-            next_thread = scheduler->queue_head;
+            next_thread = scheduler->runqueue_head;
         }
 
         switch (next_thread->status) {
@@ -96,7 +97,7 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
         if (next_thread->status == THREAD_STATE_RUNNING) {
             break;
         }
-    } while (next_thread != scheduler->current);
+    } while (next_thread != scheduler->current_thread);
 
     if (next) *next = next_thread;
 
@@ -107,7 +108,7 @@ StStatus StScheduler_SetCurrentThread(struct StThread *th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    scheduler->current = th;
+    scheduler->current_thread = th;
 
     return STATUS_SUCCESS;
 }
@@ -118,8 +119,8 @@ int StScheduler_CheckHasOtherRunnableThread(void)
 
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    for (struct StThread *current = scheduler->queue_head; current; current = current->next) {
-        if (current == scheduler->current) continue;
+    for (struct StThread *current = scheduler->runqueue_head; current; current = current->next) {
+        if (current == scheduler->current_thread) continue;
 
         if (current->status == THREAD_STATE_RUNNING || current->status == THREAD_STATE_PENDING) {
             result = 1;
@@ -136,12 +137,12 @@ StStatus StScheduler_Maintain(void)
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     struct StThread *current, *prev;
 
-    if (scheduler->current && scheduler->current->type != THREAD_TYPE_MAIN) {
+    if (scheduler->current_thread && scheduler->current_thread->type != THREAD_TYPE_MAIN) {
         /* only the main thread can call this function */
         return STATUS_INVALID_THREAD;
     }
 
-    for (current = scheduler->queue_head; current; current = current->next) {
+    for (current = scheduler->runqueue_head; current; current = current->next) {
         if (current->status != THREAD_STATE_WAITING) continue;
         if (!current->wait_list) continue;
 
@@ -164,7 +165,7 @@ StStatus StScheduler_Maintain(void)
     }
 
     prev = NULL;
-    current = scheduler->queue_head;
+    current = scheduler->runqueue_head;
     while (current) {
         struct StThread *thread_to_remove;
 
@@ -178,11 +179,11 @@ StStatus StScheduler_Maintain(void)
 
         if (prev) {
             prev->next = current->next;
-            if (thread_to_remove == scheduler->queue_tail) {
-                scheduler->queue_tail = prev;
+            if (thread_to_remove == scheduler->runqueue_tail) {
+                scheduler->runqueue_tail = prev;
             }
         } else {
-            scheduler->queue_head = current->next;
+            scheduler->runqueue_head = current->next;
         }
 
         current = current->next;

@@ -4,10 +4,10 @@
 #include <strata/thread.h>
 
 struct StScheduler_Data {
-    struct StThread *volatile queue_head;
-    struct StThread *volatile queue_tail;
+    struct StThread *volatile runqueue_head;
+    struct StThread *volatile runqueue_tail;
 
-    struct StThread *volatile current;
+    struct StThread *volatile current_thread;
 
     uint64_t context_switch_count;
 };

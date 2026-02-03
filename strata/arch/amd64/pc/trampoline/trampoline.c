@@ -6,6 +6,7 @@
 #include <strata/arch/mmu.h>
 
 #include <strata/compiler.h>
+#include <strata/macros.h>
 #include <strata/panic.h>
 #include <strata/status.h>
 #include <strata/types.h>
@@ -16,6 +17,7 @@ static union StA_PageDirPtrTableEntry st_kernel_pdpt[512] __aligned(4096);
 static union StA_PaePageDirectoryEntry st_low_pd[512] __aligned(4096);
 static union StA_PaePageDirectoryEntry st_kernel_pd[512] __aligned(4096);
 static union StA_PaePageTableEntry st_kernel_pt[16][512] __aligned(4096);
+static union StA_PageDirPtrTableEntry st_direct_mapping_pdpt[16][512] __aligned(4096);
 
 #define VIRT_PAGE_MAX           0x000FFFFFUL
 #define VIRT_PAGE_PD_MASK       0x000FFC00UL
@@ -87,11 +89,6 @@ void setup_trampoline_page_tables(void)
     st_pml4[0].r_w = 1;
     st_pml4[0].base = (uint64_t)low_pdpt_pfn;
 
-    /* pml4[510]: 0xFFFFFF00_00000000-0xFFFFFFFF_7FFFFFFF (recursive mapping) */
-    st_pml4[510].p = 1;
-    st_pml4[510].r_w = 1;
-    st_pml4[510].base = (uint64_t)pml4_pfn;
-
     /* pml4[511]: 0xFFFFFF80_00000000-0xFFFFFFFF_FFFFFFFF */
     st_pml4[511].p = 1;
     st_pml4[511].r_w = 1;
@@ -115,7 +112,7 @@ void setup_trampoline_page_tables(void)
     st_low_pdpt[3].r_w = 1;
     st_low_pdpt[3].base = (uint64_t)kernel_pd_pfn;
 
-    /* recursive page table mapping */
+    /* upper kernel mapping */
     /* pml4[511][510]: 0xFFFFFFFF_80000000-0xFFFFFFFF_BFFFFFFF */
     st_kernel_pdpt[510].p = 1;
     st_kernel_pdpt[510].r_w = 1;
@@ -130,7 +127,7 @@ void setup_trampoline_page_tables(void)
     }
 
     /* migrate mappings from 0xC0000000-0xC1FFFFFF (no need to migrate all the kernel area) */
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < ARRAY_SIZE(st_kernel_pt); i++) {
         St_PhysFrame pt_pfn;
         int old_pd_idx = 768 + (i >> 1);
 
@@ -150,6 +147,25 @@ void setup_trampoline_page_tables(void)
             st_kernel_pt[i][j].p = 1;
             st_kernel_pt[i][j].r_w = old_pt[old_pt_idx].r_w;
             st_kernel_pt[i][j].base = old_pt[old_pt_idx].base;
+        }
+    }
+
+    /* direct mapping 0xFFFFC000_00000000-0xFFFFC7FF_FFFFFFFF */
+    for (int i = 0; i < ARRAY_SIZE(st_direct_mapping_pdpt); i++) {
+        St_PhysFrame pdpt_pfn;
+
+        status = virt_to_phys(VPTR_TO_PAGE(st_direct_mapping_pdpt[i]), &pdpt_pfn);
+        if (!CHECK_SUCCESS(status)) goto has_error;
+
+        st_pml4[384 + i].p = 1;
+        st_pml4[384 + i].r_w = 1;
+        st_pml4[384 + i].base = (uint64_t)pdpt_pfn;
+
+        for (int j = 0; j < ARRAY_SIZE(st_direct_mapping_pdpt[i]); j++) {
+            st_direct_mapping_pdpt[i][j].p = 1;
+            st_direct_mapping_pdpt[i][j].r_w = 1;
+            st_direct_mapping_pdpt[i][j].ps = 1;
+            st_direct_mapping_pdpt[i][j].base = i * 512 + j;
         }
     }
 

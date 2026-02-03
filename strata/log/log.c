@@ -64,7 +64,7 @@ static void print_log_header(int level, const char *module_name)
     struct StProcess *process = NULL;
 
     if (cpulocal) {
-        thread = cpulocal->scheduler.current;
+        thread = cpulocal->scheduler.current_thread;
         if (thread) {
             process = thread->process;
         }
