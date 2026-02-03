@@ -40,8 +40,8 @@ _StSyscallP_Entry:
 
     sti
 
-    mov     %rsp, %rsi                  # pass registers
-    lea     120(%rsp), %rdi             # pass interrupt stack frame
+    lea     8(%rsp), %rsi               # pass registers
+    lea     128(%rsp), %rdi             # pass interrupt stack frame
     call    StSyscallP_Handler          # call syscall handler
 
     cli
@@ -62,9 +62,8 @@ _StSyscallP_Entry:
     pop     %rdx
     pop     %rcx
     pop     %rbx
-    pop     %rax
 
-    add     $8, %rsp                    # skip error code
+    add     $16, %rsp                   # skip rax and error code
 
     pop     %rcx
     add     $8, %rsp

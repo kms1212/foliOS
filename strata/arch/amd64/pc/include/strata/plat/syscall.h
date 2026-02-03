@@ -6,6 +6,6 @@
 #include <strata/status.h>
 
 StStatus StSyscallP_Init(void);
-void StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx);
+long StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx);
 
 #endif  // __STRATA_PLAT_SYSCALL_H__

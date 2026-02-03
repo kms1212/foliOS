@@ -16,9 +16,8 @@ interface ByteStream {
         function Sync();
         function GetLength(out u64 length);
 
-        view Read(
-            @default() in 
-            in u64 count,
-        )
+        view Read(in u64 count) {
+            // TBD
+        }
     }
 }

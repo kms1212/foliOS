@@ -21,6 +21,8 @@ struct StProcess {
     StProcess_Id id;
     enum StProcess_Type type;
 
+    int is_dying;
+
     struct StProcessP_PlatformData platform_data;
     struct StMmuP_AddressSpace *address_space;
 
@@ -32,9 +34,21 @@ struct StProcess {
 };
 
 StStatus StProcess_CreateUser(
-    struct StProcess **process __out, uintptr_t entry __in, uintptr_t stack_top __in
+    struct StProcess **process __out,
+    uintptr_t entry __in,
+    int arg_count __in,
+    const char *const *args __in,
+    int env_count __in,
+    const char *const *envs __in
 );
-StStatus StProcess_CreateModule(struct StProcess **process __out);
+StStatus StProcess_CreateModule(
+    struct StProcess **process __out,
+    uintptr_t entry __in,
+    int arg_count __in,
+    const char *const *args __in,
+    int env_count __in,
+    const char *const *envs __in
+);
 void StProcess_Remove(struct StProcess *process __in);
 
 #endif  // __STRATA_PROCESS_H__

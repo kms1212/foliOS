@@ -55,6 +55,7 @@ case $1 in
             strata)
                 OBJECTS=(
                     "build/strata/arch/amd64/pc/trampoline/trampoline.elf"
+                    "strata/arch/amd64/pc/a.out"
                 )
                 ;;
         esac

@@ -269,7 +269,10 @@ StStatus StMmuP_MapMemory(St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapF
     _pt[pte_idx].u_s = (mapflags & MAP_USER) ? 1 : 0;
     _pt[pte_idx].pcd = (mapflags & MAP_NO_CACHE) ? 1 : 0;
     _pt[pte_idx].pwt = (mapflags & MAP_WRITETHRU_CACHE) ? 1 : 0;
-    _pt[pte_idx].xd = (mapflags & MAP_NO_EXECUTE) ? 1 : 0;
+
+    if (g_p_cpu_features->has_nx && 0) {
+        _pt[pte_idx].xd = (mapflags & MAP_NO_EXECUTE) ? 1 : 0;
+    }
 
     StA_InvalidatePage(vpn);
 
@@ -319,7 +322,10 @@ StStatus StMmuP_RemapMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
     _pt[pte_idx].u_s = (mapflags & MAP_USER) ? 1 : 0;
     _pt[pte_idx].pcd = (mapflags & MAP_NO_CACHE) ? 1 : 0;
     _pt[pte_idx].pwt = (mapflags & MAP_WRITETHRU_CACHE) ? 1 : 0;
-    _pt[pte_idx].xd = (mapflags & MAP_NO_EXECUTE) ? 1 : 0;
+
+    if (g_p_cpu_features->has_nx && 0) {
+        _pt[pte_idx].xd = (mapflags & MAP_NO_EXECUTE) ? 1 : 0;
+    }
 
     StA_InvalidatePage(vpn);
 

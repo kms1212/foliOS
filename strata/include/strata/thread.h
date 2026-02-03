@@ -42,6 +42,7 @@ struct StThread {
     enum StThread_Type type;
     int is_detached;
     int is_main;
+    int is_dying;
 
     struct StThreadP_PlatformData platform_data;
 
@@ -69,13 +70,26 @@ void StThread_DisablePreemption(void);
 int StThread_IsPreemptionEnabled(void);
 
 StStatus StThread_CreateKernel(
-    StThread_EntryFunction entry __in, size_t stack_size __in, struct StThread **threadout __out
+    StThread_EntryFunction entry __in,
+    St_PageCount stack_page_count __in,
+    struct StThread **threadout __out
 );
 StStatus StThread_CreateUser(
-    struct StProcess *proc __in,
+    struct StProcess *process __in,
     uintptr_t entry __in,
-    size_t stack_size __in,
-    uintptr_t ustack_top __in,
+    St_PageCount kstack_page_count __in,
+    St_PageCount ustack_page_count __in,
+    struct StThread **threadout __out
+);
+StStatus StThread_CreateUserMain(
+    struct StProcess *process __in,
+    uintptr_t entry __in,
+    St_PageCount kstack_page_count __in,
+    St_PageCount ustack_page_count __in,
+    int arg_count __in,
+    const char *const *args __in,
+    int env_count __in,
+    const char *const *envs __in,
     struct StThread **threadout __out
 );
 StStatus StThread_Remove(struct StThread *thread __in);

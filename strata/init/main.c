@@ -13,6 +13,7 @@
 #include <loadst/bootinfo.h>
 #include <loadst/ramdisk.h>
 #include <strata/compiler.h>
+#include <strata/elf.h>
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
@@ -88,6 +89,90 @@ static struct StMutex mtx;
 
 static void thread1_main(struct StThread *th);
 
+extern int _userexec_start;
+extern int _userexec_end;
+
+static void setup_process(void)
+{
+    StStatus status;
+    struct StProcess *process;
+    struct StElf_Object *elf;
+    struct StElf64_Phdr ph;
+    unsigned int ph_count;
+    size_t userexec_size = (uintptr_t)&_userexec_end - (uintptr_t)&_userexec_start;
+    uintptr_t entry_point;
+
+    status = StElf_Open(&_userexec_start, userexec_size, &elf);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to open elf");
+    }
+
+    status = StElf_GetProgramHeaderCount(elf, &ph_count);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to get program header count");
+    }
+
+    for (unsigned int i = 0; i < ph_count; i++) {
+        status = StElf_GetProgramHeader(elf, i, &ph, sizeof(ph));
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to get program header");
+        }
+
+        if (ph.type != PT_LOAD) continue;
+
+        status = StElf_LoadProgram(elf, i);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to load program header");
+        }
+    }
+
+    status = StElf_GetEntryPoint(elf, &entry_point);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to get entry point");
+    }
+
+    const char *args[] = {"test", NULL};
+    const char *envs[] = {"PATH=/bin", NULL};
+
+    status = StProcess_CreateUser(
+        &process,
+        entry_point,
+        ARRAY_SIZE(args) - 1,
+        args,
+        ARRAY_SIZE(envs) - 1,
+        envs
+    );
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to create user process");
+    }
+
+    // test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
+    // test_addr[0] = 0x48;  // movabs $0xFFFF800000001000, %rax
+    // test_addr[1] = 0xB8;
+    // test_addr[2] = 0x00;
+    // test_addr[3] = 0x10;
+    // test_addr[4] = 0x00;
+    // test_addr[5] = 0x00;
+    // test_addr[6] = 0x00;
+    // test_addr[7] = 0x80;
+    // test_addr[8] = 0xFF;
+    // test_addr[9] = 0xFF;
+    // test_addr[10] = 0x48;  // mov (%rax), %rax
+    // test_addr[11] = 0x8B;
+    // test_addr[12] = 0x00;
+    // test_addr[13] = 0xFF;  // call *%rax
+    // test_addr[14] = 0xD0;
+    // test_addr[15] = 0xEB;  // jmp -15
+    // test_addr[16] = 0xEF;
+
+    // status = StProcess_CreateUser(&process, (uintptr_t)test_addr, (uintptr_t)test_addr +
+    // 0x10000); if (!CHECK_SUCCESS(status)) {
+    //     St_Panic(status, "failed to create user process");
+    // }
+
+    StThread_Detach(process->main_thread);
+}
+
 static void thread3_main(struct StThread *th)
 {
     uint64_t start_tick = StTimeP_GetGlobalTick();
@@ -134,7 +219,7 @@ static void thread2_main(struct StThread *th)
         time = StTimeP_GetGlobalTick() - start_tick;
     } while (time < 100);
 
-    StThread_CreateKernel(thread1_main, 0x10000, &new_thread);
+    StThread_CreateKernel(thread1_main, 16, &new_thread);
     StThread_Detach(new_thread);
 }
 
@@ -165,8 +250,8 @@ static void thread1_main(struct StThread *th)
         prev_time = time;
     } while (time < 100);
 
-    StThread_CreateKernel(thread2_main, 0x10000, &new_thread1);
-    StThread_CreateKernel(thread3_main, 0x10000, &new_thread2);
+    StThread_CreateKernel(thread2_main, 16, &new_thread1);
+    StThread_CreateKernel(thread3_main, 16, &new_thread2);
 
     waitlist[0] = new_thread1;
     waitlist[1] = new_thread2;
@@ -174,49 +259,6 @@ static void thread1_main(struct StThread *th)
 
     StThread_Remove(new_thread1);
     StThread_Remove(new_thread2);
-}
-
-static void setup_process(void)
-{
-    StStatus status;
-    St_VirtPage test_vpn;
-    uint8_t *test_addr;
-    struct StProcess *process;
-
-    StMm_AllocateSparse(
-        VMM_DOMAIN_USER,
-        &test_vpn,
-        (St_PageCount)16,
-        PMM_DEFAULT,
-        VMM_DEFAULT,
-        MAP_USER
-    );
-
-    test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
-    test_addr[0] = 0x48;  // movabs $0xFFFF800000001000, %rax
-    test_addr[1] = 0xB8;
-    test_addr[2] = 0x00;
-    test_addr[3] = 0x10;
-    test_addr[4] = 0x00;
-    test_addr[5] = 0x00;
-    test_addr[6] = 0x00;
-    test_addr[7] = 0x80;
-    test_addr[8] = 0xFF;
-    test_addr[9] = 0xFF;
-    test_addr[10] = 0x48;  // mov (%rax), %rax
-    test_addr[11] = 0x8B;
-    test_addr[12] = 0x00;
-    test_addr[13] = 0xFF;  // call *%rax
-    test_addr[14] = 0xD0;
-    test_addr[15] = 0xEB;  // jmp -15
-    test_addr[16] = 0xEF;
-
-    status = StProcess_CreateUser(&process, (uintptr_t)test_addr, (uintptr_t)test_addr + 0x10000);
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to create user process");
-    }
-
-    StThread_Detach(process->main_thread);
 }
 
 __section(".text") __noreturn void main(void)
@@ -416,20 +458,20 @@ __section(".text") __noreturn void main(void)
 
     LOG_INFO("free/total frames: %zu/%zu\n", free_frames, total_frames);
 
-    LOG_INFO("initializing multitasking...\n");
+    LOG_INFO("initializing thread system...\n");
     status = StThread_Init(&main_thread);
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to initialize multitasking");
+        St_Panic(status, "failed to initialize thread system");
     }
 
-    StMutex_Init(&mtx);
+    LOG_INFO("loading test user program...\n");
+    setup_process();
 
     StThread_EnablePreemption();
 
-    StThread_CreateKernel(thread1_main, 0x10000, &thread1);
+    StMutex_Init(&mtx);
+    StThread_CreateKernel(thread1_main, 16, &thread1);
     StThread_Detach(thread1);
-
-    setup_process();
 
     for (;;) {
         StScheduler_Maintain();

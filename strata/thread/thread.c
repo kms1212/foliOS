@@ -9,6 +9,7 @@
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/panic.h>
+#include <strata/process.h>
 #include <strata/scheduler.h>
 
 #define MODULE_NAME "thread"
@@ -69,7 +70,9 @@ int StThread_IsPreemptionEnabled(void)
 }
 
 StStatus StThread_CreateKernel(
-    StThread_EntryFunction entry __in, size_t stack_size __in, struct StThread **threadout __out
+    StThread_EntryFunction entry __in,
+    St_PageCount stack_page_count __in,
+    struct StThread **threadout __out
 )
 {
     static StThread_Id new_thread_id = (StThread_Id)1;
@@ -93,14 +96,14 @@ StStatus StThread_CreateKernel(
     th->type = THREAD_TYPE_KERNEL;
 
     /* prepare stack */
-    th->kmode_stack_page_count = ALIGN_DIV(stack_size, PAGE_SIZE);
+    th->kmode_stack_page_count = stack_page_count;
     th->kmode_entry = entry;
 
-    status = StThreadP_AllocateKThreadStack(th);
+    status = StThreadP_AllocateThreadKernelStack(th);
     if (!CHECK_SUCCESS(status)) goto has_error;
     stack_allocated = 1;
 
-    status = StThreadP_SetupKThreadStack(th);
+    status = StThreadP_SetupThreadKernelStack(th);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     /* add thread object to list */
@@ -124,7 +127,7 @@ has_error:
     }
 
     if (th && stack_allocated) {
-        StThreadP_FreeKThreadStack(th);
+        StThreadP_FreeThreadKernelStack(th);
     }
 
     if (th) {
@@ -138,11 +141,15 @@ has_error:
     return status;
 }
 
-StStatus StThread_CreateUser(
+StStatus StThread_CreateUserMain(
     struct StProcess *process __in,
     uintptr_t entry __in,
-    size_t stack_size __in,
-    uintptr_t ustack_top __in,
+    St_PageCount kstack_page_count __in,
+    St_PageCount ustack_page_count __in,
+    int arg_count __in,
+    const char *const *args __in,
+    int env_count __in,
+    const char *const *envs __in,
     struct StThread **threadout __out
 )
 {
@@ -152,7 +159,8 @@ StStatus StThread_CreateUser(
     int prev_preemption_enabled = preemption_enabled;
     struct StThread *th = NULL;
     int added_thread_to_scheduler = 0;
-    int stack_allocated = 0;
+    int kstack_allocated = 0;
+    int ustack_allocated = 0;
 
     StThread_DisablePreemption();
 
@@ -166,18 +174,28 @@ StStatus StThread_CreateUser(
     th->status = THREAD_STATE_PENDING;
     th->type = THREAD_TYPE_USER;
     th->process = process;
+    th->is_main = 1;
 
     th->umode_entry = entry;
-    th->umode_stack_ptr = ustack_top;
 
-    /* prepare stack */
-    th->kmode_stack_page_count = ALIGN_DIV(stack_size, PAGE_SIZE);
+    /* prepare user stack */
+    th->umode_stack_page_count = ustack_page_count;
 
-    status = StThreadP_AllocateKThreadStack(th);
+    status = StThreadP_AllocateThreadUserStack(th);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    stack_allocated = 1;
+    ustack_allocated = 1;
 
-    status = StThreadP_SetupKThreadStack(th);
+    status = StThreadP_SetupThreadUserStack(th, arg_count, args, env_count, envs);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    /* prepare kernel stack */
+    th->kmode_stack_page_count = kstack_page_count;
+
+    status = StThreadP_AllocateThreadKernelStack(th);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+    kstack_allocated = 1;
+
+    status = StThreadP_SetupThreadKernelStack(th);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     /* add thread object to list */
@@ -200,8 +218,12 @@ has_error:
         StScheduler_RemoveThread(th);
     }
 
-    if (th && stack_allocated) {
-        StThreadP_FreeKThreadStack(th);
+    if (th && ustack_allocated) {
+        StThreadP_FreeThreadUserStack(th);
+    }
+
+    if (th && kstack_allocated) {
+        StThreadP_FreeThreadKernelStack(th);
     }
 
     if (th) {
@@ -220,11 +242,21 @@ StStatus StThread_Remove(struct StThread *th)
     if (th->type == THREAD_TYPE_MAIN) return STATUS_INVALID_THREAD;
     if (th->status != THREAD_STATE_FINISHED) return STATUS_THREAD_NOT_FINISHED;
 
+    th->is_dying = 1;
+
     LOG_DEBUG("removing thread #%d\n", th->id);
 
     StScheduler_RemoveThread(th);
 
-    StThreadP_FreeKThreadStack(th);
+    StThreadP_FreeThreadKernelStack(th);
+
+    if (th->type == THREAD_TYPE_USER) {
+        StThreadP_FreeThreadUserStack(th);
+
+        if (th->is_main && !th->process->is_dying) {
+            StProcess_Remove(th->process);
+        }
+    }
 
     free(th);
 
