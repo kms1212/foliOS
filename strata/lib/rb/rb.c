@@ -3,9 +3,9 @@
  * May be freely redistributed, but copyright notice must be retained.
  */
 
-#include <rb.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <strata/rb.h>
 
 #include <strata/status.h>
 

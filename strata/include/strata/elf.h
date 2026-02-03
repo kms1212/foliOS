@@ -9,6 +9,8 @@
 #include <strata/compiler.h>
 #include <strata/status.h>
 
+#include <strata/mm/asp.h>
+
 typedef uint32_t StElf32_Addr;
 typedef uint16_t StElf32_Half;
 typedef uint32_t StElf32_Off;
@@ -370,6 +372,8 @@ StStatus StElf_GetProgramHeaderCount(struct StElf_Object *elf __in, unsigned int
 StStatus StElf_GetProgramHeader(
     struct StElf_Object *elf __in, unsigned int index __in, void *buf __buf, size_t len __in
 );
-StStatus StElf_LoadProgram(struct StElf_Object *elf __in, unsigned int index __in);
+StStatus StElf_LoadProgram(
+    struct StElf_Object *elf __in, unsigned int index __in, struct StMm_AddressSpace *asp __in
+);
 
 #endif  // __STRATA_ELF_H__

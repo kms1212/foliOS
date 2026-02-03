@@ -9,11 +9,6 @@
 
 typedef ptrdiff_t ssize_t;
 
-typedef uintptr_t St_PhysFrame __nocast;
-typedef uintptr_t St_VirtPage __nocast;
-
-typedef size_t St_PageCount __nocast;
-
 typedef uint16_t uint_be16_t __bitwise;
 typedef uint32_t uint_be32_t __bitwise;
 typedef uint64_t uint_be64_t __bitwise;

@@ -7,7 +7,8 @@
 
 #include <strata/arch/mmu.h>
 
-#include <strata/plat/mmu.h>
+#include <strata/plat/memmap.h>
+#include <strata/plat/mm.h>
 
 #include <strata/log.h>
 #include <strata/macros.h>
@@ -17,15 +18,22 @@
 
 StStatus StMm_Init(void)
 {
-    return STATUS_SUCCESS;
+    return StMm_InitBaseAddressSpace();
 }
 
-StStatus StMm_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional)
+StStatus StMm_GlobalVirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional)
 {
-    return StMmuP_VirtPageToPhysFrame(vpn, pfn);
+    return StMmP_GlobalVirtPageToPhysFrame(vpn, pfn);
 }
 
-StStatus StMm_Map(
+StStatus StMm_LocalVirtPageToPhysFrame(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
+)
+{
+    return StMmP_LocalVirtPageToPhysFrame(asp, vpn, pfn);
+}
+
+StStatus StMm_MapGlobal(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
@@ -37,13 +45,13 @@ StStatus StMm_Map(
     StStatus status;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
 
-    status = StVmm_AllocatePage(domain, &allocated_vpn, count, vmmflags);
+    status = StVmm_AllocateGlobalPage(domain, &allocated_vpn, count, vmmflags);
     if (!CHECK_SUCCESS(status)) return status;
 
     *vpn = allocated_vpn;
 
     for (size_t i = 0; i < count; i++) {
-        status = StMmuP_MapMemory(pfn + i, allocated_vpn + i, mapflags);
+        status = StMmP_MapGlobalMemory(pfn + i, allocated_vpn + i, mapflags);
         if (!CHECK_SUCCESS(status)) return status;
     }
 
@@ -57,30 +65,18 @@ StStatus StMm_Map(
     return STATUS_SUCCESS;
 }
 
-StStatus StMm_Remap(St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in)
-{
-    StStatus status;
-
-    for (size_t i = 0; i < count; i++) {
-        status = StMmuP_RemapMemory(vpn + i, mapflags);
-        if (!CHECK_SUCCESS(status)) return status;
-    }
-
-    return STATUS_SUCCESS;
-}
-
-void StMm_Unmap(St_VirtPage vpn __in, St_PageCount count __in)
+void StMm_UnmapGlobal(St_VirtPage vpn __in, St_PageCount count __in)
 {
     LOG_TRACE("unmapping page %016zX (count=%zu)\n", (uintptr_t)vpn, count);
 
     for (size_t i = 0; i < count; i++) {
-        StMmuP_UnmapMemory(vpn + i);
+        StMmP_UnmapGlobalMemory(vpn + i);
     }
 
-    StVmm_FreePage(vpn, count);
+    StVmm_FreeGlobalPage(vpn, count);
 }
 
-StStatus StMm_AllocateContiguous(
+StStatus StMm_AllocateGlobalContiguous(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
@@ -96,7 +92,7 @@ StStatus StMm_AllocateContiguous(
     status = StPmm_AllocateContiguousFrame(&allocated_pfn, count, pmmflags);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = StMm_Map(domain, &allocated_vpn, allocated_pfn, count, vmmflags, mapflags);
+    status = StMm_MapGlobal(domain, &allocated_vpn, allocated_pfn, count, vmmflags, mapflags);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     *vpn = allocated_vpn;
@@ -105,7 +101,7 @@ StStatus StMm_AllocateContiguous(
 
 has_error:
     if (allocated_vpn != (St_VirtPage)-1) {
-        StMm_Unmap(allocated_vpn, count);
+        StMm_UnmapGlobal(allocated_vpn, count);
     }
 
     if (allocated_pfn != (St_PhysFrame)-1) {
@@ -116,7 +112,7 @@ has_error:
 }
 
 // TODO: apply adaptive batch decay
-StStatus StMm_AllocateSparse(
+StStatus StMm_AllocateGlobalSparse(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
@@ -133,21 +129,24 @@ StStatus StMm_AllocateSparse(
     pmmflags &= ~PMM_ALIGN_MASK;
 
     /* allocate virtual memory pages first */
-    status = StVmm_AllocatePage(domain, &allocated_vpn, count, vmmflags);
+    status = StVmm_AllocateGlobalPage(domain, &allocated_vpn, count, vmmflags);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     /* it will allow allocating non-contiguous physical memory frames */
     /* if you want to allocate/map frames/pages for hardware I/O, */
     /* you should use StPmm_AllocateContiguous() */
     for (; allocated_count < count; allocated_count++) {
-        status = StMm_VirtPageToPhysFrame(allocated_vpn + (St_VirtPage)allocated_count, NULL);
+        status = StMm_GlobalVirtPageToPhysFrame(allocated_vpn + (St_VirtPage)allocated_count, NULL);
         if (status != STATUS_PAGE_NOT_PRESENT) goto has_error;
 
         status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        status =
-            StMmuP_MapMemory(allocated_pfn, allocated_vpn + (St_VirtPage)allocated_count, mapflags);
+        status = StMmP_MapGlobalMemory(
+            allocated_pfn,
+            allocated_vpn + (St_VirtPage)allocated_count,
+            mapflags
+        );
         if (!CHECK_SUCCESS(status)) {
             StPmm_FreeContiguousFrame(allocated_pfn);
             goto has_error;
@@ -162,22 +161,23 @@ has_error:
     /* allocation failed. rollback changes */
     for (size_t i = 0; i < allocated_count; i++) {
         /* read vpn-pfn mapping to know which frames to free */
-        if (!CHECK_SUCCESS(StMm_VirtPageToPhysFrame(allocated_vpn + i, &allocated_pfn))) continue;
+        if (!CHECK_SUCCESS(StMm_GlobalVirtPageToPhysFrame(allocated_vpn + i, &allocated_pfn)))
+            continue;
 
         /* unmap vpn & free frame*/
-        StMmuP_UnmapMemory(allocated_vpn + i);
+        StMmP_UnmapGlobalMemory(allocated_vpn + i);
         StPmm_FreeContiguousFrame(allocated_pfn);
     }
 
     if (allocated_vpn != (St_VirtPage)-1) {
-        StVmm_FreePage(allocated_vpn, count);
+        StVmm_FreeGlobalPage(allocated_vpn, count);
     }
 
     return status;
 }
 
 // TODO: apply adaptive batch decay
-StStatus StMm_AllocateSparseTo(
+StStatus StMm_AllocateGlobalSparseTo(
     St_VirtPage vpn __in,
     St_PageCount count __in,
     StPmm_AllocFlags pmmflags __in,
@@ -188,16 +188,18 @@ StStatus StMm_AllocateSparseTo(
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
     size_t allocated_count = 0;
 
+    if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
     pmmflags &= ~PMM_ALIGN_MASK;
 
     for (; allocated_count < count; allocated_count++) {
-        status = StMm_VirtPageToPhysFrame(vpn + (St_VirtPage)allocated_count, NULL);
+        status = StMm_GlobalVirtPageToPhysFrame(vpn + (St_VirtPage)allocated_count, NULL);
         if (status != STATUS_PAGE_NOT_PRESENT) goto has_error;
 
         status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        status = StMmuP_MapMemory(allocated_pfn, vpn + (St_VirtPage)allocated_count, mapflags);
+        status = StMmP_MapGlobalMemory(allocated_pfn, vpn + (St_VirtPage)allocated_count, mapflags);
         if (!CHECK_SUCCESS(status)) {
             StPmm_FreeContiguousFrame(allocated_pfn);
             goto has_error;
@@ -210,25 +212,75 @@ has_error:
     /* allocation failed. rollback changes */
     for (size_t i = 0; i < allocated_count; i++) {
         /* read vpn-pfn mapping to know which frames to free */
-        if (!CHECK_SUCCESS(StMm_VirtPageToPhysFrame(vpn + i, &allocated_pfn))) continue;
+        if (!CHECK_SUCCESS(StMm_GlobalVirtPageToPhysFrame(vpn + i, &allocated_pfn))) continue;
 
         /* unmap vpn & free frame*/
-        StMmuP_UnmapMemory(vpn + i);
+        StMmP_UnmapGlobalMemory(vpn + i);
         StPmm_FreeContiguousFrame(allocated_pfn);
     }
 
     return status;
 }
 
-void StMm_Free(St_VirtPage vpn __in, St_PageCount count __in)
+// TODO: apply adaptive batch decay
+StStatus StMm_AllocateLocalSparseTo(
+    struct StMm_AddressSpace *asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StPmm_AllocFlags pmmflags __in,
+    StMm_MapFlags mapflags __in
+)
+{
+    StStatus status;
+    St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
+    size_t allocated_count = 0;
+
+    if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    pmmflags &= ~PMM_ALIGN_MASK;
+
+    for (; allocated_count < count; allocated_count++) {
+        status = StMm_LocalVirtPageToPhysFrame(asp, vpn + (St_VirtPage)allocated_count, NULL);
+        if (status != STATUS_PAGE_NOT_PRESENT) goto has_error;
+
+        status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
+        if (!CHECK_SUCCESS(status)) goto has_error;
+
+        status =
+            StMmP_MapLocalMemory(asp, allocated_pfn, vpn + (St_VirtPage)allocated_count, mapflags);
+        if (!CHECK_SUCCESS(status)) {
+            StPmm_FreeContiguousFrame(allocated_pfn);
+            goto has_error;
+        }
+    }
+
+    return STATUS_SUCCESS;
+
+has_error:
+    /* allocation failed. rollback changes */
+    for (size_t i = 0; i < allocated_count; i++) {
+        /* read vpn-pfn mapping to know which frames to free */
+        if (!CHECK_SUCCESS(StMm_LocalVirtPageToPhysFrame(asp, vpn + i, &allocated_pfn))) continue;
+
+        /* unmap vpn & free frame*/
+        StMmP_UnmapLocalMemory(asp, vpn + i);
+        StPmm_FreeContiguousFrame(allocated_pfn);
+    }
+
+    return status;
+}
+
+void StMm_FreeGlobal(St_VirtPage vpn __in, St_PageCount count __in)
 {
     StStatus status;
     St_PhysFrame pfn;
     struct StPmm_AllocationMetadata *metadata;
     size_t i = 0;
 
+    if (!IS_GLOBAL_VPN(vpn)) return;
+
     while (i < count) {
-        status = StMm_VirtPageToPhysFrame(vpn + i, &pfn);
+        status = StMm_GlobalVirtPageToPhysFrame(vpn + i, &pfn);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(STATUS_CONFLICTING_STATE, "tried to free unmapped page");
         }
@@ -238,11 +290,77 @@ void StMm_Free(St_VirtPage vpn __in, St_PageCount count __in)
             St_Panic(STATUS_CONFLICTING_STATE, "pmm allocation metadata unavailable");
         }
 
-        StMmuP_UnmapMemory(vpn + i);
+        StMmP_UnmapGlobalMemory(vpn + i);
         StPmm_FreeContiguousFrame(pfn);
 
         i += 1 << metadata->order;
     }
 
-    StVmm_FreePage(vpn, count);
+    StVmm_FreeGlobalPage(vpn, count);
+}
+
+void StMm_FreeLocal(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
+)
+{
+    StStatus status;
+    St_PhysFrame pfn;
+    struct StPmm_AllocationMetadata *metadata;
+    size_t i = 0;
+
+    if (!IS_LOCAL_VPN(vpn)) return;
+
+    while (i < count) {
+        status = StMm_LocalVirtPageToPhysFrame(asp, vpn + i, &pfn);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(STATUS_CONFLICTING_STATE, "tried to free unmapped page");
+        }
+
+        status = StPmm_GetAllocMetadata(pfn, &metadata);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(STATUS_CONFLICTING_STATE, "pmm allocation metadata unavailable");
+        }
+
+        StMmP_UnmapLocalMemory(asp, vpn + i);
+        StPmm_FreeContiguousFrame(pfn);
+
+        i += 1 << metadata->order;
+    }
+
+    StVmm_FreeLocalPage(asp, vpn, count);
+}
+
+StStatus StMm_SetGlobalPageFlags(
+    St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in
+)
+{
+    StStatus status;
+
+    if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    for (size_t i = 0; i < count; i++) {
+        status = StMmP_RemapGlobalMemory(vpn + i, mapflags);
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StMm_SetLocalPageFlags(
+    struct StMm_AddressSpace *asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_MapFlags mapflags __in
+)
+{
+    StStatus status;
+
+    if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    for (size_t i = 0; i < count; i++) {
+        status = StMmP_RemapLocalMemory(asp, vpn + i, mapflags);
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
+    return STATUS_SUCCESS;
 }

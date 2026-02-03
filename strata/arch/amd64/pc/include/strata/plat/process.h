@@ -4,7 +4,7 @@
 #include <strata/types.h>
 
 struct StProcessP_PlatformData {
-    St_PhysFrame pml4_phys;
+    int dummy;
 };
 
 #endif  // __STRATA_PLAT_PROCESS_H__

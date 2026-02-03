@@ -1,4 +1,4 @@
-#include <strata/plat/mmu.h>
+#include <strata/plat/mm.h>
 
 #include <stdlib.h>
 #include <string.h>
@@ -8,9 +8,12 @@
 #include <strata/arch/mmu.h>
 
 #include <strata/plat/cpulocal.h>
+#include <strata/plat/memmap.h>
 
 #include <strata/macros.h>
 #include <strata/types.h>
+
+#include <strata/mm.h>
 
 #define PML4_HOLE_START ((St_VirtPage)0x0000000800000000ULL)
 #define PML4_HOLE_END   ((St_VirtPage)0x000FFFF7FFFFFFFFULL)
@@ -24,25 +27,20 @@
 #define VIRT_PAGE_PD_MASK   ((St_VirtPage)0x000000000003FE00UL)
 #define VIRT_PAGE_PT_MASK   ((St_VirtPage)0x00000000000001FFUL)
 
-struct StMmuP_AddressSpace base_asp;
+extern struct StMm_AddressSpace base_asp;
 
-static struct StMmuP_AddressSpace *first_asp = &base_asp;
-static struct StMmuP_AddressSpace *last_asp = &base_asp;
-
-StStatus StMmuP_Init(void)
+StStatus StMmP_InitBaseAddressSpace(void)
 {
-    base_asp.next = NULL;
-    base_asp.root_table_pfn = StA_ReadCr3() >> 12;
-
-    StA_WriteCr3(StA_ReadCr3());
+    base_asp.platform_data.root_table_pfn = StA_ReadCr3() >> 12;
 
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_LateInit(void)
+StStatus StMmP_CleanupTempMapping(void)
 {
     /* unmap lower direct mapping */
-    union StA_PageMapLevel4Entry *base_pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(base_asp.root_table_pfn));
+    union StA_PageMapLevel4Entry *base_pml4 =
+        PHYS_TO_VIRT(FRAME_TO_VPTR(base_asp.platform_data.root_table_pfn));
 
     union StA_PageDirPtrTableEntry *pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(base_pml4[0].base));
 
@@ -66,30 +64,19 @@ StStatus StMmuP_LateInit(void)
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_CreateAddressSpace(struct StMmuP_AddressSpace **asp __out)
+StStatus StMmP_CreateAddressSpace(struct StMm_AddressSpace *asp __in)
 {
     StStatus status;
-    struct StMmuP_AddressSpace *new_asp = NULL;
     St_PhysFrame root_table_pfn = (St_PhysFrame)-1;
-    union StA_PageMapLevel4Entry *base_pml4 = PHYS_TO_VIRT(base_asp.root_table_pfn);
-
-    new_asp = calloc(1, sizeof(*new_asp));
-    if (!new_asp) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    union StA_PageMapLevel4Entry *base_pml4 =
+        PHYS_TO_VIRT(FRAME_TO_VPTR(base_asp.platform_data.root_table_pfn));
 
     status = StPmm_AllocateContiguousFrame(&root_table_pfn, (St_PageCount)1, PMM_DEFAULT);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     memcpy(PHYS_TO_VIRT(FRAME_TO_VPTR(root_table_pfn)), base_pml4, PAGE_SIZE);
 
-    new_asp->root_table_pfn = root_table_pfn;
-
-    last_asp->next = new_asp;
-    last_asp = new_asp;
-
-    *asp = new_asp;
+    asp->platform_data.root_table_pfn = root_table_pfn;
 
     return STATUS_SUCCESS;
 
@@ -98,34 +85,29 @@ has_error:
         StPmm_FreeContiguousFrame(root_table_pfn);
     }
 
-    if (new_asp) {
-        free(new_asp);
-    }
-
     return status;
 }
 
-StStatus StMmuP_RemoveAddressSpace(struct StMmuP_AddressSpace *asp __in)
+void StMmP_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
 {
-    St_PhysFrame root_table_pfn = asp->root_table_pfn;
+    St_PhysFrame root_table_pfn = asp->platform_data.root_table_pfn;
 
     StPmm_FreeContiguousFrame(root_table_pfn);
+}
 
-    free(asp);
+StStatus StMmP_SwitchAddressSpace(struct StMm_AddressSpace *asp __in)
+{
+    StA_WriteCr3(asp->platform_data.root_table_pfn << 12);
+
+    StCpuLocalP_GetData()->current_asp = asp;
 
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_SwitchAddressSpace(struct StMmuP_AddressSpace *asp __in)
+static StStatus StMmP_VirtPageToPhysFrame(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
+)
 {
-    StA_WriteCr3(asp->root_table_pfn << 12);
-
-    return STATUS_SUCCESS;
-}
-
-StStatus StMmuP_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional)
-{
-    struct StMmuP_AddressSpace *current_asp = StCpuLocalP_GetData()->current_asp;
     union StA_PageMapLevel4Entry *pml4;
     union StA_PageDirPtrTableEntry *pdpt;
     union StA_PaePageDirectoryEntry *pd;
@@ -138,7 +120,7 @@ StStatus StMmuP_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __ou
     if (vpn > VIRT_PAGE_MAX) return STATUS_INVALID_VALUE;
     if (PML4_HOLE_START <= vpn && vpn <= PML4_HOLE_END) return STATUS_PAGE_NOT_PRESENT;
 
-    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(current_asp->root_table_pfn));
+    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
     pml4e_idx = (vpn & VIRT_PAGE_PML4_MASK) >> 27;
     if (!pml4[pml4e_idx].p) return STATUS_PAGE_NOT_PRESENT;
 
@@ -167,10 +149,30 @@ StStatus StMmuP_VirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __ou
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_MapMemory(St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
+StStatus StMmP_GlobalVirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional)
+{
+    if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    return StMmP_VirtPageToPhysFrame(&base_asp, vpn, pfn);
+}
+
+StStatus StMmP_LocalVirtPageToPhysFrame(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
+)
+{
+    if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    return StMmP_VirtPageToPhysFrame(asp, vpn, pfn);
+}
+
+static StStatus StMmP_MapMemory(
+    struct StMm_AddressSpace *asp __in,
+    St_PhysFrame pfn __in,
+    St_VirtPage vpn __in,
+    StMm_MapFlags mapflags __in
+)
 {
     StStatus status;
-    struct StMmuP_AddressSpace *current_asp = StCpuLocalP_GetData()->current_asp;
     union StA_PageMapLevel4Entry *pml4;
     union StA_PageDirPtrTableEntry *pdpt;
     union StA_PaePageDirectoryEntry *pd;
@@ -184,7 +186,7 @@ StStatus StMmuP_MapMemory(St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapF
     if (PML4_HOLE_START <= vpn && vpn <= PML4_HOLE_END) return STATUS_INVALID_VALUE;
 
     /* 1. PML4 */
-    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(current_asp->root_table_pfn));
+    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
     pml4e_idx = (vpn & VIRT_PAGE_PML4_MASK) >> 27;
     if (!pml4[pml4e_idx].p) {
         St_PhysFrame table_pfn;
@@ -277,9 +279,31 @@ StStatus StMmuP_MapMemory(St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapF
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_RemapMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
+StStatus StMmP_MapGlobalMemory(
+    St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in
+)
 {
-    struct StMmuP_AddressSpace *current_asp = StCpuLocalP_GetData()->current_asp;
+    if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    return StMmP_MapMemory(&base_asp, pfn, vpn, mapflags);
+}
+
+StStatus StMmP_MapLocalMemory(
+    struct StMm_AddressSpace *asp __in,
+    St_PhysFrame pfn __in,
+    St_VirtPage vpn __in,
+    StMm_MapFlags mapflags __in
+)
+{
+    if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    return StMmP_MapMemory(asp, pfn, vpn, mapflags);
+}
+
+static StStatus StMmP_RemapMemory(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in
+)
+{
     union StA_PageMapLevel4Entry *pml4;
     union StA_PageDirPtrTableEntry *pdpt;
     union StA_PaePageDirectoryEntry *pd;
@@ -293,7 +317,7 @@ StStatus StMmuP_RemapMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
     if (PML4_HOLE_START <= vpn && vpn <= PML4_HOLE_END) return STATUS_INVALID_VALUE;
 
     /* 1. PML4 */
-    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(current_asp->root_table_pfn));
+    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
     pml4e_idx = (vpn & VIRT_PAGE_PML4_MASK) >> 27;
     if (!pml4[pml4e_idx].p) {
         return STATUS_PAGE_NOT_PRESENT;
@@ -339,4 +363,137 @@ StStatus StMmuP_RemapMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
     return STATUS_SUCCESS;
 }
 
-void StMmuP_UnmapMemory(St_VirtPage vpn) {}
+StStatus StMmP_RemapGlobalMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in)
+{
+    if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    return StMmP_RemapMemory(&base_asp, vpn, mapflags);
+}
+
+StStatus StMmP_RemapLocalMemory(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in
+)
+{
+    if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
+
+    return StMmP_RemapMemory(asp, vpn, mapflags);
+}
+
+static void StMmP_UnmapMemory(struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in) {}
+
+void StMmP_UnmapGlobalMemory(St_VirtPage vpn __in)
+{
+    if (!IS_GLOBAL_VPN(vpn)) return;
+
+    StMmP_UnmapMemory(&base_asp, vpn);
+}
+
+void StMmP_UnmapLocalMemory(struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in)
+{
+    if (!IS_LOCAL_VPN(vpn)) return;
+
+    StMmP_UnmapMemory(asp, vpn);
+}
+
+StStatus StMmP_ReadLocal(
+    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, void *buf __buf, size_t len __in
+)
+{
+    StStatus status;
+    St_PhysFrame pfn;
+    St_VirtPage vpn;
+    uintptr_t copy_offset;
+    size_t copy_size;
+    uint8_t *bbuf = buf;
+
+    while (len > 0) {
+        copy_offset = addr & (PAGE_SIZE - 1);
+        copy_size = PAGE_SIZE - copy_offset;
+        if (copy_size > len) copy_size = len;
+
+        vpn = ADDR_TO_PAGE(addr);
+
+        status = StMmP_LocalVirtPageToPhysFrame(asp, vpn, &pfn);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        memcpy(bbuf, (uint8_t *)PHYS_TO_VIRT(FRAME_TO_VPTR(pfn)) + copy_offset, copy_size);
+
+        addr += copy_size;
+        bbuf += copy_size;
+        len -= copy_size;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StMmP_WriteLocal(
+    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, const void *buf __in, size_t len __in
+)
+{
+    StStatus status;
+    St_PhysFrame pfn;
+    St_VirtPage vpn;
+    uintptr_t copy_offset;
+    size_t copy_size;
+    const uint8_t *bbuf = buf;
+
+    while (len > 0) {
+        copy_offset = addr & (PAGE_SIZE - 1);
+        copy_size = PAGE_SIZE - copy_offset;
+        if (copy_size > len) copy_size = len;
+
+        vpn = ADDR_TO_PAGE(addr);
+
+        status = StMmP_LocalVirtPageToPhysFrame(asp, vpn, &pfn);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        memcpy((uint8_t *)PHYS_TO_VIRT(FRAME_TO_VPTR(pfn)) + copy_offset, bbuf, copy_size);
+
+        addr += copy_size;
+        bbuf += copy_size;
+        len -= copy_size;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StMmP_SetLocal(
+    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, int value, size_t len __in
+)
+{
+    StStatus status;
+    St_PhysFrame pfn;
+    St_VirtPage vpn;
+    uintptr_t copy_offset;
+    size_t copy_size;
+
+    while (len > 0) {
+        copy_offset = addr & (PAGE_SIZE - 1);
+        copy_size = PAGE_SIZE - copy_offset;
+        if (copy_size > len) copy_size = len;
+
+        vpn = ADDR_TO_PAGE(addr);
+
+        status = StMmP_LocalVirtPageToPhysFrame(asp, vpn, &pfn);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        memset((uint8_t *)PHYS_TO_VIRT(FRAME_TO_VPTR(pfn)) + copy_offset, value, copy_size);
+
+        addr += copy_size;
+        len -= copy_size;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StMmP_CopyLocal(
+    struct StMm_AddressSpace *dest_asp __in,
+    uintptr_t dest __in,
+    struct StMm_AddressSpace *src_asp __in,
+    uintptr_t src __in,
+    size_t len __in
+)
+{
+    // TODO: implement
+    return STATUS_UNIMPLEMENTED;
+}

@@ -1,7 +1,6 @@
 #ifndef __STRATA_PROCESS_H__
 #define __STRATA_PROCESS_H__
 
-#include <strata/plat/mmu.h>
 #include <strata/plat/process.h>
 
 #include <strata/status.h>
@@ -24,7 +23,7 @@ struct StProcess {
     int is_dying;
 
     struct StProcessP_PlatformData platform_data;
-    struct StMmuP_AddressSpace *address_space;
+    struct StMm_AddressSpace *address_space;
 
     struct StThread *main_thread;
     struct StThread *thread_list_head;
@@ -33,22 +32,8 @@ struct StProcess {
     struct StModule *module;
 };
 
-StStatus StProcess_CreateUser(
-    struct StProcess **process __out,
-    uintptr_t entry __in,
-    int arg_count __in,
-    const char *const *args __in,
-    int env_count __in,
-    const char *const *envs __in
-);
-StStatus StProcess_CreateModule(
-    struct StProcess **process __out,
-    uintptr_t entry __in,
-    int arg_count __in,
-    const char *const *args __in,
-    int env_count __in,
-    const char *const *envs __in
-);
+StStatus StProcess_CreateUser(struct StProcess **process __out);
+StStatus StProcess_CreateModule(struct StProcess **process __out);
 void StProcess_Remove(struct StProcess *process __in);
 
 #endif  // __STRATA_PROCESS_H__

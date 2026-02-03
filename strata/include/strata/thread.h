@@ -4,8 +4,9 @@
 #include <strata/plat/thread.h>
 
 #include <strata/compiler.h>
-#include <strata/mm.h>
 #include <strata/status.h>
+
+#include <strata/mm/types.h>
 
 struct StThread;
 struct StProcess;

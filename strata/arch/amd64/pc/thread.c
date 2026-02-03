@@ -1,3 +1,4 @@
+#include "strata/plat/mm.h"
 #include <strata/plat/thread.h>
 
 #include <stdlib.h>
@@ -33,7 +34,7 @@ StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in)
     St_VirtPage kmode_stack_base_vpn;
 
     /* allocate thread stack */
-    status = StMm_AllocateSparse(
+    status = StMm_AllocateGlobalSparse(
         VMM_DOMAIN_KERNEL_SLOW,
         &kmode_stack_base_vpn,
         th->kmode_stack_page_count,
@@ -96,9 +97,9 @@ StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in)
 
 void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
 {
-    LOG_DEBUG("freeing thread stack...\n");
+    LOG_DEBUG("freeing thread kernel stack...\n");
 
-    StMm_Free(th->kmode_stack_base_vpn, th->kmode_stack_page_count);
+    StMm_FreeGlobal(th->kmode_stack_base_vpn, th->kmode_stack_page_count);
 }
 
 StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
@@ -107,8 +108,13 @@ StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
     St_VirtPage ustack_base_vpn = 0x00007FFF80000 - th->umode_stack_page_count;
 
     /* allocate thread stack */
-    status =
-        StMm_AllocateSparseTo(ustack_base_vpn, th->umode_stack_page_count, PMM_DEFAULT, MAP_USER);
+    status = StMm_AllocateLocalSparseTo(
+        th->process->address_space,
+        ustack_base_vpn,
+        th->umode_stack_page_count,
+        PMM_DEFAULT,
+        MAP_USER
+    );
     if (!CHECK_SUCCESS(status)) return status;
 
     th->umode_stack_base_vpn = ustack_base_vpn;
@@ -117,11 +123,13 @@ StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
     return STATUS_SUCCESS;
 }
 
-static inline void push_u64(uintptr_t *sp __inout, uint64_t val __in)
+static inline void push_u64(
+    struct StMm_AddressSpace *asp __in, uintptr_t *sp __inout, uint64_t val __in
+)
 {
     *sp -= sizeof(uint64_t);
 
-    *(uint64_t *)*sp = val;
+    StMm_WriteLocal(asp, *sp, &val, sizeof(val));
 }
 
 StStatus StThreadP_SetupThreadUserStack(
@@ -132,6 +140,7 @@ StStatus StThreadP_SetupThreadUserStack(
     const char *const *envs
 )
 {
+    struct StMm_AddressSpace *asp = th->process->address_space;
     uintptr_t rsp = th->umode_stack_ptr;
     size_t data_size = 0;
     char *envs_start;
@@ -174,6 +183,7 @@ StStatus StThreadP_SetupThreadUserStack(
     data_size += sizeof(auxv);
     auxv_start = (void *)(rsp - data_size);
 
+    // make stack space and align stack pointer
     rsp -= data_size;
     rsp &= ~0xF;
     if ((3 + arg_count + env_count) & 1) {
@@ -181,33 +191,33 @@ StStatus StThreadP_SetupThreadUserStack(
     }
 
     // fill auxv
-    memcpy(auxv_start, auxv, sizeof(auxv));
+    StMm_WriteLocal(asp, (uintptr_t)auxv_start, auxv, sizeof(auxv));
 
     // fill random data
     uint8_t random_data[16];
     memset(random_data, 0xA5, sizeof(random_data));
-    memcpy(random_start, random_data, sizeof(random_data));
+    StMm_WriteLocal(asp, (uintptr_t)random_start, random_data, sizeof(random_data));
 
     // fill & push envp
-    push_u64(&rsp, 0);
+    push_u64(asp, &rsp, 0);
     for (int i = env_count - 1; i >= 0; i--) {
         size_t slen = strlen(envs[i]) + 1;
-        memcpy((void *)((uintptr_t)envs_start + envs_size - slen), envs[i], slen);
+        StMm_WriteLocal(asp, (uintptr_t)envs_start + envs_size - slen, envs[i], slen);
         envs_size -= slen;
-        push_u64(&rsp, (uint64_t)envs_start + envs_size);
+        push_u64(asp, &rsp, (uint64_t)envs_start + envs_size);
     }
 
     // push argv
-    push_u64(&rsp, 0);
+    push_u64(asp, &rsp, 0);
     for (int i = arg_count - 1; i >= 0; i--) {
         size_t slen = strlen(args[i]) + 1;
-        memcpy((void *)((uintptr_t)args_start + args_size - slen), args[i], slen);
+        StMm_WriteLocal(asp, (uintptr_t)args_start + args_size - slen, args[i], slen);
         args_size -= slen;
-        push_u64(&rsp, (uint64_t)args_start + args_size);
+        push_u64(asp, &rsp, (uint64_t)args_start + args_size);
     }
 
     // push argc
-    push_u64(&rsp, arg_count);
+    push_u64(asp, &rsp, arg_count);
 
     th->umode_stack_ptr = rsp;
 
@@ -216,9 +226,13 @@ StStatus StThreadP_SetupThreadUserStack(
 
 void StThreadP_FreeThreadUserStack(struct StThread *th __in)
 {
-    LOG_DEBUG("freeing thread stack...\n");
+    LOG_DEBUG("freeing thread user stack...\n");
 
-    StMm_Free(th->umode_stack_base_vpn, th->umode_stack_page_count);
+    StMm_FreeLocal(
+        th->process->address_space,
+        th->umode_stack_base_vpn,
+        th->umode_stack_page_count
+    );
 }
 
 StStatus StThreadP_SetFsBase(struct StThread *th __in, uintptr_t fs_base __in)
@@ -255,13 +269,13 @@ StStatus StThreadP_SetGsBase(struct StThread *th __in, uintptr_t gs_base __in)
     return STATUS_SUCCESS;
 }
 
-__optimize("O0") StStatus StThreadP_Switch(
+StStatus StThreadP_Switch(
     struct StThread *next __in, struct StIntP_Context *ctx __in, void **next_stack_ptr __out
 )
 {
     StStatus status;
     struct StThread *current;
-    // St_PhysFrame current_pml4_pfn;
+    struct StMm_AddressSpace *current_asp = StCpuLocalP_GetData()->current_asp;
     uintptr_t kstack_top;
 
     status = StScheduler_GetCurrentThread(&current);
@@ -270,11 +284,10 @@ __optimize("O0") StStatus StThreadP_Switch(
     /* save current stack pointer of the previous thread */
     current->kmode_stack_ptr = (void *)((uintptr_t)ctx - 8);
 
-    // current_pml4_pfn = StA_ReadCr3() / PAGE_SIZE;
-
-    // if (next->owner && current_pml4_pfn != next->owner->platform_data.pml4_phys) {
-    //     StA_WriteCr3(next->owner->platform_data.pml4_phys * PAGE_SIZE);
-    // }
+    if (next->type == THREAD_TYPE_USER && current_asp != next->process->address_space) {
+        status = StMmP_SwitchAddressSpace(next->process->address_space);
+        if (!CHECK_SUCCESS(status)) return status;
+    }
 
     kstack_top = PAGE_TO_ADDR(next->kmode_stack_base_vpn + next->kmode_stack_page_count);
 
@@ -296,8 +309,9 @@ __optimize("O0") StStatus StThreadP_Switch(
     return STATUS_SUCCESS;
 }
 
-__attribute__((noinline)) __optimize("O0")
-    __externally_visible void *_StThreadP_DoYield(struct StIntP_Context *ctx __in)
+__attribute__((noinline)) __externally_visible void *_StThreadP_DoYield(
+    struct StIntP_Context *ctx __in
+)
 {
     StStatus status;
     struct StThread *next_thread;

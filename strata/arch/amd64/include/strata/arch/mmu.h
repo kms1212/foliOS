@@ -9,6 +9,8 @@
 
 #include <strata/types.h>
 
+#include <strata/mm/types.h>
+
 #define PAGE_SIZE 4096
 
 union StA_PageTableEntry {

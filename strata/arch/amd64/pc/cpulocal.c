@@ -2,7 +2,7 @@
 
 #include <strata/arch/intrinsics/msr.h>
 
-#include <strata/plat/mmu.h>
+#include <strata/plat/mm.h>
 
 #include <strata/compiler.h>
 #include <strata/log.h>
@@ -11,7 +11,7 @@ static struct StCpuLocalP_Data bsp_data;
 __externally_visible int _cpulocal_initialized = 0;
 
 extern int _early_stack;
-extern struct StMmuP_AddressSpace base_asp;
+extern struct StMm_AddressSpace base_asp;
 
 StStatus StCpuLocalP_Init(void)
 {

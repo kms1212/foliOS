@@ -1,6 +1,7 @@
 #include <strata/plat/syscall.h>
 
 #include <inttypes.h>
+#include <time.h>
 
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/interrupt.h>
@@ -9,6 +10,7 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
 #include <strata/plat/thread.h>
+#include <strata/plat/time.h>
 
 #include <strata/log.h>
 #include <strata/status.h>
@@ -45,9 +47,24 @@ long StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context 
         }
         return io_count;
     }
+    case 35: {  // nanosleep
+        struct timespec *req = (struct timespec *)ctx->rdi;
+        struct timespec *rem = (struct timespec *)ctx->rsi;
+        uint64_t start = StTimeP_GetUptimeMicroseconds();
+
+        StThread_Sleep(req->tv_sec * 1000 + req->tv_nsec / 1000000);
+
+        uint64_t elapsed = StTimeP_GetUptimeMicroseconds() - start;
+        if (rem) {
+            rem->tv_sec = elapsed / 1000000;
+            rem->tv_nsec = (elapsed % 1000000) * 1000;
+        }
+
+        return 0;
+    }
     case 60:  // exit
         StThread_Exit();
-        break;
+        return -1;
     case 158:  // arch_prctl
         switch (ctx->rdi) {
         case 0x1001:  // ARCH_SET_GS

@@ -11,7 +11,7 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
 #include <strata/plat/interrupt.h>
-#include <strata/plat/mmu.h>
+#include <strata/plat/mm.h>
 #include <strata/plat/pic.h>
 #include <strata/plat/syscall.h>
 #include <strata/plat/time.h>
@@ -145,7 +145,7 @@ static StStatus init_krt(void)
 
     krt_size = (uintptr_t)&_krt_end - (uintptr_t)&_krt_start;
 
-    status = StMm_AllocateSparseTo(
+    status = StMm_AllocateGlobalSparseTo(
         VMM_DOMAIN_KRT_VPN_BASE,
         ALIGN_DIV(krt_size, PAGE_SIZE),
         PMM_DEFAULT,
@@ -155,7 +155,7 @@ static StStatus init_krt(void)
 
     memcpy(PAGE_TO_VPTR(VMM_DOMAIN_KRT_VPN_BASE), &_krt_start, krt_size);
 
-    status = StMm_Remap(
+    status = StMm_SetGlobalPageFlags(
         VMM_DOMAIN_KRT_VPN_BASE,
         ALIGN_DIV(krt_size, PAGE_SIZE),
         MAP_USER | MAP_READONLY
@@ -240,10 +240,10 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to initialize CPU local data");
     }
 
-    LOG_INFO("initializing MMU...\n");
-    status = StMmuP_Init();
+    LOG_INFO("initializing memory manager...\n");
+    status = StMm_Init();
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to initialize mmu");
+        St_Panic(status, "failed to initialize memory manager");
     }
 
     LOG_INFO("initializing PMA...\n");
@@ -313,7 +313,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     LOG_INFO("initializing VMA...\n");
-    status = StVmm_InitDomain(
+    status = StVmm_InitGlobalDomain(
         VMM_DOMAIN_KERNEL_FAST,
         ADDR_TO_PAGE(ALIGN((uintptr_t)&_end_, PAGE_SIZE)),
         VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT
@@ -322,7 +322,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    status = StVmm_InitDomain(
+    status = StVmm_InitGlobalDomain(
         VMM_DOMAIN_KERNEL_SLOW,
         VMM_DOMAIN_KERNEL_SLOW_VPN_BASE,
         VMM_DOMAIN_KERNEL_SLOW_VPN_LIMIT
@@ -331,29 +331,18 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    status = StVmm_InitDomain(VMM_DOMAIN_IO, VMM_DOMAIN_IO_VPN_BASE, VMM_DOMAIN_IO_VPN_LIMIT);
+    status = StVmm_InitGlobalDomain(VMM_DOMAIN_IO, VMM_DOMAIN_IO_VPN_BASE, VMM_DOMAIN_IO_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    status = StVmm_InitDomain(
+    status = StVmm_InitGlobalDomain(
         VMM_DOMAIN_MODULE,
         VMM_DOMAIN_MODULE_VPN_BASE,
         VMM_DOMAIN_MODULE_VPN_LIMIT
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
-    }
-
-    status = StVmm_InitDomain(VMM_DOMAIN_USER, VMM_DOMAIN_USER_VPN_BASE, VMM_DOMAIN_USER_VPN_LIMIT);
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to initialize virtual memory allocator");
-    }
-
-    LOG_INFO("initializing memory manager...\n");
-    status = StMm_Init();
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to initialize memory manager");
     }
 
     LOG_DEBUG("relocating bootinfo table...\n");
@@ -365,7 +354,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     memcpy(newbtblhdr, btblhdr, btblhdr->size);
 
     LOG_INFO("late initializing MMU...\n")
-    status = StMmuP_LateInit();
+    status = StMmP_CleanupTempMapping();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to late init MMU");
     }

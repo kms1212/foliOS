@@ -1,26 +1,21 @@
-#include "strata/plat/thread.h"
 #include <strata/process.h>
 
 #include <stdlib.h>
 
+#include <strata/plat/thread.h>
+
+#include <strata/mm.h>
+#include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/types.h>
 
-StStatus StProcess_CreateUser(
-    struct StProcess **process __out,
-    uintptr_t entry __in,
-    int arg_count __in,
-    const char *const *args __in,
-    int env_count __in,
-    const char *const *envs __in
-)
+StStatus StProcess_CreateUser(struct StProcess **process __out)
 {
     static StProcess_Id new_process_id = (StProcess_Id)1;
 
     StStatus status;
     struct StProcess *proc = NULL;
-    struct StMmuP_AddressSpace *asp = NULL;
-    struct StThread *main_thread = NULL;
+    struct StMm_AddressSpace *asp = NULL;
 
     proc = calloc(1, sizeof(*proc));
     if (!proc) {
@@ -30,37 +25,18 @@ StStatus StProcess_CreateUser(
 
     proc->id = new_process_id++;
 
-    // status = StMmuP_CreateAddressSpace(&asp);
-    // if (!CHECK_SUCCESS(status)) goto has_error;
-
-    // proc->address_space = asp;
-
-    status = StThread_CreateUserMain(
-        proc,
-        entry,
-        (St_PageCount)16,
-        (St_PageCount)16,
-        arg_count,
-        args,
-        env_count,
-        envs,
-        &main_thread
-    );
+    status = StMm_CreateAddressSpace(&asp);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    proc->main_thread = main_thread;
+    proc->address_space = asp;
 
     *process = proc;
 
     return STATUS_SUCCESS;
 
 has_error:
-    if (main_thread) {
-        StThread_Remove(main_thread);
-    }
-
     if (asp) {
-        StMmuP_RemoveAddressSpace(asp);
+        StMm_RemoveAddressSpace(asp);
     }
 
     if (proc) {
@@ -76,7 +52,7 @@ void StProcess_Remove(struct StProcess *process)
 
     process->is_dying = 1;
 
-    // StMmuP_RemoveAddressSpace(process->address_space);
+    StMm_RemoveAddressSpace(process->address_space);
 
     if (!process->main_thread->is_dying) {
         StThread_Remove(process->main_thread);

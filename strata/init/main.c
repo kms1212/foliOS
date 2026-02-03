@@ -101,10 +101,16 @@ static void setup_process(void)
     unsigned int ph_count;
     size_t userexec_size = (uintptr_t)&_userexec_end - (uintptr_t)&_userexec_start;
     uintptr_t entry_point;
+    struct StThread *main_thread;
 
     status = StElf_Open(&_userexec_start, userexec_size, &elf);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to open elf");
+    }
+
+    status = StProcess_CreateUser(&process);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to create user process");
     }
 
     status = StElf_GetProgramHeaderCount(elf, &ph_count);
@@ -120,9 +126,9 @@ static void setup_process(void)
 
         if (ph.type != PT_LOAD) continue;
 
-        status = StElf_LoadProgram(elf, i);
+        status = StElf_LoadProgram(elf, i, process->address_space);
         if (!CHECK_SUCCESS(status)) {
-            St_Panic(status, "failed to load program header");
+            St_Panic(status, "failed to load program");
         }
     }
 
@@ -134,41 +140,22 @@ static void setup_process(void)
     const char *args[] = {"test", NULL};
     const char *envs[] = {"PATH=/bin", NULL};
 
-    status = StProcess_CreateUser(
-        &process,
+    status = StThread_CreateUserMain(
+        process,
         entry_point,
+        (St_PageCount)16,
+        (St_PageCount)16,
         ARRAY_SIZE(args) - 1,
         args,
         ARRAY_SIZE(envs) - 1,
-        envs
+        envs,
+        &main_thread
     );
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to create user process");
+        St_Panic(status, "failed to create user thread");
     }
 
-    // test_addr = (uint8_t *)PAGE_TO_VPTR(test_vpn);
-    // test_addr[0] = 0x48;  // movabs $0xFFFF800000001000, %rax
-    // test_addr[1] = 0xB8;
-    // test_addr[2] = 0x00;
-    // test_addr[3] = 0x10;
-    // test_addr[4] = 0x00;
-    // test_addr[5] = 0x00;
-    // test_addr[6] = 0x00;
-    // test_addr[7] = 0x80;
-    // test_addr[8] = 0xFF;
-    // test_addr[9] = 0xFF;
-    // test_addr[10] = 0x48;  // mov (%rax), %rax
-    // test_addr[11] = 0x8B;
-    // test_addr[12] = 0x00;
-    // test_addr[13] = 0xFF;  // call *%rax
-    // test_addr[14] = 0xD0;
-    // test_addr[15] = 0xEB;  // jmp -15
-    // test_addr[16] = 0xEF;
-
-    // status = StProcess_CreateUser(&process, (uintptr_t)test_addr, (uintptr_t)test_addr +
-    // 0x10000); if (!CHECK_SUCCESS(status)) {
-    //     St_Panic(status, "failed to create user process");
-    // }
+    process->main_thread = main_thread;
 
     StThread_Detach(process->main_thread);
 }
@@ -194,6 +181,8 @@ static void thread3_main(struct StThread *th)
 
         time = StTimeP_GetGlobalTick() - start_tick;
     } while (time < 50);
+
+    setup_process();
 }
 
 static void thread2_main(struct StThread *th)
@@ -252,6 +241,8 @@ static void thread1_main(struct StThread *th)
 
     StThread_CreateKernel(thread2_main, 16, &new_thread1);
     StThread_CreateKernel(thread3_main, 16, &new_thread2);
+
+    setup_process();
 
     waitlist[0] = new_thread1;
     waitlist[1] = new_thread2;
@@ -332,7 +323,7 @@ __section(".text") __noreturn void main(void)
         St_Panic(STATUS_INVALID_VALUE, "no framebuffer or not in text mode");
     }
 
-    status = StMm_Map(
+    status = StMm_MapGlobal(
         VMM_DOMAIN_IO,
         &earlyfb_vpn,
         ADDR_TO_PAGE(fbent->framebuffer_addr),
@@ -463,9 +454,6 @@ __section(".text") __noreturn void main(void)
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize thread system");
     }
-
-    LOG_INFO("loading test user program...\n");
-    setup_process();
 
     StThread_EnablePreemption();
 

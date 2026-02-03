@@ -1,7 +1,7 @@
 #ifndef __TRAMPOLINE_H__
 #define __TRAMPOLINE_H__
 
-#include <strata/mm.h>
+#include <strata/mm/types.h>
 
 void setup_trampoline_page_tables(void);
 St_PhysFrame get_trampoline_pml4_phys(void);

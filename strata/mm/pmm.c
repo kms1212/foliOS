@@ -1,4 +1,4 @@
-#include <strata/mm.h>
+#include <strata/mm/pmm.h>
 
 #include <inttypes.h>
 #include <stdatomic.h>

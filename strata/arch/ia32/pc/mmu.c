@@ -1,4 +1,4 @@
-#include <strata/plat/mmu.h>
+#include <strata/plat/mm.h>
 
 #include <strata/arch/mmu.h>
 
@@ -15,12 +15,12 @@
 static union StA_PageDirectoryEntry *const _pd = (void *)PAGE_TABLE_RCRS_PD_BASE;
 static union StA_PageTableEntry *const _pt = (void *)PAGE_TABLE_RCRS_PT_BASE;
 
-StStatus StMmuP_Init(void)
+StStatus StMmP_InitBaseAddressSpace(void)
 {
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_VirtPageToPhysFrame(St_VirtPage vpn, St_PhysFrame *pfn)
+StStatus StMmP_VirtPageToPhysFrame(St_VirtPage vpn, St_PhysFrame *pfn)
 {
     if (vpn > VIRT_PAGE_MAX) return STATUS_INVALID_VALUE;
 
@@ -38,7 +38,7 @@ StStatus StMmuP_VirtPageToPhysFrame(St_VirtPage vpn, St_PhysFrame *pfn)
     return STATUS_SUCCESS;
 }
 
-StStatus StMmuP_MapMemory(St_PhysFrame pfn, St_VirtPage vpn, uint32_t flags)
+StStatus StMmP_MapMemory(St_PhysFrame pfn, St_VirtPage vpn, uint32_t flags)
 {
     StStatus status;
     union StA_PageTableEntry *pt = (void *)(0xFFC00000 + ((vpn & 0x000FFC00) << 2));
@@ -91,7 +91,7 @@ StStatus StMmuP_MapMemory(St_PhysFrame pfn, St_VirtPage vpn, uint32_t flags)
     return STATUS_SUCCESS;
 }
 
-void StMmuP_UnmapMemory(St_PhysFrame pfn, St_VirtPage vpn, uint32_t flags)
+void StMmP_UnmapMemory(St_PhysFrame pfn, St_VirtPage vpn, uint32_t flags)
 {
     union StA_PageTableEntry *pt = (void *)(0xFFC00000 + ((vpn & 0x000FFC00) << 2));
 

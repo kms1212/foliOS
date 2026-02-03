@@ -20,7 +20,7 @@ void *liballoc_alloc(int page_count)
     StStatus status;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
 
-    status = StMm_AllocateSparse(
+    status = StMm_AllocateGlobalSparse(
         VMM_DOMAIN_KERNEL_SLOW,
         &allocated_vpn,
         (St_PageCount)page_count,
@@ -39,7 +39,7 @@ int liballoc_free(void *vaddr, int page_count)
 {
     St_VirtPage vpn = VPTR_TO_PAGE(vaddr);
 
-    StMm_Free(vpn, (St_PageCount)page_count);
+    StMm_FreeGlobal(vpn, (St_PageCount)page_count);
 
     return 0;
 }

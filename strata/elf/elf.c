@@ -13,11 +13,23 @@ static StStatus copy_from_img(
     struct StElf_Object *elf __in, size_t offset __in, void *buf __buf, size_t len __in
 )
 {
-    if (offset + len > elf->img_size) {
-        return STATUS_INVALID_VALUE;
-    }
+    if (offset + len > elf->img_size) return STATUS_INVALID_VALUE;
+
     memcpy(buf, (const char *)elf->img_base + offset, len);
     return STATUS_SUCCESS;
+}
+
+static StStatus copy_from_img_to_local(
+    struct StElf_Object *elf __in,
+    size_t offset __in,
+    struct StMm_AddressSpace *asp __in,
+    uintptr_t addr __in,
+    size_t len __in
+)
+{
+    if (offset + len > elf->img_size) return STATUS_INVALID_VALUE;
+
+    return StMm_WriteLocal(asp, addr, (const char *)elf->img_base + offset, len);
 }
 
 StStatus StElf_Open(
@@ -165,7 +177,9 @@ StStatus StElf_GetProgramHeader(
     return STATUS_SUCCESS;
 }
 
-StStatus StElf_LoadProgram(struct StElf_Object *elf __in, unsigned int index __in)
+StStatus StElf_LoadProgram(
+    struct StElf_Object *elf __in, unsigned int index __in, struct StMm_AddressSpace *asp __in
+)
 {
     StStatus status;
     struct StElf32_Phdr phdr32;
@@ -225,7 +239,8 @@ StStatus StElf_LoadProgram(struct StElf_Object *elf __in, unsigned int index __i
     }
 
     // allocate page
-    status = StMm_AllocateSparseTo(
+    status = StMm_AllocateLocalSparseTo(
+        asp,
         ADDR_TO_PAGE(program_load_addr),
         program_size_page,
         PMM_DEFAULT,
@@ -235,23 +250,31 @@ StStatus StElf_LoadProgram(struct StElf_Object *elf __in, unsigned int index __i
     allocated = 1;
 
     // copy program data
-    status = copy_from_img(elf, program_data_offset, (void *)program_load_addr, program_filesz);
+    status =
+        copy_from_img_to_local(elf, program_data_offset, asp, program_load_addr, program_filesz);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     // zero-fill if needed
     if (program_memsz > program_filesz) {
-        memset((void *)(program_load_addr + program_filesz), 0, program_memsz - program_filesz);
+        status = StMm_SetLocal(
+            asp,
+            program_load_addr + program_filesz,
+            0,
+            program_memsz - program_filesz
+        );
+        if (!CHECK_SUCCESS(status)) goto has_error;
     }
 
     // fixup page map flags
-    status = StMm_Remap(ADDR_TO_PAGE(program_load_addr), program_size_page, map_flags);
+    status =
+        StMm_SetLocalPageFlags(asp, ADDR_TO_PAGE(program_load_addr), program_size_page, map_flags);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     return STATUS_SUCCESS;
 
 has_error:
     if (allocated) {
-        StMm_Free(ADDR_TO_PAGE(program_load_addr), program_size_page);
+        StMm_FreeLocal(asp, ADDR_TO_PAGE(program_load_addr), program_size_page);
     }
 
     return status;

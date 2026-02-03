@@ -19,7 +19,7 @@ struct StCpuLocalP_Data {
     uint32_t cpu_id;
     int is_bsp;
     struct StScheduler_Data scheduler;
-    struct StMmuP_AddressSpace *current_asp;
+    struct StMm_AddressSpace *current_asp;
 } __aligned(64);
 
 StStatus StCpuLocalP_Init(void);

@@ -1,12 +1,11 @@
-#include "strata/status.h"
-#include <strata/mm.h>
+#include <strata/mm/vmm.h>
 
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
-#include <rb.h>
+#include <strata/rb.h>
 
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/intrinsics/invlpg.h>
@@ -16,6 +15,7 @@
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/panic.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "vmm"
 
@@ -24,7 +24,7 @@
 struct alloc_domain {
     struct StRbtree rbtree;
     St_VirtPage base_vpn, limit_vpn;
-    size_t free_count;
+    St_PageCount free_count;
     int initialized;
 };
 
@@ -35,7 +35,6 @@ struct alloc_node {
 };
 
 static struct alloc_domain alloc_domain_list[VMM_DOMAIN_MAX] = {
-    [VMM_DOMAIN_USER] = {.initialized = 0},
     [VMM_DOMAIN_MODULE] = {.initialized = 0},
     [VMM_DOMAIN_KERNEL_FAST] = {.initialized = 0},
     [VMM_DOMAIN_KERNEL_SLOW] = {.initialized = 0},
@@ -66,7 +65,7 @@ static int compare_alloc(struct StRbtree_Node *node1, struct StRbtree_Node *node
     return 0;
 }
 
-StStatus StVmm_InitDomain(
+StStatus StVmm_InitGlobalDomain(
     enum StVmm_Domain domain __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
 )
 {
@@ -85,7 +84,25 @@ StStatus StVmm_InitDomain(
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_GetTotalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out)
+StStatus StVmm_InitLocalDomain(
+    struct StMm_AddressSpace *asp __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
+)
+{
+    StRbtree_Create(&asp->user_rbtree, compare_alloc);
+    asp->user_base_vpn = base_vpn;
+    asp->user_limit_vpn = limit_vpn;
+    asp->user_free_count = limit_vpn - base_vpn + 1;
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StVmm_RemoveLocalDomain(struct StMm_AddressSpace *asp __in)
+{
+    StRbtree_Destroy(&asp->user_rbtree);
+    return STATUS_SUCCESS;
+}
+
+StStatus StVmm_GetTotalGlobalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out)
 {
     struct alloc_domain *alloc_domain;
 
@@ -100,7 +117,7 @@ StStatus StVmm_GetTotalPageCount(enum StVmm_Domain domain __in, St_PageCount *co
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_GetFreePageCount(enum StVmm_Domain domain, St_PageCount *count __out)
+StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain, St_PageCount *count __out)
 {
     struct alloc_domain *alloc_domain;
 
@@ -116,7 +133,7 @@ StStatus StVmm_GetFreePageCount(enum StVmm_Domain domain, St_PageCount *count __
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_AllocatePage(
+StStatus StVmm_AllocateGlobalPage(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
@@ -195,4 +212,9 @@ found_hole:
     return STATUS_SUCCESS;
 }
 
-void StVmm_FreePage(St_VirtPage vpn __in, St_PageCount count __in) {}
+void StVmm_FreeGlobalPage(St_VirtPage vpn __in, St_PageCount count __in) {}
+void StVmm_FreeLocalPage(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
+)
+{
+}
