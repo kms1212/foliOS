@@ -49,6 +49,7 @@ target_compile_definitions(strata PRIVATE CRC32_FAST=1)
 # Subdirectories
 add_subdirectory(lib)
 add_subdirectory(arch)
+add_subdirectory(elf)
 add_subdirectory(init)
 add_subdirectory(interrupt)
 add_subdirectory(log)
