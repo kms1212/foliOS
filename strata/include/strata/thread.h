@@ -61,7 +61,7 @@ struct StThread {
     int wait_count;
     int wait_timeout_ms;
 
-    uint64_t sleep_until_tick;
+    uint64_t sleep_until_uptime_us;
 };
 
 StStatus StThread_Init(struct StThread **main_thread __out);

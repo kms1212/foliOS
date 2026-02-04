@@ -314,8 +314,7 @@ StStatus StThread_Sleep(int timeout_ms __in)
     StThread_DisablePreemption();
 
     current_thread->status = THREAD_STATE_SLEEPING;
-    current_thread->sleep_until_tick =
-        StTimeP_GetGlobalTick() + timeout_ms * StTimeP_GetGlobalTickFrequency() / 1000;
+    current_thread->sleep_until_uptime_us = StTimeP_GetUptimeMicroseconds() + timeout_ms * 1000;
 
     StThread_EnablePreemption();
 

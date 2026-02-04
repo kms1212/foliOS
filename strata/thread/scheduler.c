@@ -86,7 +86,7 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
             next_thread->status = THREAD_STATE_RUNNING;
             break;
         case THREAD_STATE_SLEEPING:
-            if (StTimeP_GetGlobalTick() >= next_thread->sleep_until_tick) {
+            if (StTimeP_GetUptimeMicroseconds() >= next_thread->sleep_until_uptime_us) {
                 next_thread->status = THREAD_STATE_RUNNING;
             }
             break;
