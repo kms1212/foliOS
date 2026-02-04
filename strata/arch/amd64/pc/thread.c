@@ -1,4 +1,3 @@
-#include "strata/plat/mm.h"
 #include <strata/plat/thread.h>
 
 #include <stdlib.h>
@@ -6,10 +5,12 @@
 
 #include <strata/arch/intrinsics/misc.h>
 #include <strata/arch/intrinsics/msr.h>
+#include <strata/arch/intrinsics/xsave.h>
 #include <strata/arch/mmu.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
+#include <strata/plat/mm.h>
 #include <strata/plat/tss.h>
 
 #include <strata/compiler.h>
@@ -284,18 +285,31 @@ StStatus StThreadP_Switch(
     /* save current stack pointer of the previous thread */
     current->kmode_stack_ptr = (void *)((uintptr_t)ctx - 8);
 
+    /* save FPU/SIMD registers */
+    StA_FXSave(&current->platform_data.fx_save_buffer);
+
+    /* switch address space if needed */
     if (next->type == THREAD_TYPE_USER && current_asp != next->process->address_space) {
         status = StMmP_SwitchAddressSpace(next->process->address_space);
         if (!CHECK_SUCCESS(status)) return status;
     }
 
-    kstack_top = PAGE_TO_ADDR(next->kmode_stack_base_vpn + next->kmode_stack_page_count);
+    /* restore FPU/SIMD registers */
+    StA_FXRestore(&next->platform_data.fx_save_buffer);
 
+    /* set kernel stack pointer */
+    kstack_top = PAGE_TO_ADDR(next->kmode_stack_base_vpn + next->kmode_stack_page_count);
     StP_SetTssStack(kstack_top);
     StCpuLocalP_GetData()->kernel_rsp = kstack_top;
 
+    /* set FS base */
     if (next->platform_data.fs_base != StA_ReadMsr(MSR_FS_BASE)) {
         StA_WriteMsr(MSR_FS_BASE, next->platform_data.fs_base);
+    }
+
+    /* set GS base */
+    if (next->platform_data.gs_base != StA_ReadMsr(MSR_KERNEL_GS_BASE)) {
+        StA_WriteMsr(MSR_KERNEL_GS_BASE, next->platform_data.gs_base);
     }
 
     /* switch to next thread */

@@ -1,6 +1,7 @@
 #ifndef __STRATA_PLAT_THREAD_H__
 #define __STRATA_PLAT_THREAD_H__
 
+#include <strata/arch/intrinsics/xsave.h>
 #include <strata/plat/interrupt.h>
 
 #include <strata/compiler.h>
@@ -9,6 +10,8 @@
 struct StThreadP_PlatformData {
     uintptr_t fs_base;
     uintptr_t gs_base;
+
+    union StA_FXSaveBuffer fx_save_buffer;
 };
 
 struct StThread;
