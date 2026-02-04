@@ -7,10 +7,10 @@
 extern "C" {
 #endif
 
-void *malloc(size_t);           //< The standard function.
-void *realloc(void *, size_t);  //< The standard function.
-void *calloc(size_t, size_t);   //< The standard function.
-void free(void *);              //< The standard function.
+void *la_malloc(size_t);           //< The standard function.
+void *la_realloc(void *, size_t);  //< The standard function.
+void *la_calloc(size_t, size_t);   //< The standard function.
+void la_free(void *);              //< The standard function.
 
 #ifdef __cplusplus
 }

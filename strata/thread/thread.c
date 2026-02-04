@@ -8,6 +8,7 @@
 
 #include <strata/log.h>
 #include <strata/macros.h>
+#include <strata/mm.h>
 #include <strata/panic.h>
 #include <strata/process.h>
 #include <strata/scheduler.h>
@@ -22,11 +23,9 @@ StStatus StThread_Init(struct StThread **main_thread __out)
     struct StThread *main_th = NULL;
     int added_thread_to_scheduler = 0;
 
-    main_th = calloc(1, sizeof(*main_th));
-    if (!main_th) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    status = StPool_AllocateClear(sizeof(*main_th), (void **)&main_th);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
     main_th->id = 0;
     main_th->status = THREAD_STATE_RUNNING;
     main_th->type = THREAD_TYPE_MAIN;
@@ -48,7 +47,7 @@ has_error:
     }
 
     if (main_th) {
-        free(main_th);
+        StPool_Free(main_th);
     }
 
     return status;
@@ -86,11 +85,9 @@ StStatus StThread_CreateKernel(
     StThread_DisablePreemption();
 
     /* create thread object */
-    th = calloc(1, sizeof(*th));
-    if (!th) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    status = StPool_AllocateClear(sizeof(*th), (void **)&th);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
     th->id = new_thread_id++;
     th->status = THREAD_STATE_PENDING;
     th->type = THREAD_TYPE_KERNEL;
@@ -131,7 +128,7 @@ has_error:
     }
 
     if (th) {
-        free(th);
+        StPool_Free(th);
     }
 
     if (prev_preemption_enabled) {
@@ -165,11 +162,9 @@ StStatus StThread_CreateUserMain(
     StThread_DisablePreemption();
 
     /* create thread object */
-    th = calloc(1, sizeof(*th));
-    if (!th) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    status = StPool_AllocateClear(sizeof(*th), (void **)&th);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
     th->id = new_thread_id++;
     th->status = THREAD_STATE_PENDING;
     th->type = THREAD_TYPE_USER;
@@ -227,7 +222,7 @@ has_error:
     }
 
     if (th) {
-        free(th);
+        StPool_Free(th);
     }
 
     if (prev_preemption_enabled) {
@@ -258,7 +253,7 @@ StStatus StThread_Remove(struct StThread *th)
         }
     }
 
-    free(th);
+    StPool_Free(th);
 
     return STATUS_SUCCESS;
 }

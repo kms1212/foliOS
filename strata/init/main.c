@@ -252,6 +252,8 @@ static void thread1_main(struct StThread *th)
     StThread_Remove(new_thread2);
 }
 
+struct print_state pstate;
+
 __section(".text") __noreturn void main(void)
 {
     StStatus status;
@@ -268,7 +270,6 @@ __section(".text") __noreturn void main(void)
     struct bootinfo_entry_pagetable_vpn *pvent = NULL;
     struct bootinfo_entry_ramdisk *rdent = NULL;
     St_VirtPage earlyfb_vpn;
-    struct print_state pstate;
     St_PageCount total_frames, free_frames;
     struct StThread *main_thread;
     struct StThread *thread1;

@@ -13,6 +13,7 @@
 
 #include <strata/mm/asp.h>
 #include <strata/mm/pmm.h>
+#include <strata/mm/pool.h>
 #include <strata/mm/types.h>
 #include <strata/mm/utils.h>
 #include <strata/mm/vmm.h>

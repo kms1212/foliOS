@@ -1,11 +1,11 @@
 #include <strata/interrupt.h>
 
 #include <stdio.h>
-#include <stdlib.h>
 
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/macros.h>
+#include <strata/mm/pool.h>
 #include <strata/panic.h>
 
 #define MODULE_NAME "irq"
@@ -25,11 +25,8 @@ StStatus StInt_CreateHandler(
 
     LOG_DEBUG("adding intrrupt handler to #%02X...\n", num);
 
-    newentry = malloc(sizeof(*newentry));
-    if (!newentry) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    status = StPool_Allocate(sizeof(*newentry), (void **)&newentry);
+    if (!CHECK_SUCCESS(status)) goto has_error;
     newentry->next = NULL;
     newentry->data = data;
     newentry->handler = func;
@@ -54,7 +51,7 @@ StStatus StInt_CreateHandler(
 
 has_error:
     if (newentry) {
-        free(newentry);
+        StPool_Free(newentry);
     }
 
     return status;
@@ -86,5 +83,5 @@ void StInt_RemoveHandler(struct StInt_Handler *handler)
         prev->next = handler->next;
     }
 
-    free(handler);
+    StPool_Free(handler);
 }

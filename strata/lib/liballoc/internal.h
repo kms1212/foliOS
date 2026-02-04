@@ -8,7 +8,7 @@
 // typedef	unsigned long	uintptr_t;
 
 // This lets you prefix malloc and friends
-#define PREFIX(func) func
+#define PREFIX(func) la_##func
 
 /** This is a boundary tag which is prepended to the
  * page or section of a page which we have allocated. It is

@@ -39,11 +39,8 @@ StStatus StElf_Open(
     StStatus status;
     struct StElf_Object *elf = NULL;
 
-    elf = calloc(1, sizeof(struct StElf_Object));
-    if (!elf) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    status = StPool_AllocateClear(sizeof(*elf), (void **)&elf);
+    if (!CHECK_SUCCESS(status)) goto has_error;
 
     elf->img_base = img_base;
     elf->img_size = img_size;
@@ -97,7 +94,7 @@ StStatus StElf_Open(
 
 has_error:
     if (elf) {
-        free(elf);
+        StPool_Free(elf);
     }
 
     return status;
@@ -105,7 +102,7 @@ has_error:
 
 void StElf_Close(struct StElf_Object *elf __in)
 {
-    free(elf);
+    StPool_Free(elf);
 }
 
 StStatus StElf_GetHeader(struct StElf_Object *elf __in, void *buf __buf, size_t len __in)

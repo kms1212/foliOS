@@ -1,6 +1,7 @@
 #include <strata/plat/syscall.h>
 
 #include <inttypes.h>
+#include <string.h>
 #include <time.h>
 
 #include <strata/arch/cpufeatures.h>
@@ -19,10 +20,66 @@
 
 extern void _StSyscallP_Entry(void);
 
+struct print_state {
+    uint16_t *framebuffer;
+    uint32_t width, pitch, height;
+    uint32_t cursor_col, cursor_row;
+};
+
+extern struct print_state pstate;
+
 struct iovec {
     void *iov_base;
     size_t iov_len;
 };
+
+static int early_print_char(void *_state, char ch)
+{
+    struct print_state *state = _state;
+    uint16_t *framebuffer;
+    uint32_t width, height, pitch, line_diff;
+
+    framebuffer = state->framebuffer;
+    width = state->width;
+    height = state->height;
+    pitch = state->pitch;
+
+    switch (ch) {
+    case '\0':
+        return 1;
+    case '\n':
+        state->cursor_row++;
+    case '\r':
+        state->cursor_col = 0;
+        break;
+    case '\t':
+        state->cursor_col = (state->cursor_col + 8) & ~7;
+        break;
+    case '\b':
+        state->cursor_col--;
+        break;
+    default:
+        framebuffer[state->cursor_row * width + state->cursor_col] = ch | 0x0700;
+        state->cursor_col++;
+        break;
+    }
+
+    if (state->cursor_col >= width) {
+        state->cursor_row += state->cursor_col / width;
+        state->cursor_col %= width;
+    }
+
+    if (state->cursor_row >= height) {
+        line_diff = state->cursor_row - height + 1;
+        for (uint32_t i = 0; i < height - line_diff; i++) {
+            memcpy(&framebuffer[i * width], &framebuffer[(i + line_diff) * width], pitch);
+        }
+        memset(&framebuffer[(height - line_diff) * width], 0, pitch * line_diff);
+        state->cursor_row = height - 1;
+    }
+
+    return 0;
+}
 
 long StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
 {
@@ -37,12 +94,9 @@ long StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context 
         size_t iovcnt = ctx->rdx;
         size_t io_count = 0;
         for (size_t i = 0; i < iovcnt; i++) {
-            LOG_DEBUG(
-                "writev: %*s -> %" PRIu64 "\n",
-                (int)iov[i].iov_len,
-                (char *)iov[i].iov_base,
-                ctx->rdi
-            );
+            for (size_t j = 0; j < iov[i].iov_len; j++) {
+                early_print_char(&pstate, ((char *)iov[i].iov_base)[j]);
+            }
             io_count += iov[i].iov_len;
         }
         return io_count;

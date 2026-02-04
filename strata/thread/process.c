@@ -17,11 +17,8 @@ StStatus StProcess_CreateUser(struct StProcess **process __out)
     struct StProcess *proc = NULL;
     struct StMm_AddressSpace *asp = NULL;
 
-    proc = calloc(1, sizeof(*proc));
-    if (!proc) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    status = StPool_AllocateClear(sizeof(*proc), (void **)&proc);
+    if (!CHECK_SUCCESS(status)) goto has_error;
 
     proc->id = new_process_id++;
 
@@ -40,7 +37,7 @@ has_error:
     }
 
     if (proc) {
-        free(proc);
+        StPool_Free(proc);
     }
 
     return status;
@@ -58,5 +55,5 @@ void StProcess_Remove(struct StProcess *process)
         StThread_Remove(process->main_thread);
     }
 
-    free(process);
+    StPool_Free(process);
 }

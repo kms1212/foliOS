@@ -11,6 +11,7 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
 #include <strata/plat/interrupt.h>
+#include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
 #include <strata/plat/pic.h>
 #include <strata/plat/syscall.h>
@@ -29,24 +30,6 @@
 #include <loadst/bootinfo.h>
 
 #define MODULE_NAME "init"
-
-#define VMM_DOMAIN_USER_VPN_BASE  ((St_VirtPage)0x0000000000200ULL)
-#define VMM_DOMAIN_USER_VPN_LIMIT ((St_VirtPage)0x00007FFF7FFFFULL)
-
-#define VMM_DOMAIN_KRT_VPN_BASE  ((St_VirtPage)0xFFFF800000000ULL)
-#define VMM_DOMAIN_KRT_VPN_LIMIT ((St_VirtPage)0xFFFF80007FFFFULL)
-
-#define VMM_DOMAIN_MODULE_VPN_BASE  ((St_VirtPage)0xFFFF800080000ULL)
-#define VMM_DOMAIN_MODULE_VPN_LIMIT ((St_VirtPage)0xFFFFBFFF7FFFFULL)
-
-#define VMM_DOMAIN_IO_VPN_BASE  ((St_VirtPage)0xFFFFF00000000ULL)
-#define VMM_DOMAIN_IO_VPN_LIMIT ((St_VirtPage)0xFFFFF7FFFFFFFULL)
-
-#define VMM_DOMAIN_KERNEL_SLOW_VPN_BASE  ((St_VirtPage)0xFFFFF80000000ULL)
-#define VMM_DOMAIN_KERNEL_SLOW_VPN_LIMIT ((St_VirtPage)0xFFFFFFFEFFFFFULL)
-
-#define VMM_DOMAIN_KERNEL_FAST_VPN_BASE  ((St_VirtPage)0xFFFFFFFF80000ULL)
-#define VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT ((St_VirtPage)0xFFFFFFFFFFFFFULL)
 
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
@@ -146,17 +129,17 @@ static StStatus init_krt(void)
     krt_size = (uintptr_t)&_krt_end - (uintptr_t)&_krt_start;
 
     status = StMm_AllocateGlobalSparseTo(
-        VMM_DOMAIN_KRT_VPN_BASE,
+        MEMMAP_KRT_VPN_BASE,
         ALIGN_DIV(krt_size, PAGE_SIZE),
         PMM_DEFAULT,
         MAP_USER
     );
     if (!CHECK_SUCCESS(status)) return status;
 
-    memcpy(PAGE_TO_VPTR(VMM_DOMAIN_KRT_VPN_BASE), &_krt_start, krt_size);
+    memcpy(PAGE_TO_VPTR(MEMMAP_KRT_VPN_BASE), &_krt_start, krt_size);
 
     status = StMm_SetGlobalPageFlags(
-        VMM_DOMAIN_KRT_VPN_BASE,
+        MEMMAP_KRT_VPN_BASE,
         ALIGN_DIV(krt_size, PAGE_SIZE),
         MAP_USER | MAP_READONLY
     );
@@ -316,7 +299,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     status = StVmm_InitGlobalDomain(
         VMM_DOMAIN_KERNEL_FAST,
         ADDR_TO_PAGE(ALIGN((uintptr_t)&_end_, PAGE_SIZE)),
-        VMM_DOMAIN_KERNEL_FAST_VPN_LIMIT
+        MEMMAP_KERNEL_FAST_VPN_LIMIT
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
@@ -324,31 +307,28 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     status = StVmm_InitGlobalDomain(
         VMM_DOMAIN_KERNEL_SLOW,
-        VMM_DOMAIN_KERNEL_SLOW_VPN_BASE,
-        VMM_DOMAIN_KERNEL_SLOW_VPN_LIMIT
+        MEMMAP_KERNEL_SLOW_VPN_BASE,
+        MEMMAP_KERNEL_SLOW_VPN_LIMIT
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    status = StVmm_InitGlobalDomain(VMM_DOMAIN_IO, VMM_DOMAIN_IO_VPN_BASE, VMM_DOMAIN_IO_VPN_LIMIT);
+    status = StVmm_InitGlobalDomain(VMM_DOMAIN_IO, MEMMAP_IO_VPN_BASE, MEMMAP_IO_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    status = StVmm_InitGlobalDomain(
-        VMM_DOMAIN_MODULE,
-        VMM_DOMAIN_MODULE_VPN_BASE,
-        VMM_DOMAIN_MODULE_VPN_LIMIT
-    );
+    status =
+        StVmm_InitGlobalDomain(VMM_DOMAIN_MODULE, MEMMAP_MODULE_VPN_BASE, MEMMAP_MODULE_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
     LOG_DEBUG("relocating bootinfo table...\n");
-    newbtblhdr = malloc(btblhdr->size);
-    if (!newbtblhdr) {
-        St_Panic(STATUS_UNKNOWN_ERROR, "cannot allocate memory for bootinfo table");
+    status = StPool_Allocate(btblhdr->size, (void **)&newbtblhdr);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "cannot allocate memory for bootinfo table");
     }
 
     memcpy(newbtblhdr, btblhdr, btblhdr->size);

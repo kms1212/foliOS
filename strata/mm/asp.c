@@ -4,7 +4,7 @@
 
 #include <strata/plat/memmap.h>
 
-#include <strata/mm/vmm.h>
+#include <strata/mm.h>
 
 struct StMm_AddressSpace base_asp;
 
@@ -22,16 +22,15 @@ StStatus StMm_CreateAddressSpace(struct StMm_AddressSpace **asp __out)
 {
     StStatus status;
     struct StMm_AddressSpace *new_asp;
+    int p_asp_created = 0;
     int domain_initialized = 0;
 
-    new_asp = calloc(1, sizeof(*new_asp));
-    if (new_asp == NULL) {
-        status = STATUS_UNKNOWN_ERROR;
-        goto has_error;
-    }
+    status = StPool_AllocateClear(sizeof(*new_asp), (void **)&new_asp);
+    if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = StMmP_CreateAddressSpace(new_asp);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    p_asp_created = 1;
 
     status = StVmm_InitLocalDomain(new_asp, MEMMAP_USER_VPN_BASE, MEMMAP_USER_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -51,9 +50,12 @@ has_error:
         StVmm_RemoveLocalDomain(new_asp);
     }
 
-    if (new_asp) {
+    if (new_asp && p_asp_created) {
         StMmP_RemoveAddressSpace(new_asp);
-        free(new_asp);
+    }
+
+    if (new_asp) {
+        StPool_Free(new_asp);
     }
 
     return status;
@@ -62,7 +64,7 @@ has_error:
 void StMm_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
 {
     StMmP_RemoveAddressSpace(asp);
-    free(asp);
+    StPool_Free(asp);
 }
 
 StStatus StMm_SwitchAddressSpace(struct StMm_AddressSpace *asp __in)
