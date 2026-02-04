@@ -2,10 +2,7 @@ cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0076 NEW)
 set(CMAKE_TOOLCHAIN_FILE "${ROOT_SOURCE_DIR}/cmake/${TARGET_ARCH}/Toolchain.cmake")
 
-project("vellum")
-
-# Language configurations
-enable_language(C ASM)
+project("vellum" LANGUAGES C ASM)
 
 # Compiler Tests
 

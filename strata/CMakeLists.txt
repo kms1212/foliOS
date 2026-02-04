@@ -4,13 +4,10 @@ set(CMAKE_TOOLCHAIN_FILE "${ROOT_SOURCE_DIR}/cmake/${TARGET_ARCH}/Toolchain.cmak
 
 include(ExternalProject)
 
-project("strata")
+project("strata" LANGUAGES C ASM)
 
 # Project configurations
 option(BUILD_TESTING "Build tests" OFF)
-
-# Language configurations
-enable_language(C ASM)
 
 # Compiler Tests
 
