@@ -227,12 +227,12 @@ struct metadata {
 
     struct metadata *owner_next, *owner_prev;
 
-    atomic_uint_fast32_t refcount;
-    atomic_uint_fast32_t lock;
+    atomic_uint refcount;
+    atomic_uint lock;
 
     uint8_t padding
         [64 - sizeof(struct internal_public_metadata_view) - sizeof(struct metadata *) * 2 -
-         sizeof(atomic_uint_fast32_t) * 2];
+         sizeof(atomic_uint) * 2];
 } __aligned(64);
 
 _Static_assert(

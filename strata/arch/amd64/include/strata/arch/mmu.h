@@ -11,7 +11,10 @@
 
 #include <strata/mm/types.h>
 
-#define PAGE_SIZE 4096
+#ifndef PAGE_SIZE
+#    define PAGE_SIZE 4096
+
+#endif
 
 union StA_PageTableEntry {
     uint32_t raw;

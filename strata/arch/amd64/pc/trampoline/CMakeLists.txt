@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.13)
 
+execute_process(
+    COMMAND ${CMAKE_C_COMPILER} -print-file-name=include
+    OUTPUT_VARIABLE GCC_BUILTIN_INC_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
 add_executable(trampoline entry.S trampoline.c)
 set_target_properties(trampoline PROPERTIES SUFFIX ".elf")
+set_target_properties(trampoline PROPERTIES C_CLANG_TIDY "")
 target_compile_features(trampoline PUBLIC c_std_11)
 target_compile_options(trampoline PUBLIC 
     $<$<COMPILE_LANGUAGE:ASM,C>:
@@ -11,6 +18,8 @@ target_compile_options(trampoline PUBLIC
         -pedantic
         -pedantic-errors
         -m32
+        -nostdinc
+        -isystem "${GCC_BUILTIN_INC_PATH}"
     >
 )
 target_link_options(trampoline PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_trampoline.lds")
@@ -20,6 +29,7 @@ target_include_directories(trampoline PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../in
 target_include_directories(trampoline PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
 target_include_directories(trampoline SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_include_directories(trampoline PRIVATE "${ROOT_SOURCE_DIR}/common/include")
+target_include_directories(trampoline PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_custom_target(trampoline_cvt ALL
     COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:trampoline> trampoline.bin
