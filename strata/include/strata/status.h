@@ -55,8 +55,10 @@ typedef uint32_t StStatus __nocast;
 #define STATUS_INVALID_THREAD           ((StStatus)0x8000001B)
 #define STATUS_NOT_ALLOCATED            ((StStatus)0x8000001C)
 
-#define STATUS_FS_INCONSISTENT         ((StStatus)0xC0000000)
-#define STATUS_SYSTEM_CORRUPTED        ((StStatus)0xC0000001)
-#define STATUS_PHYSICAL_MEMORY_TOO_BIG ((StStatus)0xC0000002)
+#define STATUS_UNKNOWN_CRITICAL_ERROR  ((StStatus)0xC0000000)
+#define STATUS_ASSERTION_FAILED        ((StStatus)0xC0000001)
+#define STATUS_FS_INCONSISTENT         ((StStatus)0xC0000002)
+#define STATUS_SYSTEM_CORRUPTED        ((StStatus)0xC0000003)
+#define STATUS_PHYSICAL_MEMORY_TOO_BIG ((StStatus)0xC0000004)
 
 #endif  // __STRATA_STATUS_H__

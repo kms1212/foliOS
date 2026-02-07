@@ -41,8 +41,6 @@ target_include_directories(strata SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/in
 target_include_directories(strata PRIVATE "${CMAKE_BINARY_DIR}")
 target_include_directories(strata PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 
-target_compile_definitions(strata PRIVATE CRC32_FAST=1)
-
 # Subdirectories
 add_subdirectory(lib)
 add_subdirectory(arch)

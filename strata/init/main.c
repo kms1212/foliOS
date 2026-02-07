@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <zstd.h>
+
 #include <strata/arch/interrupt.h>
 #include <strata/arch/mmu.h>
 
@@ -81,6 +83,43 @@ static int early_print_char(void *_state, char ch)
     }
 
     return 0;
+}
+
+void test_zstd(void)
+{
+    StStatus status;
+
+    const unsigned char compressed_data[] = {
+        0x28, 0xb5, 0x2f, 0xfd, 0x04, 0x58, 0x41, 0x01, 0x00, 0x7a, 0x73, 0x74, 0x64, 0x20,
+        0x6b, 0x65, 0x72, 0x6e, 0x65, 0x6c, 0x20, 0x70, 0x6f, 0x72, 0x74, 0x69, 0x6e, 0x67,
+        0x20, 0x74, 0x65, 0x73, 0x74, 0x3a, 0x20, 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x66,
+        0x6f, 0x6c, 0x69, 0x4f, 0x53, 0x21, 0x0a, 0xa6, 0xa1, 0x9a, 0xfb,
+    };
+
+    size_t const max_dst_size = 40;
+
+    void *decompressed_buffer;
+
+    status = StPool_Allocate(max_dst_size, &decompressed_buffer);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_DEBUG("ZSTD Test: Memory allocation failed!\n");
+        return;
+    }
+
+    size_t const d_size = ZSTD_decompress(
+        decompressed_buffer,
+        max_dst_size,
+        compressed_data,
+        sizeof(compressed_data)
+    );
+
+    if (ZSTD_isError(d_size)) {
+        LOG_DEBUG("ZSTD Decompression Error: %s\n", ZSTD_getErrorName(d_size));
+    } else {
+        LOG_DEBUG("ZSTD Decompression Success: %s\n", (char *)decompressed_buffer);
+    }
+
+    StPool_Free(decompressed_buffer);
 }
 
 static int shared_value = 0;
@@ -187,6 +226,7 @@ static void thread3_main(struct StThread *th)
 
 static void thread2_main(struct StThread *th)
 {
+    StStatus status;
     uint64_t start_tick = StTimeP_GetGlobalTick();
     uint32_t time = 0;
     struct StThread *new_thread;
@@ -208,12 +248,17 @@ static void thread2_main(struct StThread *th)
         time = StTimeP_GetGlobalTick() - start_tick;
     } while (time < 100);
 
-    StThread_CreateKernel(thread1_main, 16, &new_thread);
+    status = StThread_CreateKernel(thread1_main, 16, &new_thread);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to create kernel thread");
+    }
+
     StThread_Detach(new_thread);
 }
 
 static void thread1_main(struct StThread *th)
 {
+    StStatus status;
     uint64_t start_tick = StTimeP_GetGlobalTick();
     uint32_t time = 0, prev_time = 0;
     struct StThread *new_thread1, *new_thread2;
@@ -239,8 +284,15 @@ static void thread1_main(struct StThread *th)
         prev_time = time;
     } while (time < 100);
 
-    StThread_CreateKernel(thread2_main, 16, &new_thread1);
-    StThread_CreateKernel(thread3_main, 16, &new_thread2);
+    status = StThread_CreateKernel(thread2_main, 16, &new_thread1);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to create kernel thread");
+    }
+
+    status = StThread_CreateKernel(thread3_main, 16, &new_thread2);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to create kernel thread");
+    }
 
     setup_process();
 
@@ -449,6 +501,8 @@ __section(".text") __noreturn void main(void)
     StPmm_GetFreeFrameCount(&free_frames);
 
     LOG_INFO("free/total frames: %zu/%zu\n", free_frames, total_frames);
+
+    test_zstd();
 
     LOG_INFO("initializing thread system...\n");
     status = StThread_Init(&main_thread);
