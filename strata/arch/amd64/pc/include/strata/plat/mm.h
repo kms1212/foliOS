@@ -27,23 +27,34 @@ StStatus StMmP_LocalVirtPageToPhysFrame(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
 );
 
-StStatus StMmP_MapGlobalMemory(
-    St_PhysFrame pfn __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in
+StStatus StMmP_MapGlobalContiguousMemory(
+    St_PhysFrame pfn __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_MapFlags mapflags __in
 );
-StStatus StMmP_MapLocalMemory(
+StStatus StMmP_MapLocalContiguousMemory(
     struct StMm_AddressSpace *asp __in,
     St_PhysFrame pfn __in,
     St_VirtPage vpn __in,
+    St_PageCount count __in,
     StMm_MapFlags mapflags __in
 );
 
-StStatus StMmP_RemapGlobalMemory(St_VirtPage vpn __in, StMm_MapFlags mapflags __in);
-StStatus StMmP_RemapLocalMemory(
-    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags mapflags __in
+StStatus StMmP_RemapGlobalContiguousMemory(
+    St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in
+);
+StStatus StMmP_RemapLocalContiguousMemory(
+    struct StMm_AddressSpace *asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_MapFlags mapflags __in
 );
 
-void StMmP_UnmapGlobalMemory(St_VirtPage vpn __in);
-void StMmP_UnmapLocalMemory(struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in);
+void StMmP_UnmapGlobalContiguousMemory(St_VirtPage vpn __in, St_PageCount count __in);
+void StMmP_UnmapLocalContiguousMemory(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
+);
 
 StStatus StMmP_ReadLocal(
     struct StMm_AddressSpace *asp __in, uintptr_t addr __in, void *buf __buf, size_t len __in

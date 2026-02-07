@@ -458,6 +458,8 @@ __section(".text") __noreturn void main(void)
 
     StThread_EnablePreemption();
 
+    setup_process();
+
     StMutex_Init(&mtx);
     StThread_CreateKernel(thread1_main, 16, &thread1);
     StThread_Detach(thread1);

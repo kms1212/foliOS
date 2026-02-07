@@ -50,10 +50,8 @@ StStatus StMm_MapGlobal(
 
     *vpn = allocated_vpn;
 
-    for (size_t i = 0; i < count; i++) {
-        status = StMmP_MapGlobalMemory(pfn + i, allocated_vpn + i, mapflags);
-        if (!CHECK_SUCCESS(status)) return status;
-    }
+    status = StMmP_MapGlobalContiguousMemory(pfn, allocated_vpn, count, mapflags);
+    if (!CHECK_SUCCESS(status)) return status;
 
     LOG_TRACE(
         "mapped page %016zX to frame %016zX (count=%zu)\n",
@@ -69,9 +67,7 @@ void StMm_UnmapGlobal(St_VirtPage vpn __in, St_PageCount count __in)
 {
     LOG_TRACE("unmapping page %016zX (count=%zu)\n", (uintptr_t)vpn, count);
 
-    for (size_t i = 0; i < count; i++) {
-        StMmP_UnmapGlobalMemory(vpn + i);
-    }
+    StMmP_UnmapGlobalContiguousMemory(vpn, count);
 
     StVmm_FreeGlobalPage(vpn, count);
 }
@@ -142,9 +138,10 @@ StStatus StMm_AllocateGlobalSparse(
         status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        status = StMmP_MapGlobalMemory(
+        status = StMmP_MapGlobalContiguousMemory(
             allocated_pfn,
             allocated_vpn + (St_VirtPage)allocated_count,
+            1,
             mapflags
         );
         if (!CHECK_SUCCESS(status)) {
@@ -165,9 +162,10 @@ has_error:
             continue;
 
         /* unmap vpn & free frame*/
-        StMmP_UnmapGlobalMemory(allocated_vpn + i);
         StPmm_FreeContiguousFrame(allocated_pfn);
     }
+
+    StMmP_UnmapGlobalContiguousMemory(allocated_vpn, allocated_count);
 
     if (allocated_vpn != (St_VirtPage)-1) {
         StVmm_FreeGlobalPage(allocated_vpn, count);
@@ -199,7 +197,12 @@ StStatus StMm_AllocateGlobalSparseTo(
         status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        status = StMmP_MapGlobalMemory(allocated_pfn, vpn + (St_VirtPage)allocated_count, mapflags);
+        status = StMmP_MapGlobalContiguousMemory(
+            allocated_pfn,
+            vpn + (St_VirtPage)allocated_count,
+            1,
+            mapflags
+        );
         if (!CHECK_SUCCESS(status)) {
             StPmm_FreeContiguousFrame(allocated_pfn);
             goto has_error;
@@ -215,9 +218,10 @@ has_error:
         if (!CHECK_SUCCESS(StMm_GlobalVirtPageToPhysFrame(vpn + i, &allocated_pfn))) continue;
 
         /* unmap vpn & free frame*/
-        StMmP_UnmapGlobalMemory(vpn + i);
         StPmm_FreeContiguousFrame(allocated_pfn);
     }
+
+    StMmP_UnmapGlobalContiguousMemory(vpn, allocated_count);
 
     return status;
 }
@@ -246,8 +250,13 @@ StStatus StMm_AllocateLocalSparseTo(
         status = StPmm_AllocateContiguousFrame(&allocated_pfn, (St_PageCount)1, pmmflags);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        status =
-            StMmP_MapLocalMemory(asp, allocated_pfn, vpn + (St_VirtPage)allocated_count, mapflags);
+        status = StMmP_MapLocalContiguousMemory(
+            asp,
+            allocated_pfn,
+            vpn + (St_VirtPage)allocated_count,
+            1,
+            mapflags
+        );
         if (!CHECK_SUCCESS(status)) {
             StPmm_FreeContiguousFrame(allocated_pfn);
             goto has_error;
@@ -263,9 +272,10 @@ has_error:
         if (!CHECK_SUCCESS(StMm_LocalVirtPageToPhysFrame(asp, vpn + i, &allocated_pfn))) continue;
 
         /* unmap vpn & free frame*/
-        StMmP_UnmapLocalMemory(asp, vpn + i);
         StPmm_FreeContiguousFrame(allocated_pfn);
     }
+
+    StMmP_UnmapLocalContiguousMemory(asp, vpn, allocated_count);
 
     return status;
 }
@@ -290,11 +300,12 @@ void StMm_FreeGlobal(St_VirtPage vpn __in, St_PageCount count __in)
             St_Panic(STATUS_CONFLICTING_STATE, "pmm allocation metadata unavailable");
         }
 
-        StMmP_UnmapGlobalMemory(vpn + i);
         StPmm_FreeContiguousFrame(pfn);
 
         i += 1 << metadata->order;
     }
+
+    StMmP_UnmapGlobalContiguousMemory(vpn, count);
 
     StVmm_FreeGlobalPage(vpn, count);
 }
@@ -321,11 +332,12 @@ void StMm_FreeLocal(
             St_Panic(STATUS_CONFLICTING_STATE, "pmm allocation metadata unavailable");
         }
 
-        StMmP_UnmapLocalMemory(asp, vpn + i);
         StPmm_FreeContiguousFrame(pfn);
 
         i += 1 << metadata->order;
     }
+
+    StMmP_UnmapLocalContiguousMemory(asp, vpn, count);
 
     StVmm_FreeLocalPage(asp, vpn, count);
 }
@@ -338,10 +350,8 @@ StStatus StMm_SetGlobalPageFlags(
 
     if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    for (size_t i = 0; i < count; i++) {
-        status = StMmP_RemapGlobalMemory(vpn + i, mapflags);
-        if (!CHECK_SUCCESS(status)) return status;
-    }
+    status = StMmP_RemapGlobalContiguousMemory(vpn, count, mapflags);
+    if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
 }
@@ -357,10 +367,8 @@ StStatus StMm_SetLocalPageFlags(
 
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    for (size_t i = 0; i < count; i++) {
-        status = StMmP_RemapLocalMemory(asp, vpn + i, mapflags);
-        if (!CHECK_SUCCESS(status)) return status;
-    }
+    status = StMmP_RemapLocalContiguousMemory(asp, vpn, count, mapflags);
+    if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
 }

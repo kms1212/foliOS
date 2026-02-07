@@ -35,7 +35,5 @@ status_t _pc_instruction_test(void (*test_func)(void), size_t _instr_size, int *
 
     _pc_isr_table[0x06] = orig_isr_entry;
 
-    interrupt_enable();
-
     return STATUS_SUCCESS;
 }

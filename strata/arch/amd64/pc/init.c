@@ -5,6 +5,7 @@
 
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/gdt.h>
+#include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/io.h>
 #include <strata/arch/mmu.h>
 
@@ -230,12 +231,16 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     }
 
     LOG_INFO("initializing PMA...\n");
+    uint64_t start_tsc = StA_ReadTsc();
     status = StPmm_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize physical memory allocator");
     }
+    uint64_t end_tsc = StA_ReadTsc();
+    LOG_INFO("PMA initialized in %lu ticks\n", end_tsc - start_tsc);
 
     /* mark usable frames first */
+    start_tsc = StA_ReadTsc();
     for (uint32_t i = 0; i < mment->entry_count; i++) {
         if (mment->entries[i].type != BEMT_FREE) continue;
 
@@ -247,8 +252,11 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
             St_Panic(status, "failed to mark usable frames");
         }
     }
+    end_tsc = StA_ReadTsc();
+    LOG_INFO("Usable frames marked in %lu ticks\n", end_tsc - start_tsc);
 
     /* mark unusable frames in case of there's overlapped unusable area inside a usable area */
+    start_tsc = StA_ReadTsc();
     for (uint32_t i = 0; i < mment->entry_count; i++) {
         if (mment->entries[i].type == BEMT_FREE) continue;
 
@@ -260,8 +268,11 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
             St_Panic(status, "failed to mark unusable frames");
         }
     }
+    end_tsc = StA_ReadTsc();
+    LOG_INFO("Unusable frames marked in %lu ticks\n", end_tsc - start_tsc);
 
     /* mark unusable frames */
+    start_tsc = StA_ReadTsc();
     for (uint32_t i = 0; i < ufent->entry_count; i++) {
         /*
             page table is already migrated and replaced to a new one.
@@ -277,8 +288,11 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
             St_Panic(status, "failed to mark unusable frames");
         }
     }
+    end_tsc = StA_ReadTsc();
+    LOG_INFO("Unusable frames marked in %lu ticks\n", end_tsc - start_tsc);
 
     /* mark trampoline area as unusable */
+    start_tsc = StA_ReadTsc();
     status = StPmm_MarkUnusableContiguousFrame(
         VPTR_TO_PAGE(&_trampoline_load_),
         ADDR_TO_PAGE(
@@ -288,12 +302,17 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to mark trampoline area as unusable");
     }
+    end_tsc = StA_ReadTsc();
+    LOG_INFO("Unusable frames marked in %lu ticks\n", end_tsc - start_tsc);
 
     /* finalize memory map and do late init */
+    start_tsc = StA_ReadTsc();
     status = StPmm_LateInit();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to late init physical memory manager");
     }
+    end_tsc = StA_ReadTsc();
+    LOG_INFO("PMA late init in %lu ticks\n", end_tsc - start_tsc);
 
     LOG_INFO("initializing VMA...\n");
     status = StVmm_InitGlobalDomain(
