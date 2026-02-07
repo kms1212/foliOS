@@ -869,7 +869,6 @@ StStatus StPmm_LateInit(void)
     remarking_unavailable = 1;
     allocation_available = 1;
 
-    uint64_t start_tsc = StA_ReadTsc();
     metadata_block_next = metadata_block_alloc_start;
     for (size_t i = 0; i < ARRAY_SIZE(alloc_table_ptr_array); i++) {
         if (alloc_table_ptr_array[i] == ATPA_UNUSABLE) continue;
@@ -920,8 +919,6 @@ StStatus StPmm_LateInit(void)
             j += batch_count * 2;
         }
     }
-    uint64_t end_tsc = StA_ReadTsc();
-    LOG_INFO("PMM: metadata mapping time: %ld ticks\n", end_tsc - start_tsc);
 
     metadata_available = 1;
 
