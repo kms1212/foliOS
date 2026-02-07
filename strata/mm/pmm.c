@@ -794,7 +794,7 @@ StStatus StPmm_LateInit(void)
     // find free frames for metadata blocks.
     for (ssize_t i = ARRAY_SIZE(alloc_table_ptr_array) - 1; i >= 0; i--) {
         St_PageCount allocatable_blocks = 0;
-        St_PhysFrame alloc_start;
+        St_PhysFrame alloc_start = 0;
 
         if (alloc_table_ptr_array[i] == ATPA_UNUSABLE) continue;
 
@@ -869,6 +869,7 @@ StStatus StPmm_LateInit(void)
     remarking_unavailable = 1;
     allocation_available = 1;
 
+    uint64_t start_tsc = StA_ReadTsc();
     metadata_block_next = metadata_block_alloc_start;
     for (size_t i = 0; i < ARRAY_SIZE(alloc_table_ptr_array); i++) {
         if (alloc_table_ptr_array[i] == ATPA_UNUSABLE) continue;
@@ -888,23 +889,39 @@ StStatus StPmm_LateInit(void)
         }
 
         table = (struct alloc_table *)(alloc_table_ptr_array[i] & ATPA_ADDR_MASK);
-        for (size_t j = 0; j < ARRAY_SIZE(table->entries); j += 2) {
+        size_t j = 0;
+        while (j < ARRAY_SIZE(table->entries)) {
             if (table->entries[j].bitmap == ALLOCENT_EXT_UNUSABLE &&
                 table->entries[j + 1].bitmap == ALLOCENT_EXT_UNUSABLE) {
+                j += 2;
                 continue;
+            }
+
+            size_t batch_count = 0;
+            for (size_t k = j; k < ARRAY_SIZE(table->entries); k += 2) {
+                if (table->entries[k].bitmap == ALLOCENT_EXT_UNUSABLE &&
+                    table->entries[k + 1].bitmap == ALLOCENT_EXT_UNUSABLE) {
+                    break;
+                }
+
+                batch_count++;
             }
 
             status = StMmP_MapGlobalContiguousMemory(
                 metadata_block_next,
                 MEMMAP_MFMAREA_VPN_BASE +
                     i * ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES + j / 2,
-                1,
+                batch_count,
                 MAP_DEFAULT
             );
             if (!CHECK_SUCCESS(status)) return status;
-            metadata_block_next++;
+
+            metadata_block_next += batch_count;
+            j += batch_count * 2;
         }
     }
+    uint64_t end_tsc = StA_ReadTsc();
+    LOG_INFO("PMM: metadata mapping time: %ld ticks\n", end_tsc - start_tsc);
 
     metadata_available = 1;
 

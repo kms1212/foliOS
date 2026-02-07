@@ -291,7 +291,6 @@ static StStatus map_memory(
             if (pt[pte_idx + i].p) return STATUS_DUPLICATE_ENTRY;
             pt[pte_idx + i] = pte_template;
             pt[pte_idx + i].base = (uint64_t)pfn + i;
-            StA_InvalidatePage(vpn + i);
         }
 
         count -= chunk_size;
@@ -345,11 +344,18 @@ static StStatus remap_memory(
     size_t chunk_size;
     union StA_PaePageTableEntry pte_template;
     St_PhysFrame pfn;
+    int do_invlpg;
 
     if (vpn > VIRT_PAGE_MAX) return STATUS_INVALID_VALUE;
     if (PML4_HOLE_START <= vpn && vpn <= PML4_HOLE_END) return STATUS_INVALID_VALUE;
     if (PML4_HOLE_START <= vpn + count && vpn + count - 1 <= PML4_HOLE_END) {
         return STATUS_INVALID_VALUE;
+    }
+
+    if (g_p_cpu_features->has_invlpg && count < 16) {
+        do_invlpg = 1;
+    } else {
+        do_invlpg = 0;
     }
 
     pte_template.raw = 0;
@@ -405,11 +411,18 @@ static StStatus remap_memory(
             pfn = pt[pte_idx + i].base;
             pt[pte_idx + i] = pte_template;
             pt[pte_idx + i].base = pfn;
-            StA_InvalidatePage(vpn + i);
+
+            if (do_invlpg) {
+                StA_InvalidatePage(vpn + i);
+            }
         }
 
         count -= chunk_size;
         vpn += chunk_size;
+    }
+
+    if (!do_invlpg) {
+        StA_WriteCr3(StA_ReadCr3());
     }
 
     return STATUS_SUCCESS;
@@ -449,11 +462,18 @@ static void unmap_memory(
     uint64_t pde_idx;
     uint64_t pte_idx;
     size_t chunk_size;
+    int do_invlpg;
 
     if (vpn > VIRT_PAGE_MAX) return;
     if (PML4_HOLE_START <= vpn && vpn <= PML4_HOLE_END) return;
     if (PML4_HOLE_START <= vpn + count && vpn + count - 1 <= PML4_HOLE_END) {
         return;
+    }
+
+    if (g_p_cpu_features->has_invlpg && count < 16) {
+        do_invlpg = 1;
+    } else {
+        do_invlpg = 0;
     }
 
     while (count > 0) {
@@ -484,11 +504,18 @@ static void unmap_memory(
         for (size_t i = 0; i < chunk_size; i++) {
             if (!pt[pte_idx + i].p) return;
             pt[pte_idx + i].raw = 0;
-            StA_InvalidatePage(vpn + i);
+
+            if (do_invlpg) {
+                StA_InvalidatePage(vpn + i);
+            }
         }
 
         count -= chunk_size;
         vpn += chunk_size;
+    }
+
+    if (!do_invlpg) {
+        StA_WriteCr3(StA_ReadCr3());
     }
 }
 
