@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <strata/mm/types.h>
+#include <strata/thread.h>
 #include <string.h>
 
 #include <strata/arch/intrinsics/misc.h>
@@ -20,6 +21,8 @@
 #include <strata/panic.h>
 #include <strata/status.h>
 #include <strata/types.h>
+
+#include "internal.h"
 
 #define MODULE_NAME "pmm"
 
@@ -47,8 +50,6 @@
                 |             ...             |
                 +-----------------------------+
 */
-
-// TODO: pivot to per-page metadata entry from current per-allocation metadata entry
 
 /*
     [ Allocation Entry Format ]
@@ -156,7 +157,7 @@
 #define ALLOC_TABLE_PTR_ARRAY_SIZE      4096
 #define EARLY_ALLOC_TABLE_POOL_COUNT    128
 #define EARLY_EXTENDED_ENTRY_POOL_COUNT 128
-#define METADATA_BLOCK_ENTRY_COUNT      (PAGE_SIZE / sizeof(struct metadata))
+#define METADATA_BLOCK_ENTRY_COUNT      (PAGE_SIZE / sizeof(struct pmm_metadata))
 
 #define ALLOCENT_COVERAGE_PAGES       PAGES_PER_ALLOCTABLE_ENTRY
 #define ALLOCENT_COVERAGE_BYTES       (ALLOCENT_COVERAGE_PAGES * PAGE_SIZE)
@@ -202,37 +203,8 @@ struct alloc_table {
 
 static uintptr_t alloc_table_ptr_array[ALLOC_TABLE_PTR_ARRAY_SIZE] __aligned(PAGE_SIZE);
 
-struct internal_public_metadata_view {
-    St_PhysFrame pfn;
-    void *owner;
-    uint32_t flags;
-    uint32_t order;
-};
-
-_Static_assert(
-    sizeof(struct StPmm_AllocationMetadata) == sizeof(struct internal_public_metadata_view),
-    "public metadata struct size mismatch"
-);
-
-struct metadata {
-    struct internal_public_metadata_view public;
-
-    struct metadata *owner_next, *owner_prev;
-
-    atomic_uint refcount;
-    atomic_uint lock;
-
-    uint8_t padding
-        [64 - sizeof(struct internal_public_metadata_view) - sizeof(struct metadata *) * 2 -
-         sizeof(atomic_uint) * 2];
-} __aligned(64);
-
-_Static_assert(
-    sizeof(struct metadata) == 64, "metadata struct size mismatch (sizeof(struct metadata) != 64)"
-);
-
 struct metadata_block {
-    struct metadata entries[METADATA_BLOCK_ENTRY_COUNT];
+    struct pmm_metadata entries[METADATA_BLOCK_ENTRY_COUNT];
 } __packed __aligned(PAGE_SIZE);
 
 /*
@@ -326,13 +298,12 @@ static inline void propagate_up(uint64_t *entry, int start_page_idx, int start_o
     }
 }
 
-// TODO: search inside entry with explicit alignment
-static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int order, int align_order)
+static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int align_order)
 {
     uint64_t mask, inverted;
     int pos;
 
-    switch (order) {
+    switch (align_order) {
     case 0:
         mask = ALLOCENT_BMP_1P_MASK;
         pos = ALLOCENT_BMP_1P_POS;
@@ -364,13 +335,11 @@ static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int order, in
     inverted = ~entry & mask;
     if (!inverted) return -1;
 
-    return (ctz64(inverted) - pos) * (1 << order);
+    return (ctz64(inverted) - pos) * (1 << align_order);
 }
 
 static inline void allocate_from_bitmap_entry(uint64_t *entry, int index, int order)
 {
-    // uint64_t prev = *entry;
-
     switch (order) {
     case 0:
         *entry |= alloc_masks[index];
@@ -397,35 +366,29 @@ static inline void allocate_from_bitmap_entry(uint64_t *entry, int index, int or
     propagate_up(entry, index, order, 1);
 }
 
-static inline void free_to_table(struct alloc_table *table, St_PhysFrame index, int order)
+static inline void free_to_bitmap_entry(uint64_t *entry, St_PhysFrame index, int order)
 {
-    St_PhysFrame entry_idx = index / ALLOCENT_COVERAGE_PAGES;
-    St_PhysFrame page_idx = index % ALLOCENT_COVERAGE_PAGES;
-
-    if ((int64_t)table->entries[entry_idx].bitmap < 0)
-        return;  // Extended entry - manual handling required
-
     switch (order) {
     case 0:
-        table->entries[entry_idx].bitmap &= ~alloc_masks[page_idx];
+        *entry &= ~alloc_masks[index];
         break;
     case 1:
-        table->entries[entry_idx].bitmap &= ~alloc_masks[32 + page_idx / 2];
+        *entry &= ~alloc_masks[32 + index / 2];
         break;
     case 2:
-        table->entries[entry_idx].bitmap &= ~alloc_masks[48 + page_idx / 4];
+        *entry &= ~alloc_masks[48 + index / 4];
         break;
     case 3:
-        table->entries[entry_idx].bitmap &= ~alloc_masks[56 + page_idx / 8];
+        *entry &= ~alloc_masks[56 + index / 8];
         break;
     case 4:
-        table->entries[entry_idx].bitmap &= ~alloc_masks[60 + page_idx / 16];
+        *entry &= ~alloc_masks[60 + index / 16];
         break;
     case 5:
-        table->entries[entry_idx].bitmap &= ~alloc_masks[62];
+        *entry &= ~alloc_masks[62];
         break;
     }
-    propagate_up(&table->entries[entry_idx].bitmap, (int)page_idx, order, 0);
+    propagate_up(entry, index, order, 0);
 }
 
 static StStatus get_or_create_table(size_t table_idx, struct alloc_table **table)
@@ -451,7 +414,7 @@ static StStatus get_or_create_table(size_t table_idx, struct alloc_table **table
         new_table = &early_alloc_table_pool[early_alloctbl_pool_used_count++];
     } else {
         // TODO: use newly allocated table pool created at late init phase.
-        LOG_ERROR("failed to create allocation table");
+        LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create allocation table");
         return STATUS_UNIMPLEMENTED;
     }
 
@@ -498,7 +461,7 @@ static StStatus get_or_create_extentry(
         new_entry = &early_extended_entry_pool[early_extentry_pool_used_count++];
     } else {
         // TODO: use newly allocated table pool created at late init phase.
-        LOG_ERROR("failed to create extended entry");
+        LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create extended entry");
         return STATUS_UNIMPLEMENTED;
     }
 
@@ -520,22 +483,27 @@ static StStatus get_or_create_extentry(
     return STATUS_SUCCESS;
 }
 
-static struct metadata *get_metadata(St_PhysFrame pfn)
+static struct pmm_metadata *get_metadata(St_PhysFrame pfn)
 {
-    return (struct metadata *)(PAGE_TO_ADDR(MEMMAP_MFMAREA_VPN_BASE) +
-                               pfn * sizeof(struct metadata));
+    return (struct pmm_metadata *)(PAGE_TO_ADDR(MEMMAP_MFMAREA_VPN_BASE) +
+                                   pfn * sizeof(struct pmm_metadata));
 }
 
-static StStatus create_metadata(St_PhysFrame pfn, void *owner, int order)
+static St_PhysFrame get_pfn_from_metadata(struct pmm_metadata *metadata)
 {
-    struct metadata *metadata = get_metadata(pfn);
+    return (St_PhysFrame)((uintptr_t)metadata - PAGE_TO_ADDR(MEMMAP_MFMAREA_VPN_BASE)) /
+        sizeof(struct pmm_metadata);
+}
 
+static StStatus create_metadata(St_PhysFrame pfn, struct StMm_AllocationOwner *owner, int order)
+{
     if (!metadata_available) return STATUS_SUCCESS;
+
+    struct pmm_metadata *metadata = get_metadata(pfn);
 
     metadata->lock = 0;
     metadata->refcount = 1;
     metadata->public.order = order;
-    metadata->public.pfn = pfn;
     metadata->public.flags = 0;
     metadata->public.owner = owner;
 
@@ -612,7 +580,7 @@ static void do_free_contiguous_frame(St_PhysFrame pfn, int order)
             extentry->state_flags[slot_idx + i] = EE_FREE;
         }
     } else {
-        free_to_table(table, slot_idx, order);
+        free_to_bitmap_entry(&table->entries[entry_idx].bitmap, slot_idx, order);
     }
 
     free_frames += (1ULL << order);
@@ -760,9 +728,8 @@ StStatus StPmm_LateInit(void)
 {
     StStatus status;
     St_PageCount required_metadata_blocks = 0;
-    St_PageCount allocated_metadata_blocks = 0;
-    St_PhysFrame metadata_block_alloc_start = 0;
-    St_PhysFrame metadata_block_next = 0;
+    St_PhysFrame metadata_area_begin = 0;
+    St_PhysFrame metadata_area_end = 0;
     struct alloc_table *table;
     struct extended_entry *extentry;
 
@@ -791,45 +758,56 @@ StStatus StPmm_LateInit(void)
         return STATUS_PHYSICAL_MEMORY_TOO_BIG;
     }
 
-    // find free frames for metadata blocks.
+    LOG_DEBUG(
+        LM_CAT_UNCLASSIFIED,
+        "Required metadata blocks: %" PRIu64 "\n",
+        required_metadata_blocks
+    );
+
+    // find free frames for metadata blocks
     for (ssize_t i = ARRAY_SIZE(alloc_table_ptr_array) - 1; i >= 0; i--) {
-        St_PageCount allocatable_blocks = 0;
-        St_PhysFrame alloc_start = 0;
+        St_PageCount free_cont_frames = 0;
 
         if (alloc_table_ptr_array[i] == ATPA_UNUSABLE) continue;
 
         if (alloc_table_ptr_array[i] == ATPA_FREE) {
-            metadata_block_alloc_start = i * ALLOC_TABLE_COVERAGE_PAGES;
-            allocated_metadata_blocks = ALLOC_TABLE_COVERAGE_PAGES;
-            continue;
+            metadata_area_begin = i * ALLOC_TABLE_COVERAGE_PAGES;
+            metadata_area_end = i * ALLOC_TABLE_COVERAGE_PAGES + required_metadata_blocks;
+            break;
         }
 
         table = (struct alloc_table *)(alloc_table_ptr_array[i] & ATPA_ADDR_MASK);
-        for (size_t j = 0; j < ARRAY_SIZE(table->entries); j++) {
-            if (table->entries[j].bitmap == ALLOCENT_EXT_UNUSABLE) {
-                allocatable_blocks = 0;
+        for (ssize_t j = ARRAY_SIZE(table->entries) - 1; j >= 0; j--) {
+            if (table->entries[j].bitmap != ALLOCENT_BMP_FREE) {
+                free_cont_frames = 0;
                 continue;
             }
 
-            if (allocatable_blocks == 0) {
-                alloc_start = i * ALLOC_TABLE_COVERAGE_PAGES + j * ALLOCENT_COVERAGE_PAGES;
+            if (free_cont_frames == 0) {
+                metadata_area_end =
+                    i * ALLOC_TABLE_COVERAGE_PAGES + j * ALLOCENT_COVERAGE_PAGES - 1;
             }
 
-            allocatable_blocks += ALLOCENT_COVERAGE_PAGES;
+            free_cont_frames += ALLOCENT_COVERAGE_PAGES;
+
+            if (free_cont_frames >= required_metadata_blocks) break;
         }
 
-        if (allocatable_blocks >= required_metadata_blocks) {
-            metadata_block_alloc_start = alloc_start;
-            allocated_metadata_blocks = MIN(allocatable_blocks, required_metadata_blocks);
+        if (free_cont_frames >= required_metadata_blocks) {
+            metadata_area_begin = metadata_area_end + 1 - required_metadata_blocks;
             break;
         }
     }
 
-    // Allocate and map metadata blocks.
-    status = StPmm_MarkUnusableContiguousFrame(
-        metadata_block_alloc_start,
-        metadata_block_alloc_start + allocated_metadata_blocks - 1
+    LOG_DEBUG(
+        LM_CAT_UNCLASSIFIED,
+        "Metadata area: %" PRIX64 " - %" PRIX64 "\n",
+        metadata_area_begin,
+        metadata_area_end
     );
+
+    // Allocate and map metadata blocks.
+    status = StPmm_MarkUnusableContiguousFrame(metadata_area_begin, metadata_area_end);
     if (!CHECK_SUCCESS(status)) return status;
 
     // calculate total/free frames
@@ -869,20 +847,19 @@ StStatus StPmm_LateInit(void)
     remarking_unavailable = 1;
     allocation_available = 1;
 
-    metadata_block_next = metadata_block_alloc_start;
     for (size_t i = 0; i < ARRAY_SIZE(alloc_table_ptr_array); i++) {
         if (alloc_table_ptr_array[i] == ATPA_UNUSABLE) continue;
 
         if (alloc_table_ptr_array[i] == ATPA_FREE) {
             status = StMmP_MapGlobalContiguousMemory(
-                metadata_block_next,
+                metadata_area_begin,
                 MEMMAP_MFMAREA_VPN_BASE +
                     i * ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES,
                 ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES,
-                MAP_DEFAULT
+                MF_KERNEL_DEFAULT
             );
             if (!CHECK_SUCCESS(status)) return status;
-            metadata_block_next += ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES;
+            metadata_area_begin += ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES;
 
             continue;
         }
@@ -907,15 +884,15 @@ StStatus StPmm_LateInit(void)
             }
 
             status = StMmP_MapGlobalContiguousMemory(
-                metadata_block_next,
+                metadata_area_begin,
                 MEMMAP_MFMAREA_VPN_BASE +
                     i * ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES + j / 2,
                 batch_count,
-                MAP_DEFAULT
+                MF_KERNEL_DEFAULT
             );
             if (!CHECK_SUCCESS(status)) return status;
 
-            metadata_block_next += batch_count;
+            metadata_area_begin += batch_count;
             j += batch_count * 2;
         }
     }
@@ -940,7 +917,10 @@ StStatus StPmm_GetFreeFrameCount(St_PageCount *frame_count __out)
 }
 
 StStatus StPmm_AllocateContiguousFrame(
-    St_PhysFrame *pfn __out, St_PageCount count __in, StPmm_AllocFlags alloc_flags __in
+    St_PhysFrame *pfn __out,
+    St_PageCount count __in,
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in
 )
 {
     StStatus status;
@@ -954,13 +934,15 @@ StStatus StPmm_AllocateContiguousFrame(
     ssize_t table_search_start;
     ssize_t table_align_jump;
 
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "allocating %zu pages\n", count);
+
     if (!allocation_available) return STATUS_CONFLICTING_STATE;
 
     order = get_order(count);
     if (order < 0) return STATUS_INVALID_VALUE;
 
-    below_value = alloc_flags & PMM_BELOW_MASK;
-    align_order = ((alloc_flags & PMM_ALIGN_MASK) >> 4) - 12;
+    below_value = alloc_flags & AF_PMM_BELOW_MASK;
+    align_order = ((alloc_flags & AF_ALIGN_MASK) >> 4) - 12;
 
     if (align_order < order) {
         align_order = order;
@@ -969,21 +951,21 @@ StStatus StPmm_AllocateContiguousFrame(
     atpa_search_start = ARRAY_SIZE(alloc_table_ptr_array);
 
     switch (below_value) {
-    case PMM_BELOW_NONE:
+    case AF_PMM_BELOW_NONE:
         break;
-    case PMM_BELOW_1M:
+    case AF_PMM_BELOW_1M:
         if (order > 8) return STATUS_INSUFFICIENT_MEMORY;
         if (atpa_search_start > (ssize_t)ATPA_INDEX_LIMIT_1M) {
             atpa_search_start = ATPA_INDEX_LIMIT_1M;
         }
         break;
-    case PMM_BELOW_16M:
+    case AF_PMM_BELOW_16M:
         if (order > 12) return STATUS_INSUFFICIENT_MEMORY;
         if (atpa_search_start > (ssize_t)ATPA_INDEX_LIMIT_16M) {
             atpa_search_start = ATPA_INDEX_LIMIT_16M;
         }
         break;
-    case PMM_BELOW_4G:
+    case AF_PMM_BELOW_4G:
         if (order > 20) return STATUS_INSUFFICIENT_MEMORY;
         if (atpa_search_start > (ssize_t)ATPA_INDEX_LIMIT_4G) {
             atpa_search_start = ATPA_INDEX_LIMIT_4G;
@@ -992,6 +974,8 @@ StStatus StPmm_AllocateContiguousFrame(
     default:
         return STATUS_INVALID_VALUE;
     }
+
+    StThread_LockPreemption();
 
     atpa_align_jump = align_order > 13 ? (1ULL << (align_order - 13)) : 1;
     atpa_search_start = ((atpa_search_start / atpa_align_jump) - 1) * atpa_align_jump;
@@ -1014,7 +998,7 @@ StStatus StPmm_AllocateContiguousFrame(
             }
 
             if (!allocatable) continue;
-            LOG_TRACE("found (%zd.-.-)\n", i);
+            LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.-.-)\n", i);
 
             allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES;
 
@@ -1024,15 +1008,17 @@ StStatus StPmm_AllocateContiguousFrame(
             }
 
             // allocate and fill metadata
-            status = create_metadata(allocated_pfn, NULL, order);
-            if (!CHECK_SUCCESS(status)) return status;
+            status = create_metadata(allocated_pfn, owner, order);
+            if (!CHECK_SUCCESS(status)) goto has_error;
 
             *pfn = allocated_pfn;
             free_frames -= (1ULL << order);
-            return STATUS_SUCCESS;
+
+            goto success;
         }
 
-        return STATUS_INSUFFICIENT_MEMORY;
+        status = STATUS_INSUFFICIENT_MEMORY;
+        goto has_error;
     }
 
     table_search_start = ARRAY_SIZE(table->entries);
@@ -1040,14 +1026,20 @@ StStatus StPmm_AllocateContiguousFrame(
     table_search_start = ((table_search_start / table_align_jump) - 1) * table_align_jump;
 
     switch (below_value) {
-    case PMM_BELOW_1M:
-        if (order > 8) return STATUS_INSUFFICIENT_MEMORY;
+    case AF_PMM_BELOW_1M:
+        if (order > 8) {
+            status = STATUS_INSUFFICIENT_MEMORY;
+            goto has_error;
+        }
         if (table_search_start > (ssize_t)ALLOC_TABLE_ENTRY_INDEX_LIMIT_1M) {
             table_search_start = ALLOC_TABLE_ENTRY_INDEX_LIMIT_1M;
         }
         break;
-    case PMM_BELOW_16M:
-        if (order > 12) return STATUS_INSUFFICIENT_MEMORY;
+    case AF_PMM_BELOW_16M:
+        if (order > 12) {
+            status = STATUS_INSUFFICIENT_MEMORY;
+            goto has_error;
+        }
         if (table_search_start > (ssize_t)ALLOC_TABLE_ENTRY_INDEX_LIMIT_16M) {
             table_search_start = ALLOC_TABLE_ENTRY_INDEX_LIMIT_16M;
         }
@@ -1060,10 +1052,10 @@ StStatus StPmm_AllocateContiguousFrame(
 
         for (ssize_t i = atpa_search_start; i >= 0; i -= atpa_align_jump) {
             if (alloc_table_ptr_array[i] == ATPA_FREE) {
-                LOG_TRACE("found (%zd.%zd.-)\n", i, table_search_start);
+                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i, table_search_start);
 
                 status = get_or_create_table(i, &table);
-                if (!CHECK_SUCCESS(status)) return status;
+                if (!CHECK_SUCCESS(status)) goto has_error;
 
                 for (size_t j = 0; j < table_entries_needed; j++) {
                     // mark the whole entry as allocated
@@ -1074,12 +1066,13 @@ StStatus StPmm_AllocateContiguousFrame(
                     i * ALLOC_TABLE_COVERAGE_PAGES + table_search_start * ALLOCENT_COVERAGE_PAGES;
 
                 // allocate and fill metadata directory & metadata
-                status = create_metadata(allocated_pfn, NULL, order);
-                if (!CHECK_SUCCESS(status)) return status;
+                status = create_metadata(allocated_pfn, owner, order);
+                if (!CHECK_SUCCESS(status)) goto has_error;
 
                 *pfn = allocated_pfn;
                 free_frames -= (1ULL << order);
-                return STATUS_SUCCESS;
+
+                goto success;
             }
 
             if (alloc_table_ptr_array[i] == ATPA_HUGE_ALLOC ||
@@ -1106,7 +1099,7 @@ StStatus StPmm_AllocateContiguousFrame(
 
                 if (!allocatable) continue;
                 allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES + j * ALLOCENT_COVERAGE_PAGES;
-                LOG_TRACE("found (%zd.%zd.-)\n", i, j);
+                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i, j);
 
                 // mark entire entry as allocated
                 for (size_t k = 0; k < table_entries_needed; k++) {
@@ -1114,12 +1107,13 @@ StStatus StPmm_AllocateContiguousFrame(
                 }
 
                 // allocate and fill metadata directory & metadata
-                status = create_metadata(allocated_pfn, NULL, order);
-                if (!CHECK_SUCCESS(status)) return status;
+                status = create_metadata(allocated_pfn, owner, order);
+                if (!CHECK_SUCCESS(status)) goto has_error;
 
                 *pfn = allocated_pfn;
                 free_frames -= (1ULL << order);
-                return STATUS_SUCCESS;
+
+                goto success;
             }
         }
     }
@@ -1130,18 +1124,17 @@ StStatus StPmm_AllocateContiguousFrame(
             int index;
 
             status = get_or_create_table(i, &table);
-            if (!CHECK_SUCCESS(status)) return status;
+            if (!CHECK_SUCCESS(status)) goto has_error;
 
             index = find_free_frame_idx_bitmap_entry(
                 table->entries[table_search_start].bitmap,
-                order,
                 align_order
             );
             if (index < 0) {
                 St_Panic(STATUS_UNEXPECTED_RESULT, "how did you do that?");
             }
 
-            LOG_TRACE("found (%zd.%zd.%d)\n", i, table_search_start, index);
+            LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%d)\n", i, table_search_start, index);
 
             allocate_from_bitmap_entry(&table->entries[table_search_start].bitmap, index, order);
 
@@ -1149,17 +1142,19 @@ StStatus StPmm_AllocateContiguousFrame(
                 table_search_start * ALLOCENT_COVERAGE_PAGES + index;
 
             // allocate and fill metadata directory & metadata table & metadata
-            status = create_metadata(allocated_pfn, NULL, order);
-            if (!CHECK_SUCCESS(status)) return status;
+            status = create_metadata(allocated_pfn, owner, order);
+            if (!CHECK_SUCCESS(status)) goto has_error;
 
             *pfn = allocated_pfn;
             free_frames -= (1ULL << order);
-            return STATUS_SUCCESS;
+
+            goto success;
         }
 
         if (alloc_table_ptr_array[i] == ATPA_HUGE_ALLOC ||
-            alloc_table_ptr_array[i] == ATPA_UNUSABLE)
+            alloc_table_ptr_array[i] == ATPA_UNUSABLE) {
             continue;
+        }
 
         // when order < 12, check only the bitmap and skip the table.
         // when 12 <= order < 14, manually check the table.
@@ -1203,17 +1198,16 @@ StStatus StPmm_AllocateContiguousFrame(
 
                 if (index < 0) continue;
 
-                LOG_TRACE("found (%zd.%zd.%d) (extended)\n", i, j, index);
+                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%d) (extended)\n", i, j, index);
 
                 for (size_t k = 0; k < extentry_slots_needed; k++) {
                     extentry->state_flags[index + k] = EE_USED;
                 }
             } else {
-                index =
-                    find_free_frame_idx_bitmap_entry(table->entries[j].bitmap, order, align_order);
+                index = find_free_frame_idx_bitmap_entry(table->entries[j].bitmap, align_order);
                 if (index < 0) continue;
 
-                LOG_TRACE("found (%zd.%zd.%d) (bitmap)\n", i, j, index);
+                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%d) (bitmap)\n", i, j, index);
 
                 allocate_from_bitmap_entry(&table->entries[j].bitmap, index, order);
             }
@@ -1221,35 +1215,49 @@ StStatus StPmm_AllocateContiguousFrame(
             allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES + j * ALLOCENT_COVERAGE_PAGES + index;
 
             // allocate and fill metadata directory & metadata table & metadata
-            status = create_metadata(allocated_pfn, NULL, order);
-            if (!CHECK_SUCCESS(status)) return status;
+            status = create_metadata(allocated_pfn, owner, order);
+            if (!CHECK_SUCCESS(status)) goto has_error;
 
             *pfn = allocated_pfn;
             free_frames -= (1ULL << order);
-            return STATUS_SUCCESS;
+
+            goto success;
         }
     }
 
-    return STATUS_INVALID_VALUE;
+success:
+    StThread_UnlockPreemption();
+
+    return STATUS_SUCCESS;
+
+has_error:
+    StThread_UnlockPreemption();
+
+    return status;
 }
 
 StStatus StPmm_AcquireContiguousFrame(St_PhysFrame pfn __in)
 {
-    struct metadata *metadata;
+    struct pmm_metadata *metadata;
     uint32_t prev_refcount;
 
     metadata = get_metadata(pfn);
 
     prev_refcount = atomic_fetch_add_explicit(&metadata->refcount, 1, memory_order_relaxed);
 
-    LOG_TRACE("refcount: %" PRId32 " -> %" PRId32 "\n", prev_refcount, prev_refcount + 1);
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "refcount: %" PRId32 " -> %" PRId32 "\n",
+        prev_refcount,
+        prev_refcount + 1
+    );
 
     return STATUS_SUCCESS;
 }
 
 void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
 {
-    struct metadata *metadata;
+    struct pmm_metadata *metadata;
     uint32_t prev_refcount;
 
     metadata = get_metadata(pfn);
@@ -1259,19 +1267,21 @@ void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
 
     prev_refcount = atomic_fetch_sub_explicit(&metadata->refcount, 1, memory_order_relaxed);
 
-    LOG_TRACE("refcount: %" PRId32 " -> %" PRId32 "\n", prev_refcount, prev_refcount - 1);
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "freeing %" PRIu64 " pages\n", (1UL << metadata->public.order));
 
     if (prev_refcount > 1) return;
     if (prev_refcount == 0) {
         St_Panic(STATUS_CONFLICTING_STATE, "double free");
     }
 
+    StThread_LockPreemption();
     do_free_contiguous_frame(pfn, metadata->public.order);
+    StThread_UnlockPreemption();
 }
 
 StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, struct StPmm_AllocationMetadata **meta __out)
 {
-    struct metadata *metadata;
+    struct pmm_metadata *metadata;
 
     metadata = get_metadata(pfn);
 
@@ -1284,7 +1294,7 @@ StStatus StPmm_LockAndGetAllocMetadata(
     St_PhysFrame pfn, struct StPmm_AllocationMetadata **meta __out
 )
 {
-    struct metadata *metadata;
+    struct pmm_metadata *metadata;
     uint_fast32_t expected = 0;
 
     metadata = get_metadata(pfn);
@@ -1307,7 +1317,7 @@ StStatus StPmm_LockAndGetAllocMetadata(
 
 StStatus StPmm_UnlockAllocMetadata(struct StPmm_AllocationMetadata *meta __in)
 {
-    struct metadata *metadata = (struct metadata *)meta;
+    struct pmm_metadata *metadata = (struct pmm_metadata *)meta;
 
     uint_fast32_t expected = 1;
     atomic_compare_exchange_strong_explicit(

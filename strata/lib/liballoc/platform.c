@@ -1,17 +1,22 @@
 #include "internal.h"
 
+#include <strata/arch/mmu.h>
+
 #include <strata/mm.h>
 #include <strata/panic.h>
-
-#include <strata/arch/mmu.h>
+#include <strata/thread.h>
 
 int liballoc_lock(void)
 {
+    StThread_LockPreemption();
+
     return 0;
 }
 
 int liballoc_unlock(void)
 {
+    StThread_UnlockPreemption();
+
     return 0;
 }
 
@@ -24,9 +29,9 @@ void *liballoc_alloc(int page_count)
         VMM_DOMAIN_KERNEL_SLOW,
         &allocated_vpn,
         (St_PageCount)page_count,
-        PMM_DEFAULT,
-        VMM_DEFAULT,
-        MAP_DEFAULT
+        NULL,
+        AF_DEFAULT,
+        MF_KERNEL_DEFAULT
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to allocate memory");

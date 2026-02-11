@@ -4,7 +4,11 @@
 
 #include <strata/plat/memmap.h>
 
+#include <strata/log.h>
 #include <strata/mm.h>
+#include <strata/process.h>
+
+#define MODULE_NAME "mm"
 
 struct StMm_AddressSpace base_asp;
 
@@ -18,7 +22,9 @@ StStatus StMm_InitBaseAddressSpace(void)
     return StMmP_InitBaseAddressSpace();
 }
 
-StStatus StMm_CreateAddressSpace(struct StMm_AddressSpace **asp __out)
+StStatus StMm_CreateAddressSpace(
+    struct StMm_AddressSpace **asp __out, struct StProcess *process __in
+)
 {
     StStatus status;
     struct StMm_AddressSpace *new_asp;
@@ -31,6 +37,8 @@ StStatus StMm_CreateAddressSpace(struct StMm_AddressSpace **asp __out)
     status = StMmP_CreateAddressSpace(new_asp);
     if (!CHECK_SUCCESS(status)) goto has_error;
     p_asp_created = 1;
+
+    new_asp->process = process;
 
     status = StVmm_InitLocalDomain(new_asp, MEMMAP_USER_VPN_BASE, MEMMAP_USER_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -63,6 +71,16 @@ has_error:
 
 void StMm_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
 {
+    if (!asp) return;
+
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "removing address space\n");
+
+    /*
+     * Note: StProcess_Remove cleans up the owner allocation list (alloc_owner)
+     * which frees the VMM pages. We don't need to iterate here because
+     * StMm_AddressSpace doesn't own the alloc_owner directly in the same way.
+     */
+
     StMmP_RemoveAddressSpace(asp);
     StPool_Free(asp);
 }

@@ -4,6 +4,6 @@
     "start_script": [
         "loadmodule boot:/modules/loadst.mod",
         "mount fd0pt0p2 sys",
-        "loadst sys:/system/kernel/strata.elf -v"
+        "loadst sys:/system/kernel/strata.elf -log.enable=true -log.level=debug -log.mask.thread=lifecycle,task_switch -power.method=acpi"
     ]
 }

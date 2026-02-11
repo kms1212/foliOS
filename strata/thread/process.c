@@ -1,13 +1,17 @@
+#include <strata/mm/pmm.h>
 #include <strata/process.h>
 
 #include <stdlib.h>
 
 #include <strata/plat/thread.h>
 
+#include <strata/log.h>
 #include <strata/mm.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/types.h>
+
+#define MODULE_NAME "process"
 
 StStatus StProcess_CreateUser(struct StProcess **process __out)
 {
@@ -22,7 +26,7 @@ StStatus StProcess_CreateUser(struct StProcess **process __out)
 
     proc->id = new_process_id++;
 
-    status = StMm_CreateAddressSpace(&asp);
+    status = StMm_CreateAddressSpace(&asp, proc);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     proc->address_space = asp;
@@ -49,7 +53,11 @@ void StProcess_Remove(struct StProcess *process)
 
     process->is_dying = 1;
 
+    StMm_CleanupOwnerAllocation(&process->alloc_owner);
+
     StMm_RemoveAddressSpace(process->address_space);
+
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "leaked %zd pages\n", process->alloc_owner.page_usage_count);
 
     if (!process->main_thread->is_dying) {
         StThread_Remove(process->main_thread);

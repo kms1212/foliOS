@@ -1,6 +1,9 @@
 #include <strata/plat/mm.h>
 
+#include <inttypes.h>
 #include <stdlib.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 #include <string.h>
 
 #include <strata/arch/cpufeatures.h>
@@ -12,9 +15,12 @@
 
 #include <strata/log.h>
 #include <strata/macros.h>
+#include <strata/panic.h>
 #include <strata/types.h>
 
 #include <strata/mm.h>
+
+#define MODULE_NAME "mm"
 
 #define PML4_HOLE_START ((St_VirtPage)0x0000000800000000ULL)
 #define PML4_HOLE_END   ((St_VirtPage)0x000FFFF7FFFFFFFFULL)
@@ -76,7 +82,7 @@ StStatus StMmP_CreateAddressSpace(struct StMm_AddressSpace *asp __in)
     union StA_PageMapLevel4Entry *base_pml4 =
         PHYS_TO_VIRT(FRAME_TO_VPTR(base_asp.platform_data.root_table_pfn));
 
-    status = StPmm_AllocateContiguousFrame(&root_table_pfn, (St_PageCount)1, PMM_DEFAULT);
+    status = StPmm_AllocateContiguousFrame(&root_table_pfn, (St_PageCount)1, NULL, AF_DEFAULT);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     memcpy(PHYS_TO_VIRT(FRAME_TO_VPTR(root_table_pfn)), base_pml4, PAGE_SIZE);
@@ -96,6 +102,40 @@ has_error:
 void StMmP_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
 {
     St_PhysFrame root_table_pfn = asp->platform_data.root_table_pfn;
+    union StA_PageMapLevel4Entry *pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(root_table_pfn));
+
+    /*
+     * Iterate over the user half of the address space (entries 0-255).
+     * The kernel half (256-511) is shared and should not be freed here.
+     */
+    for (int i = 0; i < 256; i++) {
+        if (!pml4[i].p) continue;
+
+        St_PhysFrame pdpt_pfn = (St_PhysFrame)pml4[i].base;
+        union StA_PageDirPtrTableEntry *pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt_pfn));
+
+        for (int j = 0; j < 512; j++) {
+            if (!pdpt[j].p) continue;
+
+            /* We don't support 1GB pages in user space yet, but check anyway */
+            if (pdpt[j].ps) continue;
+
+            St_PhysFrame pd_pfn = (St_PhysFrame)pdpt[j].base;
+            union StA_PaePageDirectoryEntry *pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pd_pfn));
+
+            for (int k = 0; k < 512; k++) {
+                if (!pd[k].p) continue;
+
+                /* We don't support 2MB pages in user space yet, but check anyway */
+                if (pd[k].ps) continue;
+
+                St_PhysFrame pt_pfn = (St_PhysFrame)pd[k].base;
+                StPmm_FreeContiguousFrame(pt_pfn);
+            }
+            StPmm_FreeContiguousFrame(pd_pfn);
+        }
+        StPmm_FreeContiguousFrame(pdpt_pfn);
+    }
 
     StPmm_FreeContiguousFrame(root_table_pfn);
 }
@@ -179,6 +219,8 @@ static StStatus map_memory(
 )
 {
     StStatus status;
+    union StA_PageMapLevel4Entry *base_pml4 =
+        PHYS_TO_VIRT(FRAME_TO_VPTR(base_asp.platform_data.root_table_pfn));
     union StA_PageMapLevel4Entry *pml4;
     union StA_PageDirPtrTableEntry *pdpt;
     union StA_PaePageDirectoryEntry *pd;
@@ -188,6 +230,7 @@ static StStatus map_memory(
     uint64_t pde_idx;
     uint64_t pte_idx;
     size_t chunk_size;
+    St_PhysFrame alloc_pfn;
     union StA_PaePageTableEntry pte_template;
 
     if (vpn + count > VIRT_PAGE_MAX) return STATUS_INVALID_VALUE;
@@ -196,90 +239,123 @@ static StStatus map_memory(
         return STATUS_INVALID_VALUE;
     }
 
+    // LOG_DEBUG(
+    //     LM_CAT_UNCLASSIFIED,
+    //     "mapping %" PRIX64 "(%" PRIu64 " page(s)) to %" PRIX64 ", flags: %" PRIX32 "\n",
+    //     vpn,
+    //     count,
+    //     pfn,
+    //     mapflags
+    // );
+
     pte_template.raw = 0;
     pte_template.p = 1;
-    pte_template.r_w = (mapflags & MAP_READONLY) ? 0 : 1;
-    pte_template.u_s = (mapflags & MAP_USER) ? 1 : 0;
-    pte_template.pcd = (mapflags & MAP_NO_CACHE) ? 1 : 0;
-    pte_template.pwt = (mapflags & MAP_WRITETHRU_CACHE) ? 1 : 0;
+    pte_template.r_w = (mapflags & MF_WRITABLE) ? 1 : 0;
+    pte_template.u_s = (mapflags & MF_USER) ? 1 : 0;
+    pte_template.pcd = (mapflags & MF_NO_CACHE) ? 1 : 0;
+    pte_template.pwt = (mapflags & MF_WRITETHRU_CACHE) ? 1 : 0;
     if (g_p_cpu_features->has_nx) {
-        pte_template.xd = (mapflags & MAP_NO_EXECUTE) ? 1 : 0;
+        pte_template.xd = (mapflags & MF_NO_EXECUTE) ? 1 : 0;
     }
+
+    if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+        StThread_LockPreemption();
+    }
+
+    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
 
     while (count > 0) {
         /* 1. PML4 */
-        pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
         pml4e_idx = PML4_INDEX(vpn);
         if (!pml4[pml4e_idx].p) {
-            St_PhysFrame table_pfn;
-            void *pdpt_page;
 
-            status = StPmm_AllocateContiguousFrame(&table_pfn, (St_PageCount)1, PMM_DEFAULT);
-            if (!CHECK_SUCCESS(status)) return status;
+            if (vpn >= MEMMAP_GLOBAL_VPN_BASE && !pml4[pml4e_idx].p && base_pml4[pml4e_idx].p) {
+                pml4[pml4e_idx].raw = base_pml4[pml4e_idx].raw;
 
-            pml4[pml4e_idx].raw = 0;
-            pml4[pml4e_idx].base = (uint64_t)table_pfn;
-            pml4[pml4e_idx].p = 1;
-            pml4[pml4e_idx].r_w = 1;
-            pml4[pml4e_idx].u_s = (mapflags & MAP_USER) ? 1 : 0;
+                pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
+            } else {
+                status =
+                    StPmm_AllocateContiguousFrame(&alloc_pfn, (St_PageCount)1, NULL, AF_DEFAULT);
+                if (!CHECK_SUCCESS(status)) goto has_error;
 
-            pdpt_page = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
-            StA_InvalidatePage(VPTR_TO_PAGE(pdpt_page));
-            memset(pdpt_page, 0, PAGE_SIZE);
+                pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(alloc_pfn));
+                memset(pdpt, 0, PAGE_SIZE);
+
+                union StA_PageMapLevel4Entry temp;
+
+                temp.raw = 0;
+                temp.base = (uint64_t)alloc_pfn;
+                temp.p = 1;
+                temp.r_w = 1;
+                temp.u_s = (mapflags & MF_USER) ? 1 : 0;
+
+                if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+                    if (base_pml4[pml4e_idx].p) {
+                        StPmm_FreeContiguousFrame(alloc_pfn);
+
+                        pml4[pml4e_idx].raw = base_pml4[pml4e_idx].raw;
+
+                        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(base_pml4[pml4e_idx].base));
+                    } else {
+                        base_pml4[pml4e_idx].raw = temp.raw;
+                        pml4[pml4e_idx].raw = temp.raw;
+                    }
+                } else {
+                    pml4[pml4e_idx].raw = temp.raw;
+                }
+            }
         } else {
-            if (mapflags & MAP_USER) pml4[pml4e_idx].u_s = 1;
+            if (mapflags & MF_USER) pml4[pml4e_idx].u_s = 1;
+            pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
         }
 
         /* 2. PDPT */
-        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
         pdpte_idx = PDPT_INDEX(vpn);
         if (!pdpt[pdpte_idx].p) {
-            St_PhysFrame table_pfn;
-            void *pd_page;
+            status = StPmm_AllocateContiguousFrame(&alloc_pfn, (St_PageCount)1, NULL, AF_DEFAULT);
+            if (!CHECK_SUCCESS(status)) goto has_error;
 
-            status = StPmm_AllocateContiguousFrame(&table_pfn, (St_PageCount)1, PMM_DEFAULT);
-            if (!CHECK_SUCCESS(status)) return status;
+            pd = PHYS_TO_VIRT(FRAME_TO_VPTR(alloc_pfn));
+            memset(pd, 0, PAGE_SIZE);
 
             pdpt[pdpte_idx].raw = 0;
-            pdpt[pdpte_idx].base = (uint64_t)table_pfn;
+            pdpt[pdpte_idx].base = (uint64_t)alloc_pfn;
             pdpt[pdpte_idx].p = 1;
             pdpt[pdpte_idx].r_w = 1;
-            pdpt[pdpte_idx].u_s = (mapflags & MAP_USER) ? 1 : 0;
-
-            pd_page = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt[pdpte_idx].base));
-            StA_InvalidatePage(VPTR_TO_PAGE(pd_page));
-            memset(pd_page, 0, PAGE_SIZE);
+            pdpt[pdpte_idx].u_s = (mapflags & MF_USER) ? 1 : 0;
         } else {
-            if (pdpt[pdpte_idx].ps) return STATUS_CONFLICTING_STATE;
-            if (mapflags & MAP_USER) pdpt[pdpte_idx].u_s = 1;
+            if (pdpt[pdpte_idx].ps) {
+                status = STATUS_CONFLICTING_STATE;
+                goto has_error;
+            }
+            if (mapflags & MF_USER) pdpt[pdpte_idx].u_s = 1;
+            pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt[pdpte_idx].base));
         }
 
         /* 3. PD */
-        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt[pdpte_idx].base));
         pde_idx = PD_INDEX(vpn);
         if (!pd[pde_idx].p) {
-            St_PhysFrame table_pfn;
-            void *pt_page;
+            status = StPmm_AllocateContiguousFrame(&alloc_pfn, (St_PageCount)1, NULL, AF_DEFAULT);
+            if (!CHECK_SUCCESS(status)) goto has_error;
 
-            status = StPmm_AllocateContiguousFrame(&table_pfn, (St_PageCount)1, PMM_DEFAULT);
-            if (!CHECK_SUCCESS(status)) return status;
+            pt = PHYS_TO_VIRT(FRAME_TO_VPTR(alloc_pfn));
+            memset(pt, 0, PAGE_SIZE);
 
             pd[pde_idx].raw = 0;
-            pd[pde_idx].base = (uint64_t)table_pfn;
+            pd[pde_idx].base = (uint64_t)alloc_pfn;
             pd[pde_idx].p = 1;
             pd[pde_idx].r_w = 1;
-            pd[pde_idx].u_s = (mapflags & MAP_USER) ? 1 : 0;
-
-            pt_page = PHYS_TO_VIRT(FRAME_TO_VPTR(pd[pde_idx].base));
-            StA_InvalidatePage(VPTR_TO_PAGE(pt_page));
-            memset(pt_page, 0, PAGE_SIZE);
+            pd[pde_idx].u_s = (mapflags & MF_USER) ? 1 : 0;
         } else {
-            if (pd[pde_idx].ps) return STATUS_CONFLICTING_STATE;
-            if (mapflags & MAP_USER) pd[pde_idx].u_s = 1;
+            if (pd[pde_idx].ps) {
+                status = STATUS_CONFLICTING_STATE;
+                goto has_error;
+            }
+            if (mapflags & MF_USER) pd[pde_idx].u_s = 1;
+            pt = PHYS_TO_VIRT(FRAME_TO_VPTR(pd[pde_idx].base));
         }
 
         /* 4. PT */
-        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(pd[pde_idx].base));
         pte_idx = PT_INDEX(vpn);
 
         chunk_size = 512 - pte_idx;
@@ -288,7 +364,10 @@ static StStatus map_memory(
         }
 
         for (size_t i = 0; i < chunk_size; i++) {
-            if (pt[pte_idx + i].p) return STATUS_DUPLICATE_ENTRY;
+            if (pt[pte_idx + i].p) {
+                status = STATUS_DUPLICATE_ENTRY;
+                goto has_error;
+            }
             pt[pte_idx + i] = pte_template;
             pt[pte_idx + i].base = (uint64_t)pfn + i;
         }
@@ -298,7 +377,18 @@ static StStatus map_memory(
         pfn += chunk_size;
     }
 
+    if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+        StThread_UnlockPreemption();
+    }
+
     return STATUS_SUCCESS;
+
+has_error:
+    if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+        StThread_UnlockPreemption();
+    }
+
+    return status;
 }
 
 StStatus StMmP_MapGlobalContiguousMemory(
@@ -360,45 +450,50 @@ static StStatus remap_memory(
 
     pte_template.raw = 0;
     pte_template.p = 1;
-    pte_template.r_w = (mapflags & MAP_READONLY) ? 0 : 1;
-    pte_template.u_s = (mapflags & MAP_USER) ? 1 : 0;
-    pte_template.pcd = (mapflags & MAP_NO_CACHE) ? 1 : 0;
-    pte_template.pwt = (mapflags & MAP_WRITETHRU_CACHE) ? 1 : 0;
+    pte_template.r_w = (mapflags & MF_WRITABLE) ? 1 : 0;
+    pte_template.u_s = (mapflags & MF_USER) ? 1 : 0;
+    pte_template.pcd = (mapflags & MF_NO_CACHE) ? 1 : 0;
+    pte_template.pwt = (mapflags & MF_WRITETHRU_CACHE) ? 1 : 0;
     if (g_p_cpu_features->has_nx) {
-        pte_template.xd = (mapflags & MAP_NO_EXECUTE) ? 1 : 0;
+        pte_template.xd = (mapflags & MF_NO_EXECUTE) ? 1 : 0;
     }
+
+    if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+        StThread_LockPreemption();
+    }
+
+    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
 
     while (count > 0) {
         /* 1. PML4 */
-        pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
         pml4e_idx = PML4_INDEX(vpn);
         if (!pml4[pml4e_idx].p) {
             return STATUS_PAGE_NOT_PRESENT;
         }
 
-        if (mapflags & MAP_USER) pml4[pml4e_idx].u_s = 1;
+        if (mapflags & MF_USER) pml4[pml4e_idx].u_s = 1;
+        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
 
         /* 2. PDPT */
-        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
         pdpte_idx = PDPT_INDEX(vpn);
         if (!pdpt[pdpte_idx].p) {
             return STATUS_PAGE_NOT_PRESENT;
         }
 
-        if (mapflags & MAP_USER) pdpt[pdpte_idx].u_s = 1;
+        if (mapflags & MF_USER) pdpt[pdpte_idx].u_s = 1;
+        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt[pdpte_idx].base));
 
         /* 3. PD */
-        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt[pdpte_idx].base));
         pde_idx = PD_INDEX(vpn);
         if (!pd[pde_idx].p) {
             return STATUS_PAGE_NOT_PRESENT;
         }
 
         if (pd[pde_idx].ps) return STATUS_CONFLICTING_STATE;
-        if (mapflags & MAP_USER) pd[pde_idx].u_s = 1;
+        if (mapflags & MF_USER) pd[pde_idx].u_s = 1;
+        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(pd[pde_idx].base));
 
         /* 4. PT */
-        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(pd[pde_idx].base));
         pte_idx = vpn & VIRT_PAGE_PT_MASK;
 
         chunk_size = 512 - pte_idx;
@@ -423,6 +518,10 @@ static StStatus remap_memory(
 
     if (!do_invlpg) {
         StA_WriteCr3(StA_ReadCr3());
+    }
+
+    if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+        StThread_UnlockPreemption();
     }
 
     return STATUS_SUCCESS;
@@ -476,24 +575,35 @@ static void unmap_memory(
         do_invlpg = 0;
     }
 
+    if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+        StThread_LockPreemption();
+    }
+
+    pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
+
     while (count > 0) {
         /* 1. PML4 */
-        pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
         pml4e_idx = PML4_INDEX(vpn);
-        if (!pml4[pml4e_idx].p) return;
+        if (!pml4[pml4e_idx].p) {
+            St_Panic(STATUS_PAGE_NOT_PRESENT, "PML4 entry not present");
+        }
+        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
 
         /* 2. PDPT */
-        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pml4[pml4e_idx].base));
         pdpte_idx = PDPT_INDEX(vpn);
-        if (!pdpt[pdpte_idx].p) return;
+        if (!pdpt[pdpte_idx].p) {
+            St_Panic(STATUS_PAGE_NOT_PRESENT, "PDPT entry not present");
+        }
+        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt[pdpte_idx].base));
 
         /* 3. PD */
-        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt[pdpte_idx].base));
         pde_idx = PD_INDEX(vpn);
-        if (!pd[pde_idx].p) return;
+        if (!pd[pde_idx].p) {
+            St_Panic(STATUS_PAGE_NOT_PRESENT, "PD entry not present");
+        }
+        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(pd[pde_idx].base));
 
         /* 4. PT */
-        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(pd[pde_idx].base));
         pte_idx = vpn & VIRT_PAGE_PT_MASK;
 
         chunk_size = 512 - pte_idx;
@@ -502,7 +612,9 @@ static void unmap_memory(
         }
 
         for (size_t i = 0; i < chunk_size; i++) {
-            if (!pt[pte_idx + i].p) return;
+            if (!pt[pte_idx + i].p) {
+                St_Panic(STATUS_PAGE_NOT_PRESENT, "UnmapMemory: PT entry not present");
+            }
             pt[pte_idx + i].raw = 0;
 
             if (do_invlpg) {
@@ -516,6 +628,10 @@ static void unmap_memory(
 
     if (!do_invlpg) {
         StA_WriteCr3(StA_ReadCr3());
+    }
+
+    if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
+        StThread_UnlockPreemption();
     }
 }
 

@@ -81,7 +81,7 @@ void StThreadP_FreeKThreadStack(struct StThread *th)
     StStatus status;
     St_PhysFrame kmode_stack_base_pfn;
 
-    LOG_DEBUG("freeing thread stack...\n");
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "freeing thread stack...\n");
 
     status = StMm_VirtPageToPhysFrame(th->kmode_stack_base_vpn, &kmode_stack_base_pfn);
     if (!CHECK_SUCCESS(status)) {

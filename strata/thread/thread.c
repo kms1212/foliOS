@@ -1,5 +1,6 @@
 #include <strata/thread.h>
 
+#include <stdatomic.h>
 #include <stdlib.h>
 
 #include <strata/arch/mmu.h>
@@ -15,7 +16,7 @@
 
 #define MODULE_NAME "thread"
 
-static volatile int preemption_enabled = 0;
+static atomic_int preemption_disable_depth = 0;
 
 StStatus StThread_Init(struct StThread **main_thread __out)
 {
@@ -53,19 +54,25 @@ has_error:
     return status;
 }
 
-void StThread_EnablePreemption(void)
+void StThread_LockPreemption(void)
 {
-    preemption_enabled = 1;
+    int depth = atomic_fetch_add(&preemption_disable_depth, 1);
+    if (depth < 0) {
+        St_Panic(STATUS_CONFLICTING_STATE, "preemption enable underflow");
+    }
 }
 
-void StThread_DisablePreemption(void)
+void StThread_UnlockPreemption(void)
 {
-    preemption_enabled = 0;
+    int depth = atomic_fetch_sub(&preemption_disable_depth, 1);
+    if (depth < 1) {
+        St_Panic(STATUS_CONFLICTING_STATE, "preemption enable underflow");
+    }
 }
 
 int StThread_IsPreemptionEnabled(void)
 {
-    return preemption_enabled;
+    return atomic_load(&preemption_disable_depth) == 0;
 }
 
 StStatus StThread_CreateKernel(
@@ -77,12 +84,11 @@ StStatus StThread_CreateKernel(
     static StThread_Id new_thread_id = (StThread_Id)1;
 
     StStatus status;
-    int prev_preemption_enabled = preemption_enabled;
     struct StThread *th = NULL;
     int stack_allocated = 0;
     int added_thread_to_scheduler = 0;
 
-    StThread_DisablePreemption();
+    StThread_LockPreemption();
 
     /* create thread object */
     status = StPool_AllocateClear(sizeof(*th), (void **)&th);
@@ -108,13 +114,11 @@ StStatus StThread_CreateKernel(
     if (!CHECK_SUCCESS(status)) goto has_error;
     added_thread_to_scheduler = 1;
 
-    LOG_DEBUG("created kernel thread #%d\n", th->id);
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "created kernel thread #%d\n", th->id);
 
     *threadout = th;
 
-    if (prev_preemption_enabled) {
-        StThread_EnablePreemption();
-    }
+    StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
 
@@ -131,9 +135,7 @@ has_error:
         StPool_Free(th);
     }
 
-    if (prev_preemption_enabled) {
-        StThread_EnablePreemption();
-    }
+    StThread_UnlockPreemption();
 
     return status;
 }
@@ -153,13 +155,12 @@ StStatus StThread_CreateUserMain(
     static StThread_Id new_thread_id = (StThread_Id)16384;
 
     StStatus status;
-    int prev_preemption_enabled = preemption_enabled;
     struct StThread *th = NULL;
     int added_thread_to_scheduler = 0;
     int kstack_allocated = 0;
     int ustack_allocated = 0;
 
-    StThread_DisablePreemption();
+    StThread_LockPreemption();
 
     /* create thread object */
     status = StPool_AllocateClear(sizeof(*th), (void **)&th);
@@ -198,13 +199,11 @@ StStatus StThread_CreateUserMain(
     if (!CHECK_SUCCESS(status)) goto has_error;
     added_thread_to_scheduler = 1;
 
-    LOG_DEBUG("created user thread #%d\n", th->id);
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "created user thread #%d\n", th->id);
 
     *threadout = th;
 
-    if (prev_preemption_enabled) {
-        StThread_EnablePreemption();
-    }
+    StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
 
@@ -225,9 +224,7 @@ has_error:
         StPool_Free(th);
     }
 
-    if (prev_preemption_enabled) {
-        StThread_EnablePreemption();
-    }
+    StThread_UnlockPreemption();
 
     return status;
 }
@@ -239,9 +236,11 @@ StStatus StThread_Remove(struct StThread *th)
 
     th->is_dying = 1;
 
-    LOG_DEBUG("removing thread #%d\n", th->id);
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "removing thread #%d\n", th->id);
 
+    StThread_LockPreemption();
     StScheduler_RemoveThread(th);
+    StThread_UnlockPreemption();
 
     StThreadP_FreeThreadKernelStack(th);
 
@@ -270,7 +269,7 @@ StStatus StThread_Detach(struct StThread *thread)
 
     thread->is_detached = 1;
 
-    LOG_DEBUG("detaching thread #%d\n", thread->id);
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "detaching thread #%d\n", thread->id);
 
     return STATUS_SUCCESS;
 }
@@ -287,7 +286,7 @@ StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_
         if (list[i]->is_detached) return STATUS_CONFLICTING_STATE;
     }
 
-    StThread_DisablePreemption();
+    StThread_LockPreemption();
 
     // TODO: implement timeout
 
@@ -296,7 +295,7 @@ StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_
     current_thread->wait_timeout_ms = timeout_ms;
     current_thread->status = THREAD_STATE_WAITING;
 
-    StThread_EnablePreemption();
+    StThread_UnlockPreemption();
 
     StThread_Yield();
 
@@ -311,12 +310,12 @@ StStatus StThread_Sleep(int timeout_ms __in)
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) return status;
 
-    StThread_DisablePreemption();
+    StThread_LockPreemption();
 
     current_thread->status = THREAD_STATE_SLEEPING;
     current_thread->sleep_until_uptime_us = StTimeP_GetUptimeMicroseconds() + timeout_ms * 1000;
 
-    StThread_EnablePreemption();
+    StThread_UnlockPreemption();
 
     StThread_Yield();
 
@@ -344,7 +343,7 @@ __noreturn void StThread_Exit(void)
 
     current_thread->status = THREAD_STATE_FINISHED;
 
-    LOG_DEBUG("thread #%d finished\n", current_thread->id);
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "thread #%d finished\n", current_thread->id);
 
     StThread_Yield();
 

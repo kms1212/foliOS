@@ -102,7 +102,7 @@ void test_zstd(void)
 
     status = StPool_Allocate(max_dst_size, &decompressed_buffer);
     if (!CHECK_SUCCESS(status)) {
-        LOG_DEBUG("ZSTD Test: Memory allocation failed!\n");
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "ZSTD Test: Memory allocation failed!\n");
         return;
     }
 
@@ -114,9 +114,13 @@ void test_zstd(void)
     );
 
     if (ZSTD_isError(d_size)) {
-        LOG_DEBUG("ZSTD Decompression Error: %s\n", ZSTD_getErrorName(d_size));
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "ZSTD Decompression Error: %s\n", ZSTD_getErrorName(d_size));
     } else {
-        LOG_DEBUG("ZSTD Decompression Success: %s\n", (char *)decompressed_buffer);
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "ZSTD Decompression Success: %s\n",
+            (char *)decompressed_buffer
+        );
     }
 
     StPool_Free(decompressed_buffer);
@@ -175,6 +179,8 @@ static void setup_process(void)
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to get entry point");
     }
+
+    StElf_Close(elf);
 
     const char *args[] = {"test", NULL};
     const char *envs[] = {"PATH=/bin", NULL};
@@ -306,6 +312,30 @@ static void thread1_main(struct StThread *th)
 
 struct print_state pstate;
 
+static void fb_print_str(int col, int row, const char *str)
+{
+    while (*str) {
+        pstate.framebuffer[row * pstate.width + col++] = *str++ | 0x0700;
+    }
+}
+
+static void thread4_main(struct StThread *th)
+{
+    St_PageCount total_frames, free_frames;
+
+    char buf[512];
+
+    for (;;) {
+        StPmm_GetTotalFrameCount(&total_frames);
+        StPmm_GetFreeFrameCount(&free_frames);
+
+        snprintf(buf, sizeof(buf), "%zu / %zu", free_frames, total_frames);
+        fb_print_str(80 - 23, 0, buf);
+
+        StThread_Sleep(1);
+    }
+}
+
 __section(".text") __noreturn void main(void)
 {
     StStatus status;
@@ -325,8 +355,9 @@ __section(".text") __noreturn void main(void)
     St_PageCount total_frames, free_frames;
     struct StThread *main_thread;
     struct StThread *thread1;
+    struct StThread *thread4;
 
-    LOG_INFO("starting main...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "starting main...\n");
 
     enthdr = (void *)((uintptr_t)_pc_bootinfo_table + _pc_bootinfo_table->header_size);
     for (int i = 0; i < _pc_bootinfo_table->entry_count; i++) {
@@ -381,8 +412,8 @@ __section(".text") __noreturn void main(void)
         &earlyfb_vpn,
         ADDR_TO_PAGE(fbent->framebuffer_addr),
         ADDR_TO_PAGE(ALIGN(fbent->pitch * fbent->height, PAGE_SIZE)),
-        VMM_DEFAULT,
-        MAP_WRITETHRU_CACHE
+        NULL,
+        (struct StMm_CompoundFlags){AF_DEFAULT, MF_KERNEL_DEFAULT | MF_WRITETHRU_CACHE}
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "cannot map early framebuffer");
@@ -397,38 +428,59 @@ __section(".text") __noreturn void main(void)
     void *fb = pstate.framebuffer;
     memset(fb, 0, (size_t)fbent->pitch * fbent->height);
 
-    LOG_INFO("reinitializing early logger...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "reinitializing early logger...\n");
     // StLog_EarlyInit(early_print_char, &pstate);
 
-    LOG_INFO("### bootinfo table start ###\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "### bootinfo table start ###\n");
 
     /* print entries */
     if (caent) {
-        LOG_INFO("command args entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "command args entry:\n");
         for (uint32_t j = 0; j < caent->arg_count; j++) {
-            LOG_INFO("\t%s\n", &_pc_bootinfo_table->strtab[caent->arg_offsets[j]]);
+            LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
+                "\t%s\n",
+                &_pc_bootinfo_table->strtab[caent->arg_offsets[j]]
+            );
         }
     }
 
     if (lient) {
-        LOG_INFO("loader info entry:\n");
-        LOG_INFO("\tname: %s\n", &_pc_bootinfo_table->strtab[lient->name_offset]);
-        LOG_INFO("\tversion: %s\n", &_pc_bootinfo_table->strtab[lient->version_offset]);
-        LOG_INFO("\tauthor: %s\n", &_pc_bootinfo_table->strtab[lient->author_offset]);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "loader info entry:\n");
+        LOG_INFO(
+            LM_CAT_UNCLASSIFIED,
+            "\tname: %s\n",
+            &_pc_bootinfo_table->strtab[lient->name_offset]
+        );
+        LOG_INFO(
+            LM_CAT_UNCLASSIFIED,
+            "\tversion: %s\n",
+            &_pc_bootinfo_table->strtab[lient->version_offset]
+        );
+        LOG_INFO(
+            LM_CAT_UNCLASSIFIED,
+            "\tauthor: %s\n",
+            &_pc_bootinfo_table->strtab[lient->author_offset]
+        );
 
         if (lient->additional_entry_count > 0) {
-            LOG_INFO("\tadditional entries:\n");
+            LOG_INFO(LM_CAT_UNCLASSIFIED, "\tadditional entries:\n");
         }
         for (uint32_t j = 0; j < lient->additional_entry_count; j++) {
-            LOG_INFO("\t\t%s\n", &_pc_bootinfo_table->strtab[lient->additional_entries[j]]);
+            LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
+                "\t\t%s\n",
+                &_pc_bootinfo_table->strtab[lient->additional_entries[j]]
+            );
         }
     }
 
     if (mment) {
-        LOG_INFO("memory map entry:\n");
-        LOG_INFO("\tbase             size             type\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "memory map entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\tbase             size             type\n");
         for (uint32_t j = 0; j < mment->entry_count; j++) {
             LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
                 "\t%016" PRIX64 " %016" PRIX64 " %08" PRIX32 "\n",
                 mment->entries[j].base,
                 mment->entries[j].size,
@@ -438,11 +490,12 @@ __section(".text") __noreturn void main(void)
     }
 
     if (sdent) {
-        LOG_INFO("system disk entry:\n");
-        LOG_INFO("\tident_crc32: %08" PRIX32 "\n", sdent->ident_crc32);
-        LOG_INFO("\tlba              crc32\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "system disk entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\tident_crc32: %08" PRIX32 "\n", sdent->ident_crc32);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\tlba              crc32\n");
         for (uint32_t j = 0; j < sdent->entry_count; j++) {
             LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
                 "\t%016" PRIX64 " %08" PRIX32 "\n",
                 sdent->entries[j].lba,
                 sdent->entries[j].crc32
@@ -451,27 +504,28 @@ __section(".text") __noreturn void main(void)
     }
 
     if (arent) {
-        LOG_INFO("acpi rsdp entry:\n");
-        LOG_INFO("\toemid: %.6s\n", arent->oemid);
-        LOG_INFO("\trevision: %02X\n", arent->revision);
-        LOG_INFO("\tsize: %08" PRIX32 "\n", arent->size);
-        LOG_INFO("\trsdt: %08" PRIX32 "\n", arent->rsdt_addr);
-        LOG_INFO("\txsdt: %016" PRIX64 "\n", arent->xsdt_addr);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "acpi rsdp entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\toemid: %.6s\n", arent->oemid);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\trevision: %02X\n", arent->revision);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\tsize: %08" PRIX32 "\n", arent->size);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\trsdt: %08" PRIX32 "\n", arent->rsdt_addr);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\txsdt: %016" PRIX64 "\n", arent->xsdt_addr);
     }
 
     if (dfent) {
-        LOG_INFO("default font entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "default font entry:\n");
     }
 
     if (bgent) {
-        LOG_INFO("boot graphics entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "boot graphics entry:\n");
     }
 
     if (ufent) {
-        LOG_INFO("unavailable frames entry:\n");
-        LOG_INFO("\tpfn           count     type\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "unavailable frames entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\tpfn           count     type\n");
         for (uint32_t j = 0; j < ufent->entry_count; j++) {
             LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
                 "\t%013" PRIX64 " %09" PRId32 " %01X\n",
                 ufent->entries[j].pfn_base,
                 ufent->entries[j].count,
@@ -481,13 +535,14 @@ __section(".text") __noreturn void main(void)
     }
 
     if (pvent) {
-        LOG_INFO("pagetable vpn entry:\n");
-        LOG_INFO("\t%013" PRIX64 "\n", pvent->vpn);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "pagetable vpn entry:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\t%013" PRIX64 "\n", pvent->vpn);
     }
 
     if (rdent) {
-        LOG_INFO("boot ramdisk:\n");
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "boot ramdisk:\n");
         LOG_INFO(
+            LM_CAT_UNCLASSIFIED,
             "\tversion=%u size=%08" PRIX32 " addr=%016" PRIX64 "\n",
             rdent->version,
             rdent->size,
@@ -495,28 +550,29 @@ __section(".text") __noreturn void main(void)
         );
     }
 
-    LOG_INFO("### bootinfo table end ###\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "### bootinfo table end ###\n");
 
     StPmm_GetTotalFrameCount(&total_frames);
     StPmm_GetFreeFrameCount(&free_frames);
 
-    LOG_INFO("free/total frames: %zu/%zu\n", free_frames, total_frames);
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "free/total frames: %zu/%zu\n", free_frames, total_frames);
 
     test_zstd();
 
-    LOG_INFO("initializing thread system...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing thread system...\n");
     status = StThread_Init(&main_thread);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize thread system");
     }
-
-    StThread_EnablePreemption();
 
     setup_process();
 
     StMutex_Init(&mtx);
     StThread_CreateKernel(thread1_main, 16, &thread1);
     StThread_Detach(thread1);
+
+    StThread_CreateKernel(thread4_main, 16, &thread4);
+    StThread_Detach(thread4);
 
     for (;;) {
         StScheduler_Maintain();

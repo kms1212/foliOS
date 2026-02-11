@@ -389,7 +389,7 @@ StStatus StIntP_Mask(int num)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
-    LOG_TRACE("masking interrupt #%02X...\n", num);
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "masking interrupt #%02X...\n", num);
 
     if (0x20 <= num && num < 0x30) {
         /* mask PIC first */
@@ -405,7 +405,7 @@ StStatus StIntP_Unmask(int num)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
-    LOG_TRACE("unmasking interrupt #%02X...\n", num);
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "unmasking interrupt #%02X...\n", num);
 
     if (0x20 <= num && num < 0x30) {
         /* unmask PIC too */
@@ -469,6 +469,7 @@ __optimize("O0") __externally_visible void *_pc_isr_common(
             }
         } else {
             ILOG_WARN(
+                LM_CAT_UNCLASSIFIED,
                 "unhandled interrupt #%02X at 0x%04X:0x%016" PRIX64 "\n",
                 num,
                 frame->cs,

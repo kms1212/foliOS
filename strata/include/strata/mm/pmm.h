@@ -7,13 +7,13 @@
 #include <strata/status.h>
 #include <strata/types.h>
 
+#include <strata/mm/owner.h>
 #include <strata/mm/types.h>
 
 struct StPmm_AllocationMetadata {
-    const St_PhysFrame pfn;
-    void *const owner;
-    uint32_t flags;
     const uint32_t order;
+    uint32_t flags;
+    struct StMm_AllocationOwner *const owner;
 };
 
 StStatus StPmm_Init(void);
@@ -23,7 +23,10 @@ StStatus StPmm_GetTotalFrameCount(St_PageCount *frame_count __out);
 StStatus StPmm_GetFreeFrameCount(St_PageCount *count __out);
 
 StStatus StPmm_AllocateContiguousFrame(
-    St_PhysFrame *pfn __out, St_PageCount count __in, StPmm_AllocFlags alloc_flags __in
+    St_PhysFrame *pfn __out,
+    St_PageCount count __in,
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in
 );
 StStatus StPmm_AcquireContiguousFrame(St_PhysFrame pfn __in);
 void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in);

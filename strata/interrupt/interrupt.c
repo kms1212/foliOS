@@ -23,7 +23,7 @@ StStatus StInt_CreateHandler(
         goto has_error;
     }
 
-    LOG_DEBUG("adding intrrupt handler to #%02X...\n", num);
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "adding intrrupt handler to #%02X...\n", num);
 
     status = StPool_Allocate(sizeof(*newentry), (void **)&newentry);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -63,7 +63,7 @@ void StInt_RemoveHandler(struct StInt_Handler *handler)
     struct StInt_Handler *prev = NULL;
     struct StInt_Handler *current;
 
-    LOG_DEBUG("removing intrrupt handler from #%02X...\n", handler->irq_num);
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "removing intrrupt handler from #%02X...\n", handler->irq_num);
 
     status = StIntP_GetFirstHandler(handler->irq_num, &current);
     if (!CHECK_SUCCESS(status)) return;

@@ -15,6 +15,7 @@ enum StVmm_Domain {
     VMM_DOMAIN_KERNEL_SLOW,
     VMM_DOMAIN_IO,
     VMM_DOMAIN_MODULE,
+    VMM_DOMAIN_KRT_GLOBAL,
     VMM_DOMAIN_MAX,
 };
 
@@ -37,14 +38,30 @@ StStatus StVmm_AllocateGlobalPage(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StVmm_AllocFlags alloc_flags __in
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in
 );
 StStatus StVmm_AllocateLocalPage(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StVmm_AllocFlags alloc_flags __in
+    StMm_AllocFlags alloc_flags __in
 );
+
+StStatus StVmm_AllocateGlobalPageTo(
+    enum StVmm_Domain domain __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in
+);
+StStatus StVmm_AllocateLocalPageTo(
+    struct StMm_AddressSpace *asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_AllocFlags alloc_flags __in
+);
+
 void StVmm_FreeGlobalPage(St_VirtPage vpn __in, St_PageCount count __in);
 void StVmm_FreeLocalPage(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in

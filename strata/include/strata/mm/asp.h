@@ -3,10 +3,13 @@
 
 #include <strata/plat/mm.h>
 
+#include <strata/process.h>
 #include <strata/rb.h>
 
 struct StMm_AddressSpace {
     struct StMm_AddressSpace *next;
+
+    struct StProcess *process;
 
     struct StMmP_AddressSpace platform_data;
 
@@ -17,7 +20,9 @@ struct StMm_AddressSpace {
 
 StStatus StMm_InitBaseAddressSpace(void);
 
-StStatus StMm_CreateAddressSpace(struct StMm_AddressSpace **asp __out);
+StStatus StMm_CreateAddressSpace(
+    struct StMm_AddressSpace **asp __out, struct StProcess *process __in
+);
 void StMm_RemoveAddressSpace(struct StMm_AddressSpace *asp __in);
 StStatus StMm_SwitchAddressSpace(struct StMm_AddressSpace *asp __in);
 

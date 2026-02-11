@@ -66,7 +66,7 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
 
     StLog_EarlyInit(early_print_char, NULL);
 
-    LOG_INFO("Starting Strata...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "Starting Strata...\n");
 
     enthdr = (void *)((uintptr_t)btblhdr + btblhdr->header_size);
     for (int i = 0; i < btblhdr->entry_count; i++) {
@@ -91,28 +91,28 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(STATUS_ENTRY_NOT_FOUND, "required entry not found");
     }
 
-    LOG_INFO("initializing GDT...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing GDT...\n");
     StP_InitGdt();
 
-    LOG_INFO("initializing physical memory allocator...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing physical memory allocator...\n");
     status = StPmm_Init(pvent->vpn, mment, ufent);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize physical memory allocator");
     }
 
-    LOG_INFO("initializing virtual memory allocator...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing virtual memory allocator...\n");
     status = StVmm_Init(0x00000100, 0x0009FFFF, 0x000A0000, 0x000BFFFF, 0x000C1000, 0x000FEFFF);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize virtual memory allocator");
     }
 
-    LOG_INFO("initializing memory management...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing memory management...\n");
     status = StMm_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize memory management");
     }
 
-    LOG_INFO("relocating bootinfo table...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "relocating bootinfo table...\n");
     newbtblhdr = malloc(btblhdr->size);
     if (!newbtblhdr) {
         St_Panic(status, "cannot allocate memory for bootinfo table");
@@ -123,6 +123,7 @@ void _pc_init(struct bootinfo_table_header *btblhdr)
     _pc_bootinfo_table = newbtblhdr;
 
     LOG_INFO(
+        LM_CAT_UNCLASSIFIED,
         "%p %p %p %08" PRIX32 "\n",
         (void *)_pc_bootinfo_table,
         (void *)btblhdr,
@@ -203,7 +204,7 @@ void _pc_init_late(void)
 {
     StStatus status;
 
-    LOG_INFO("initializing ISRs...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing ISRs...\n");
     status = StIntP_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize interrupt system");
@@ -216,13 +217,13 @@ void _pc_init_late(void)
     StIoA_Out8(0x0070, 0x8B);
     StIoA_Out8(0x0071, temp & ~0x70);
 
-    LOG_INFO("checking CPU features...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "checking CPU features...\n");
     status = StA_CheckCpuFeatures();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to check CPU features");
     }
 
-    LOG_INFO("activating common CPU features...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "activating common CPU features...\n");
     status = StA_ActivateCommonCpuFeatures();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to activate common CPU features");
@@ -230,6 +231,6 @@ void _pc_init_late(void)
 
     StInt_CreateHandler(0x20, NULL, pit_isr, NULL);
 
-    LOG_INFO("initializing PIT...\n");
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing PIT...\n");
     init_pit();
 }

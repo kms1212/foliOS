@@ -28,7 +28,7 @@ _start:
     push    %edx
     pushl   .start64_addr + 4           # push return address
     pushl   .start64_addr
-    mov     $_trampoline_load_, %eax
+    mov     $_trampoline_load_ + 8, %eax
     call    *%eax
 
 0:

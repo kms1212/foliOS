@@ -1,11 +1,18 @@
     .org    0
 
     .section .text.startup
+.load_size:
+    .quad   0
+
     .code32
     .globl  _start
 _start:
     push    %ebp
     mov     %esp, %ebp
+
+    lea     _end_, %eax
+    sub     $_text_start_, %eax
+    mov     %eax, .load_size
 
     xor     %eax, %eax                  # clear trampoline bss
     mov     $_bss_start_, %edi 

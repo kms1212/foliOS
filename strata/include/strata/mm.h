@@ -12,6 +12,7 @@
 #include <strata/types.h>
 
 #include <strata/mm/asp.h>
+#include <strata/mm/owner.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
@@ -58,31 +59,32 @@ StStatus StMm_MapGlobal(
     St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    struct StMm_AllocationOwner *owner __in,
+    struct StMm_CompoundFlags flags __in
 );
 StStatus StMm_MapLocal(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_MapGlobalTo(
     St_VirtPage vpn __in,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_MapLocalTo(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage vpn __in,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 void StMm_UnmapGlobal(St_VirtPage vpn __in, St_PageCount count __in);
 void StMm_UnmapLocal(
@@ -93,59 +95,60 @@ StStatus StMm_AllocateGlobalContiguous(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalContiguous(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateGlobalSparse(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalSparse(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StVmm_AllocFlags vmmflags __in,
-    StMm_MapFlags mapflags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateGlobalContiguousTo(
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StMm_MapFlags mapflags __in
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalContiguousTo(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StMm_MapFlags mapflags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateGlobalSparseTo(
+    enum StVmm_Domain domain __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StMm_MapFlags mapflags __in
+    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalSparseTo(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StPmm_AllocFlags pmmflags __in,
-    StMm_MapFlags mapflags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 );
 
 void StMm_FreeGlobal(St_VirtPage vpn __in, St_PageCount count __in);
@@ -160,12 +163,14 @@ StStatus StMm_SetLocalPageFlags(
     struct StMm_AddressSpace *asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StMm_MapFlags mapflags __in
+    StMm_MapFlags map_flags __in
 );
 
-StStatus StMm_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *mapflags __out);
+StStatus StMm_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
 StStatus StMm_GetLocalPageFlags(
-    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags *mapflags __out
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 );
+
+void StMm_CleanupOwnerAllocation(struct StMm_AllocationOwner *owner __in);
 
 #endif  // __STRATA_MM_H__

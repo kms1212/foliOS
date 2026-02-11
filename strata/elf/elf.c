@@ -187,7 +187,7 @@ StStatus StElf_LoadProgram(
     size_t program_memsz;
     size_t program_filesz;
     int allocated = 0;
-    uint32_t map_flags = MAP_USER;
+    uint32_t map_flags = MF_USER_DEFAULT;
 
     if (elf->ident.class == ELFCLASS32) {
         status = StElf_GetProgramHeader(elf, index, &phdr32, sizeof(phdr32));
@@ -204,11 +204,11 @@ StStatus StElf_LoadProgram(
         program_filesz = phdr32.filesz;
 
         if (!(phdr32.flags & PF_X)) {
-            map_flags |= MAP_NO_EXECUTE;
+            map_flags |= MF_NO_EXECUTE;
         }
 
         if (!(phdr32.flags & PF_W)) {
-            map_flags |= MAP_READONLY;
+            map_flags &= ~MF_WRITABLE;
         }
     } else if (elf->ident.class == ELFCLASS64) {
         status = StElf_GetProgramHeader(elf, index, &phdr64, sizeof(phdr64));
@@ -225,11 +225,11 @@ StStatus StElf_LoadProgram(
         program_filesz = phdr64.filesz;
 
         if (!(phdr64.flags & PF_X)) {
-            map_flags |= MAP_NO_EXECUTE;
+            map_flags |= MF_NO_EXECUTE;
         }
 
         if (!(phdr64.flags & PF_W)) {
-            map_flags |= MAP_READONLY;
+            map_flags &= ~MF_WRITABLE;
         }
     } else {
         return STATUS_UNSUPPORTED;
@@ -240,8 +240,8 @@ StStatus StElf_LoadProgram(
         asp,
         ADDR_TO_PAGE(program_load_addr),
         program_size_page,
-        PMM_DEFAULT,
-        MAP_DEFAULT
+        AF_DEFAULT,
+        MF_USER_DEFAULT & ~MF_USER
     );
     if (!CHECK_SUCCESS(status)) goto has_error;
     allocated = 1;

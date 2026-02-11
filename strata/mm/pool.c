@@ -3,6 +3,8 @@
 #include <liballoc.h>
 #include <strata/status.h>
 
+// TODO: Implement pool allocator. liballoc leaks memory (in short term).
+
 StStatus StPool_Allocate(size_t size __in, void **ptr __out)
 {
     *ptr = la_malloc(size);

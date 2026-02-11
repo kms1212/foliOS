@@ -109,23 +109,31 @@ StStatus StA_CheckCpuFeatures(void)
 
     StA_Cpuid(0x00000000, &eax, &ebx, &ecx, &edx);
     max_param = eax;
-    LOG_DEBUG("vendor string: %.4s%.4s%.4s\n", (char *)&ebx, (char *)&edx, (char *)&ecx);
+    LOG_DEBUG(
+        LM_CAT_UNCLASSIFIED,
+        "vendor string: %.4s%.4s%.4s\n",
+        (char *)&ebx,
+        (char *)&edx,
+        (char *)&ecx
+    );
 
     if (max_param >= 1) {
         StA_Cpuid(0x00000001, &eax, &ebx, &ecx, &edx);
 
-        LOG_DEBUG("processor type: %1" PRIX32 "\n", (eax & 0x00003000) >> 12);
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "processor type: %1" PRIX32 "\n", (eax & 0x00003000) >> 12);
         LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
             "model id: %02" PRIX32 "\n",
             ((eax & 0x000F0000) >> 12) | ((eax & 0x000000F0) >> 4)
         );
         LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
             "family id: %03" PRIX32 "\n",
             ((eax & 0x0FF00000) >> 16) | ((eax & 0x00000F00) >> 8)
         );
-        LOG_DEBUG("stepping id: %1" PRIX32 "\n", eax & 0x0000000F);
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "stepping id: %1" PRIX32 "\n", eax & 0x0000000F);
 
-        LOG_DEBUG("branding index: %02" PRIX32 "\n", ebx & 0x000000FF);
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "branding index: %02" PRIX32 "\n", ebx & 0x000000FF);
 
         if (ecx & bit_SSE3) {
             cpu_features.has_sse3 = 1;
@@ -193,11 +201,19 @@ StStatus StA_CheckCpuFeatures(void)
 
         if (edx & (1 << 28)) {
             cpu_features.has_htt = 1;
-            LOG_DEBUG("max logical processor id: %" PRId32 "\n", (ebx & 0x00FF0000) >> 16);
+            LOG_DEBUG(
+                LM_CAT_UNCLASSIFIED,
+                "max logical processor id: %" PRId32 "\n",
+                (ebx & 0x00FF0000) >> 16
+            );
         }
 
         if (edx & (1 << 9)) {
-            LOG_DEBUG("local APIC id: %" PRId32 "\n", (ebx & 0xFF000000) >> 16);
+            LOG_DEBUG(
+                LM_CAT_UNCLASSIFIED,
+                "local APIC id: %" PRId32 "\n",
+                (ebx & 0xFF000000) >> 16
+            );
         }
 
         if (edx & (1 << 0)) {
@@ -258,7 +274,11 @@ StStatus StA_CheckCpuFeatures(void)
 
         if (edx & (1 << 19)) {
             cpu_features.has_clfsh = 1;
-            LOG_DEBUG("CLFSH line size: %" PRId32 "\n", (ebx & 0x0000FF00) >> 5);
+            LOG_DEBUG(
+                LM_CAT_UNCLASSIFIED,
+                "CLFSH line size: %" PRId32 "\n",
+                (ebx & 0x0000FF00) >> 5
+            );
         }
 
         if (edx & bit_MMX) {

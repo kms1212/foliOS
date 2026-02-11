@@ -86,7 +86,12 @@ long StSyscallP_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context 
     uint64_t syscall_count = atomic_fetch_add(&StCpuLocalP_GetData()->syscall_count, 1);
     struct StThread *current = StCpuLocalP_GetData()->scheduler.current_thread;
 
-    LOG_DEBUG("syscall #%" PRIu64 ": number %" PRIu64 "\n", syscall_count, ctx->rax);
+    LOG_DEBUG(
+        LM_CAT_UNCLASSIFIED,
+        "syscall #%" PRIu64 ": number %" PRIu64 "\n",
+        syscall_count,
+        ctx->rax
+    );
 
     switch (ctx->rax) {
     case 20: {  // writev

@@ -4,9 +4,9 @@
 #include <strata/plat/thread.h>
 
 #include <strata/compiler.h>
-#include <strata/status.h>
-
+#include <strata/mm/owner.h>
 #include <strata/mm/types.h>
+#include <strata/status.h>
 
 struct StThread;
 struct StProcess;
@@ -62,12 +62,15 @@ struct StThread {
     int wait_timeout_ms;
 
     uint64_t sleep_until_uptime_us;
+
+    struct StMm_AllocationOwner alloc_owner;
 };
 
 StStatus StThread_Init(struct StThread **main_thread __out);
 
-void StThread_EnablePreemption(void);
-void StThread_DisablePreemption(void);
+void StThread_LockPreemption(void);
+void StThread_UnlockPreemption(void);
+
 int StThread_IsPreemptionEnabled(void);
 
 StStatus StThread_CreateKernel(

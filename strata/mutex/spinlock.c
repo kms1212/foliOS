@@ -2,6 +2,7 @@
 
 #include <strata/arch/interrupt.h>
 #include <strata/scheduler.h>
+#include <strata/thread.h>
 
 extern int _pc_irq_level;
 
@@ -21,7 +22,7 @@ StStatus StSpinlock_Lock(struct StSpinlock *lock)
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
 
-    StThread_DisablePreemption();
+    StThread_LockPreemption();
 
     while (lock->locked) {
         /* busy wait */
@@ -31,7 +32,7 @@ StStatus StSpinlock_Lock(struct StSpinlock *lock)
     lock->locked = 1;
     lock->owner = th;
 
-    StThread_EnablePreemption();
+    StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
 }
@@ -44,17 +45,17 @@ StStatus StSpinlock_TryLock(struct StSpinlock *lock)
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
 
-    StA_DisableInterrupt();
+    StThread_LockPreemption();
 
     if (lock->locked) {
-        StThread_EnablePreemption();
+        StThread_UnlockPreemption();
         return STATUS_MUTEX_LOCKED;
     }
 
     lock->locked = 1;
     lock->owner = th;
 
-    StThread_EnablePreemption();
+    StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
 }
@@ -67,17 +68,17 @@ StStatus StSpinlock_Unlock(struct StSpinlock *lock)
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
 
-    StThread_DisablePreemption();
+    StThread_LockPreemption();
 
     if (lock->owner != th) {
-        StThread_EnablePreemption();
+        StThread_UnlockPreemption();
         return STATUS_INVALID_THREAD;
     }
 
     lock->locked = 0;
     lock->owner = NULL;
 
-    StThread_EnablePreemption();
+    StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
 }

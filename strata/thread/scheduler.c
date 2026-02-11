@@ -22,7 +22,7 @@ StStatus StScheduler_AddThread(struct StThread *th)
     }
     th->next = NULL;
 
-    LOG_TRACE("thread #%d added to scheduler\n", th->id);
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "thread #%d added to scheduler\n", th->id);
 
     return STATUS_SUCCESS;
 }
@@ -53,7 +53,7 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
         }
     }
 
-    LOG_TRACE("thread #%d removed from scheduler\n", th->id);
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "thread #%d removed from scheduler\n", th->id);
 
     return STATUS_SUCCESS;
 }
@@ -142,6 +142,9 @@ StStatus StScheduler_Maintain(void)
         return STATUS_INVALID_THREAD;
     }
 
+    StThread_LockPreemption();
+
+    /* check waiting threads */
     for (current = scheduler->runqueue_head; current; current = current->next) {
         if (current->status != THREAD_STATE_WAITING) continue;
         if (!current->wait_list) continue;
@@ -164,36 +167,47 @@ StStatus StScheduler_Maintain(void)
         }
     }
 
+    /* remove finished threads */
     prev = NULL;
     current = scheduler->runqueue_head;
     while (current) {
-        struct StThread *thread_to_remove;
+        struct StThread *next = current->next;
 
-        if (current->status != THREAD_STATE_FINISHED) {
-            prev = current;
-            current = current->next;
-            continue;
-        }
+        if (current->status == THREAD_STATE_FINISHED) {
+            int is_detached = current->is_detached;
+            struct StThread *thread_to_remove = current;
 
-        thread_to_remove = current;
+            /* unlink from runqueue */
+            if (prev) {
+                prev->next = current->next;
+            } else {
+                scheduler->runqueue_head = current->next;
+            }
 
-        if (prev) {
-            prev->next = current->next;
-            if (thread_to_remove == scheduler->runqueue_tail) {
+            if (current == scheduler->runqueue_tail) {
                 scheduler->runqueue_tail = prev;
             }
+
+            /* re-initialize processed thread's next pointer */
+            current->next = NULL;
+
+            LOG_TRACE(
+                LM_CAT_UNCLASSIFIED,
+                "thread #%d removed from scheduler\n",
+                thread_to_remove->id
+            );
+
+            if (is_detached) {
+                StThread_Remove(thread_to_remove);
+            }
         } else {
-            scheduler->runqueue_head = current->next;
+            prev = current;
         }
 
-        current = current->next;
-
-        LOG_TRACE("thread #%d removed from scheduler\n", thread_to_remove->id);
-
-        if (thread_to_remove->is_detached) {
-            StThread_Remove(thread_to_remove);
-        }
+        current = next;
     }
+
+    StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
 }

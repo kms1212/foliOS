@@ -10,6 +10,7 @@
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
+#include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
 #include <strata/plat/tss.h>
 
@@ -39,9 +40,9 @@ StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in)
         VMM_DOMAIN_KERNEL_SLOW,
         &kmode_stack_base_vpn,
         th->kmode_stack_page_count,
-        PMM_DEFAULT,
-        VMM_DEFAULT,
-        MAP_DEFAULT
+        &th->alloc_owner,
+        AF_DEFAULT,
+        MF_KERNEL_DEFAULT
     );
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -98,7 +99,7 @@ StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in)
 
 void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
 {
-    LOG_DEBUG("freeing thread kernel stack...\n");
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "freeing thread kernel stack...\n");
 
     StMm_FreeGlobal(th->kmode_stack_base_vpn, th->kmode_stack_page_count);
 }
@@ -106,15 +107,15 @@ void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
 StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
 {
     StStatus status;
-    St_VirtPage ustack_base_vpn = 0x00007FFF80000 - th->umode_stack_page_count;
+    St_VirtPage ustack_base_vpn = MEMMAP_USER_VPN_LIMIT + 1 - th->umode_stack_page_count;
 
     /* allocate thread stack */
     status = StMm_AllocateLocalSparseTo(
         th->process->address_space,
         ustack_base_vpn,
         th->umode_stack_page_count,
-        PMM_DEFAULT,
-        MAP_USER
+        AF_DEFAULT,
+        MF_USER_DEFAULT
     );
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -227,7 +228,7 @@ StStatus StThreadP_SetupThreadUserStack(
 
 void StThreadP_FreeThreadUserStack(struct StThread *th __in)
 {
-    LOG_DEBUG("freeing thread user stack...\n");
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "freeing thread user stack...\n");
 
     StMm_FreeLocal(
         th->process->address_space,
@@ -316,7 +317,12 @@ StStatus StThreadP_Switch(
     status = StScheduler_SetCurrentThread(next);
     if (!CHECK_SUCCESS(status)) return status;
 
-    LOG_TRACE("task switching: %d -> %d\n", (int)current->id, (int)next->id);
+    LOG_TRACE(
+        LM_CAT_THREAD | LM_SUBCAT_TASK_SWITCH,
+        "task switching: %d -> %d\n",
+        (int)current->id,
+        (int)next->id
+    );
 
     *next_stack_ptr = next->kmode_stack_ptr;
 

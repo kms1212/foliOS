@@ -3,6 +3,7 @@
 
 #include <strata/plat/process.h>
 
+#include <strata/mm/owner.h>
 #include <strata/status.h>
 
 enum StProcess_Type {
@@ -30,6 +31,8 @@ struct StProcess {
     struct StThread *thread_list_tail;
 
     struct StModule *module;
+
+    struct StMm_AllocationOwner alloc_owner;
 };
 
 StStatus StProcess_CreateUser(struct StProcess **process __out);

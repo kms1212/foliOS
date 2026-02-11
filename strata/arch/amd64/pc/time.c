@@ -46,20 +46,24 @@ static void calibrate_tsc_with_pit(void)
 void StTimeP_StartUptime(void)
 {
     if (g_p_cpu_features->has_tsc) {
-        LOG_DEBUG("using TSC for uptime counter\n");
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "using TSC for uptime counter\n");
         use_tsc = 1;
         uptime_start_counter = StA_ReadTsc();
         if (g_p_cpu_features->provides_tsc_ratio && g_p_cpu_features->provides_core_clock_freq) {
-            LOG_DEBUG("calibration skipped\n");
+            LOG_DEBUG(LM_CAT_UNCLASSIFIED, "calibration skipped\n");
             counter_diff_per_sec = g_p_cpu_features->tsc_ratio_numer *
                 g_p_cpu_features->core_clock_freq_hz / g_p_cpu_features->tsc_ratio_denom;
         } else {
-            LOG_DEBUG("calibrating TSC... (10 ms period)\n");
+            LOG_DEBUG(LM_CAT_UNCLASSIFIED, "calibrating TSC... (10 ms period)\n");
             calibrate_tsc_with_pit();
-            LOG_DEBUG("TSC calibrated: %" PRIu64 " delta per second\n", counter_diff_per_sec);
+            LOG_DEBUG(
+                LM_CAT_UNCLASSIFIED,
+                "TSC calibrated: %" PRIu64 " delta per second\n",
+                counter_diff_per_sec
+            );
         }
     } else {
-        LOG_DEBUG("using PIT for uptime counter\n");
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "using PIT for uptime counter\n");
         use_tsc = 0;
         counter_diff_per_sec = 100;
         uptime_start_counter = StTimeP_GetGlobalTick();
