@@ -9,6 +9,7 @@
 #include <strata/mm/owner.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 
 struct pmm_metadata_ipublic_view {
     uint32_t order;
@@ -54,6 +55,7 @@ struct vmm_alloc_node {
     struct vmm_alloc_node *owner_prev, *owner_next;
     struct StMm_AddressSpace *asp;
     uint32_t alloc_type;
+    enum StVmm_Domain domain;
 };
 
 #endif  // __MM_INTERNAL_H__

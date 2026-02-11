@@ -86,7 +86,7 @@ StStatus StMm_MapLocalTo(
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
 );
-void StMm_UnmapGlobal(St_VirtPage vpn __in, St_PageCount count __in);
+void StMm_UnmapGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in);
 void StMm_UnmapLocal(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
@@ -151,7 +151,7 @@ StStatus StMm_AllocateLocalSparseTo(
     StMm_MapFlags map_flags __in
 );
 
-void StMm_FreeGlobal(St_VirtPage vpn __in, St_PageCount count __in);
+void StMm_FreeGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in);
 void StMm_FreeLocal(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );

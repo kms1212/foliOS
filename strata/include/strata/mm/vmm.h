@@ -62,7 +62,9 @@ StStatus StVmm_AllocateLocalPageTo(
     StMm_AllocFlags alloc_flags __in
 );
 
-void StVmm_FreeGlobalPage(St_VirtPage vpn __in, St_PageCount count __in);
+void StVmm_FreeGlobalPage(
+    enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in
+);
 void StVmm_FreeLocalPage(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );

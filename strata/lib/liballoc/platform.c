@@ -44,7 +44,7 @@ int liballoc_free(void *vaddr, int page_count)
 {
     St_VirtPage vpn = VPTR_TO_PAGE(vaddr);
 
-    StMm_FreeGlobal(vpn, (St_PageCount)page_count);
+    StMm_FreeGlobal(VMM_DOMAIN_KERNEL_SLOW, vpn, (St_PageCount)page_count);
 
     return 0;
 }

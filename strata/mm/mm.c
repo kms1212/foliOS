@@ -71,13 +71,13 @@ StStatus StMm_MapGlobal(
     return STATUS_SUCCESS;
 }
 
-void StMm_UnmapGlobal(St_VirtPage vpn __in, St_PageCount count __in)
+void StMm_UnmapGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in)
 {
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "unmapping page %013zX (count=%zu)\n", (uintptr_t)vpn, count);
 
     StMmP_UnmapGlobalContiguousMemory(vpn, count);
 
-    StVmm_FreeGlobalPage(vpn, count);
+    StVmm_FreeGlobalPage(domain, vpn, count);
 }
 
 StStatus StMm_AllocateGlobalContiguous(
@@ -119,7 +119,7 @@ StStatus StMm_AllocateGlobalContiguous(
 
 has_error:
     if (allocated_vpn != (St_VirtPage)-1) {
-        StMm_UnmapGlobal(allocated_vpn, count);
+        StMm_UnmapGlobal(domain, allocated_vpn, count);
     }
 
     if (allocated_pfn != (St_PhysFrame)-1) {
@@ -200,7 +200,7 @@ has_error:
     StMmP_UnmapGlobalContiguousMemory(allocated_vpn, allocated_count);
 
     if (allocated_vpn != (St_VirtPage)-1) {
-        StVmm_FreeGlobalPage(allocated_vpn, count);
+        StVmm_FreeGlobalPage(domain, allocated_vpn, count);
     }
 
     return status;
@@ -268,7 +268,7 @@ has_error:
     StMmP_UnmapGlobalContiguousMemory(vpn, allocated_count);
 
     if (vpn_allocated) {
-        StVmm_FreeGlobalPage(vpn, count);
+        StVmm_FreeGlobalPage(domain, vpn, count);
     }
 
     return status;
@@ -343,7 +343,7 @@ has_error:
     return status;
 }
 
-void StMm_FreeGlobal(St_VirtPage vpn __in, St_PageCount count __in)
+void StMm_FreeGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in)
 {
     StStatus status;
     St_PhysFrame pfn;
@@ -372,7 +372,7 @@ void StMm_FreeGlobal(St_VirtPage vpn __in, St_PageCount count __in)
 
     StMmP_UnmapGlobalContiguousMemory(vpn, count);
 
-    StVmm_FreeGlobalPage(vpn, count);
+    StVmm_FreeGlobalPage(domain, vpn, count);
 }
 
 void StMm_FreeLocal(
@@ -454,13 +454,13 @@ void StMm_CleanupOwnerAllocation(struct StMm_AllocationOwner *owner __in)
             if (node->asp) {
                 StMm_FreeLocal(node->asp, node->base_vpn, node->limit_vpn - node->base_vpn);
             } else {
-                StMm_FreeGlobal(node->base_vpn, node->limit_vpn - node->base_vpn);
+                StMm_FreeGlobal(node->domain, node->base_vpn, node->limit_vpn - node->base_vpn);
             }
         } else {
             if (node->asp) {
                 // StMm_UnmapLocal(node->asp, node->base_vpn, node->limit_vpn - node->base_vpn);
             } else {
-                StMm_UnmapGlobal(node->base_vpn, node->limit_vpn - node->base_vpn);
+                StMm_UnmapGlobal(node->domain, node->base_vpn, node->limit_vpn - node->base_vpn);
             }
         }
         node = next;

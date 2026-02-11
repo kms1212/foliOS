@@ -208,6 +208,8 @@ found_hole:
     new_node->base_vpn = candidate_start;
     new_node->limit_vpn = candidate_start + count;
     new_node->owner = owner;
+    new_node->asp = NULL;
+    new_node->domain = domain;
 
     if (owner) {
         new_node->owner_prev = owner->last_vmm_node;
@@ -267,6 +269,7 @@ StStatus StVmm_AllocateGlobalPageTo(
     new_node->limit_vpn = vpn + count;
     new_node->owner = owner;
     new_node->asp = NULL;
+    new_node->domain = domain;
 
     if (alloc_flags & AF_VMM_HIDDEN_AT_MAP) {
         new_node->alloc_type = AT_MAP;
@@ -365,25 +368,18 @@ has_error:
     return status;
 }
 
-void StVmm_FreeGlobalPage(St_VirtPage vpn __in, St_PageCount count __in)
+void StVmm_FreeGlobalPage(
+    enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in
+)
 {
     struct vmm_alloc_domain *ad;
     struct vmm_alloc_node *node;
-    int i;
 
     if (count == 0) return;
 
-    // Find the domain that covers this VPN range
-    for (i = 0; i < VMM_DOMAIN_MAX; i++) {
-        ad = &alloc_domain_list[i];
-        if (ad->initialized && vpn >= ad->base_vpn && (vpn + count - 1) <= ad->limit_vpn) {
-            goto found_domain;
-        }
-    }
-    LOG_ERROR(LM_CAT_UNCLASSIFIED, "domain not found for vpn %013zX\n", vpn);
-    return;  // Domain not found
+    ad = &alloc_domain_list[domain];
+    if (!ad->initialized) return;
 
-found_domain:
     StThread_LockPreemption();
 
     node = find_overlap(&ad->rbtree, vpn, count);

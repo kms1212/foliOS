@@ -101,7 +101,7 @@ void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
 {
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "freeing thread kernel stack...\n");
 
-    StMm_FreeGlobal(th->kmode_stack_base_vpn, th->kmode_stack_page_count);
+    StMm_FreeGlobal(VMM_DOMAIN_KERNEL_SLOW, th->kmode_stack_base_vpn, th->kmode_stack_page_count);
 }
 
 StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
