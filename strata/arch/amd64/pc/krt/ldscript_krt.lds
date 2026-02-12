@@ -10,36 +10,36 @@ SECTIONS
     . = ALIGN(4096);
     .data :
     {
-        PROVIDE_HIDDEN(_data_start_ = .);
+        PROVIDE_HIDDEN(__data_start = .);
         *(.data .data.*)
-        PROVIDE_HIDDEN(_data_end_ = .);
+        PROVIDE_HIDDEN(__data_end = .);
     }
 
     . = ALIGN(4096);
     .bss :
     {
-        PROVIDE_HIDDEN(_bss_start_ = .);
+        PROVIDE_HIDDEN(__bss_start = .);
         *(.bss .bss.*)
-        PROVIDE_HIDDEN(_bss_end_ = .);
+        PROVIDE_HIDDEN(__bss_end = .);
     }
 
     . = 0xFFFF800000000000;  /* module area */
 
     .text :
     {
-        PROVIDE_HIDDEN(_text_start_ = .);
+        PROVIDE_HIDDEN(__text_start = .);
         KEEP(*(.text .text.*))
-        PROVIDE_HIDDEN(_text_end_ = .);
+        PROVIDE_HIDDEN(__text_end = .);
     }
 
     . = ALIGN(4096);
     .rodata :
     {
-        PROVIDE_HIDDEN(_rodata_start_ = .);
+        PROVIDE_HIDDEN(__rodata_start = .);
         KEEP(*(.rodata.krt_table))
         KEEP(*(.rodata .rodata.*))
-        PROVIDE_HIDDEN(_rodata_end_ = .);
+        PROVIDE_HIDDEN(__rodata_end = .);
     }
 
-    PROVIDE_HIDDEN(_end_ = .);
+    PROVIDE_HIDDEN(__end = .);
 }

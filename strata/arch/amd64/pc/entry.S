@@ -1,8 +1,5 @@
     .org    0
 
-    .section .trampoline, "ax", @progbits
-    .incbin "trampoline.bin"
-
     .section .text.startup
     .code32
 .start64_addr:
@@ -13,9 +10,9 @@ _start:
     cld
     cli
 
-    mov     $_trampoline_load_, %edi    # copy .trampoline
-    mov     $_trampoline_start_, %esi
-    mov     $_trampoline_end_, %ecx
+    mov     $__trampoline_load, %edi    # copy .trampoline
+    mov     $__trampoline_start, %esi
+    mov     $__trampoline_end, %ecx
     sub     %esi, %ecx
     add     $3, %ecx
     shr     $2, %ecx
@@ -28,7 +25,7 @@ _start:
     push    %edx
     pushl   .start64_addr + 4           # push return address
     pushl   .start64_addr
-    mov     $_trampoline_load_ + 8, %eax
+    mov     $__trampoline_load + 8, %eax
     call    *%eax
 
 0:
@@ -50,15 +47,15 @@ _start:
 
     /* clear BSS */
     xor     %rax, %rax
-    leaq    _bss_start_, %rdi
-    leaq    _bss_end_, %rcx
+    leaq    __bss_start, %rdi
+    leaq    __bss_end, %rcx
     sub     %rdi, %rcx
     add     $7, %rcx
     shr     $3, %rcx
     rep     stosq
 
     /* load runtime trampoline size */
-    movabs  $_trampoline_load_, %rax
+    movabs  $__trampoline_load, %rax
     mov     (%rax), %rax
     mov     %rax, _trampoline_runtime_size
 
