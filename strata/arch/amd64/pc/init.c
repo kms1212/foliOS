@@ -36,7 +36,6 @@
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
 extern int _trampoline_load_;
-extern size_t _trampoline_runtime_size_;
 extern int _trampoline_size_;
 
 extern int _krt_start;
@@ -44,8 +43,7 @@ extern int _krt_end;
 
 extern int _end_;
 
-// workaround for R_X86_64_PC32 relocation issue
-static size_t *trampoline_runtime_size_ptr = &_trampoline_runtime_size_;
+size_t _trampoline_runtime_size;
 
 static volatile uint64_t global_tick = 0;
 
@@ -289,9 +287,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     /* mark trampoline area as unusable */
     status = StPmm_MarkUnusableContiguousFrame(
         VPTR_TO_PAGE(&_trampoline_load_),
-        ADDR_TO_PAGE(
-            ALIGN((uintptr_t)&_trampoline_load_ + *trampoline_runtime_size_ptr, PAGE_SIZE)
-        ) - 1
+        ADDR_TO_PAGE(ALIGN((uintptr_t)&_trampoline_load_ + _trampoline_runtime_size, PAGE_SIZE)) - 1
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to mark trampoline area as unusable");

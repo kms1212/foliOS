@@ -48,7 +48,7 @@ _start:
     cld
     cli
 
-    /* BSS Clear */
+    /* clear BSS */
     xor     %rax, %rax
     leaq    _bss_start_, %rdi
     leaq    _bss_end_, %rcx
@@ -56,6 +56,11 @@ _start:
     add     $7, %rcx
     shr     $3, %rcx
     rep     stosq
+
+    /* load runtime trampoline size */
+    movabs  $_trampoline_load_, %rax
+    mov     (%rax), %rax
+    mov     %rax, _trampoline_runtime_size
 
     lea     _early_stack, %rsp          # init stack
     xor     %ebp, %ebp
