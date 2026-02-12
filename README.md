@@ -1,6 +1,6 @@
 # foliOS: Next-Generation OS Built on Strata
 
-**foliOS** is a high-performance, secure operating system built on **Strata**, a kernel that implements the **Ambikernel** architecture. By internalizing modern hardware primitives (MPK, PCID, FRED), it bridges the gap between the isolation of Microkernels and the raw performance of monolithic kernels, creating a hybrid environment for the next generation of computing.
+**foliOS** is a high-performance, secure operating system built on **Strata**, a kernel that implements the **Ambikernel** architecture. By internalizing modern hardware primitives, it bridges the gap between the isolation of Microkernels and the raw performance of monolithic kernels, creating a hybrid environment for the next generation of computing.
 
 ## tl;dr
 
@@ -155,7 +155,6 @@ scripts/run.sh pc-amd64
 | `config` | Target-specific presets (e.g., amd64-pc-bios, i686-pc-bios). |
 | `vellum` | The **Vellum Bootloader**: Performs generic bootloader functions. |
 | `strata` | The **Strata Ambikernel**: Core PMM, VMM, and hardware-accelerated domain manager. |
-| `packages` | User-space and module-space software stack. |
 
 ### 📦 System Packages
 
@@ -163,24 +162,13 @@ scripts/run.sh pc-amd64
   * `foligui`: High-performance drawing engine module with window compositor.
   * `libfoligui`: System call wrappers for foliGUI module
 
-* **`folicrt`**: The fundamental C/C++ Runtime environment.
-  * `libfolistdc`: C Standard Library optimized for foliOS system calls.
-  * `libfolistdcxx`: C++ Standard Library support.
-
-* **`foliposix`**: The POSIX Ecosystem Compatibility Suite.
-  * `foliposix`: A specialized module dedicated to emulating POSIX-compliant file system semantics.
-  * `libfoliposix`: The POSIX.1-2017 compliant API surface.
-
 * **`folisdk`**: General Application SDK.
   * `libfoliimm`: Input Method Module (IMM) for multi-language support.
   * `libfoliutil`: OS-independent utility and data structure library.
 
-* **`stratasdk`**: The **Kernel RunTime** Development Kit.
-  * `libstrata`: The standard system library linked by user apps, bridging calls to the KRT.
+* **`stratasdk`**: The Kernel Module Development Kit.
+  * `libstmod`: Provides more privileged system calls for modules.
   * `libsidl`: The Strata Interface Definition Language (SIDL) runtime library.
-
-* **`stratamodsdk`**: Specialized SDK for **Ambikernel Modules**.
-  * `libmod`: Provides more privileged system calls for modules.
 
 ## ⚖️ License
 
