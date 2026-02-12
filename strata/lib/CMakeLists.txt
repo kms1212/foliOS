@@ -6,8 +6,6 @@ add_subdirectory(jsmn)
 add_subdirectory(liballoc)
 add_subdirectory(rb)
 
-set(CMAKE_CXX_COMPILER_WORKS TRUE CACHE BOOL "" INTERNAL)
-
 FetchContent_Declare(zstd
     URL "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz"
     URL_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3

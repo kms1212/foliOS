@@ -15,7 +15,7 @@ if (CMAKE_C_COMPILER)
     # we found a native toolchain
 
     set(CMAKE_C_COMPILER_TARGET     i686-strata-folios)
-    # set(CMAKE_CXX_COMPILER_TARGET   i686-strata-folios)
+    set(CMAKE_CXX_COMPILER_TARGET   i686-strata-folios)
     set(CMAKE_ASM_COMPILER_TARGET   i686-strata-folios)
 else()
     # fallback to i686-elf- toolchain
@@ -28,17 +28,17 @@ else()
     REQUIRED)
 
     set(CMAKE_C_COMPILER_TARGET     i686-elf)
-    # set(CMAKE_CXX_COMPILER_TARGET   i686-elf)
+    set(CMAKE_CXX_COMPILER_TARGET   i686-elf)
     set(CMAKE_ASM_COMPILER_TARGET   i686-elf)
 endif()
 
 set(CMAKE_C_FLAGS               "${CMAKE_C_FLAGS} -ffreestanding -nostdlib -march=i386 -fno-pic")
 
-# find_program(CMAKE_CXX_COMPILER
-#     "${TOOLCHAIN_PREFIX}g++"
-#     HINTS "/usr" "/usr/local" "/opt/homebrew" ENV PATH
-#     REQUIRED)
-# set(CMAKE_CXX_FLAGS             "${CMAKE_CXX_FLAGS} -ffreestanding -nostdlib -march=i386 -fno-pic")
+find_program(CMAKE_CXX_COMPILER
+    "${TOOLCHAIN_PREFIX}g++"
+    HINTS "/usr" "/usr/local" "/opt/homebrew" ENV PATH
+    REQUIRED)
+set(CMAKE_CXX_FLAGS             "${CMAKE_CXX_FLAGS} -ffreestanding -nostdlib -march=i386 -fno-pic")
 
 set(CMAKE_ASM_COMPILER          "${CMAKE_C_COMPILER}")
 set(CMAKE_ASM_FLAGS             "${CMAKE_ASM_FLAGS} -ffreestanding -nostdlib -march=i386 -fno-pic")
