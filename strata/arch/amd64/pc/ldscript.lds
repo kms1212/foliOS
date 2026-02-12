@@ -15,6 +15,7 @@ SECTIONS
     }
 
     _trampoline_load_ = 0x0000000000100000;
+    _trampoline_runtime_size_ = 0x0000000000100000;
     _trampoline_size_ = SIZEOF(.trampoline);
 
     .text.startup :

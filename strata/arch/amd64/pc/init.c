@@ -36,12 +36,18 @@
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
 extern int _trampoline_load_;
+extern size_t _trampoline_runtime_size_;
 extern int _trampoline_size_;
 
 extern int _krt_start;
 extern int _krt_end;
 
 extern int _end_;
+
+// workaround for R_X86_64_PC32 relocation issue
+static size_t *trampoline_runtime_size_ptr = &_trampoline_runtime_size_;
+
+static volatile uint64_t global_tick = 0;
 
 static int early_print_char(void *data, char ch)
 {
@@ -54,8 +60,6 @@ static int early_print_char(void *data, char ch)
         return 0;
     }
 }
-
-static volatile uint64_t global_tick = 0;
 
 uint64_t StTimeP_GetGlobalTick(void)
 {
@@ -286,7 +290,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     status = StPmm_MarkUnusableContiguousFrame(
         VPTR_TO_PAGE(&_trampoline_load_),
         ADDR_TO_PAGE(
-            ALIGN((uintptr_t)&_trampoline_load_ + *(size_t *)&_trampoline_load_, PAGE_SIZE)
+            ALIGN((uintptr_t)&_trampoline_load_ + *trampoline_runtime_size_ptr, PAGE_SIZE)
         ) - 1
     );
     if (!CHECK_SUCCESS(status)) {
