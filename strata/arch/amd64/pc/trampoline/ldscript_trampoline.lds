@@ -9,7 +9,7 @@ SECTIONS
 
     .text :
     {
-        PROVIDE_HIDDEN(__text_start = .);
+        PROVIDE_HIDDEN(___text_start = .);
         KEEP(*(.text.startup .text.startup.*))
         KEEP(*(.text .text.*))
         PROVIDE_HIDDEN(__text_end = .);
@@ -34,9 +34,9 @@ SECTIONS
     . = ALIGN(4096);
     .bss :
     {
-        PROVIDE_HIDDEN(__bss_start = .);
+        PROVIDE_HIDDEN(___bss_start = .);
         *(.bss .bss.*)
-        PROVIDE_HIDDEN(__bss_end = .);
+        PROVIDE_HIDDEN(___bss_end = .);
     }
 
     PROVIDE_HIDDEN(__end = .);

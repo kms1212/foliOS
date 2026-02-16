@@ -47,8 +47,8 @@ _start:
 
     /* clear BSS */
     xor     %rax, %rax
-    leaq    __bss_start, %rdi
-    leaq    __bss_end, %rcx
+    leaq    ___bss_start, %rdi
+    leaq    ___bss_end, %rcx
     sub     %rdi, %rcx
     add     $7, %rcx
     shr     $3, %rcx

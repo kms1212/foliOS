@@ -11,8 +11,8 @@ _start:
     cli
 
     xor     %eax, %eax
-    mov     $__bss_start, %edi          # clear bss
-    mov     $__bss_end, %ecx
+    mov     $___bss_start, %edi          # clear bss
+    mov     $___bss_end, %ecx
     sub     %edi, %ecx
     add     $3, %ecx
     shr     $2, %ecx

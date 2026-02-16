@@ -2,8 +2,8 @@
 
 #include <vellum/device.h>
 
-extern void (*_fini_array_start_)(void);
-extern void (*_fini_array_end_)(void);
+extern void (*__fini_array_start)(void);
+extern void (*__fini_array_end)(void);
 
 extern void _pc_cleanup(void);
 
@@ -28,8 +28,8 @@ void cleanup(void)
         last_root_dev->driver->remove(last_root_dev);
     }
 
-    for (int i = 0; &(&_fini_array_start_)[i] != &_fini_array_end_; i++) {
-        (&_fini_array_start_)[i]();
+    for (int i = 0; &(&__fini_array_start)[i] != &__fini_array_end; i++) {
+        (&__fini_array_start)[i]();
     }
 
     _pc_cleanup();

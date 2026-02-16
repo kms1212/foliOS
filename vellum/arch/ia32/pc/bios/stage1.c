@@ -20,7 +20,7 @@
 
 #endif
 
-extern char _stage2_start_[];  // NOLINT(bugprone-reserved-identifier)
+extern char __stage2_start[];  // NOLINT(bugprone-reserved-identifier)
 
 static uint8_t sect_buf[4096] __aligned(16);
 static uint8_t clus_buf[4096] __aligned(16);
@@ -127,7 +127,7 @@ file_found: {
 
     uint16_t current_cluster = entry->file.cluster_location;
 
-    uint32_t *load_dest = (uint32_t *)_stage2_start_;
+    uint32_t *load_dest = (uint32_t *)__stage2_start;
 
     PRINT_STR("[stage1] reading FAT area...\r\n");
     status = read_disk(fat_lba, 8, sect_buf);
@@ -165,7 +165,7 @@ file_found: {
     PRINT_STR("\r\n");
 
     void (*stage2_entry)(void);
-    *(void **)&stage2_entry = (void *)_stage2_start_;
+    *(void **)&stage2_entry = (void *)__stage2_start;
 
     stage2_entry();
 

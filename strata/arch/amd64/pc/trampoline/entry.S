@@ -11,12 +11,12 @@ _start:
     mov     %esp, %ebp
 
     lea     __end, %eax
-    sub     $__text_start, %eax
+    sub     $___text_start, %eax
     mov     %eax, .load_size
 
     xor     %eax, %eax                  # clear trampoline bss
-    mov     $__bss_start, %edi 
-    mov     $__bss_end, %ecx
+    mov     $___bss_start, %edi 
+    mov     $___bss_end, %ecx
     sub     %edi, %ecx
     add     $3, %ecx
     shr     $2, %ecx

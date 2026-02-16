@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,7 +25,7 @@
 
 #define MODULE_NAME "loadst"
 
-extern int _stage1_end_;
+extern int __stage1_end;
 
 __noreturn static void jump_kernel(void *entry, struct bootinfo_table_header *btblhdr)
 {
@@ -74,7 +75,8 @@ static void fill_pagetable_frame_entries(
     if (max_count-- > 0) {
         entries[filled_entries].pfn_base = (_ia32_read_cr3() & 0xFFFFF000) >> 12;
         entries[filled_entries].count = 1;
-        entries[filled_entries++].type = BEUT_PAGETABLE;
+        entries[filled_entries].type = BEUT_PAGETABLE;
+        filled_entries++;
     }
 
     for (int i = 0; i < 1023; i++) {
@@ -83,7 +85,8 @@ static void fill_pagetable_frame_entries(
 
         entries[filled_entries].pfn_base = _pc_page_dir->pde[i].dir.base;
         entries[filled_entries].count = 1;
-        entries[filled_entries++].type = BEUT_PAGETABLE;
+        entries[filled_entries].type = BEUT_PAGETABLE;
+        filled_entries++;
     }
 }
 
@@ -129,24 +132,127 @@ static status_t fill_kernel_frame_entries(
 
         entries[filled_entries].pfn_base = pfn;
         entries[filled_entries].count = 1;
-        entries[filled_entries++].type = BEUT_KERNEL;
+        entries[filled_entries].type = BEUT_KERNEL;
+        filled_entries++;
     }
 
-    LOG_DEBUG("filled_entries = %lu\n", filled_entries);
+    LOG_DEBUG("filled_entries = %" PRIu32 "\n", filled_entries);
 
     return STATUS_SUCCESS;
 }
 
-static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
+static status_t load_kernel(
+    const char *path,
+    const char *argv0,
+    struct elf_file **elf_out,
+    void **load_paddr_out,
+    size_t *program_size_out
+)
 {
     status_t status;
-    uacpi_status uacpi_status;
     struct elf_file *elf = NULL;
     struct elf_ident ident;
     struct elf32_phdr phdr32;
     struct elf64_phdr phdr64;
     size_t program_size = 0;
     void *load_paddr = NULL;
+
+    status = elf_open(path, &elf);
+    if (!CHECK_SUCCESS(status)) {
+        fprintf(stderr, "%s: failed to open file\n", argv0);
+        return status;
+    }
+
+    status = elf_get_header(elf, &ident, sizeof(ident));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (ident.class == ELFCLASS32) {
+        if (elf->ehdr32.type != ET_EXEC) return STATUS_INVALID_VALUE;
+
+        LOG_DEBUG("calculating program offset and size...\n");
+        for (int i = 0; i < elf->ehdr32.phnum; i++) {
+            status = elf_get_program_header(elf, i, &phdr32, sizeof(phdr32));
+            if (!CHECK_SUCCESS(status)) return status;
+
+            if (!load_paddr || (uintptr_t)load_paddr > phdr32.paddr) {
+                load_paddr = (void *)phdr32.paddr;
+            }
+
+            if ((uintptr_t)load_paddr + program_size < phdr32.paddr + phdr32.memsz) {
+                program_size = phdr32.paddr + phdr32.memsz - (uintptr_t)load_paddr;
+            }
+        }
+    } else if (ident.class == ELFCLASS64) {
+        if (elf->ehdr64.type != ET_EXEC) return STATUS_INVALID_VALUE;
+
+        LOG_DEBUG("calculating program offset and size...\n");
+        for (int i = 0; i < elf->ehdr64.phnum; i++) {
+            status = elf_get_program_header(elf, i, &phdr64, sizeof(phdr64));
+            if (!CHECK_SUCCESS(status)) return status;
+
+            if (!load_paddr || (uintptr_t)load_paddr > phdr64.paddr) {
+                load_paddr = (void *)(uintptr_t)phdr64.paddr;
+            }
+
+            if ((uintptr_t)load_paddr + program_size < phdr64.paddr + phdr64.memsz) {
+                program_size = phdr64.paddr + phdr64.memsz - (uintptr_t)load_paddr;
+            }
+        }
+    } else {
+        fprintf(stderr, "%s: unsupported elf class\n", argv0);
+        return STATUS_INVALID_VALUE;
+    }
+    LOG_DEBUG("offset=0x%p, size=%08zX\n", load_paddr, program_size);
+
+    status =
+        mm_allocate_pages_to((uintptr_t)load_paddr / PAGE_SIZE, ALIGN_DIV(program_size, PAGE_SIZE));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    LOG_DEBUG("loading program...\n");
+    if (ident.class == ELFCLASS32) {
+        for (int i = 0; i < elf->ehdr32.phnum; i++) {
+            status = elf_get_program_header(elf, i, &phdr32, sizeof(phdr32));
+            if (!CHECK_SUCCESS(status)) return status;
+
+            if (phdr32.type != PT_LOAD) continue;
+
+            status = elf_load_program(elf, i, NULL);
+            if (!CHECK_SUCCESS(status)) return status;
+        }
+    } else if (ident.class == ELFCLASS64) {
+        for (int i = 0; i < elf->ehdr64.phnum; i++) {
+            status = elf_get_program_header(elf, i, &phdr64, sizeof(phdr64));
+            if (!CHECK_SUCCESS(status)) return status;
+
+            if (phdr64.type != PT_LOAD) continue;
+
+            status = elf_load_program(elf, i, NULL);
+            if (!CHECK_SUCCESS(status)) return status;
+        }
+    }
+
+    *load_paddr_out = load_paddr;
+    *elf_out = elf;
+    *program_size_out = program_size;
+
+    return STATUS_SUCCESS;
+}
+
+static status_t make_bootinfo_table(
+    struct elf_file *elf,
+    size_t program_size,
+    int argc,
+    char **argv,
+    void *load_paddr,
+    struct bootinfo_table_header **btblhdr_out
+)
+{
+    status_t status;
+    uacpi_status uacpi_status;
+    struct device *fbdev;
+    const struct video_interface *vidif;
+    struct video_hw_mode_info hwmode;
+    int video_mode;
     size_t btblentsize;
     size_t btblhdrsize;
     uint16_t btblentcount;
@@ -168,124 +274,26 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     struct bootinfo_entry_pagetable_vpn *entry_pagetable_vpn;
     uint32_t strtab_cursor;
 
-    if (argc < 2) {
-        fprintf(stderr, "usage: %s path\n", argv[0]);
-        return 1;
-    }
-
-    char path[PATH_MAX];
-    if (path_is_absolute(argv[1])) {
-        strncpy(path, argv[1], sizeof(path) - 1);
-    } else {
-        strncpy(path, inst->working_dir_path, sizeof(path) - 1);
-        path_join(path, sizeof(path), argv[1]);
-
-        if (!inst->fs) {
-            fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
-            return 1;
-        }
-    }
-
-    status = elf_open(path, &elf);
-    if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "%s: failed to open file\n", argv[0]);
-        return 1;
-    }
-
-    status = elf_get_header(elf, &ident, sizeof(ident));
-    if (!CHECK_SUCCESS(status)) return 1;
-
-    if (ident.class == ELFCLASS32) {
-        if (elf->ehdr32.type != ET_EXEC) return 1;
-
-        LOG_DEBUG("calculating program offset and size...\n");
-        for (int i = 0; i < elf->ehdr32.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr32, sizeof(phdr32));
-            if (!CHECK_SUCCESS(status)) return 1;
-
-            if (!load_paddr || (uintptr_t)load_paddr > phdr32.paddr) {
-                load_paddr = (void *)phdr32.paddr;
-            }
-
-            if ((uintptr_t)load_paddr + program_size < phdr32.paddr + phdr32.memsz) {
-                program_size = phdr32.paddr + phdr32.memsz - (uintptr_t)load_paddr;
-            }
-        }
-    } else if (ident.class == ELFCLASS64) {
-        if (elf->ehdr64.type != ET_EXEC) return 1;
-
-        LOG_DEBUG("calculating program offset and size...\n");
-        for (int i = 0; i < elf->ehdr64.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr64, sizeof(phdr64));
-            if (!CHECK_SUCCESS(status)) return 1;
-
-            if (!load_paddr || (uintptr_t)load_paddr > phdr64.paddr) {
-                load_paddr = (void *)(uintptr_t)phdr64.paddr;
-            }
-
-            if ((uintptr_t)load_paddr + program_size < phdr64.paddr + phdr64.memsz) {
-                program_size = phdr64.paddr + phdr64.memsz - (uintptr_t)load_paddr;
-            }
-        }
-    } else {
-        fprintf(stderr, "%s: unsupported elf class\n", argv[0]);
-    }
-    LOG_DEBUG("offset=0x%p, size=%08zX\n", load_paddr, program_size);
-
-    status =
-        mm_allocate_pages_to((uintptr_t)load_paddr / PAGE_SIZE, ALIGN_DIV(program_size, PAGE_SIZE));
-    if (!CHECK_SUCCESS(status)) return status;
-
-    LOG_DEBUG("loading program...\n");
-    if (ident.class == ELFCLASS32) {
-        for (int i = 0; i < elf->ehdr32.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr32, sizeof(phdr32));
-            if (!CHECK_SUCCESS(status)) return 1;
-
-            if (phdr32.type != PT_LOAD) continue;
-
-            status = elf_load_program(elf, i, NULL);
-            if (!CHECK_SUCCESS(status)) return 1;
-        }
-    } else if (ident.class == ELFCLASS64) {
-        for (int i = 0; i < elf->ehdr64.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr64, sizeof(phdr64));
-            if (!CHECK_SUCCESS(status)) return 1;
-
-            if (phdr64.type != PT_LOAD) continue;
-
-            status = elf_load_program(elf, i, NULL);
-            if (!CHECK_SUCCESS(status)) return 1;
-        }
-    }
-
-    struct device *fbdev;
     status = device_find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot find device\n", argv[0]);
-        return 1;
+        return status;
     }
 
-    const struct video_interface *vidif;
     status = fbdev->driver->get_interface(fbdev, "video", (const void **)&vidif);
-    if (!CHECK_SUCCESS(status)) return 1;
-
-    struct video_hw_mode_info hwmode;
-    int video_mode;
+    if (!CHECK_SUCCESS(status)) return status;
 
     status = vidif->get_mode(fbdev, &video_mode);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot get current video mode\n", argv[0]);
-        return 1;
+        return status;
     }
 
     status = vidif->get_hw_mode_info(fbdev, video_mode, &hwmode);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot get video mode hardware info\n", argv[0]);
-        return 1;
+        return status;
     }
-
-    // cleanup();
 
     btblentsize = 0;
     btblhdrsize = 0;
@@ -315,9 +323,7 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
 
     /* add memory map entry size */
     status = count_smap_entry(&mmap_entry_count);
-    if (!CHECK_SUCCESS(status)) {
-        return 1;
-    }
+    if (!CHECK_SUCCESS(status)) return status;
 
     btblentsize += ALIGN(sizeof(*benthdr), 16);
     btblentsize += ALIGN(
@@ -361,7 +367,7 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     btblhdrsize = ALIGN(btblhdrsize, 16);
 
     /* allocate table */
-    btblhdr = (void *)ALIGN((uintptr_t)&_stage1_end_, 16);
+    btblhdr = (void *)ALIGN((uintptr_t)&__stage1_end, 16);
 
     /* fill header */
     btblhdr->flags = 0;
@@ -430,9 +436,7 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
 
     /* fill acpi rsdp entry */
     uacpi_status = uacpi_kernel_get_rsdp((uacpi_phys_addr *)&rsdp);
-    if (uacpi_unlikely_error(uacpi_status)) {
-        return 1;
-    }
+    if (uacpi_unlikely_error(uacpi_status)) return STATUS_UNKNOWN_ERROR;
 
     benthdr = (void *)((uintptr_t)benthdr + benthdr->size);
     benthdr->type = BET_ACPI_RSDP;
@@ -490,16 +494,14 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
 
     entry_unavailable_frames = (void *)((uintptr_t)benthdr + benthdr->header_size);
     entry_unavailable_frames->entry_count = pagetable_frame_count + kernel_ufent_count;
-    LOG_DEBUG("entry count: %lu\n", entry_unavailable_frames->entry_count);
+    LOG_DEBUG("entry count: %" PRIu32 "\n", entry_unavailable_frames->entry_count);
     fill_pagetable_frame_entries(entry_unavailable_frames->entries, pagetable_frame_count);
     status = fill_kernel_frame_entries(
         &entry_unavailable_frames->entries[pagetable_frame_count],
         kernel_frame_count,
         load_paddr
     );
-    if (!CHECK_SUCCESS(status)) {
-        return 1;
-    }
+    if (!CHECK_SUCCESS(status)) return status;
 
     /* fill pagetable vpn entry */
     benthdr = (void *)((uintptr_t)benthdr + benthdr->size);
@@ -511,8 +513,50 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     entry_pagetable_vpn = (void *)((uintptr_t)benthdr + benthdr->header_size);
     entry_pagetable_vpn->vpn = (uintptr_t)_pc_page_dir / PAGE_SIZE;
 
+    *btblhdr_out = btblhdr;
+
+    return STATUS_SUCCESS;
+}
+
+static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
+{
+    status_t status;
+    struct elf_file *elf = NULL;
+    void *load_paddr;
+    size_t program_size;
+    struct bootinfo_table_header *btblhdr;
+
+    if (argc < 2) {
+        fprintf(stderr, "usage: %s path\n", argv[0]);
+        return 1;
+    }
+
+    char path[PATH_MAX];
+    if (path_is_absolute(argv[1])) {
+        strncpy(path, argv[1], sizeof(path) - 1);
+    } else {
+        strncpy(path, inst->working_dir_path, sizeof(path) - 1);
+        path_join(path, sizeof(path), argv[1]);
+
+        if (!inst->fs) {
+            fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
+            return 1;
+        }
+    }
+
+    status = load_kernel(path, argv[0], &elf, &load_paddr, &program_size);
+    if (!CHECK_SUCCESS(status)) return 1;
+
+    status = make_bootinfo_table(elf, program_size, argc, argv, load_paddr, &btblhdr);
+    if (!CHECK_SUCCESS(status)) return 1;
+
+    // cleanup();
+
     /* jump to kernel */
-    jump_kernel((void *)elf->ehdr32.entry, btblhdr);
+    jump_kernel(
+        (void *)(uintptr_t)(elf->ident.class == ELFCLASS32 ? elf->ehdr32.entry : elf->ehdr64.entry),
+        btblhdr
+    );
 }
 
 static struct command loadst_command = {

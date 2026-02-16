@@ -7,9 +7,9 @@ _start:
     mov     $0x98000, %esp
 
     xor     %eax, %eax
-    mov     $_bss_start_, %edi
-    mov     $_bss_end_, %ecx
-    sub     $_bss_start_, %ecx
+    mov     $__bss_start, %edi
+    mov     $__bss_end, %ecx
+    sub     $__bss_start, %ecx
     rep     stosb
 
 .jump:

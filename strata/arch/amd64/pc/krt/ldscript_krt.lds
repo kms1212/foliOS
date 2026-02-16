@@ -18,16 +18,16 @@ SECTIONS
     . = ALIGN(4096);
     .bss :
     {
-        PROVIDE_HIDDEN(__bss_start = .);
+        PROVIDE_HIDDEN(___bss_start = .);
         *(.bss .bss.*)
-        PROVIDE_HIDDEN(__bss_end = .);
+        PROVIDE_HIDDEN(___bss_end = .);
     }
 
     . = 0xFFFF800000000000;  /* module area */
 
     .text :
     {
-        PROVIDE_HIDDEN(__text_start = .);
+        PROVIDE_HIDDEN(___text_start = .);
         KEEP(*(.text .text.*))
         PROVIDE_HIDDEN(__text_end = .);
     }

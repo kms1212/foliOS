@@ -16,7 +16,7 @@
 
 #define MODULE_NAME "mm"
 
-extern int _end_;
+extern int __end;
 
 #define PBM_GET(idx) ((pma_bitmap[(idx) >> 2] >> (((idx) & 3) * 2)) & 3)
 #define PBM_SET(idx, val)                                                                          \
@@ -43,7 +43,7 @@ status_t mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
 {
     status_t status;
 
-    pma_bitmap = (void *)ALIGN((uintptr_t)&_end_, PAGE_SIZE);
+    pma_bitmap = (void *)ALIGN((uintptr_t)&__end, PAGE_SIZE);
 
     pma_frame_desc_count = limit_paddr / PAGE_SIZE - base_paddr / PAGE_SIZE;
     pma_available_frames = pma_frame_desc_count;

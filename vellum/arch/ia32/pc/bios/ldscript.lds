@@ -9,30 +9,30 @@ SECTIONS
     
     .text :
     {
-        PROVIDE_HIDDEN(_text_start_ = .);
+        PROVIDE_HIDDEN(__text_start = .);
         KEEP(*(.text.startup .text.startup.*))
         KEEP(*(.text .text.*))
-        PROVIDE_HIDDEN(_text_end_ = .);
+        PROVIDE_HIDDEN(__text_end = .);
     }
 
     .data :
     {
         . = ALIGN(16);
-        PROVIDE_HIDDEN(_data_start_ = .);
+        PROVIDE_HIDDEN(__data_start = .);
         *(.data .data.*)
-        PROVIDE_HIDDEN(_data_end_ = .);
+        PROVIDE_HIDDEN(__data_end = .);
 
         . = ALIGN(16);
-        PROVIDE(_init_array_start_ = .);
+        PROVIDE(__init_array_start = .);
         KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
         KEEP(*(.init_array .ctors))
-        PROVIDE(_init_array_end_ = .);
+        PROVIDE(__init_array_end = .);
 
         . = ALIGN(16);
-        PROVIDE_HIDDEN(_fini_array_start_ = .);
+        PROVIDE_HIDDEN(__fini_array_start = .);
         KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
         KEEP(*(.fini_array .dtors))
-        PROVIDE_HIDDEN(_fini_array_end_ = .);
+        PROVIDE_HIDDEN(__fini_array_end = .);
 
         . = ALIGN(16);
         KEEP(*(SORT_NONE(.init)))
@@ -52,18 +52,18 @@ SECTIONS
     . = ALIGN(4096);
     .rodata :
     {
-        PROVIDE_HIDDEN(_rodata_start_ = .);
+        PROVIDE_HIDDEN(__rodata_start = .);
         KEEP(*(.rodata .rodata.*))
-        PROVIDE_HIDDEN(_rodata_end_ = .);
+        PROVIDE_HIDDEN(__rodata_end = .);
     }
 
     . = ALIGN(4096);
     .bss :
     {
-        PROVIDE_HIDDEN(_bss_start_ = .);
+        PROVIDE_HIDDEN(__bss_start = .);
         *(.bss .bss.*)
-        PROVIDE_HIDDEN(_bss_end_ = .);
+        PROVIDE_HIDDEN(__bss_end = .);
     }
 
-    PROVIDE_HIDDEN(_end_ = .);
+    PROVIDE_HIDDEN(__end = .);
 }
