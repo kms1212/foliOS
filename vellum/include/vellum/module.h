@@ -15,10 +15,10 @@ struct module {
     size_t program_size;
 };
 
-status_t module_load(const char *path, struct module **mod);
-void module_unload(struct module *mod);
+status_t VlModule_Load(const char *path, struct module **mod);
+void VlModule_Unload(struct module *mod);
 
-struct module *module_get_first_mod(void);
-status_t module_find(const char *name, struct module **mod);
+struct module *VlModule_GetFirst(void);
+status_t VlModule_Find(const char *name, struct module **mod);
 
 #endif  // __VELLUM_MODULE_H__

@@ -28,7 +28,7 @@ StStatus StThread_Init(struct StThread **main_thread __out)
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     main_th->id = 0;
-    main_th->status = THREAD_STATE_RUNNING;
+    main_th->state = THREAD_STATE_RUNNING;
     main_th->type = THREAD_TYPE_MAIN;
 
     status = StScheduler_AddThread(main_th);
@@ -95,7 +95,7 @@ StStatus StThread_CreateKernel(
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     th->id = new_thread_id++;
-    th->status = THREAD_STATE_PENDING;
+    th->state = THREAD_STATE_PENDING;
     th->type = THREAD_TYPE_KERNEL;
 
     /* prepare stack */
@@ -167,7 +167,7 @@ StStatus StThread_CreateUserMain(
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     th->id = new_thread_id++;
-    th->status = THREAD_STATE_PENDING;
+    th->state = THREAD_STATE_PENDING;
     th->type = THREAD_TYPE_USER;
     th->process = process;
     th->is_main = 1;
@@ -232,7 +232,7 @@ has_error:
 StStatus StThread_Remove(struct StThread *th)
 {
     if (th->type == THREAD_TYPE_MAIN) return STATUS_INVALID_THREAD;
-    if (th->status != THREAD_STATE_FINISHED) return STATUS_THREAD_NOT_FINISHED;
+    if (th->state != THREAD_STATE_FINISHED) return STATUS_THREAD_NOT_FINISHED;
 
     th->is_dying = 1;
 
@@ -293,7 +293,7 @@ StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_
     current_thread->wait_list = list;
     current_thread->wait_count = count;
     current_thread->wait_timeout_ms = timeout_ms;
-    current_thread->status = THREAD_STATE_WAITING;
+    current_thread->state = THREAD_STATE_WAITING;
 
     StThread_UnlockPreemption();
 
@@ -312,7 +312,7 @@ StStatus StThread_Sleep(int timeout_ms __in)
 
     StThread_LockPreemption();
 
-    current_thread->status = THREAD_STATE_SLEEPING;
+    current_thread->state = THREAD_STATE_SLEEPING;
     current_thread->sleep_until_uptime_us = StTimeP_GetUptimeMicroseconds() + timeout_ms * 1000;
 
     StThread_UnlockPreemption();
@@ -341,7 +341,7 @@ __noreturn void StThread_Exit(void)
         St_Panic(STATUS_INVALID_THREAD, "cannot exit from main thread");
     }
 
-    current_thread->status = THREAD_STATE_FINISHED;
+    current_thread->state = THREAD_STATE_FINISHED;
 
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "thread #%d finished\n", current_thread->id);
 

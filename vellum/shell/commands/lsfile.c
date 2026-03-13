@@ -44,13 +44,13 @@ static int lsfile_handler(struct shell_instance *inst, int argc, char **argv)
         return list_directory(inst->working_dir);
     }
 
-    if (path_is_absolute(argv[1])) {
+    if (VlPath_IsAbsolute(argv[1])) {
         struct path_iterator iter;
-        path_iter_init(&iter, argv[1]);
+        VlPath_InitIter(&iter, argv[1]);
 
         struct filesystem *newfs;
         if (iter.element[0]) {
-            status = filesystem_find(iter.element, &newfs);
+            status = VlFs_Find(iter.element, &newfs);
             if (!CHECK_SUCCESS(status)) {
                 fprintf(stderr, "%s: failed to open filesystem\n", argv[0]);
                 return 1;
@@ -72,7 +72,7 @@ static int lsfile_handler(struct shell_instance *inst, int argc, char **argv)
 
         int iter_result;
         do {
-            iter_result = path_iter_next(&iter);
+            iter_result = VlPath_AdvanceIter(&iter);
             if (iter.element[0] == '\0') {
                 continue;
             }
@@ -100,12 +100,12 @@ static int lsfile_handler(struct shell_instance *inst, int argc, char **argv)
         }
 
         struct path_iterator iter;
-        path_iter_init(&iter, argv[1]);
+        VlPath_InitIter(&iter, argv[1]);
 
         struct fs_directory *newdir = inst->working_dir;
         int iter_result;
         do {
-            iter_result = path_iter_next(&iter);
+            iter_result = VlPath_AdvanceIter(&iter);
             if (iter.element[0] == '\0') {
                 continue;
             }
@@ -139,7 +139,7 @@ static struct command lsfile_command = {
 
 static void lsfile_command_init(void)
 {
-    shell_command_register(&lsfile_command);
+    VlShell_RegisterCommand(&lsfile_command);
 }
 
 REGISTER_SHELL_COMMAND(lsfile, lsfile_command_init)

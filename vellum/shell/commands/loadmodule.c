@@ -22,11 +22,11 @@ static int loadmodule_handler(struct shell_instance *inst, int argc, char **argv
     }
 
     char path[PATH_MAX];
-    if (path_is_absolute(argv[1])) {
+    if (VlPath_IsAbsolute(argv[1])) {
         strncpy(path, argv[1], sizeof(path) - 1);
     } else {
         strncpy(path, inst->working_dir_path, sizeof(path) - 1);
-        path_join(path, sizeof(path), argv[1]);
+        VlPath_Join(path, sizeof(path), argv[1]);
 
         if (!inst->fs) {
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
@@ -34,9 +34,9 @@ static int loadmodule_handler(struct shell_instance *inst, int argc, char **argv
         }
     }
 
-    status = module_load(path, NULL);
+    status = VlModule_Load(path, NULL);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "%s: failed to load module: %08X\n", argv[0], status);
+        fprintf(stderr, "%s: failed to load module: %08lX\n", argv[0], status);
         return 1;
     }
 
@@ -51,7 +51,7 @@ static struct command loadmodule_command = {
 
 static void loadmodule_command_init(void)
 {
-    shell_command_register(&loadmodule_command);
+    VlShell_RegisterCommand(&loadmodule_command);
 }
 
 REGISTER_SHELL_COMMAND(loadmodule, loadmodule_command_init)

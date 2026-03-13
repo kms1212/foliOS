@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -14,7 +15,7 @@ static int read_handler(struct shell_instance *inst, int argc, char **argv)
     uint32_t count = argc < 3 ? 1 : strtoul(argv[2], NULL, 10);
 
     while (count > 0) {
-        printf("%08lX: ", addr);
+        printf("%08" PRIX32 ": ", addr);
         for (int i = 0; i < 16 && count > 0; i++) {
             printf("%02X ", *(uint8_t *)addr);
 
@@ -34,7 +35,7 @@ static struct command read_command = {
 
 static void read_command_init(void)
 {
-    shell_command_register(&read_command);
+    VlShell_RegisterCommand(&read_command);
 }
 
 REGISTER_SHELL_COMMAND(read, read_command_init)

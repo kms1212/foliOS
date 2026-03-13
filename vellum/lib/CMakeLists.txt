@@ -18,8 +18,9 @@ if ("${TARGET_FIRMWARE}" STREQUAL "uefi")
     )
 endif()
 
+
 FetchContent_Declare(zlib
-    URL "https://zlib.net/zlib-1.3.1.tar.gz"
+    URL "https://zlib.net/fossils/zlib-1.3.1.tar.gz"
     URL_HASH SHA256=9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23
     DOWNLOAD_EXTRACT_TIMESTAMP false
 )
@@ -40,6 +41,7 @@ set_target_properties(zlibstatic PROPERTIES C_CLANG_TIDY "")
 target_link_libraries(vellum zlib.lib)
 target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-src")
 target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-build")
+
 
 FetchContent_Declare(uacpi
     URL "https://github.com/uACPI/uACPI/archive/refs/tags/3.1.0.tar.gz"

@@ -452,7 +452,7 @@ __optimize("O0") __externally_visible void *_pc_isr_common(
                 StScheduler_GetCurrentThread(&thread);
                 St_Panic(
                     STATUS_UNKNOWN_ERROR,
-                    "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016" PRIX64,
+                    "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016" PRIX64 "\n",
                     num,
                     frame->error,
                     frame->cs,
@@ -461,7 +461,7 @@ __optimize("O0") __externally_visible void *_pc_isr_common(
             } else {
                 St_Panic(
                     STATUS_UNKNOWN_ERROR,
-                    "Unhandled fault #%02X has occurred at 0x%04X:0x%016" PRIX64,
+                    "Unhandled fault #%02X has occurred at 0x%04X:0x%016" PRIX64 "\n",
                     num,
                     frame->cs,
                     frame->rip

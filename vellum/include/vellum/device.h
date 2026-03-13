@@ -55,17 +55,17 @@ struct device {
     void *data;
 };
 
-status_t device_create(struct device **devout, struct device_driver *drv, struct device *parent);
-void device_remove(struct device *dev);
+status_t VlDev_Create(struct device **devout, struct device_driver *drv, struct device *parent);
+void VlDev_Remove(struct device *dev);
 
-struct device *device_get_first_dev(void);
-status_t device_find(const char *name, struct device **dev);
+struct device *VlDev_GetFirst(void);
+status_t VlDev_Find(const char *name, struct device **dev);
 
-status_t device_generate_name(const char *basename, char *buf, size_t len);
+status_t VlDev_GenerateName(const char *basename, char *buf, size_t len);
 
-status_t device_driver_create(struct device_driver **drv);
+status_t VlDev_CreateDriver(struct device_driver **drv);
 
-status_t device_driver_find(const char *name, struct device_driver **drv);
+status_t VlDev_FindDriver(const char *name, struct device_driver **drv);
 
 #define REGISTER_DEVICE_DRIVER(name, init_func)                                                    \
     __constructor static void _register_driver_##name(void)                                        \

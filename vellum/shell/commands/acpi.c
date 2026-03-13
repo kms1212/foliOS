@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 
 #include <uacpi/acpi.h>
@@ -32,15 +33,15 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
     struct acpi_rsdt *rsdt = (struct acpi_rsdt *)rsdp->rsdt_addr;
     printf("\tRSDT: 0x%p\n", (void *)rsdt);
     printf("\t\tCreator ID: %4s\n", (const char *)&rsdt->hdr.creator_id);
-    printf("\t\tCreator Revision: 0x%08lX\n", rsdt->hdr.creator_revision);
-    printf("\t\tLength: 0x%08lX\n", rsdt->hdr.length);
+    printf("\t\tCreator Revision: 0x%08" PRIX32 "\n", rsdt->hdr.creator_revision);
+    printf("\t\tLength: 0x%08" PRIX32 "\n", rsdt->hdr.length);
 
     if (rsdp->revision >= 2) {
         printf("\tXSDT: 0x%016llX\n", rsdp->xsdt_addr);
     }
 
     printf("\tTables: \n");
-    for (int i = 0; i < (rsdt->hdr.length - sizeof(rsdt->hdr)) / sizeof(uint32_t); i++) {
+    for (unsigned int i = 0; i < (rsdt->hdr.length - sizeof(rsdt->hdr)) / sizeof(uint32_t); i++) {
         struct acpi_sdt_hdr *header = (struct acpi_sdt_hdr *)(rsdt->entries[i]);
         printf("\t- %.4s: 0x%p\n", header->signature, (void *)header);
     }
@@ -51,30 +52,38 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
 
         printf("\tPreferred PM Profile: %d\n", fadt->preferred_pm_profile);
         printf("\tSCI Interrupt: %d\n", fadt->sci_int);
-        printf("\tSMI Command Port: %08lX\n", fadt->smi_cmd);
+        printf("\tSMI Command Port: 0x%08" PRIX32 "\n", fadt->smi_cmd);
 
-        printf("\tACPI Enable Port: %04X\n", fadt->acpi_enable);
-        printf("\tACPI Disable Port: %04X\n", fadt->acpi_disable);
+        printf("\tACPI Enable Port: %02X\n", fadt->acpi_enable);
+        printf("\tACPI Disable Port: %02X\n", fadt->acpi_disable);
 
         printf("\tPM1: evt_len=%d, ctl_len=%d\n", fadt->pm1_evt_len, fadt->pm1_cnt_len);
         printf(
-            "\tPM1a: evt_blk=0x%08lX, ctl_blk=0x%08lX\n",
+            "\tPM1a: evt_blk=0x%08" PRIX32 ", ctl_blk=0x%08" PRIX32 "\n",
             fadt->pm1a_evt_blk,
             fadt->pm1a_cnt_blk
         );
         printf(
-            "\tPM1b: evt_blk=0x%08lX, ctl_blk=0x%08lX\n",
+            "\tPM1b: evt_blk=0x%08" PRIX32 ", ctl_blk=0x%08" PRIX32 "\n",
             fadt->pm1b_evt_blk,
             fadt->pm1b_cnt_blk
         );
 
-        printf("\tPM2: ctl_blk=0x%08lX, ctl_len=%d\n", fadt->pm2_cnt_blk, fadt->pm2_cnt_len);
-
-        printf("\tPM Timer: block=0x%08lX, length=%d\n", fadt->pm_tmr_blk, fadt->pm_tmr_len);
-
-        printf("\tGPE0: block=0x%08lX, length=%d\n", fadt->gpe0_blk, fadt->gpe0_blk_len);
         printf(
-            "\tGPE1: base=%d, block=0x%08lX, length=%d\n",
+            "\tPM2: ctl_blk=0x%08" PRIX32 ", ctl_len=%d\n",
+            fadt->pm2_cnt_blk,
+            fadt->pm2_cnt_len
+        );
+
+        printf(
+            "\tPM Timer: block=0x%08" PRIX32 ", length=%d\n",
+            fadt->pm_tmr_blk,
+            fadt->pm_tmr_len
+        );
+
+        printf("\tGPE0: block=0x%08" PRIX32 ", length=%d\n", fadt->gpe0_blk, fadt->gpe0_blk_len);
+        printf(
+            "\tGPE1: base=%d, block=0x%08" PRIX32 ", length=%d\n",
             fadt->gpe1_base,
             fadt->gpe1_blk,
             fadt->gpe1_blk_len
@@ -98,7 +107,7 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
         madt = table.ptr;
         printf("MADT: 0x%p\n", (void *)madt);
 
-        printf("\tLocal APIC Address: 0x%08lX\n", madt->local_interrupt_controller_address);
+        printf("\tLocal APIC Address: 0x%08" PRIX32 "\n", madt->local_interrupt_controller_address);
         printf("\t8259 PIC Installed: %s\n", (madt->flags & 1) ? "true" : "false");
 
         union {
@@ -112,26 +121,29 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
             struct acpi_madt_x2apic x2apic;
         } *entry = (void *)((uint8_t *)madt + sizeof(*madt));
 
-        while ((ptrdiff_t)entry - (ptrdiff_t)madt < madt->hdr.length) {
+        while ((uintptr_t)((ptrdiff_t)entry - (ptrdiff_t)madt) < madt->hdr.length) {
             switch (entry->header.type) {
             case ACPI_MADT_ENTRY_TYPE_LAPIC:
                 printf("\tProcessor Local APIC Entry:\n");
                 printf("\t\tACPI Processor ID: 0x%02X\n", entry->lapic.uid);
                 printf("\t\tLAPIC ID: 0x%02X\n", entry->lapic.id);
-                printf("\t\tFlags: 0x%08lX\n", entry->lapic.flags);
+                printf("\t\tFlags: 0x%08" PRIX32 "\n", entry->lapic.flags);
                 break;
             case ACPI_MADT_ENTRY_TYPE_IOAPIC:
                 printf("\tI/O APIC Entry:\n");
                 printf("\t\tID: 0x%02X\n", entry->ioapic.id);
-                printf("\t\tAddress: 0x%08lX\n", entry->ioapic.address);
-                printf("\t\tGlobal System Interrupt Base: 0x%08lX\n", entry->ioapic.gsi_base);
+                printf("\t\tAddress: 0x%08" PRIX32 "\n", entry->ioapic.address);
+                printf(
+                    "\t\tGlobal System Interrupt Base: 0x%08" PRIX32 "\n",
+                    entry->ioapic.gsi_base
+                );
                 break;
             case ACPI_MADT_ENTRY_TYPE_INTERRUPT_SOURCE_OVERRIDE:
                 printf("\tInterrupt Source Override Entry:\n");
                 printf("\t\tBus: 0x%02X\n", entry->interrupt_source_override.bus);
                 printf("\t\tIRQ: 0x%02X\n", entry->interrupt_source_override.source);
                 printf(
-                    "\t\tGlobal System Interrupt: 0x%08lX\n",
+                    "\t\tGlobal System Interrupt: 0x%08" PRIX32 "\n",
                     entry->interrupt_source_override.gsi
                 );
                 printf("\t\tFlags: 0x%04X\n", entry->interrupt_source_override.flags);
@@ -147,7 +159,7 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
                 break;
             case ACPI_MADT_ENTRY_TYPE_LAPIC_ADDRESS_OVERRIDE:
                 printf("\tLocal APIC Address Override Entry:\n");
-                printf("\t\tAddress: 0x%016llX\n", entry->lapic_address_override.address);
+                printf("\t\tAddress: 0x%016" PRIX64 "\n", entry->lapic_address_override.address);
                 break;
             default:
                 break;
@@ -162,9 +174,9 @@ static int acpi_handler(struct shell_instance *inst, int argc, char **argv)
         hpet = table.ptr;
         printf("HPET: 0x%p\n", (void *)hpet);
 
-        printf("\tBlock ID: %08lX\n", hpet->block_id);
+        printf("\tBlock ID: %08" PRIX32 "\n", hpet->block_id);
         printf(
-            "\tAddress: asp=%u width=%u offset=%u asz=%u address=%016llX\n",
+            "\tAddress: asp=%u width=%u offset=%u asz=%u address=%016" PRIX64 "\n",
             hpet->address.address_space_id,
             hpet->address.register_bit_width,
             hpet->address.register_bit_offset,
@@ -187,7 +199,7 @@ static struct command acpi_command = {
 
 static void acpi_command_init(void)
 {
-    shell_command_register(&acpi_command);
+    VlShell_RegisterCommand(&acpi_command);
 }
 
 REGISTER_SHELL_COMMAND(acpi, acpi_command_init)

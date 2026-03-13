@@ -23,7 +23,7 @@
         }                                                                                          \
     } while (0)
 
-status_t shell_expand(struct shell_instance *inst, const char *line, char *buf, long buflen)
+status_t VlShell_Expand(struct shell_instance *inst, const char *line, char *buf, long buflen)
 {
     status_t status;
     char var_key[64];
@@ -42,7 +42,7 @@ status_t shell_expand(struct shell_instance *inst, const char *line, char *buf, 
             }
             var_key[var_key_len] = '\0';
 
-            status = shell_get_variable(inst, var_key, &var_value);
+            status = VlShell_GetVariable(inst, var_key, &var_value);
             if (!CHECK_SUCCESS(status)) {
                 var_value = "";
             }
@@ -63,7 +63,7 @@ status_t shell_expand(struct shell_instance *inst, const char *line, char *buf, 
     return STATUS_SUCCESS;
 }
 
-const char *shell_parse(const char *line, char *buf, long buflen)
+const char *VlShell_Parse(const char *line, char *buf, long buflen)
 {
     int escape = 0;
     char quote_char = 0;

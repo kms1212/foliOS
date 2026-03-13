@@ -1,22 +1,22 @@
-#include <vellum/asm/bios/video.h>
+#include <vellum/plat/bios/video.h>
 
-#include <vellum/asm/bios/bioscall.h>
+#include <vellum/plat/bios/bioscall.h>
 
-void _pc_bios_video_set_mode(uint8_t mode)
+void VlBiosP_SetVideoMode(uint8_t mode)
 {
     struct bioscall_regs regs = {.a.b.h = 0x00, .a.b.l = mode};
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 }
 
-void _pc_bios_video_set_cursor_shape(uint16_t shape)
+void VlBiosP_SetVideoCursorShape(uint16_t shape)
 {
     struct bioscall_regs regs = {.a.b.h = 0x01, .c.w = shape};
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 }
 
-void _pc_bios_video_set_cursor_pos(uint8_t page, uint8_t row, uint8_t col)
+void VlBiosP_SetVideoCursorPos(uint8_t page, uint8_t row, uint8_t col)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x02,
@@ -25,24 +25,24 @@ void _pc_bios_video_set_cursor_pos(uint8_t page, uint8_t row, uint8_t col)
         .d.b.l = col,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 }
 
-void _pc_bios_video_get_cursor_info(uint8_t page, uint16_t *shape, uint8_t *row, uint8_t *col)
+void VlBiosP_GetVideoCursorInfo(uint8_t page, uint16_t *shape, uint8_t *row, uint8_t *col)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x03,
         .b.b.h = page,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
     if (shape) *shape = regs.c.w;
     if (row) *row = regs.d.b.h;
     if (col) *col = regs.d.b.l;
 }
 
-void _pc_bios_video_write_tty(uint8_t ch)
+void VlBiosP_WriteVideoTty(uint8_t ch)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x0E,
@@ -51,10 +51,10 @@ void _pc_bios_video_write_tty(uint8_t ch)
         .b.b.l = 0x0F,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 }
 
-void _pc_bios_video_set_pixel(uint8_t page, uint16_t x, uint16_t y, uint8_t color)
+void VlBiosP_SetVideoPixel(uint8_t page, uint16_t x, uint16_t y, uint8_t color)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x0C,
@@ -64,10 +64,10 @@ void _pc_bios_video_set_pixel(uint8_t page, uint16_t x, uint16_t y, uint8_t colo
         .d.w = y,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 }
 
-uint8_t _pc_bios_video_get_pixel(uint8_t page, uint16_t x, uint16_t y)
+uint8_t VlBiosP_GetVideoPixel(uint8_t page, uint16_t x, uint16_t y)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x0D,
@@ -76,19 +76,19 @@ uint8_t _pc_bios_video_get_pixel(uint8_t page, uint16_t x, uint16_t y)
         .d.w = y,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
     return regs.a.b.l;
 }
 
-void _pc_bios_video_get_font_data(uint8_t font_type, const void **data, uint16_t *len)
+void VlBiosP_GetVideoFontData(uint8_t font_type, const void **data, uint16_t *len)
 {
     struct bioscall_regs regs = {
         .a.w = 0x1130,
         .b.b.h = font_type,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
     if (data) {
         *data = (const void *)(((uintptr_t)regs.es.w << 4) + (uintptr_t)regs.bp.w);
@@ -99,7 +99,7 @@ void _pc_bios_video_get_font_data(uint8_t font_type, const void **data, uint16_t
     }
 }
 
-status_t _pc_bios_vbe_get_controller_info(struct vbe_controller_info *buf)
+status_t VlBiosP_GetVbeControllerInfo(struct vbe_controller_info *buf)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F00,
@@ -107,14 +107,14 @@ status_t _pc_bios_vbe_get_controller_info(struct vbe_controller_info *buf)
         .di.w = (uintptr_t)buf & 0x000F,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_get_video_mode_info(uint16_t mode, struct vbe_video_mode_info *buf)
+status_t VlBiosP_GetVbeVideoModeInfo(uint16_t mode, struct vbe_video_mode_info *buf)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F01,
@@ -123,33 +123,33 @@ status_t _pc_bios_vbe_get_video_mode_info(uint16_t mode, struct vbe_video_mode_i
         .di.w = (uintptr_t)buf & 0x000F,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_set_video_mode(uint16_t mode)
+status_t VlBiosP_SetVbeVideoMode(uint16_t mode)
 {
     struct bioscall_regs regs = {.a.w = 0x4F02, .b.w = mode};
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_get_video_mode(uint16_t *mode)
+status_t VlBiosP_GetVbeVideoMode(uint16_t *mode)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F03,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
     if (regs.a.b.h) return STATUS_UNKNOWN_ERROR;
 
     if (mode) *mode = regs.b.w & 0x3FFF;
@@ -157,7 +157,7 @@ status_t _pc_bios_vbe_get_video_mode(uint16_t *mode)
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_set_display_start(uint16_t x, uint16_t y)
+status_t VlBiosP_SetVbeDisplayStart(uint16_t x, uint16_t y)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -167,12 +167,12 @@ status_t _pc_bios_vbe_set_display_start(uint16_t x, uint16_t y)
         .d.w = y,
     };
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_set_display_start_at_retrace(uint16_t x, uint16_t y)
+status_t VlBiosP_SetVbeDisplayStartAtVsync(uint16_t x, uint16_t y)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -182,12 +182,12 @@ status_t _pc_bios_vbe_set_display_start_at_retrace(uint16_t x, uint16_t y)
         .d.w = y,
     };
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_schedule_display_start(uint32_t fboffset)
+status_t VlBiosP_ScheduleVbeDisplayStart(uint32_t fboffset)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -196,12 +196,12 @@ status_t _pc_bios_vbe_schedule_display_start(uint32_t fboffset)
         .c.l = fboffset,
     };
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_schedule_display_start_at_retrace(uint32_t fboffset)
+status_t VlBiosP_ScheduleVbeDisplayStartAtVsync(uint32_t fboffset)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -210,21 +210,21 @@ status_t _pc_bios_vbe_schedule_display_start_at_retrace(uint32_t fboffset)
         .c.l = fboffset,
     };
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbe_get_pm_interface(farptr16_t *pmi_table, uint16_t *size)
+status_t VlBiosP_GetVbePmiTable(struct VlA_FarPtr16 *pmi_table, uint16_t *size)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F0A,
         .b.b.l = 0x00,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
     if (regs.a.b.h) return STATUS_UNKNOWN_ERROR;
 
     if (pmi_table) {
@@ -238,9 +238,7 @@ status_t _pc_bios_vbe_get_pm_interface(farptr16_t *pmi_table, uint16_t *size)
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbeddc_check_capability(
-    uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *ddc_level
-)
+status_t VlBiosP_CheckVbeDdcCapability(uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *ddc_level)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F15,
@@ -250,9 +248,9 @@ status_t _pc_bios_vbeddc_check_capability(
         .di.w = 0,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
     if (regs.a.b.h) return STATUS_UNKNOWN_ERROR;
 
     if (xfer_time) {
@@ -266,7 +264,7 @@ status_t _pc_bios_vbeddc_check_capability(
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_vbeddc_get_edid(uint16_t ctrlr_unit, uint16_t edid_block, struct edid *buf)
+status_t VlBiosP_GetVbeDdcEdid(uint16_t ctrlr_unit, uint16_t edid_block, struct edid *buf)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F15,
@@ -277,9 +275,9 @@ status_t _pc_bios_vbeddc_get_edid(uint16_t ctrlr_unit, uint16_t edid_block, stru
         .di.w = (uintptr_t)buf & 0x000F,
     };
 
-    _pc_bios_call(0x10, &regs);
+    VlBiosP_Call(0x10, &regs);
 
-    if (regs.a.b.l != 0x4F) return STATUS_UNSUPPORTED;
+    if (regs.a.b.l != 0x4F) return STATUS_NOT_SUPPORTED;
 
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }

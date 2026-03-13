@@ -98,9 +98,9 @@ static void iso9660_init(void)
     status_t status;
     struct fs_driver *drv;
 
-    status = filesystem_driver_create(&drv);
+    status = VlFs_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register fs driver \"iso9660\"");
+        VlP_Panic(status, "cannot register fs driver \"iso9660\"");
     }
 
     drv->name = "iso9660";
@@ -188,7 +188,7 @@ static status_t mount(
     if (!CHECK_SUCCESS(status)) return status;
     if (block_size != 2048) return STATUS_SIZE_CHECK_FAILURE;
 
-    status = filesystem_create(&fs, drv, dev, name);
+    status = VlFs_Create(&fs, drv, dev, name);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -261,7 +261,7 @@ has_error:
     }
 
     if (fs) {
-        filesystem_remove(fs);
+        VlFs_Remove(fs);
     }
 
     return status;
@@ -273,7 +273,7 @@ static status_t unmount(struct filesystem *fs)
 
     free(data);
 
-    filesystem_remove(fs);
+    VlFs_Remove(fs);
 
     return STATUS_SUCCESS;
 }

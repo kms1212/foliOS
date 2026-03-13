@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -15,11 +16,11 @@ static int crc32_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     char path[PATH_MAX];
-    if (path_is_absolute(argv[1])) {
+    if (VlPath_IsAbsolute(argv[1])) {
         strncpy(path, argv[1], sizeof(path) - 1);
     } else {
         strncpy(path, inst->working_dir_path, sizeof(path) - 1);
-        path_join(path, sizeof(path), argv[1]);
+        VlPath_Join(path, sizeof(path), argv[1]);
 
         if (!inst->fs) {
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
@@ -39,7 +40,7 @@ static int crc32_handler(struct shell_instance *inst, int argc, char **argv)
     while ((read_count = fread(buf, 1, sizeof(buf), fp)) > 0) {
         checksum = crc32(checksum, buf, read_count);
     }
-    printf("%08lX\n", checksum);
+    printf("%08" PRIX32 "\n", checksum);
 
     fclose(fp);
 
@@ -54,7 +55,7 @@ static struct command crc32_command = {
 
 static void crc32_command_init(void)
 {
-    shell_command_register(&crc32_command);
+    VlShell_RegisterCommand(&crc32_command);
 }
 
 REGISTER_SHELL_COMMAND(crc32, crc32_command_init)

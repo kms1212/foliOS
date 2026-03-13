@@ -1,4 +1,4 @@
-#include <vellum/asm/isr.h>
+#include <vellum/plat/isr.h>
 
 #include <stdio.h>
 
@@ -7,7 +7,7 @@ extern struct isr_handler *_pc_isr_table[256];
 static int trap_handler_called;
 static size_t instr_size;
 
-static void temp_trap_handler(struct interrupt_frame *frame, struct trap_regs *regs, int)
+static void temp_trap_handler(struct VlA_InterruptFrame *frame, struct trap_regs *regs, int)
 {
     trap_handler_called = 1;
     frame->eip += instr_size;
@@ -15,7 +15,7 @@ static void temp_trap_handler(struct interrupt_frame *frame, struct trap_regs *r
 
 status_t _pc_instruction_test(void (*test_func)(void), size_t _instr_size, int *is_undefined)
 {
-    interrupt_disable();
+    VlA_DisableInterrupt();
 
     struct isr_handler *orig_isr_entry = _pc_isr_table[0x06];
     struct isr_handler temp_isr_entry = {

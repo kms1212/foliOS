@@ -3,8 +3,6 @@
 
 #include <stdint.h>
 
-#include <vellum/asm/processor.h>
-
 #include <vellum/compiler.h>
 
 __pure uint16_t bswap_16(uint16_t val);

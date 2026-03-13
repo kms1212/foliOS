@@ -5,7 +5,7 @@
 #include <string.h>
 #include <wchar.h>
 
-#include <vellum/asm/io.h>
+#include <vellum/arch/io.h>
 
 #include <vellum/compiler.h>
 #include <vellum/device.h>
@@ -87,13 +87,13 @@ static status_t draw_char(struct device *dev, int col, int row)
     y_offset = row * 16;
 
     use_fallback = 0;
-    status = font_get_glyph_dimension(cell->codepoint, &cwidth, &cheight);
+    status = VlFont_GetGlyphDimension(cell->codepoint, &cwidth, &cheight);
     if (!CHECK_SUCCESS(status) || (cwidth != 8 && cwidth != 16) || cheight != 16) {
         use_fallback = 1;
     }
 
     if (!use_fallback) {
-        status = font_get_glyph_data(cell->codepoint, font_glyph, sizeof(font_glyph));
+        status = VlFont_GetGlyphData(cell->codepoint, font_glyph, sizeof(font_glyph));
         if (!CHECK_SUCCESS(status)) {
             use_fallback = 1;
         }
@@ -348,9 +348,9 @@ static void vconsole_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"vconsole\"");
+        VlP_Panic(status, "cannot register device driver \"vconsole\"");
     }
 
     drv->name = "vconsole";
@@ -414,7 +414,7 @@ static void video_mode_callback(void *_dev, struct device *fbdev, int mode)
     return;
 
 has_error:
-    panic(STATUS_UNKNOWN_ERROR, "I think there's no way to recover this");
+    VlP_Panic(STATUS_UNKNOWN_ERROR, "I think there's no way to recover this");
 }
 
 static status_t probe(
@@ -450,10 +450,10 @@ static status_t probe(
         conif = NULL;
     }
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("console", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("console", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -500,7 +500,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -522,7 +522,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

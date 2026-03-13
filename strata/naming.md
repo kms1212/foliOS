@@ -29,7 +29,7 @@ St[Region][Scope]_[Action]()
 | Category | Prefix Structure | Description | Examples |
 | --- | --- | --- | --- |
 | **Generic API** | `St[Region]_` | High-level, architecture-agnostic logic. <br/><br/> *Call Direction: Downward* | `StVmm_Map()`<br/><br/>`StSched_Yield()` |
-| **Architecture** | `StA_` | **CPU/ISA-specific** routines (ASM/Intrinsics).<br/><br/>Pure hardware manipulation. | `StA_Halt()`<br/><br/>`StA_EnableIntr()` |
+| **Architecture** | `StA_` | **CPU/ISA-specific** routines (ASM/Intrinsics).<br/><br/>Pure hardware manipulation. | `StA_Hlt()`<br/><br/>`StA_EnableIntr()` |
 | **Platform** | `StP_` | **Board/Firmware-specific** routines.<br/><br/>Peripheral & Bus control. | `StP_Reset()`<br/><br/>`StP_OutByte()` |
 | **Hybrid Impl** | `St[Region]A_` <br/><br/> `St[Region]P_` | **Architecture/Platform-specific implementation** of a generic region. | `StVmmA_SetCR3()`<br/><br/>`StIrqP_Ack()` |
 | **Global Util** | `St_` | Kernel-wide utilities (Logging, Panic). | `St_Panic()`<br/><br/>`St_Log()` |

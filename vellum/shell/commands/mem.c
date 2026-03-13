@@ -1,8 +1,9 @@
 #include <vellum/shell.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 
-#include <vellum/asm/bios/mem.h>
+#include <vellum/plat/bios/mem.h>
 
 #include <vellum/mm.h>
 #include <vellum/status.h>
@@ -26,9 +27,9 @@ static int mem_handler(struct shell_instance *inst, int argc, char **argv)
     printf("Memory Map:\n");
     printf("Base             Size             Type\n");
     do {
-        _pc_bios_mem_query_map(&cursor, &entry, sizeof(entry));
+        VlBiosP_QueryMemoryMap(&cursor, &entry, sizeof(entry));
         printf(
-            "%08lX%08lX %08lX%08lX %s\n",
+            "%08" PRIX32 "%08" PRIX32 " %08" PRIX32 "%08" PRIX32 " %s\n",
             entry.base_addr_high,
             entry.base_addr_low,
             entry.length_high,
@@ -50,7 +51,7 @@ static int mem_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     printf(
-        "%lu bytes allocatable memory, %lu bytes free (%ld%%)\n",
+        "%zu bytes allocatable memory, %zu bytes free (%zu%%)\n",
         total_pages * PAGE_SIZE,
         free_pages * PAGE_SIZE,
         free_pages * 100 / total_pages
@@ -67,7 +68,7 @@ static struct command mem_command = {
 
 static void mem_command_init(void)
 {
-    shell_command_register(&mem_command);
+    VlShell_RegisterCommand(&mem_command);
 }
 
 REGISTER_SHELL_COMMAND(mem, mem_command_init)

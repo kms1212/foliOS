@@ -76,9 +76,9 @@ static void part_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"part\"");
+        VlP_Panic(status, "cannot register device driver \"part\"");
     }
 
     drv->name = "part";
@@ -116,12 +116,12 @@ static status_t probe(
     status = blkdev->driver->get_interface(blkdev, "block", (const void **)&blkif);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     snprintf(dev_name_base, sizeof(dev_name_base), "%.62sp", parent->name);
 
-    status = device_generate_name(dev_name_base, dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName(dev_name_base, dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -146,7 +146,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -161,7 +161,7 @@ static status_t remove(struct device *dev)
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return STATUS_SUCCESS;

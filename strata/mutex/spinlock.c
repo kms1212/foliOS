@@ -37,7 +37,7 @@ StStatus StSpinlock_Lock(struct StSpinlock *lock)
     return STATUS_SUCCESS;
 }
 
-StStatus StSpinlock_TryLock(struct StSpinlock *lock)
+StStatus StSpinlock_TryLock(struct StSpinlock *lock, int *locked)
 {
     StStatus status;
     struct StThread *th;
@@ -49,7 +49,9 @@ StStatus StSpinlock_TryLock(struct StSpinlock *lock)
 
     if (lock->locked) {
         StThread_UnlockPreemption();
-        return STATUS_MUTEX_LOCKED;
+
+        if (locked) *locked = 0;
+        return STATUS_SUCCESS;
     }
 
     lock->locked = 1;
@@ -57,6 +59,7 @@ StStatus StSpinlock_TryLock(struct StSpinlock *lock)
 
     StThread_UnlockPreemption();
 
+    if (locked) *locked = 1;
     return STATUS_SUCCESS;
 }
 
@@ -83,7 +86,7 @@ StStatus StSpinlock_Unlock(struct StSpinlock *lock)
     return STATUS_SUCCESS;
 }
 
-StStatus StSpinlock_TryLockAndSaveIrq(struct StSpinlock *lock, uint32_t *irqstate)
+StStatus StSpinlock_TryLockAndSaveIrq(struct StSpinlock *lock, uint32_t *irqstate, int *locked)
 {
     StStatus status;
     struct StThread *th;
@@ -99,12 +102,15 @@ StStatus StSpinlock_TryLockAndSaveIrq(struct StSpinlock *lock, uint32_t *irqstat
 
     if (lock->locked) {
         StA_RestoreInterrupt(*irqstate);
-        return STATUS_MUTEX_LOCKED;
+
+        if (locked) *locked = 0;
+        return STATUS_SUCCESS;
     }
 
     lock->locked = 1;
     lock->owner = th;
 
+    if (locked) *locked = 1;
     return STATUS_SUCCESS;
 }
 

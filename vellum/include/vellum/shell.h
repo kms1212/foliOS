@@ -28,18 +28,18 @@ struct command {
     const char *help_message;
 };
 
-void shell_start(void);
-long shell_readline(const char *prompt, char *buf, long len);
-status_t shell_expand(struct shell_instance *inst, const char *line, char *buf, long buflen);
-const char *shell_parse(const char *line, char *buf, long buflen);
-int shell_execute(struct shell_instance *inst, const char *line);
+void VlShell_Start(void);
+long VlShell_Readline(const char *prompt, char *buf, long len);
+status_t VlShell_Expand(struct shell_instance *inst, const char *line, char *buf, long buflen);
+const char *VlShell_Parse(const char *line, char *buf, long buflen);
+int VlShell_Execute(struct shell_instance *inst, const char *line);
 
-status_t shell_get_variable(struct shell_instance *inst, const char *key, const char **value);
-status_t shell_set_variable(struct shell_instance *inst, const char *key, const char *value);
-status_t shell_remove_variable(struct shell_instance *inst, const char *key);
+status_t VlShell_GetVariable(struct shell_instance *inst, const char *key, const char **value);
+status_t VlShell_SetVariable(struct shell_instance *inst, const char *key, const char *value);
+status_t VlShell_RemoveVariable(struct shell_instance *inst, const char *key);
 
-status_t shell_command_register(struct command *cmd);
-void shell_command_unregister(struct command *cmd);
+status_t VlShell_RegisterCommand(struct command *cmd);
+void VlShell_UnregisterCommand(struct command *cmd);
 
 #define REGISTER_SHELL_COMMAND(name, init_func)                                                    \
     __constructor static void _register_driver_##name(void)                                        \

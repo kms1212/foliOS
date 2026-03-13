@@ -1,6 +1,6 @@
-#include <bus/pci/scan.h>
+#include <vellum/pci/scan.h>
 
-#include <asm/pci/cfgspace.h>
+#include <plat/pci/cfgspace.h>
 
 #include <bus/pci/cfgspace.h>
 #include <bus/pci/device.h>

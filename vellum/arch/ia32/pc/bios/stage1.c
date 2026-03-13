@@ -1,6 +1,6 @@
-#include <vellum/asm/bios/bootinfo.h>
-#include <vellum/asm/bios/disk.h>
-#include <vellum/asm/bios/video.h>
+#include <vellum/plat/bios/bootinfo.h>
+#include <vellum/plat/bios/disk.h>
+#include <vellum/plat/bios/video.h>
 
 #include <stdint.h>
 #include <string.h>
@@ -27,7 +27,7 @@ static uint8_t clus_buf[4096] __aligned(16);
 static struct fat_bpb_sector *bpb = (struct fat_bpb_sector *)0x7C00;
 static struct chs geom;
 
-static int memcmp(const void *p1, const void *p2, size_t len)
+int memcmp(const void *p1, const void *p2, size_t len)
 {
     const uint8_t *a = p1, *b = p2;
     while (len--) {
@@ -41,7 +41,7 @@ static int memcmp(const void *p1, const void *p2, size_t len)
 static void print_str(const char *str)
 {
     while (*str) {
-        _pc_bios_video_write_tty(*str++);
+        VlBiosP_WriteVideoTty(*str++);
     }
 }
 
@@ -71,7 +71,7 @@ static status_t read_disk(lba_t lba, uint8_t count, void *buf)
     chs.head = (int)((lba / geom.sector) % geom.head);
     chs.sector = (int)((lba % geom.sector) + 1);
 
-    status = _pc_bios_disk_read(_pc_boot_drive, chs, count, buf, &result);
+    status = VlBiosP_ReadDisk(_pc_boot_drive, chs, count, buf, &result);
     if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
@@ -82,7 +82,7 @@ void s1main(void)
     status_t status;
 
     PRINT_STR("[stage1] getting disk parameters...\r\n");
-    status = _pc_bios_disk_get_params(_pc_boot_drive, NULL, NULL, &geom, NULL);
+    status = VlBiosP_GetDiskParams(_pc_boot_drive, NULL, NULL, &geom, NULL);
     if (!CHECK_SUCCESS(status)) {
         PRINT_STR("[stage1] failed to request disk geometry: ");
         PRINT_HEX(status);

@@ -11,12 +11,12 @@ struct chs {
 
 typedef int64_t lba_t;
 
-__always_inline lba_t disk_chs_to_lba(struct chs chs, struct chs geom)
+__always_inline lba_t VlDisk_ChsToLba(struct chs chs, struct chs geom)
 {
     return (chs.cylinder * geom.head + chs.head) * geom.sector + chs.sector - 1;
 }
 
-__always_inline struct chs disk_lba_to_chs(lba_t lba, struct chs geom)
+__always_inline struct chs VlDisk_LbaToChs(lba_t lba, struct chs geom)
 {
     struct chs chs;
     chs.sector = (lba % geom.sector) + 1;

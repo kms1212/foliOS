@@ -51,7 +51,7 @@ static uint32_t resolve_symbol_value(struct elf_file *elf, unsigned int index)
     struct elf32_sym sym;
     status_t status;
 
-    status = elf_get_symbol(elf, index, &sym, sizeof(sym));
+    status = VlElf_GetSymbol(elf, index, &sym, sizeof(sym));
     if (!CHECK_SUCCESS(status)) return 0;
 
     return sym.value;
@@ -78,18 +78,18 @@ static status_t relocate_section(
     GOT = B + got_symbol_offset;
 
     /* load relocation section */
-    status = elf_get_section_header(elf, rel_section_idx, &shdr, sizeof(shdr));
+    status = VlElf_GetSectionHeader(elf, rel_section_idx, &shdr, sizeof(shdr));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     rel_section = malloc(shdr.size);
     rel_section_size = shdr.size;
     target_section_idx = shdr.info;
 
-    status = elf_load_section(elf, rel_section_idx, rel_section, rel_section_size);
+    status = VlElf_LoadSection(elf, rel_section_idx, rel_section, rel_section_size);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     /* get section offset */
-    status = elf_get_section_header(elf, target_section_idx, &shdr, sizeof(shdr));
+    status = VlElf_GetSectionHeader(elf, target_section_idx, &shdr, sizeof(shdr));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     /* relocate */
@@ -101,7 +101,7 @@ static status_t relocate_section(
         A = *(uint32_t *)P;
 
         if (rel_type != R_386_RELATIVE) {
-            status = elf_get_symbol(elf, rel_sym_idx, &sym, sizeof(sym));
+            status = VlElf_GetSymbol(elf, rel_sym_idx, &sym, sizeof(sym));
             if (!CHECK_SUCCESS(status)) goto has_error;
 
             status = resolve_symbol_addr(elf, &sym, load_vaddr, &S);
@@ -169,7 +169,7 @@ static status_t relocate_section(
             }
             break;
         default:
-            panic(STATUS_UNSUPPORTED, "relocation type %02d not supported", rel_type);
+            VlP_Panic(STATUS_NOT_SUPPORTED, "relocation type %02d not supported", rel_type);
             break;
         }
 
@@ -205,10 +205,10 @@ static status_t run_func_array(struct elf_file *elf, const char *section_name, u
     size_t data_len;
     void (**func_arr)(void);
 
-    status = elf_find_section(elf, section_name, &section_idx);
+    status = VlElf_FindSection(elf, section_name, &section_idx);
     if (!CHECK_SUCCESS(status)) return status;
 
-    status = elf_get_section_header(elf, section_idx, &shdr, sizeof(shdr));
+    status = VlElf_GetSectionHeader(elf, section_idx, &shdr, sizeof(shdr));
     if (!CHECK_SUCCESS(status)) return status;
 
     data_len = shdr.size;
@@ -221,7 +221,7 @@ static status_t run_func_array(struct elf_file *elf, const char *section_name, u
     return STATUS_SUCCESS;
 }
 
-status_t module_load(const char *path, struct module **modout)
+status_t VlModule_Load(const char *path, struct module **modout)
 {
     status_t status;
     struct elf_file *elf = NULL;
@@ -242,20 +242,20 @@ status_t module_load(const char *path, struct module **modout)
     char *mod_name = NULL;
     status_t (*entry)(void) = NULL;
 
-    status = elf_open(path, &elf);
+    status = VlElf_Open(path, &elf);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = elf_get_header(elf, &ehdr, sizeof(ehdr));
+    status = VlElf_GetHeader(elf, &ehdr, sizeof(ehdr));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (ehdr.type != ET_DYN) {
-        status = STATUS_UNSUPPORTED;
+        status = STATUS_NOT_SUPPORTED;
         goto has_error;
     }
 
     LOG_DEBUG("calculating program size...\n");
     for (int i = 0; i < ehdr.phnum; i++) {
-        status = elf_get_program_header(elf, i, &phdr, sizeof(phdr));
+        status = VlElf_GetProgramHeader(elf, i, &phdr, sizeof(phdr));
         if (!CHECK_SUCCESS(status)) goto has_error;
 
         if (phdr.type != PT_LOAD && phdr.type != PT_DYNAMIC) continue;
@@ -272,20 +272,20 @@ status_t module_load(const char *path, struct module **modout)
 
     LOG_DEBUG("loading program...\n");
     for (int i = 0; i < ehdr.phnum; i++) {
-        status = elf_get_program_header(elf, i, &phdr, sizeof(phdr));
+        status = VlElf_GetProgramHeader(elf, i, &phdr, sizeof(phdr));
         if (!CHECK_SUCCESS(status)) goto has_error;
 
         if (phdr.type != PT_LOAD && phdr.type != PT_DYNAMIC) continue;
 
-        status = elf_load_program(elf, i, (void *)(load_vpn * PAGE_SIZE + phdr.vaddr));
+        status = VlElf_LoadProgram(elf, i, (void *)(load_vpn * PAGE_SIZE + phdr.vaddr));
         if (!CHECK_SUCCESS(status)) goto has_error;
     }
 
     LOG_DEBUG("getting offset of GOT...\n");
-    status = elf_find_symbol(elf, "_GLOBAL_OFFSET_TABLE_", &got_symbol_idx);
+    status = VlElf_FindSymbol(elf, "_GLOBAL_OFFSET_TABLE_", &got_symbol_idx);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = elf_get_symbol(elf, got_symbol_idx, &sym, sizeof(sym));
+    status = VlElf_GetSymbol(elf, got_symbol_idx, &sym, sizeof(sym));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     got_symbol_offset = sym.value;
@@ -298,7 +298,7 @@ status_t module_load(const char *path, struct module **modout)
 
     for (unsigned long i = 0; i < ARRAY_SIZE(rel_sections); i++) {
         LOG_DEBUG("relocating section %s...\n", rel_sections[i]);
-        status = elf_find_section(elf, rel_sections[i], &rel_section_idx);
+        status = VlElf_FindSection(elf, rel_sections[i], &rel_section_idx);
         if (status == STATUS_ENTRY_NOT_FOUND) continue;
         if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -307,10 +307,10 @@ status_t module_load(const char *path, struct module **modout)
     }
 
     LOG_DEBUG("loading section .note.vellum...\n");
-    status = elf_find_section(elf, ".note.vellum", &note_vellum_section_idx);
+    status = VlElf_FindSection(elf, ".note.vellum", &note_vellum_section_idx);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = elf_get_section_header(elf, note_vellum_section_idx, &shdr, sizeof(shdr));
+    status = VlElf_GetSectionHeader(elf, note_vellum_section_idx, &shdr, sizeof(shdr));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     note_vellum_section_len = shdr.size;
@@ -320,7 +320,7 @@ status_t module_load(const char *path, struct module **modout)
         goto has_error;
     }
 
-    status = elf_load_section(
+    status = VlElf_LoadSection(
         elf,
         note_vellum_section_idx,
         note_vellum_section,
@@ -416,13 +416,13 @@ has_error:
     }
 
     if (elf) {
-        elf_close(elf);
+        VlElf_Close(elf);
     }
 
     return status;
 }
 
-void module_unload(struct module *mod)
+void VlModule_Unload(struct module *mod)
 {
     struct elf_file *elf;
     vpn_t load_vpn;
@@ -451,12 +451,12 @@ void module_unload(struct module *mod)
 
     mm_free_pages(load_vpn, ALIGN_DIV(program_size, PAGE_SIZE));
 
-    elf_close(elf);
+    VlElf_Close(elf);
 }
 
-struct module *module_get_first_mod(void)
+struct module *VlModule_GetFirst(void)
 {
     return mod_list_head;
 }
 
-status_t module_find(const char *name, struct module **mod);
+status_t VlModule_Find(const char *name, struct module **mod);

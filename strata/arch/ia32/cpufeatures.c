@@ -126,7 +126,7 @@ StStatus StA_CheckCpuFeatures(void)
     uint32_t max_param, max_param_ext, eax, ebx, ecx, edx;
 
     if (!check_cpuid_available()) {
-        St_Panic(STATUS_UNSUPPORTED, "CPUID instruction is not available");
+        St_Panic(STATUS_NOT_SUPPORTED, "CPUID instruction is not available");
     }
 
     cpu_features.has_cpuid = 1;

@@ -1,9 +1,10 @@
 #include <vellum/shell.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <vellum/asm/bios/disk.h>
+#include <vellum/plat/bios/disk.h>
 
 static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -18,7 +19,7 @@ static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
     uint8_t drive_type;
     struct chs drive_geometry;
 
-    status = _pc_bios_disk_get_params(drive, NULL, &drive_type, &drive_geometry, NULL);
+    status = VlBiosP_GetDiskParams(drive, NULL, &drive_type, &drive_geometry, NULL);
     if (!CHECK_SUCCESS(status)) return 1;
 
     static const char *const drive_types[] = {
@@ -41,7 +42,7 @@ static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
 
     struct bios_extended_drive_params params;
     uint8_t edd_version;
-    status = _pc_bios_disk_check_ext(drive, &edd_version, NULL);
+    status = VlBiosP_CheckDiskExtension(drive, &edd_version, NULL);
     if (!CHECK_SUCCESS(status)) {
         printf("EDD Not supported\n");
         return 0;
@@ -65,19 +66,19 @@ static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
         break;
     }
 
-    status = _pc_bios_disk_get_params_ext(drive, &params);
+    status = VlBiosP_GetDiskParamsExtended(drive, &params);
     if (!CHECK_SUCCESS(status)) return 1;
 
     if (edd_version >= EDD_VER_1_X) {
         printf("Flags: %04X\n", params.flags);
         printf(
-            "Geometry: cylinder=%lu, head=%lu, sector=%lu\n",
+            "Geometry: cylinder=%" PRIu32 ", head=%" PRIu32 ", sector=%" PRIu32 "\n",
             params.geom_cylinders,
             params.geom_heads,
             params.geom_sectors
         );
-        printf("Bytes per sector: %u\n", params.bytes_per_sector);
-        printf("Total sectors: %llu\n", params.total_sectors);
+        printf("Bytes per sector: %" PRIu16 "\n", params.bytes_per_sector);
+        printf("Total sectors: %" PRIu64 "\n", params.total_sectors);
     }
 
     if (edd_version >= EDD_VER_3_0 && params.device_path_signature == 0xBEDD) {
@@ -96,7 +97,7 @@ static struct command drvinfo_command = {
 
 static void drvinfo_command_init(void)
 {
-    shell_command_register(&drvinfo_command);
+    VlShell_RegisterCommand(&drvinfo_command);
 }
 
 REGISTER_SHELL_COMMAND(drvinfo, drvinfo_command_init)

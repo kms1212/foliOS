@@ -488,7 +488,7 @@ static const struct entry *binary_search(const struct container *cont, uint8_t k
     return ret;
 }
 
-const char *_bus_pci_device_get_class_name(uint8_t class)
+const char *VlPci_GetDeviceClassName(uint8_t class)
 {
     const struct entry *class_entry = binary_search(&class_names, class);
     if (!class_entry) return NULL;
@@ -496,7 +496,7 @@ const char *_bus_pci_device_get_class_name(uint8_t class)
     return class_entry->str;
 }
 
-const char *_bus_pci_device_get_subclass_name(uint8_t class, uint8_t subclass)
+const char *VlPci_GetDeviceSubclassName(uint8_t class, uint8_t subclass)
 {
     const struct entry *class_entry = binary_search(&class_names, class);
     if (!class_entry) return NULL;
@@ -507,7 +507,7 @@ const char *_bus_pci_device_get_subclass_name(uint8_t class, uint8_t subclass)
     return subclass_entry->str;
 }
 
-const char *_bus_pci_device_get_interface_name(uint8_t class, uint8_t subclass, uint8_t interface)
+const char *VlPci_GetDeviceInterfaceName(uint8_t class, uint8_t subclass, uint8_t interface)
 {
     const struct entry *class_entry = binary_search(&class_names, class);
     if (!class_entry) return NULL;

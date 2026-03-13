@@ -1,13 +1,11 @@
-# GNT(Global Node Tree) (equivalent to VFS(Virtual File System) in other OS)
-
-to get current process: open "/System/Processes/Current"
+# GNT(Global Node Tree) (similar to VFS(Virtual File System) in general)
 
 ```
 /
 ├── System/
 │   ├── Kernel/
 │   ├── Processes/
-│   │   ├── Current -> ./0
+│   │   ├── Current -> ./0  # Current process
 │   │   ├── 1 -> ./0/1
 │   │   └── 0/
 │   │       ├── Io/
@@ -17,8 +15,9 @@ to get current process: open "/System/Processes/Current"
 │   │       ├── Memory/
 │   │       │   └── ...
 │   │       ├── Threads/
+│   │       │   ├── Current -> ./0  # Current thread
 │   │       │   └── 0 -> /System/Threads/0
-│   │       └── 1/
+│   │       └── 1/  # Child process
 │   │           ├── Executable -> /Packages/FooPackage/0.0.1/Foo
 │   │           └── Threads/
 │   │               ├── 0 -> /System/Threads/1
@@ -32,24 +31,24 @@ to get current process: open "/System/Processes/Current"
 │   │       └── Process -> /System/Processes/1
 │   ├── Pipes/
 │   ├── Sockets/
-│   ├── Shms/
+│   ├── SharedMemories/
 │   ├── Modules/
 │   │   ├── HwDrivers/
 │   │   ├── BusDrivers/
 │   │   ├── FastServices/
 │   │   └── Subsystems/
 │   ├── Devices/
-│   │   ├── Debug0 -> ./AcpiSystem/Debug0
-│   │   ├── Keyboard0 -> ./AcpiSystem/HidCon0/Keyboard0
-│   │   ├── Mouse0 -> ./AcpiSystem/HidCon0/Mouse0
-│   │   ├── Rtc0 -> ./AcpiSystem/Rtc0
-│   │   ├── Serial0 -> ./AcpiSystem/Serial0
-│   │   ├── Serial1 -> ./AcpiSystem/Serial1
-│   │   ├── Parallel0 -> ./AcpiSystem/Parallel0
-│   │   ├── Drive0 -> ./AcpiSystem/Floppy0
-│   │   ├── Drive1 -> ./AcpiSystem/Floppy1
-│   │   ├── Drive2 -> ./AcpiSystem/Ata0
-│   │   └── Drive3 -> ./AcpiSystem/Atapi0
+│   │   ├── Debug0 -> ../Hardwares/AcpiSystem/Debug0
+│   │   ├── Keyboard0 -> ../Hardwares/AcpiSystem/HidCon0/Keyboard0
+│   │   ├── Mouse0 -> ../Hardwares/AcpiSystem/HidCon0/Mouse0
+│   │   ├── Rtc0 -> ../Hardwares/AcpiSystem/Rtc0
+│   │   ├── Serial0 -> ../Hardwares/AcpiSystem/Serial0
+│   │   ├── Serial1 -> ../Hardwares/AcpiSystem/Serial1
+│   │   ├── Parallel0 -> ../Hardwares/AcpiSystem/Parallel0
+│   │   ├── Drive0 -> ../Hardwares/AcpiSystem/Floppy0
+│   │   ├── Drive1 -> ../Hardwares/AcpiSystem/Floppy1
+│   │   ├── Drive2 -> ../Hardwares/AcpiSystem/Ata0
+│   │   └── Drive3 -> ../Hardwares/AcpiSystem/Atapi0
 │   ├── Hardwares/
 │   │   └── AcpiSystem/
 │   │       ├── Cpu0/
@@ -101,7 +100,8 @@ to get current process: open "/System/Processes/Current"
 │       └── ...
 ├── Packages/
 │   └── FooPackage/
-│       ├── Current -> ./0.0.1
+│       ├── <libversion-compatible version filter> -> (dynamically resolved)
+│       ├── Latest -> ./0.0.1
 │       └── 0.0.1/
 │           └── Foo
 └── Configs/

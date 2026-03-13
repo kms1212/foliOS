@@ -459,7 +459,7 @@ static status_t parse_value(struct json_state *state, struct json_value **value)
     }
 }
 
-status_t json_parse(const char *str, long len, struct json_value **valueout)
+status_t VlJson_Parse(const char *str, long len, struct json_value **valueout)
 {
     struct json_state state;
 
@@ -479,12 +479,12 @@ status_t json_parse(const char *str, long len, struct json_value **valueout)
     return STATUS_SUCCESS;
 }
 
-void json_destruct(struct json_value *json)
+void VlJson_Destruct(struct json_value *json)
 {
     free(json);
 }
 
-status_t json_object_find_value(
+status_t VlJson_GetObjectElementValue(
     struct json_object *obj, const char *str, struct json_value **valueout
 )
 {
@@ -498,7 +498,7 @@ status_t json_object_find_value(
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t json_array_find_value(
+status_t VlJson_GetArrayElementValue(
     struct json_array *arr, unsigned int idx, struct json_value **valueout
 )
 {
@@ -512,7 +512,7 @@ status_t json_array_find_value(
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t json_array_get_element_count(struct json_array *arr, unsigned int *countout)
+status_t VlJson_GetArrayElementCount(struct json_array *arr, unsigned int *countout)
 {
     unsigned int count = 0;
 

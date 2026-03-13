@@ -35,16 +35,16 @@ static int echo_handler(struct shell_instance *inst, int argc, char **argv)
 
     if (device_name) {
         struct device *dev;
-        status = device_find(device_name, &dev);
+        status = VlDev_Find(device_name, &dev);
         if (!CHECK_SUCCESS(status)) {
-            fprintf(stderr, "%s: cannot find device: 0x%08X\n", argv[0], status);
+            fprintf(stderr, "%s: cannot find device: 0x%08lX\n", argv[0], status);
             return 1;
         }
 
         const struct char_interface *cif;
         status = dev->driver->get_interface(dev, "char", (const void **)&cif);
         if (!CHECK_SUCCESS(status)) {
-            fprintf(stderr, "%s: device is not a char device: 0x%08X\n", argv[0], status);
+            fprintf(stderr, "%s: device is not a char device: 0x%08lX\n", argv[0], status);
             return 1;
         }
 
@@ -76,7 +76,7 @@ static struct command echo_command = {
 
 static void echo_command_init(void)
 {
-    shell_command_register(&echo_command);
+    VlShell_RegisterCommand(&echo_command);
 }
 
 REGISTER_SHELL_COMMAND(echo, echo_command_init)

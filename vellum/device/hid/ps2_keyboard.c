@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
-#include <vellum/asm/time.h>
+#include <vellum/arch/intrinsics/misc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/isr.h>
+#include <vellum/plat/time.h>
 
 #include <vellum/debug.h>
 #include <vellum/device.h>
@@ -433,10 +434,10 @@ static int translate_scancode(struct device *dev)
 
     do {
         while (data->seqbuf_start == data->seqbuf_end) {
-            _ia32_pause();
+            VlA_Pause();
         }
 
-        _pc_isr_mask_interrupt(data->irq_num);
+        VlIntP_Mask(data->irq_num);
 
         switch (data->scancode_set) {
         case SS_SET1:
@@ -446,11 +447,11 @@ static int translate_scancode(struct device *dev)
             ret = translate_scancode_set2(dev, &translated, &flags);
             break;
         default:
-            ret = STATUS_UNSUPPORTED;
+            ret = STATUS_NOT_SUPPORTED;
             break;
         }
 
-        _pc_isr_unmask_interrupt(data->irq_num);
+        VlIntP_Unmask(data->irq_num);
     } while (ret);
 
     if (translated < sizeof(translated_keycode_char_table)) {
@@ -487,7 +488,7 @@ static status_t wait_event(struct device *dev)
     struct ps2_keyboard_data *data = (struct ps2_keyboard_data *)dev->data;
 
     while (data->seqbuf_start == data->seqbuf_end) {
-        _ia32_pause();
+        VlA_Pause();
     }
 
     return STATUS_SUCCESS;
@@ -500,7 +501,7 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
 
     if (data->seqbuf_start == data->seqbuf_end) return STATUS_NO_EVENT;
 
-    status = _pc_isr_mask_interrupt(data->irq_num);
+    status = VlIntP_Mask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     switch (data->scancode_set) {
@@ -513,18 +514,18 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
             translate_scancode_set2(dev, key, flags) ? STATUS_BUFFER_UNDERFLOW : STATUS_SUCCESS;
         break;
     default:
-        status = STATUS_UNSUPPORTED;
+        status = STATUS_NOT_SUPPORTED;
         break;
     }
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = _pc_isr_unmask_interrupt(data->irq_num);
+    status = VlIntP_Unmask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt(data->irq_num);
+    VlIntP_Unmask(data->irq_num);
 
     return status;
 }
@@ -534,7 +535,9 @@ static const struct hid_interface hidif = {
     .poll_event = poll_event,
 };
 
-static void keyboard_isr(void *_dev, struct interrupt_frame *frame, struct trap_regs *regs, int num)
+static void keyboard_isr(
+    void *_dev, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num
+)
 {
     struct device *dev = _dev;
     struct ps2_keyboard_data *data = (struct ps2_keyboard_data *)dev->data;
@@ -545,8 +548,8 @@ static void keyboard_isr(void *_dev, struct interrupt_frame *frame, struct trap_
     status = data->ps2if->irq_get_byte(data->ps2dev, &byte);
     if (!CHECK_SUCCESS(status)) return;
 
-    io_out8(0x007A, 0x02);
-    io_out8(0x007B, byte);
+    VlA_Out8(0x007A, 0x02);
+    VlA_Out8(0x007B, byte);
 
     next_seqbuf_end = (data->seqbuf_end + 1) % sizeof(data->seqbuf);
     if (next_seqbuf_end == data->seqbuf_start) return;
@@ -570,9 +573,9 @@ static void ps2_keyboard_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"ps2_keyboard\"");
+        VlP_Panic(status, "cannot register device driver \"ps2_keyboard\"");
     }
 
     drv->name = "ps2_keyboard";
@@ -610,10 +613,10 @@ static status_t probe(
     status = ps2dev->driver->get_interface(ps2dev, "ps2", (const void **)&ps2if);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("kbd", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("kbd", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -632,11 +635,11 @@ static status_t probe(
     data->isr = NULL;
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(data->irq_num);
+    status = VlIntP_Mask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("registering interrupt service routine...\n");
-    status = _pc_isr_add_interrupt_handler(data->irq_num, dev, keyboard_isr, &data->isr);
+    status = VlIntP_AddInterruptHandler(data->irq_num, dev, keyboard_isr, &data->isr);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("testing port...\n");
@@ -676,7 +679,7 @@ static status_t probe(
     data->scancode_set = SS_SET2;
 
 skip_set2:
-    status = _pc_isr_unmask_interrupt(data->irq_num);
+    status = VlIntP_Unmask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("initialization success\n");
@@ -686,10 +689,10 @@ skip_set2:
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt((int)rsrc[1].base);
+    VlIntP_Unmask((int)rsrc[1].base);
 
     if (data && data->isr) {
-        _pc_isr_remove_handler(data->isr);
+        VlIntP_RemoveHandler(data->isr);
     }
 
     if (data) {
@@ -697,10 +700,10 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
-    fprintf(stderr, "%08X\n", status);
+    fprintf(stderr, "%08lX\n", status);
 
     return status;
 }
@@ -709,11 +712,11 @@ static status_t remove(struct device *dev)
 {
     struct ps2_keyboard_data *data = (struct ps2_keyboard_data *)dev->data;
 
-    _pc_isr_remove_handler(data->isr);
+    VlIntP_RemoveHandler(data->isr);
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

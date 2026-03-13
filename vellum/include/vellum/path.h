@@ -12,19 +12,19 @@ struct path_iterator {
     int has_separator;
 };
 
-void path_iter_init(struct path_iterator *__restrict it, const char *__restrict path);
-int path_iter_next(struct path_iterator *it);
+void VlPath_InitIter(struct path_iterator *__restrict it, const char *__restrict path);
+int VlPath_AdvanceIter(struct path_iterator *it);
 
-char *path_join(char *__restrict dest, size_t len, const char *__restrict src);
-char *path_normalize(char *__restrict dest, size_t len, const char *__restrict src);
+char *VlPath_Join(char *__restrict dest, size_t len, const char *__restrict src);
+char *VlPath_Normalize(char *__restrict dest, size_t len, const char *__restrict src);
 
-char *path_get_fsname(char *__restrict buf, size_t len, const char *__restrict path);
-char *path_get_dirname(char *__restrict buf, size_t len, const char *__restrict path);
-char *path_get_basename(char *__restrict buf, size_t len, const char *__restrict path);
-char *path_get_stem(char *__restrict buf, size_t len, const char *__restrict path);
-char *path_get_extension(char *__restrict buf, size_t len, const char *__restrict path);
+char *VlPath_GetFsname(char *__restrict buf, size_t len, const char *__restrict path);
+char *VlPath_GetDirname(char *__restrict buf, size_t len, const char *__restrict path);
+char *VlPath_GetBasename(char *__restrict buf, size_t len, const char *__restrict path);
+char *VlPath_GetStem(char *__restrict buf, size_t len, const char *__restrict path);
+char *VlPath_GetExtension(char *__restrict buf, size_t len, const char *__restrict path);
 
-int path_is_absolute(const char *path);
-int path_compare(const char *__restrict path1, const char *__restrict path2, int case_sensitive);
+int VlPath_IsAbsolute(const char *path);
+int VlPath_Compare(const char *__restrict path1, const char *__restrict path2, int case_sensitive);
 
 #endif  // __VELLUM_PATH_H__

@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#undef strncat
-
 char *strncat(char *__restrict dest, const char *__restrict src, size_t maxlen)
 {
     char *orig_dest = dest;
@@ -20,8 +18,6 @@ char *strncat(char *__restrict dest, const char *__restrict src, size_t maxlen)
 
     return orig_dest;
 }
-
-#undef strcat
 
 char *strcat(char *__restrict dest, const char *__restrict src)
 {

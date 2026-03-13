@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/io.h>
+#include <vellum/arch/io.h>
 
 #include <vellum/device.h>
 #include <vellum/interface/char.h>
@@ -15,7 +15,7 @@ static status_t write(struct device *dev, const char *buf, size_t len, size_t *r
     struct debugout_data *data = (struct debugout_data *)dev->data;
 
     for (int i = 0; buf[i] && i < len; i++) {
-        io_out8(data->ioport, buf[i]);
+        VlA_Out8(data->ioport, buf[i]);
     }
 
     if (result) *result = len;
@@ -42,9 +42,9 @@ static void debugout_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"debugout\"");
+        VlP_Panic(status, "cannot register device driver \"debugout\"");
     }
 
     drv->name = "debugout";
@@ -70,10 +70,10 @@ static status_t probe(
         goto has_error;
     }
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("dbg", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("dbg", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -95,7 +95,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -107,7 +107,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

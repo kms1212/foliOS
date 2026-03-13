@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#undef memcmp
-
 int memcmp(const void *p1, const void *p2, size_t len)
 {
     const uint8_t *a = p1, *b = p2;

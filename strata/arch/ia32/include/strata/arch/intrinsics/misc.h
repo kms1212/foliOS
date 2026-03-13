@@ -16,7 +16,7 @@ __always_inline void StA_Cli(void)
     __asm__ volatile("cli");
 }
 
-__always_inline void StA_Halt(void)
+__always_inline void StA_Hlt(void)
 {
     __asm__ volatile("hlt");
 }

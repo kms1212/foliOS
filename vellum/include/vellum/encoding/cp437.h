@@ -6,6 +6,6 @@
 
 #include <vellum/status.h>
 
-status_t enc_utf32_to_cp437(wchar_t utf32, uint8_t *cp437out);
+status_t StEnc_Utf32ToCp437(wchar_t utf32, uint8_t *cp437out);
 
 #endif  // __VELLUM_ENCODING_CP437_H__

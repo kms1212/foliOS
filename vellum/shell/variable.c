@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-status_t shell_get_variable(struct shell_instance *inst, const char *key, const char **value)
+status_t VlShell_GetVariable(struct shell_instance *inst, const char *key, const char **value)
 {
     for (struct shell_var *current = inst->var_list; current; current = current->next) {
         if (strncmp(current->str, key, current->key_len) == 0) {
@@ -16,7 +16,7 @@ status_t shell_get_variable(struct shell_instance *inst, const char *key, const 
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t shell_set_variable(struct shell_instance *inst, const char *key, const char *value)
+status_t VlShell_SetVariable(struct shell_instance *inst, const char *key, const char *value)
 {
     struct shell_var *entry = NULL;
     struct shell_var *prev_entry = NULL;

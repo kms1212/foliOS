@@ -34,85 +34,71 @@ static const uint16_t ctype_table[128] = {
     0x02D2, 0x02D2, 0x02D2, 0x0032, 0x0032, 0x0032, 0x0032, 0x0001,  // 78h-7Fh
 };
 
-#undef isalnum
 int isalnum(int c)
 {
     return !!(ctype_table[c] & ALNUM);
 }
 
-#undef isalpha
 int isalpha(int c)
 {
     return !!(ctype_table[c] & ALPHA);
 }
 
-#undef iscntrl
 int iscntrl(int c)
 {
     return !!(ctype_table[c] & CNTRL);
 }
 
-#undef isdigit
 int isdigit(int c)
 {
     return !!(ctype_table[c] & DIGIT);
 }
 
-#undef isgraph
 int isgraph(int c)
 {
     return !!(ctype_table[c] & GRAPH);
 }
 
-#undef islower
 int islower(int c)
 {
     return !!(ctype_table[c] & LOWER);
 }
 
-#undef isprint
 int isprint(int c)
 {
     return !!(ctype_table[c] & PRINT);
 }
 
-#undef ispunct
 int ispunct(int c)
 {
     return !!(ctype_table[c] & PUNCT);
 }
 
-#undef isspace
 int isspace(int c)
 {
     return !!(ctype_table[c] & SPACE);
 }
 
-#undef isupper
 int isupper(int c)
 {
     return !!(ctype_table[c] & UPPER);
 }
 
-#undef isxdigit
 int isxdigit(int c)
 {
     return !!(ctype_table[c] & XDIGI);
 }
 
-#undef isblank
 int isblank(int c)
 {
     return !!(ctype_table[c] & BLANK);
 }
 
-#undef toupper
 int toupper(int c)
 {
     return (ctype_table[c] & LOWER) ? c - 'a' + 'A' : c;
 }
 
-#undef tolower
 int tolower(int c)
 {
     return (ctype_table[c] & UPPER) ? c - 'A' + 'a' : c;

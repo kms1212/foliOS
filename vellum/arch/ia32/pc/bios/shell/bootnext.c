@@ -4,13 +4,13 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <vellum/asm/bios/misc.h>
+#include <vellum/plat/bios/misc.h>
 
 #include <vellum/status.h>
 
 static int bootnext_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    _pc_bios_bootnext();
+    VlBiosP_BootFromNextDevice();
     return 1;
 }
 
@@ -22,7 +22,7 @@ static struct command bootnext_command = {
 
 static void bootnext_command_init(void)
 {
-    shell_command_register(&bootnext_command);
+    VlShell_RegisterCommand(&bootnext_command);
 }
 
 REGISTER_SHELL_COMMAND(bootnext, bootnext_command_init)

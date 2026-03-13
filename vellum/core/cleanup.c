@@ -7,9 +7,9 @@ extern void (*__fini_array_end)(void);
 
 extern void _pc_cleanup(void);
 
-void cleanup(void)
+void Vl_Cleanup(void)
 {
-    struct device *dev = device_get_first_dev();
+    struct device *dev = VlDev_GetFirst();
     struct device *last_root_dev = NULL;
 
     while (dev) {

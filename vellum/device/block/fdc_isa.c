@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
-#include <vellum/asm/time.h>
+#include <vellum/arch/intrinsics/misc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/isr.h>
+#include <vellum/plat/time.h>
 
 #include <vellum/device.h>
 #include <vellum/interface/fdc.h>
@@ -63,18 +64,18 @@ static status_t send_command(struct device *dev, struct fdc_command *cmd)
     uint8_t reg;
 
     for (int i = 0; i < cmd->send_size + 1; i++) {
-        while (!(io_in8(data->io_base + FDCREG_MSR) & 0x80)) {
-            _ia32_pause();
+        while (!(VlA_In8(data->io_base + FDCREG_MSR) & 0x80)) {
+            VlA_Pause();
         }
-        reg = io_in8(data->io_base + FDCREG_MSR);
+        reg = VlA_In8(data->io_base + FDCREG_MSR);
         if (reg & 0x40) {
             return 1;
         }
 
         if (i > 0) {
-            io_out8(data->io_base + FDCREG_FIFO, cmd->data[i - 1]);
+            VlA_Out8(data->io_base + FDCREG_FIFO, cmd->data[i - 1]);
         } else {
-            io_out8(data->io_base + FDCREG_FIFO, cmd->data[0]);
+            VlA_Out8(data->io_base + FDCREG_FIFO, cmd->data[0]);
         }
     }
 
@@ -84,18 +85,18 @@ static status_t send_command(struct device *dev, struct fdc_command *cmd)
     }
 
     for (int i = 0; i < cmd->recv_size; i++) {
-        while (!(io_in8(data->io_base + FDCREG_MSR) & 0x80)) {
-            _ia32_pause();
+        while (!(VlA_In8(data->io_base + FDCREG_MSR) & 0x80)) {
+            VlA_Pause();
         }
-        reg = io_in8(data->io_base + FDCREG_MSR);
+        reg = VlA_In8(data->io_base + FDCREG_MSR);
         if (reg & 0x40) {
             return 1;
         }
 
-        cmd->data[i] = io_in8(data->io_base + FDCREG_FIFO);
+        cmd->data[i] = VlA_In8(data->io_base + FDCREG_FIFO);
     }
 
-    reg = io_in8(data->io_base + FDCREG_MSR);
+    reg = VlA_In8(data->io_base + FDCREG_MSR);
     if (reg & 0x40) {
         return 1;
     }
@@ -146,7 +147,7 @@ static const struct fdc_interface fdcif = {
     .reset = reset,
 };
 
-static void isr(void *data, struct interrupt_frame *frame, struct trap_regs *regs, int num) {}
+static void isr(void *data, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num) {}
 
 static status_t probe(
     struct device **devout,
@@ -163,9 +164,9 @@ static void fdc_isa_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"fdc_isa\"");
+        VlP_Panic(status, "cannot register device driver \"fdc_isa\"");
     }
 
     drv->name = "fdc_isa";
@@ -194,10 +195,10 @@ static status_t probe(
         return STATUS_INVALID_RESOURCE;
     }
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("fdc", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("fdc", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -219,16 +220,16 @@ static status_t probe(
     }
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(data->irq_ch);
+    status = VlIntP_Mask(data->irq_ch);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = _pc_isr_add_interrupt_handler(data->irq_ch, dev, isr, &data->isr);
+    status = VlIntP_AddInterruptHandler(data->irq_ch, dev, isr, &data->isr);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = fdc_reset(dev);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_driver_find("floppy", &fpdrv);
+    status = VlDev_FindDriver("floppy", &fpdrv);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     for (int i = 0; i < 4; i++) {
@@ -245,7 +246,7 @@ static status_t probe(
         if (!CHECK_SUCCESS(status)) goto has_error;
     }
 
-    status = _pc_isr_unmask_interrupt(data->irq_ch);
+    status = VlIntP_Unmask(data->irq_ch);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (devout) *devout = dev;
@@ -255,10 +256,10 @@ static status_t probe(
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt((int)rsrc[1].base);
+    VlIntP_Unmask((int)rsrc[1].base);
 
     if (data && data->isr) {
-        _pc_isr_remove_handler(data->isr);
+        VlIntP_RemoveHandler(data->isr);
     }
 
     if (dev) {
@@ -272,7 +273,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -282,9 +283,9 @@ static status_t remove(struct device *dev)
 {
     struct fdc_data *data = (struct fdc_data *)dev->data;
 
-    _pc_isr_unmask_interrupt(data->irq_ch);
+    VlIntP_Unmask(data->irq_ch);
 
-    _pc_isr_remove_handler(data->isr);
+    VlIntP_RemoveHandler(data->isr);
 
     if (dev) {
         for (struct device *fddev = dev->first_child; fddev; fddev = fddev->sibling) {
@@ -297,7 +298,7 @@ static status_t remove(struct device *dev)
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return STATUS_SUCCESS;

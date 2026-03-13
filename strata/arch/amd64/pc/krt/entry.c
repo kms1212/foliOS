@@ -1,98 +1,95 @@
 #include <strata/compiler.h>
 #include <strata/status.h>
-#include <strata/syscall.h>
 #include <strata/uuid.h>
-
-extern StStatus do_syscall(
-    uint64_t rdi __in,
-    uint64_t rsi __in,
-    uint64_t rdx __in,
-    uint64_t r10 __in,
-    uint64_t r8 __in,
-    uint64_t rax __in
-);
-
-extern StStatus do_node_call_syscall(
-    uint64_t rdi __in,
-    uint64_t rsi __in,
-    uint64_t rdx __in,
-    uint64_t r10 __in,
-    uint64_t r8 __in,
-    uint64_t r9 __in
-);
 
 struct entries {
     StStatus (*node_open)(const uint8_t *path __in, uint32_t flags __in, uint32_t *handle __out);
     StStatus (*node_close)(uint32_t handle __in);
-    StStatus (*node_get_interface_funcid_base)(
+    StStatus (*node_query)(
         uint32_t handle __in,
         const struct StUuid *if_uuid __in,
+        uint32_t request_groupid __in,
         uint32_t request_abiver __in,
         uint32_t *funcid_base __out,
         uint32_t *result_abiver __out
     );
-    StStatus (*node_call)(
+    StStatus (*node_call0)(uint32_t handle __in, uint32_t funcid __in);
+    StStatus (*node_call1)(uint32_t handle __in, uint32_t funcid __in, unsigned long arg0 __in);
+    StStatus (*node_call2)(
+        uint32_t handle __in, uint32_t funcid __in, unsigned long arg0 __in, unsigned long arg1 __in
+    );
+    StStatus (*node_call3)(
+        uint32_t handle __in,
+        uint32_t funcid __in,
+        unsigned long arg0 __in,
+        unsigned long arg1 __in,
+        unsigned long arg2 __in
+    );
+    StStatus (*node_call4)(
+        uint32_t handle __in,
+        uint32_t funcid __in,
+        unsigned long arg0 __in,
+        unsigned long arg1 __in,
+        unsigned long arg2 __in,
+        unsigned long arg3 __in
+    );
+    StStatus (*node_call_n)(
         uint32_t handle __in,
         uint32_t funcid __in,
         const void *args __in,
-        size_t args_size __in,
         void *result __buf,
-        size_t result_size __in
+        unsigned long arg0 __in,
+        unsigned long arg1 __in
     );
 };
 
-static StStatus node_open(const uint8_t *path __in, uint32_t flags __in, uint32_t *handle __out)
-{
-    return do_syscall((uint64_t)path, flags, (uint64_t)handle, 0, 0, SYS_NODE_OPEN);
-}
-
-static StStatus node_close(uint32_t handle __in)
-{
-    return do_syscall((uint64_t)handle, 0, 0, 0, 0, SYS_NODE_CLOSE);
-}
-
-static StStatus node_get_interface_funcid_base(
+StStatus node_open_syscall(const uint8_t *path __in, uint32_t flags __in, uint32_t *handle __out);
+StStatus node_close_syscall(uint32_t handle __in);
+StStatus node_query_syscall(
     uint32_t handle __in,
     const struct StUuid *if_uuid __in,
+    uint32_t request_groupid __in,
     uint32_t request_abiver __in,
     uint32_t *funcid_base __out,
     uint32_t *result_abiver __out
-)
-{
-    return do_syscall(
-        (uint64_t)handle,
-        (uint64_t)if_uuid,
-        request_abiver,
-        (uint64_t)funcid_base,
-        (uint64_t)result_abiver,
-        SYS_NODE_GET_INTERFACE_FUNCID_BASE
-    );
-}
-
-static StStatus node_call(
+);
+StStatus node_call0_syscall(uint32_t handle __in, uint32_t funcid __in);
+StStatus node_call1_syscall(uint32_t handle __in, uint32_t funcid __in, unsigned long arg0 __in);
+StStatus node_call2_syscall(
+    uint32_t handle __in, uint32_t funcid __in, unsigned long arg0 __in, unsigned long arg1 __in
+);
+StStatus node_call3_syscall(
+    uint32_t handle __in,
+    uint32_t funcid __in,
+    unsigned long arg0 __in,
+    unsigned long arg1 __in,
+    unsigned long arg2 __in
+);
+StStatus node_call4_syscall(
+    uint32_t handle __in,
+    uint32_t funcid __in,
+    unsigned long arg0 __in,
+    unsigned long arg1 __in,
+    unsigned long arg2 __in,
+    unsigned long arg3 __in
+);
+StStatus node_call_n_syscall(
     uint32_t handle __in,
     uint32_t funcid __in,
     const void *args __in,
-    size_t args_size __in,
     void *result __buf,
-    size_t result_size __in
-)
-{
-    // this call is special, since its argument count is 6, so we need to
-    // hardcode the syscall number directly in assembly
-    return do_node_call_syscall(
-        (uint64_t)handle,
-        funcid,
-        (uint64_t)args,
-        args_size,
-        (uint64_t)result,
-        result_size
-    );
-}
+    unsigned long arg0 __in,
+    unsigned long arg1 __in
+);
 
 __section(".rodata.krt_table") const struct entries g_entries = {
-    .node_open = node_open,
-    .node_close = node_close,
-    .node_get_interface_funcid_base = node_get_interface_funcid_base,
-    .node_call = node_call,
+    .node_open = node_open_syscall,
+    .node_close = node_close_syscall,
+    .node_query = node_query_syscall,
+    .node_call0 = node_call0_syscall,
+    .node_call1 = node_call1_syscall,
+    .node_call2 = node_call2_syscall,
+    .node_call3 = node_call3_syscall,
+    .node_call4 = node_call4_syscall,
+    .node_call_n = node_call_n_syscall,
 };

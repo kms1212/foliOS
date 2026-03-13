@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-#undef printf
-
 int __printf_chk(int flag, const char *fmt, ...)
 {
     va_list args;

@@ -9,69 +9,10 @@
 #include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/intrinsics/register.h>
 
-#include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/panic.h>
 
 #define MODULE_NAME "cpufeat"
-
-static volatile int handler_called;
-static size_t instr_size;
-
-static void *fault_handler_func(
-    int irq_num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
-)
-{
-    handler_called = 1;
-    frame->rip += instr_size;
-
-    return NULL;
-}
-
-static StStatus test_instruction(void (*test_func)(void), size_t _instr_size, int *is_undefined)
-{
-    StStatus status;
-    uint32_t intstate;
-    struct StInt_Handler *orig_first_handler = NULL;
-    struct StInt_Handler temp_handler = {
-        .next = NULL,
-        .irq_num = 0x06,
-        .data = NULL,
-        .handler = fault_handler_func,
-    };
-
-    intstate = StA_SaveInterrupt();
-    StA_DisableInterrupt();
-
-    status = StIntP_GetFirstHandler(0x06, &orig_first_handler);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    handler_called = 0;
-    instr_size = _instr_size;
-
-    status = StIntP_SetFirstHandler(0x06, &temp_handler);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    test_func();
-
-    if (is_undefined) *is_undefined = handler_called;
-
-    status = StIntP_SetFirstHandler(0x06, orig_first_handler);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    StA_RestoreInterrupt(intstate);
-
-    return STATUS_SUCCESS;
-
-has_error:
-    if (orig_first_handler && !CHECK_SUCCESS(StIntP_SetFirstHandler(0x06, orig_first_handler))) {
-        St_Panic(status, "failed to restore interrupt handler while recovering from failure");
-    }
-
-    StA_RestoreInterrupt(intstate);
-
-    return status;
-}
 
 static struct StA_CpuFeatures cpu_features;
 const struct StA_CpuFeatures *const g_p_cpu_features = &cpu_features;
@@ -101,13 +42,13 @@ StStatus StA_CheckCpuFeatures(void)
     uint32_t max_param, max_param_ext, eax, ebx, ecx, edx;
 
     if (!check_cpuid_available()) {
-        St_Panic(STATUS_UNSUPPORTED, "CPUID instruction is not available");
+        St_Panic(STATUS_NOT_SUPPORTED, "CPUID instruction is not available");
     }
 
     cpu_features.has_cpuid = 1;
     cpu_features.has_invlpg = 1;
 
-    StA_Cpuid(0x00000000, &eax, &ebx, &ecx, &edx);
+    StA_Cpuid(CPUID_VENDOR_STRING, &eax, &ebx, &ecx, &edx);
     max_param = eax;
     LOG_DEBUG(
         LM_CAT_UNCLASSIFIED,
@@ -117,8 +58,8 @@ StStatus StA_CheckCpuFeatures(void)
         (char *)&ecx
     );
 
-    if (max_param >= 1) {
-        StA_Cpuid(0x00000001, &eax, &ebx, &ecx, &edx);
+    if (max_param >= CPUID_FEATURES) {
+        StA_Cpuid(CPUID_FEATURES, &eax, &ebx, &ecx, &edx);
 
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "processor type: %1" PRIX32 "\n", (eax & 0x00003000) >> 12);
         LOG_DEBUG(
@@ -298,8 +239,8 @@ StStatus StA_CheckCpuFeatures(void)
         }
     }
 
-    if (max_param >= 0x00000015) {
-        StA_Cpuid(0x00000015, &eax, &ebx, &ecx, &edx);
+    if (max_param >= CPUID_TSC_INFO) {
+        StA_Cpuid(CPUID_TSC_INFO, &eax, &ebx, &ecx, &edx);
 
         cpu_features.tsc_ratio_denom = eax;
         if (ebx) {
@@ -313,11 +254,11 @@ StStatus StA_CheckCpuFeatures(void)
         }
     }
 
-    StA_Cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
+    StA_Cpuid(CPUID_INTEL_EXTENDED, &eax, &ebx, &ecx, &edx);
     max_param_ext = eax;
 
-    if (max_param_ext >= 0x80000001) {
-        StA_Cpuid(0x80000001, &eax, &ebx, &ecx, &edx);
+    if (max_param_ext >= CPUID_INTEL_FEATURES) {
+        StA_Cpuid(CPUID_INTEL_FEATURES, &eax, &ebx, &ecx, &edx);
 
         if (edx & 0x00100000) {
             cpu_features.has_nx = 1;
@@ -349,8 +290,8 @@ StStatus StA_CheckCpuFeatures(void)
         }
     }
 
-    if (max_param_ext >= 0x80000007) {
-        StA_Cpuid(0x80000007, &eax, &ebx, &ecx, &edx);
+    if (max_param_ext >= CPUID_INTEL_PM_INFO_RAS_CAPS) {
+        StA_Cpuid(CPUID_INTEL_PM_INFO_RAS_CAPS, &eax, &ebx, &ecx, &edx);
 
         if (edx & (1 << 8)) {
             cpu_features.is_tsc_invariant = 1;

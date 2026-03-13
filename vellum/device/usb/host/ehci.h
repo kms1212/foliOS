@@ -15,7 +15,7 @@ struct ehci_capability_registers {
 struct ehci_operational_registers {
     uint32_t usb_command;
     uint32_t usb_status;
-    uint32_t usb_interrupt_enable;
+    uint32_t usb_VlA_EnableInterrupt;
     uint32_t frame_index;
     uint32_t ctrl_ds_segment;
     uint32_t frame_list_base_addr;

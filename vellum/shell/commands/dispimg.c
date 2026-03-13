@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -19,11 +20,11 @@ static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     char path[PATH_MAX];
-    if (path_is_absolute(argv[1])) {
+    if (VlPath_IsAbsolute(argv[1])) {
         strncpy(path, argv[1], sizeof(path) - 1);
     } else {
         strncpy(path, inst->working_dir_path, sizeof(path) - 1);
-        path_join(path, sizeof(path), argv[1]);
+        VlPath_Join(path, sizeof(path), argv[1]);
 
         if (!inst->fs) {
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
@@ -38,7 +39,7 @@ static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     struct device *fbdev;
-    status = device_find("video0", &fbdev);
+    status = VlDev_Find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot find device\n", argv[0]);
         fclose(fp);
@@ -107,16 +108,25 @@ static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
     struct bmp_dibheader_core dibheader;
     fread(&dibheader, sizeof(dibheader), 1, fp);
 
-    printf("bmp file size: %lu bytes, bitmap offset %lu\n", header.file_size, header.bitmap_offset);
-    printf("width: %lu, height: %lu, bpp: %u\n", dibheader.width, dibheader.height, dibheader.bpp);
+    printf(
+        "bmp file size: %" PRIu32 " bytes, bitmap offset %" PRIu32 "\n",
+        header.file_size,
+        header.bitmap_offset
+    );
+    printf(
+        "width: %" PRIu32 ", height: %" PRIu32 ", bpp: %" PRIu16 "\n",
+        dibheader.width,
+        dibheader.height,
+        dibheader.bpp
+    );
 
     fseek(fp, header.bitmap_offset, SEEK_SET);
 
     int ystart = (vmode_info.height - dibheader.height) / 2;
     int xstart = (vmode_info.width - dibheader.width) / 2;
 
-    for (int y = 0; y < dibheader.height; y++) {
-        for (int x = 0; x < dibheader.width; x++) {
+    for (uint32_t y = 0; y < dibheader.height; y++) {
+        for (uint32_t x = 0; x < dibheader.width; x++) {
             uint32_t buf;
             fread(&buf, dibheader.bpp / 8, 1, fp);
             framebuffer[(ystart + dibheader.height - y - 1) * vmode_info.width + xstart + x] = buf;
@@ -143,7 +153,7 @@ static struct command dispimg_command = {
 
 static void dispimg_command_init(void)
 {
-    shell_command_register(&dispimg_command);
+    VlShell_RegisterCommand(&dispimg_command);
 }
 
 REGISTER_SHELL_COMMAND(dispimg, dispimg_command_init)

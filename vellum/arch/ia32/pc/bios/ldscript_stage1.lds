@@ -9,7 +9,7 @@ SECTIONS
     .bss :
     {
         PROVIDE_HIDDEN(__bss_start = .);
-        *(.bss .bss.*)
+        KEEP(*(.bss .bss.*))
         *(COMMON)
         PROVIDE_HIDDEN(__bss_end = .);
     }

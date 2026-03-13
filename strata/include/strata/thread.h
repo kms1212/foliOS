@@ -39,7 +39,7 @@ struct StThread {
 
     StThread_Id id;
     struct StProcess *process;
-    enum StThread_State status;
+    enum StThread_State state;
     enum StThread_Type type;
     int is_detached;
     int is_main;

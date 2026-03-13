@@ -6,10 +6,10 @@
 
 static int lsmod_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    struct module *current = module_get_first_mod();
+    struct module *current = VlModule_GetFirst();
 
     while (current) {
-        printf("%s: base=%08lX\n", current->name, current->load_vpn * PAGE_SIZE);
+        printf("%s: base=%08zX\n", current->name, current->load_vpn * PAGE_SIZE);
 
         current = current->next;
     }
@@ -25,7 +25,7 @@ static struct command lsmod_command = {
 
 static void lsmod_command_init(void)
 {
-    shell_command_register(&lsmod_command);
+    VlShell_RegisterCommand(&lsmod_command);
 }
 
 REGISTER_SHELL_COMMAND(lsmod, lsmod_command_init)

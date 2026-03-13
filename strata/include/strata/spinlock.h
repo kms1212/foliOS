@@ -12,10 +12,10 @@ struct StSpinlock {
 StStatus StSpinlock_Init(struct StSpinlock *lock);
 
 StStatus StSpinlock_Lock(struct StSpinlock *lock);
-StStatus StSpinlock_TryLock(struct StSpinlock *lock);
+StStatus StSpinlock_TryLock(struct StSpinlock *lock, int *locked);
 StStatus StSpinlock_Unlock(struct StSpinlock *lock);
 
-StStatus StSpinlock_TryLockAndSaveIrq(struct StSpinlock *lock, uint32_t *irqstate);
+StStatus StSpinlock_TryLockAndSaveIrq(struct StSpinlock *lock, uint32_t *irqstate, int *locked);
 StStatus StSpinlock_UnlockAndRestoreIrq(struct StSpinlock *lock, uint32_t irqstate);
 
 #endif  // __STRATA_SPINLOCK_H__

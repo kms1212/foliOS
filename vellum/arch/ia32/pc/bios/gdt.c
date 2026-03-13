@@ -1,11 +1,11 @@
-#include <vellum/asm/pc_gdt.h>
+#include <vellum/plat/gdt.h>
 
 #include <stdio.h>
 
-#include <vellum/asm/gdt.h>
-#include <vellum/asm/intrinsics/gdt.h>
+#include <vellum/arch/gdt.h>
+#include <vellum/arch/intrinsics/gdt.h>
 
-struct gdt_entry _pc_gdt[8192];
+struct StA_GdtEntry _pc_gdt[8192];
 
 void _pc_gdt_init(void)
 {
@@ -40,5 +40,5 @@ void _pc_gdt_init(void)
     _pc_gdt[_ia32_pm16_data_seg >> 3].access_byte.raw = 0x92;
     _pc_gdt[_ia32_pm16_data_seg >> 3].limit_flags.raw = 0x00;
 
-    _ia32_lgdt(&_ia32_gdtr);
+    VlA_Lgdt(&_ia32_gdtr);
 }

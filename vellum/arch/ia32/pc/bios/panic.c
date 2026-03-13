@@ -1,41 +1,42 @@
-#include <vellum/asm/panic.h>
+#include <vellum/plat/panic.h>
 
 #include <stdio.h>
 
-#include <vellum/asm/bios/keyboard.h>
-#include <vellum/asm/bios/video.h>
-#include <vellum/asm/interrupt.h>
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/pic.h>
-#include <vellum/asm/power.h>
+#include <vellum/arch/interrupt.h>
+#include <vellum/arch/intrinsics/misc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/bios/keyboard.h>
+#include <vellum/plat/bios/video.h>
+#include <vellum/plat/pic.h>
+#include <vellum/plat/power.h>
 
 static int print_char(void *, char ch)
 {
     if (ch == '\n') {
-        _pc_bios_video_write_tty('\r');
+        VlBiosP_WriteVideoTty('\r');
     }
     if (ch) {
-        _pc_bios_video_write_tty(ch);
+        VlBiosP_WriteVideoTty(ch);
     }
 
     return 0;
 }
 
-__noreturn void _pc_panic(status_t status, const char *fmt, ...)
+__noreturn void VlP_Panic(status_t status, const char *fmt, ...)
 {
     uint16_t *fbuf;
     va_list args;
 
-    _ia32_interrupt_disable();
+    VlA_Cli();
 
     /* enable keyboard translation */
-    io_out8(0x0064, 0x60);
-    io_out8(0x0060, 0x63);
+    VlA_Out8(0x0064, 0x60);
+    VlA_Out8(0x0060, 0x63);
 
     _pc_pic_remap_int(0x08, 0x70);
 
-    _pc_bios_video_set_mode(0x03);
+    VlBiosP_SetVideoMode(0x03);
 
     fbuf = (uint16_t *)0xB8000;
     for (int i = 0; i < 80; i++) {
@@ -48,26 +49,26 @@ __noreturn void _pc_panic(status_t status, const char *fmt, ...)
         fbuf[i] = 0x7000;
     }
 
-    _pc_bios_video_set_cursor_pos(0, 0, (80 - sizeof("CRITICAL SYSTEM ERROR") + 1) / 2);
+    VlBiosP_SetVideoCursorPos(0, 0, (80 - sizeof("CRITICAL SYSTEM ERROR") + 1) / 2);
     cprintf(print_char, NULL, "CRITICAL SYSTEM ERROR");
 
-    _pc_bios_video_set_cursor_pos(0, 2, 2);
+    VlBiosP_SetVideoCursorPos(0, 2, 2);
     cprintf(print_char, NULL, "A critical error has occurred during the boot process.");
-    _pc_bios_video_set_cursor_pos(0, 3, 2);
+    VlBiosP_SetVideoCursorPos(0, 3, 2);
     cprintf(print_char, NULL, "Vellum encountered an unrecoverable error.");
-    _pc_bios_video_set_cursor_pos(0, 4, 2);
+    VlBiosP_SetVideoCursorPos(0, 4, 2);
     cprintf(print_char, NULL, "The system execution has been halted to ensure data integrity.");
 
-    _pc_bios_video_set_cursor_pos(0, 6, 2);
-    cprintf(print_char, NULL, "Status Code: %08X", status);
-    _pc_bios_video_set_cursor_pos(0, 7, 2);
+    VlBiosP_SetVideoCursorPos(0, 6, 2);
+    cprintf(print_char, NULL, "Status Code: %08lX", status);
+    VlBiosP_SetVideoCursorPos(0, 7, 2);
     cprintf(print_char, NULL, "Description: ");
 
     va_start(args, fmt);
     vcprintf(print_char, NULL, fmt, args);
     va_end(args);
 
-    _pc_bios_video_set_cursor_pos(0, 24, 2);
+    VlBiosP_SetVideoCursorPos(0, 24, 2);
 
 #ifndef NDEBUG
     cprintf(print_char, NULL, "Debugger ready");
@@ -82,6 +83,6 @@ __noreturn void _pc_panic(status_t status, const char *fmt, ...)
 #endif
 
     for (;;) {
-        _ia32_halt();
+        VlA_Hlt();
     }
 }

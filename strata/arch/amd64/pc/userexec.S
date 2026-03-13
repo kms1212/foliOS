@@ -4,6 +4,6 @@
     .align  4096
     .globl  _userexec_start
 _userexec_start:
-    .incbin "a.out"
+    .incbin "main.app"
     .globl  _userexec_end
 _userexec_end:

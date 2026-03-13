@@ -35,12 +35,12 @@
 
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
-extern int __trampoline_load;
+extern char __trampoline_load[];
 
-extern int _krt_start;
-extern int _krt_end;
+extern char _krt_start[];
+extern char _krt_end[];
 
-extern int __end;
+extern char __end[];
 
 size_t _trampoline_runtime_size;
 
@@ -285,8 +285,8 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     /* mark trampoline area as unusable */
     status = StPmm_MarkUnusableContiguousFrame(
-        VPTR_TO_PAGE(&__trampoline_load),
-        ADDR_TO_PAGE(ALIGN((uintptr_t)&__trampoline_load + _trampoline_runtime_size, PAGE_SIZE)) - 1
+        VPTR_TO_PAGE(__trampoline_load),
+        ADDR_TO_PAGE(ALIGN((uintptr_t)__trampoline_load + _trampoline_runtime_size, PAGE_SIZE)) - 1
     );
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to mark trampoline area as unusable");
@@ -301,7 +301,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing VMA...\n");
     status = StVmm_InitGlobalDomain(
         VMM_DOMAIN_KERNEL_FAST,
-        ADDR_TO_PAGE(ALIGN((uintptr_t)&__end, PAGE_SIZE)),
+        ADDR_TO_PAGE(ALIGN((uintptr_t)__end, PAGE_SIZE)),
         MEMMAP_KERNEL_FAST_VPN_LIMIT
     );
     if (!CHECK_SUCCESS(status)) {

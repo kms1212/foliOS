@@ -52,7 +52,7 @@ static struct command time_command = {
 
 static void time_command_init(void)
 {
-    shell_command_register(&time_command);
+    VlShell_RegisterCommand(&time_command);
 }
 
 REGISTER_SHELL_COMMAND(time, time_command_init)

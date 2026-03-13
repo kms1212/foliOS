@@ -5,10 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/instruction.h>
-#include <vellum/asm/intrinsics/rdtsc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
+#include <vellum/arch/intrinsics/rdtsc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/instruction.h>
+#include <vellum/plat/isr.h>
 
 #include <vellum/device.h>
 #include <vellum/global_configs.h>
@@ -44,7 +45,7 @@
 #define RTC_B_DSE  0x01
 
 struct rtc_data {
-    int io_index, io_data;
+    int VlA_Index, io_data;
     int irq_num;
     uint32_t tsc_diff_per_second;
     uint64_t prev_tsc_value;
@@ -62,39 +63,39 @@ status_t get_time(struct device *dev, struct rtc_time *tm)
     int century = 20;
 
     do {
-        io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_A);
-    } while (io_in8(data->io_data) & RTC_A_UIP);
+        VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_A);
+    } while (VlA_In8(data->io_data) & RTC_A_UIP);
 
 retry:
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
-    tm->second = bcd2int(io_in8(data->io_data));
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
+    tm->second = bcd2int(VlA_In8(data->io_data));
 
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_MINUTES);
-    tm->minute = bcd2int(io_in8(data->io_data));
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_MINUTES);
+    tm->minute = bcd2int(VlA_In8(data->io_data));
 
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_HOURS);
-    tm->hour = bcd2int(io_in8(data->io_data));
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_HOURS);
+    tm->hour = bcd2int(VlA_In8(data->io_data));
 
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_MONTHDAY);
-    tm->mday = bcd2int(io_in8(data->io_data));
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_MONTHDAY);
+    tm->mday = bcd2int(VlA_In8(data->io_data));
 
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_MONTH);
-    tm->month = bcd2int(io_in8(data->io_data));
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_MONTH);
+    tm->month = bcd2int(VlA_In8(data->io_data));
 
     if (config_rtc_century_offset) {
-        io_out8(data->io_index, RTC_NMI_DISABLE | config_rtc_century_offset);
-        century = bcd2int(io_in8(data->io_data));
+        VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | config_rtc_century_offset);
+        century = bcd2int(VlA_In8(data->io_data));
     }
 
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_YEAR);
-    tm->year = century * 100 + bcd2int(io_in8(data->io_data));
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_YEAR);
+    tm->year = century * 100 + bcd2int(VlA_In8(data->io_data));
 
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
-    if (tm->second != bcd2int(io_in8(data->io_data))) goto retry;
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
+    if (tm->second != bcd2int(VlA_In8(data->io_data))) goto retry;
 
     if (!_pc_rdtsc_undefined && data->tsc_diff_per_second) {
-        tm->millisecond = (int)(((_ia32_rdtsc() - data->prev_tsc_value) >> 16) * 1000 /
-                                data->tsc_diff_per_second);
+        tm->millisecond =
+            (int)(((VlA_Rdtsc() - data->prev_tsc_value) >> 16) * 1000 / data->tsc_diff_per_second);
         if (tm->millisecond >= 1000) {
             tm->millisecond = 999;
         }
@@ -107,17 +108,17 @@ retry:
 
 status_t set_time(struct device *dev, const struct rtc_time *tm)
 {
-    return STATUS_UNSUPPORTED;
+    return STATUS_NOT_SUPPORTED;
 }
 
 status_t get_alarm(struct device *dev, struct rtc_time *tm)
 {
-    return STATUS_UNSUPPORTED;
+    return STATUS_NOT_SUPPORTED;
 }
 
 status_t set_alarm(struct device *dev, const struct rtc_time *tm)
 {
-    return STATUS_UNSUPPORTED;
+    return STATUS_NOT_SUPPORTED;
 }
 
 static const struct rtc_interface rtcif = {
@@ -129,12 +130,12 @@ static const struct rtc_interface rtcif = {
 
 status_t read_nvram(struct device *dev, int offset, uint8_t *val)
 {
-    return STATUS_UNSUPPORTED;
+    return STATUS_NOT_SUPPORTED;
 }
 
 status_t write_nvram(struct device *dev, int offset, uint8_t val)
 {
-    return STATUS_UNSUPPORTED;
+    return STATUS_NOT_SUPPORTED;
 }
 
 static const struct nvram_interface nvrif = {
@@ -142,21 +143,21 @@ static const struct nvram_interface nvrif = {
     .write_nvram = write_nvram,
 };
 
-static void rtc_isr(void *_dev, struct interrupt_frame *frame, struct trap_regs *regs, int num)
+static void rtc_isr(void *_dev, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num)
 {
     struct device *dev = (struct device *)_dev;
     struct rtc_data *data = dev->data;
     uint8_t regc;
 
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_C);
-    regc = io_in8(data->io_data);
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_C);
+    regc = VlA_In8(data->io_data);
 
     if (!_pc_rdtsc_undefined && (regc & 0x10)) {
         if (data->prev_tsc_value) {
-            data->tsc_diff_per_second = (_ia32_rdtsc() - data->prev_tsc_value) >> 16;
+            data->tsc_diff_per_second = (VlA_Rdtsc() - data->prev_tsc_value) >> 16;
         }
 
-        data->prev_tsc_value = _ia32_rdtsc();
+        data->prev_tsc_value = VlA_Rdtsc();
     }
 }
 
@@ -175,9 +176,9 @@ static void rtc_isa_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"rtc_isa\"");
+        VlP_Panic(status, "cannot register device driver \"rtc_isa\"");
     }
 
     drv->name = "rtc_isa";
@@ -203,10 +204,10 @@ static status_t probe(
         return STATUS_INVALID_RESOURCE;
     }
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("rtc", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("rtc", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = calloc(1, sizeof(*data));
@@ -215,26 +216,26 @@ static status_t probe(
         goto has_error;
     }
 
-    data->io_index = (int)rsrc[0].base;
+    data->VlA_Index = (int)rsrc[0].base;
     data->io_data = (int)rsrc[0].limit;
     data->irq_num = (int)rsrc[1].base;
     data->prev_tsc_value = 0;
     data->tsc_diff_per_second = 0;
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(data->irq_num);
+    status = VlIntP_Mask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = _pc_isr_add_interrupt_handler(data->irq_num, dev, rtc_isr, &data->isr);
+    status = VlIntP_AddInterruptHandler(data->irq_num, dev, rtc_isr, &data->isr);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     // enable update interrupt
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
-    uint8_t temp = io_in8(data->io_data);
-    io_out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
-    io_out8(data->io_data, temp | RTC_B_UIE | RTC_B_24HR);
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
+    uint8_t temp = VlA_In8(data->io_data);
+    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
+    VlA_Out8(data->io_data, temp | RTC_B_UIE | RTC_B_24HR);
 
-    status = _pc_isr_unmask_interrupt(data->irq_num);
+    status = VlIntP_Unmask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (devout) *devout = dev;
@@ -242,10 +243,10 @@ static status_t probe(
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt((int)rsrc[1].base);
+    VlIntP_Unmask((int)rsrc[1].base);
 
     if (data && data->isr) {
-        _pc_isr_remove_handler(data->isr);
+        VlIntP_RemoveHandler(data->isr);
     }
 
     if (data) {
@@ -253,7 +254,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -263,11 +264,11 @@ static status_t remove(struct device *dev)
 {
     struct rtc_data *data = (struct rtc_data *)dev->data;
 
-    _pc_isr_remove_handler(data->isr);
+    VlIntP_RemoveHandler(data->isr);
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#undef strrchr
-
 char *strrchr(const char *str, int ch)
 {
     char *found = NULL;

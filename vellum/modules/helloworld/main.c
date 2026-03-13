@@ -18,7 +18,7 @@ static struct command helloworld_command = {
 
 __constructor static void init()
 {
-    shell_command_register(&helloworld_command);
+    VlShell_RegisterCommand(&helloworld_command);
 }
 
 status_t _start(int argc, char **argv)
@@ -28,5 +28,5 @@ status_t _start(int argc, char **argv)
 
 __destructor static void deinit(void)
 {
-    shell_command_unregister(&helloworld_command);
+    VlShell_UnregisterCommand(&helloworld_command);
 }

@@ -57,9 +57,9 @@ static void mbr_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"mbr\"");
+        VlP_Panic(status, "cannot register device driver \"mbr\"");
     }
 
     drv->name = "mbr";
@@ -147,12 +147,12 @@ static status_t probe(
     status = blkdev->driver->get_interface(blkdev, "block", (const void **)&blkif);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     snprintf(dev_name_base, sizeof(dev_name_base), "%.61spt", parent->name);
 
-    status = device_generate_name(dev_name_base, dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName(dev_name_base, dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -165,7 +165,7 @@ static status_t probe(
     data->blkif = blkif;
     dev->data = data;
 
-    status = device_driver_find("part", &partdrv);
+    status = VlDev_FindDriver("part", &partdrv);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = register_partitions(dev, partdrv, 0);
@@ -187,7 +187,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -203,7 +203,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

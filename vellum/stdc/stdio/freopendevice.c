@@ -7,7 +7,7 @@ int freopendevice(const char *__restrict device_name, FILE *__restrict stream)
     status_t status;
     struct device *dev;
 
-    status = device_find(device_name, &dev);
+    status = VlDev_Find(device_name, &dev);
     if (!CHECK_SUCCESS(status)) return 1;
 
     stream->type = 2;

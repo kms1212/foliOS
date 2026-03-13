@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
-#include <vellum/asm/time.h>
+#include <vellum/arch/intrinsics/misc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/isr.h>
+#include <vellum/plat/time.h>
 
 #include <vellum/device.h>
 #include <vellum/hid.h>
@@ -44,7 +45,7 @@ static status_t wait_event(struct device *dev)
     struct ps2_mouse_data *data = (struct ps2_mouse_data *)dev->data;
 
     while (data->seqbuf_start == data->seqbuf_end) {
-        _ia32_pause();
+        VlA_Pause();
     }
 
     return STATUS_SUCCESS;
@@ -60,7 +61,7 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
 
     if (data->seqbuf_start == data->seqbuf_end) return STATUS_NO_EVENT;
 
-    status = _pc_isr_mask_interrupt(data->irq_num);
+    status = VlIntP_Mask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     byte = data->seqbuf[data->seqbuf_start];
@@ -123,7 +124,7 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
 
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = _pc_isr_unmask_interrupt(data->irq_num);
+    status = VlIntP_Unmask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (key) *key = ret_key;
@@ -132,7 +133,7 @@ static status_t poll_event(struct device *dev, uint16_t *key, uint16_t *flags)
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt(data->irq_num);
+    VlIntP_Unmask(data->irq_num);
 
     return status;
 }
@@ -142,7 +143,7 @@ static const struct hid_interface hidif = {
     .poll_event = poll_event,
 };
 
-static void mouse_isr(void *_dev, struct interrupt_frame *frame, struct trap_regs *regs, int num)
+static void mouse_isr(void *_dev, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num)
 {
     struct device *dev = _dev;
     struct ps2_mouse_data *data = (struct ps2_mouse_data *)dev->data;
@@ -152,8 +153,8 @@ static void mouse_isr(void *_dev, struct interrupt_frame *frame, struct trap_reg
     status = data->ps2if->irq_get_byte(data->ps2dev, &byte);
     if (!CHECK_SUCCESS(status)) return;
 
-    io_out8(0x007A, 0x04);
-    io_out8(0x007B, byte);
+    VlA_Out8(0x007A, 0x04);
+    VlA_Out8(0x007B, byte);
 
     unsigned int next_seqbuf_end = (data->seqbuf_end + 1) % sizeof(data->seqbuf);
     if (next_seqbuf_end == data->seqbuf_start) return;
@@ -177,9 +178,9 @@ static void ps2_mouse_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"ps2_mouse\"");
+        VlP_Panic(status, "cannot register device driver \"ps2_mouse\"");
     }
 
     drv->name = "ps2_mouse";
@@ -217,10 +218,10 @@ static status_t probe(
     status = ps2dev->driver->get_interface(ps2dev, "ps2", (const void **)&ps2if);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("mouse", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("mouse", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -238,11 +239,11 @@ static status_t probe(
     data->isr = NULL;
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(data->irq_num);
+    status = VlIntP_Mask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("registering interrupt service routine...\n");
-    status = _pc_isr_add_interrupt_handler(data->irq_num, dev, mouse_isr, &data->isr);
+    status = VlIntP_AddInterruptHandler(data->irq_num, dev, mouse_isr, &data->isr);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("testing port...\n");
@@ -283,7 +284,7 @@ static status_t probe(
         goto has_error;
     }
 
-    status = _pc_isr_unmask_interrupt(data->irq_num);
+    status = VlIntP_Unmask(data->irq_num);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (devout) *devout = dev;
@@ -293,10 +294,10 @@ static status_t probe(
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt((int)rsrc[1].base);
+    VlIntP_Unmask((int)rsrc[1].base);
 
     if (data && data->isr) {
-        _pc_isr_remove_handler(data->isr);
+        VlIntP_RemoveHandler(data->isr);
     }
 
     if (data) {
@@ -304,7 +305,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -314,11 +315,11 @@ static status_t remove(struct device *dev)
 {
     struct ps2_mouse_data *data = (struct ps2_mouse_data *)dev->data;
 
-    _pc_isr_remove_handler(data->isr);
+    VlIntP_RemoveHandler(data->isr);
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

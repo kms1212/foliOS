@@ -10,12 +10,12 @@
 
 static struct device *device_list_head = NULL;
 
-struct device *device_get_first_dev(void)
+struct device *VlDev_GetFirst(void)
 {
     return device_list_head;
 }
 
-status_t device_create(struct device **devout, struct device_driver *drv, struct device *parent)
+status_t VlDev_Create(struct device **devout, struct device_driver *drv, struct device *parent)
 {
     struct device *dev;
 
@@ -50,7 +50,7 @@ status_t device_create(struct device **devout, struct device_driver *drv, struct
     return STATUS_SUCCESS;
 }
 
-void device_remove(struct device *dev)
+void VlDev_Remove(struct device *dev)
 {
     if (!device_list_head) return;
 
@@ -84,7 +84,7 @@ void device_remove(struct device *dev)
     free(dev);
 }
 
-status_t device_find(const char *id, struct device **dev)
+status_t VlDev_Find(const char *id, struct device **dev)
 {
     for (struct device *current = device_list_head; current; current = current->next) {
         if (strncmp(current->name, id, sizeof(current->name)) == 0) {
@@ -96,7 +96,7 @@ status_t device_find(const char *id, struct device **dev)
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t device_generate_name(const char *basename, char *buf, size_t len)
+status_t VlDev_GenerateName(const char *basename, char *buf, size_t len)
 {
     int id_max = -1;
     size_t basename_len = strlen(basename);
@@ -125,7 +125,7 @@ status_t device_generate_name(const char *basename, char *buf, size_t len)
 
 static struct device_driver *driver_list_head = NULL;
 
-status_t device_driver_create(struct device_driver **drvout)
+status_t VlDev_CreateDriver(struct device_driver **drvout)
 {
     struct device_driver *drv;
 
@@ -147,7 +147,7 @@ status_t device_driver_create(struct device_driver **drvout)
     return STATUS_SUCCESS;
 }
 
-status_t device_driver_find(const char *name, struct device_driver **drv)
+status_t VlDev_FindDriver(const char *name, struct device_driver **drv)
 {
     for (struct device_driver *current = driver_list_head; current; current = current->next) {
         if (strcmp(name, current->name) == 0) {

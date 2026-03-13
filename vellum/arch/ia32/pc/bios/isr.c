@@ -1,12 +1,13 @@
-#include <vellum/asm/isr.h>
+#include <vellum/plat/isr.h>
 
-#include <stdio.h>
+#include <inttypes.h>
 #include <stdlib.h>
 
-#include <vellum/asm/idt.h>
-#include <vellum/asm/intrinsics/idt.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/pic.h>
+#include <vellum/arch/idt.h>
+#include <vellum/arch/intrinsics/idt.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/pic.h>
 
 #include <vellum/debug.h>
 #include <vellum/log.h>
@@ -27,28 +28,28 @@ DECLARE_ISRx(0) DECLARE_ISRx(1) DECLARE_ISRx(2) DECLARE_ISRx(3) DECLARE_ISRx(4) 
 ) DECLARE_ISRx(8) DECLARE_ISRx(9) DECLARE_ISRx(a) DECLARE_ISRx(b) DECLARE_ISRx(c) DECLARE_ISRx(d) DECLARE_ISRx(e) DECLARE_ISRx(f)
 
 #define SET_INT_ENTRY(num)                                                                         \
-    _pc_idt[0x##num] = (struct idt_entry)                                                          \
+    _pc_idt[0x##num] = (struct VlA_IdtEntry)                                                       \
     {                                                                                              \
         .offset_low = (uint32_t)_pc_isr_##num & 0xFFFF, .segment_selector = 0x0008,                \
         .attributes = 0x8E, .offset_high = ((uint32_t)_pc_isr_##num >> 16) & 0xFFFF,               \
     }
 
 #define SET_TRAP_ENTRY(num)                                                                        \
-    _pc_idt[0x##num] = (struct idt_entry)                                                          \
+    _pc_idt[0x##num] = (struct VlA_IdtEntry)                                                       \
     {                                                                                              \
         .offset_low = (uint32_t)_pc_isr_##num & 0xFFFF, .segment_selector = 0x0008,                \
         .attributes = 0x8F, .offset_high = ((uint32_t)_pc_isr_##num >> 16) & 0xFFFF,               \
     }
 
-    struct idt_entry _pc_idt[256];
+    struct VlA_IdtEntry _pc_idt[256];
 struct isr_handler *_pc_isr_table[256];
 
-void _pc_isr_init(void)
+void VlIntP_Init(void)
 {
     _ia32_idtr.size = sizeof(_pc_idt) - 1;
     _ia32_idtr.idt_ptr = (uint32_t)&_pc_idt;
 
-    _ia32_lidt(&_ia32_idtr);
+    VlA_Lidt(&_ia32_idtr);
 
     for (int i = 0; i < ARRAY_SIZE(_pc_isr_table); i++) {
         _pc_isr_table[i] = NULL;
@@ -318,7 +319,7 @@ void _pc_isr_init(void)
     SET_TRAP_ENTRY(ff);
 }
 
-status_t _pc_isr_add_interrupt_handler(
+status_t VlIntP_AddInterruptHandler(
     int num, void *data, interrupt_handler_t func, struct isr_handler **handler
 )
 {
@@ -349,7 +350,7 @@ status_t _pc_isr_add_interrupt_handler(
     return STATUS_SUCCESS;
 }
 
-status_t _pc_isr_add_trap_handler(int num, trap_handler_t func, struct isr_handler **handler)
+status_t VlIntP_AddTrapHandler(int num, trap_handler_t func, struct isr_handler **handler)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
@@ -378,7 +379,7 @@ status_t _pc_isr_add_trap_handler(int num, trap_handler_t func, struct isr_handl
     return STATUS_SUCCESS;
 }
 
-void _pc_isr_remove_handler(struct isr_handler *handler)
+void VlIntP_RemoveHandler(struct isr_handler *handler)
 {
     struct isr_handler *prev_entry = NULL;
 
@@ -398,7 +399,7 @@ void _pc_isr_remove_handler(struct isr_handler *handler)
     free(prev_entry);
 }
 
-status_t _pc_isr_mask_interrupt(int num)
+status_t VlIntP_Mask(int num)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
@@ -414,7 +415,7 @@ status_t _pc_isr_mask_interrupt(int num)
     return STATUS_SUCCESS;
 }
 
-status_t _pc_isr_unmask_interrupt(int num)
+status_t VlIntP_Unmask(int num)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
@@ -432,12 +433,12 @@ status_t _pc_isr_unmask_interrupt(int num)
 
 static uint64_t irq_count = 0;
 
-uint64_t _pc_get_irq_count(void)
+uint64_t VlIntP_GetIrqCount(void)
 {
     return irq_count;
 }
 
-void _pc_isr_common(struct interrupt_frame *frame, struct trap_regs *regs, int num)
+void _pc_isr_common(struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num)
 {
     int has_error = 0, is_fault = 0;
     struct isr_handler *current_isr = _pc_isr_table[num];
@@ -449,33 +450,39 @@ void _pc_isr_common(struct interrupt_frame *frame, struct trap_regs *regs, int n
         is_fault = (0x603B7FE1 >> num) & 1;
     } else if (num < 0x30) {
         if (num >= 0x28) {
-            io_out8(0x00A0, 0x20);
+            VlA_Out8(0x00A0, 0x20);
         }
-        io_out8(0x0020, 0x20);
+        VlA_Out8(0x0020, 0x20);
     }
 
     if (!current_isr) {
         if (is_fault) {
             if (has_error) {
-                panic(
+                VlP_Panic(
                     STATUS_UNKNOWN_ERROR,
-                    "Unrecoverable fault #%02X(0x%08X) has occurred at 0x%04X:0x%08lX",
+                    "Unrecoverable fault #%02X(0x%08" PRIX32 ") has occurred at 0x%04" PRIX16
+                    ":0x%08" PRIX32,
                     num,
                     frame->error,
                     frame->cs,
                     frame->eip
                 );
             } else {
-                panic(
+                VlP_Panic(
                     STATUS_UNKNOWN_ERROR,
-                    "Unrecoverable fault #%02X has occurred at 0x%04X:0x%08lX",
+                    "Unrecoverable fault #%02X has occurred at 0x%04" PRIX16 ":0x%08" PRIX32,
                     num,
                     frame->cs,
                     frame->eip
                 );
             }
         } else {
-            ILOG_WARN("unhandled interrupt #%02X at 0x%04X:0x%08lX\n", num, frame->cs, frame->eip);
+            ILOG_WARN(
+                "unhandled interrupt #%02X at 0x%04" PRIX16 ":0x%08" PRIX32 "\n",
+                num,
+                frame->cs,
+                frame->eip
+            );
         }
     }
 

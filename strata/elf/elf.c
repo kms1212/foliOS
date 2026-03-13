@@ -55,11 +55,11 @@ StStatus StElf_Open(
         goto has_error;
     }
     if (elf->ident.endianness != ELFDATA2LSB) {
-        status = STATUS_UNSUPPORTED;
+        status = STATUS_NOT_SUPPORTED;
         goto has_error;
     }
     if (elf->ident.header_version != EV_CURRENT) {
-        status = STATUS_UNSUPPORTED;
+        status = STATUS_NOT_SUPPORTED;
         goto has_error;
     }
 
@@ -70,7 +70,7 @@ StStatus StElf_Open(
         }
 
         if (elf->ehdr32.machine != EM_386) {
-            status = STATUS_UNSUPPORTED;
+            status = STATUS_NOT_SUPPORTED;
             goto has_error;
         }
     } else if (elf->ident.class == ELFCLASS64) {
@@ -80,11 +80,11 @@ StStatus StElf_Open(
         }
 
         if (elf->ehdr64.machine != EM_X86_64) {
-            status = STATUS_UNSUPPORTED;
+            status = STATUS_NOT_SUPPORTED;
             goto has_error;
         }
     } else {
-        status = STATUS_UNSUPPORTED;
+        status = STATUS_NOT_SUPPORTED;
         goto has_error;
     }
 
@@ -112,7 +112,7 @@ StStatus StElf_GetHeader(struct StElf_Object *elf __in, void *buf __buf, size_t 
     } else if (elf->ident.class == ELFCLASS64) {
         memcpy(buf, &elf->ehdr64, MIN(len, sizeof(elf->ehdr64)));
     } else {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_SUPPORTED;
     }
 
     return STATUS_SUCCESS;
@@ -125,7 +125,7 @@ StStatus StElf_GetEntryPoint(struct StElf_Object *elf __in, uintptr_t *entry_poi
     } else if (elf->ident.class == ELFCLASS64) {
         *entry_point = (uintptr_t)elf->ehdr64.entry;
     } else {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_SUPPORTED;
     }
 
     return STATUS_SUCCESS;
@@ -138,7 +138,7 @@ StStatus StElf_GetProgramHeaderCount(struct StElf_Object *elf __in, unsigned int
     } else if (elf->ident.class == ELFCLASS64) {
         *count = elf->ehdr64.phnum;
     } else {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_SUPPORTED;
     }
 
     return STATUS_SUCCESS;
@@ -163,7 +163,7 @@ StStatus StElf_GetProgramHeader(
         phent_offset = elf->ehdr64.phoff + (StElf64_Off)(index * elf->ehdr64.phentsize);
         phent_size = MIN(len, elf->ehdr64.phentsize);
     } else {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_SUPPORTED;
     }
 
     status = copy_from_img(elf, phent_offset, buf, phent_size);
@@ -232,7 +232,7 @@ StStatus StElf_LoadProgram(
             map_flags &= ~MF_WRITABLE;
         }
     } else {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_SUPPORTED;
     }
 
     // allocate page

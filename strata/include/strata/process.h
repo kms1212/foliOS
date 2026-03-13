@@ -6,6 +6,13 @@
 #include <strata/mm/owner.h>
 #include <strata/status.h>
 
+enum StProcess_State {
+    PROCESS_STATE_PENDING = 0,
+    PROCESS_STATE_RUNNING,
+    PROCESS_STATE_SUSPENDED,
+    PROCESS_STATE_TERMINATED,
+};
+
 enum StProcess_Type {
     PROCESS_TYPE_USER = 0,
     PROCESS_TYPE_MODULE,
@@ -20,7 +27,7 @@ struct StProcess {
 
     StProcess_Id id;
     enum StProcess_Type type;
-
+    enum StProcess_State state;
     int is_dying;
 
     struct StProcessP_PlatformData platform_data;

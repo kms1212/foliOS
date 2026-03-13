@@ -1,8 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/io.h>
+#include <vellum/arch/intrinsics/misc.h>
+#include <vellum/arch/io.h>
 
 #include <vellum/device.h>
 #include <vellum/interface/char.h>
@@ -19,17 +19,17 @@ static status_t write(struct device *dev, const char *buf, size_t len, size_t *r
     struct ieee1284_isa_data *data = (struct ieee1284_isa_data *)dev->data;
 
     for (int i = 0; i < len; i++) {
-        while (!(io_in8(data->io_base + 1) & 0x80)) {
-            _ia32_pause();
+        while (!(VlA_In8(data->io_base + 1) & 0x80)) {
+            VlA_Pause();
         }
 
-        io_out8(data->io_base, buf[i]);
+        VlA_Out8(data->io_base, buf[i]);
 
-        uint8_t cr = io_in8(data->io_base + 2);
-        io_out8(data->io_base + 2, cr | 0x1);
+        uint8_t cr = VlA_In8(data->io_base + 2);
+        VlA_Out8(data->io_base + 2, cr | 0x1);
         for (volatile int j = 0; j < 2048; j++) {
         }
-        io_out8(data->io_base + 2, cr);
+        VlA_Out8(data->io_base + 2, cr);
     }
 
     if (result) *result = len;
@@ -56,9 +56,9 @@ static void ieee1284_isa_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"ieee1284_isa\"");
+        VlP_Panic(status, "cannot register device driver \"ieee1284_isa\"");
     }
 
     drv->name = "ieee1284_isa";
@@ -84,10 +84,10 @@ static status_t probe(
         goto has_error;
     }
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("par", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("par", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -99,13 +99,13 @@ static status_t probe(
     data->io_base = rsrc[0].base;
     dev->data = data;
 
-    io_out8(data->io_base + 2, 0x0C);
+    VlA_Out8(data->io_base + 2, 0x0C);
     for (volatile int j = 0; j < 2048; j++) {
     }
-    io_out8(data->io_base + 2, 0x08);
+    VlA_Out8(data->io_base + 2, 0x08);
     for (volatile int j = 0; j < 2048; j++) {
     }
-    io_out8(data->io_base + 2, 0x0C);
+    VlA_Out8(data->io_base + 2, 0x0C);
 
     if (devout) *devout = dev;
 
@@ -119,7 +119,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -131,7 +131,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

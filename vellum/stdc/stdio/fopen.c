@@ -10,21 +10,21 @@ FILE *fopen(const char *__restrict path, const char *__restrict mode)
     status_t status;
     struct path_iterator pathit;
 
-    path_iter_init(&pathit, path);
+    VlPath_InitIter(&pathit, path);
 
     if (!pathit.element[0]) {
         return NULL;
     }
 
     struct filesystem *fs;
-    status = filesystem_find(pathit.element, &fs);
+    status = VlFs_Find(pathit.element, &fs);
     if (!CHECK_SUCCESS(status)) return NULL;
 
     struct fs_directory *dir;
     status = fs->driver->open_root_directory(fs, &dir);
     if (!CHECK_SUCCESS(status)) return NULL;
 
-    while (!path_iter_next(&pathit)) {
+    while (!VlPath_AdvanceIter(&pathit)) {
         if (pathit.element[0] == '\0') {
             continue;
         }

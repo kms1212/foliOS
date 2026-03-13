@@ -61,20 +61,20 @@ struct fs_directory_entry {
     uint64_t size;
 };
 
-status_t filesystem_create(
+status_t VlFs_Create(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 );
-void filesystem_remove(struct filesystem *fs);
+void VlFs_Remove(struct filesystem *fs);
 
-struct filesystem *filesystem_get_first_fs(void);
-status_t filesystem_find(const char *name, struct filesystem **fs);
+struct filesystem *VlFs_GetFirst(void);
+status_t VlFs_Find(const char *name, struct filesystem **fs);
 
-status_t filesystem_driver_create(struct fs_driver **drv);
+status_t VlFs_CreateDriver(struct fs_driver **drv);
 
-status_t filesystem_driver_find(const char *name, struct fs_driver **drv);
+status_t VlFs_FindDriver(const char *name, struct fs_driver **drv);
 
-status_t filesystem_auto_mount(struct device *__restrict dev, const char *__restrict name);
-status_t filesystem_mount(
+status_t VlFs_MountAuto(struct device *__restrict dev, const char *__restrict name);
+status_t VlFs_Mount(
     struct device *__restrict dev, const char *__restrict fsname, const char *__restrict name
 );
 

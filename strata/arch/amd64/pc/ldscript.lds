@@ -30,7 +30,7 @@ SECTIONS
     .text : AT(ADDR(.text) - ADDR(.trampoline))
     {
         PROVIDE_HIDDEN(___text_start = .);
-        KEEP(*(.text .text.*))
+        *(.text .text.*)
         PROVIDE_HIDDEN(__text_end = .);
     }
 
@@ -38,7 +38,7 @@ SECTIONS
     .rodata :
     {
         PROVIDE_HIDDEN(__rodata_start = .);
-        KEEP(*(.rodata .rodata.*))
+        *(.rodata .rodata.*)
         PROVIDE_HIDDEN(__rodata_end = .);
     }
 

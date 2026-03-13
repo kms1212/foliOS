@@ -2,8 +2,6 @@
 
 #include <limits.h>
 
-#undef snprintf
-
 int snprintf(char *__restrict buf, size_t size, const char *__restrict fmt, ...)
 {
     va_list args;

@@ -9,6 +9,7 @@ CPU_TYPE=
 BOOT_TYPE= 
 MEM_SIZE=128M
 CDBOOT=false
+FDBOOT=false
 declare -a ADDITIONAL_FLAGS
 declare -a DEVICES
 declare -a QEMU_DEVICE_FLAGS
@@ -16,7 +17,7 @@ declare -a DRIVES
 declare -a QEMU_DRIVE_FLAGS
 
 print_usage() {
-    echo "usage: $0 [-chu] machine"
+    echo "usage: $0 [-cfhu] machine"
 }
 
 print_machines() {
@@ -32,10 +33,13 @@ print_machines() {
     echo "  mac99-ppc64"
 }
 
-while getopts "chu" arg; do
+while getopts "cfhu" arg; do
     case $arg in
         c)
             CDBOOT=true
+            ;;
+        f)
+            FDBOOT=true
             ;;
         h)
             print_usage
@@ -60,9 +64,7 @@ case $QEMU_MACHINE in
         CPU_TYPE=486
         MACHINE_TYPE=isapc
         DEVICES=(
-            "floppy,drive=rd0"
             "ide-hd,drive=fd0"
-            "ide-cd,drive=rd1"
             isa-ide
             i8042
             ne2k_isa
@@ -71,19 +73,22 @@ case $QEMU_MACHINE in
             mc146818rtc
             pc-testdev
         )
-        DRIVES=(
-            "file=floppy.img,id=rd0,if=none,format=raw"
-            "file=disk.img,id=fd0,if=none,format=raw"
-            "file=cdrom.iso,id=rd1,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
         ADDITIONAL_FLAGS=(-debugcon stdio)
+        if [ "$FDBOOT" = "true" ]; then
+            DEVICES+=("floppy,drive=rd0")
+            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+        fi
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("ide-cd,drive=rd1")
+            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+        fi
         ;;
     q35-ia32)
         QEMU_ARCH=ia32
         MACHINE_TYPE=q35
         DEVICES=(
             "nvme,drive=fd0,serial=1234"
-            # "ide-cd,drive=rd0"
             intel-hda
             qemu-xhci
             ich9-usb-uhci6
@@ -99,17 +104,18 @@ case $QEMU_MACHINE in
         )
         DRIVES=(
             "file=disk.img,id=fd0,if=none,format=raw"
-            # "file=cdrom.iso,id=rd0,if=none,format=raw"
         )
         ADDITIONAL_FLAGS=(-debugcon stdio)
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("ide-cd,drive=rd0")
+            DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
+        fi
         ;;
     pc-ia32)
         QEMU_ARCH=ia32
         MACHINE_TYPE=pc
         DEVICES=(
-            # "floppy,drive=rd0"
             "ide-hd,bus=ide.0,drive=fd0"
-            "ide-cd,bus=ide.0,drive=rd1"
             intel-hda
             qemu-xhci
             ich9-usb-uhci6
@@ -121,20 +127,22 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=(
-            # "file=floppy.img,id=rd0,if=none,format=raw"
-            "file=disk.img,id=fd0,index=0,if=none,format=raw"
-            "file=cdrom.iso,id=rd1,index=1,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,index=0,if=none,format=raw")
         ADDITIONAL_FLAGS=(-debugcon stdio)
+        if [ "$FDBOOT" = "true" ]; then
+            DEVICES+=("floppy,drive=rd0")
+            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+        fi
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("ide-cd,drive=rd1")
+            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+        fi
         ;;
     isapc-amd64)
         QEMU_ARCH=x86_64
         MACHINE_TYPE=isapc
         DEVICES=(
-            "floppy,drive=rd0"
             "ide-hd,drive=fd0"
-            "ide-cd,drive=rd1"
             isa-ide
             i8042
             ne2k_isa
@@ -143,19 +151,22 @@ case $QEMU_MACHINE in
             mc146818rtc
             pc-testdev
         )
-        DRIVES=(
-            "file=floppy.img,id=rd0,if=none,format=raw"
-            "file=disk.img,id=fd0,if=none,format=raw"
-            "file=cdrom.iso,id=rd1,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
         ADDITIONAL_FLAGS=(-debugcon stdio)
+        if [ "$FDBOOT" = "true" ]; then
+            DEVICES+=("floppy,drive=rd0")
+            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+        fi
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("ide-cd,drive=rd1")
+            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+        fi
         ;;
     q35-amd64)
         QEMU_ARCH=x86_64
         MACHINE_TYPE=q35
         DEVICES=(
             "nvme,drive=fd0,serial=1234"
-            "ide-cd,drive=rd0"
             intel-hda
             qemu-xhci
             ich9-usb-uhci6
@@ -169,19 +180,18 @@ case $QEMU_MACHINE in
             usb-kbd
             usb-mouse
         )
-        DRIVES=(
-            "file=disk.img,id=fd0,if=none,format=raw"
-            "file=cdrom.iso,id=rd0,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
         ADDITIONAL_FLAGS=(-debugcon stdio)
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("ide-cd,drive=rd0")
+            DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
+        fi
         ;;
     pc-amd64)
         QEMU_ARCH=x86_64
         MACHINE_TYPE=pc
         DEVICES=(
-            # "floppy,drive=rd0"
             "ide-hd,drive=fd0"
-            "ide-cd,drive=rd1"
             intel-hda
             qemu-xhci
             ich9-usb-uhci6
@@ -193,12 +203,16 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=(
-            # "file=floppy.img,id=rd0,if=none,format=raw"
-            "file=disk.img,id=fd0,if=none,format=raw"
-            "file=cdrom.iso,id=rd1,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
         ADDITIONAL_FLAGS=(-debugcon stdio)
+        if [ "$FDBOOT" = "true" ]; then
+            DEVICES+=("floppy,drive=rd0")
+            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+        fi
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("ide-cd,drive=rd1")
+            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+        fi
         ;;
     virt-arm)
         QEMU_ARCH=arm
@@ -207,7 +221,6 @@ case $QEMU_MACHINE in
         DEVICES=(
             virtio-scsi-pci
             "scsi-hd,drive=fd0"
-            "scsi-cd,drive=rd1"
             virtio-gpu-pci
             intel-hda
             qemu-xhci
@@ -221,10 +234,11 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=(
-            "file=disk.img,id=fd0,if=none,format=raw"
-            "file=cdrom.iso,id=rd1,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("scsi-cd,drive=rd1")
+            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+        fi
         ;;
     virt-aarch64)
         QEMU_ARCH=aarch64
@@ -233,7 +247,6 @@ case $QEMU_MACHINE in
         DEVICES=(
             virtio-scsi-pci
             "scsi-hd,drive=fd0"
-            "scsi-cd,drive=rd1"
             virtio-gpu-pci
             intel-hda
             qemu-xhci
@@ -247,10 +260,11 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=(
-            "file=disk.img,id=fd0,if=none,format=raw"
-            "file=cdrom.iso,id=rd1,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("scsi-cd,drive=rd1")
+            DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
+        fi
         ;;
     mac99-ppc64)
         QEMU_ARCH=ppc64
@@ -259,7 +273,6 @@ case $QEMU_MACHINE in
             # "floppy,drive=rd0"
             am53c974
             "scsi-hd,drive=fd0"
-            "scsi-cd,drive=rd1"
             ES1370
             qemu-xhci
             ich9-usb-uhci6
@@ -270,11 +283,15 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=(
-            # "file=floppy.img,id=rd0,if=none,format=raw"
-            "file=disk.img,id=fd0,if=none,format=raw"
-            "file=cdrom.iso,id=rd1,if=none,format=raw"
-        )
+        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        if [ "$FDBOOT" = "true" ]; then
+            DEVICES+=("floppy,drive=rd0")
+            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+        fi
+        if [ "$CDBOOT" = "true" ]; then
+            DEVICES+=("scsi-cd,drive=rd1")
+            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+        fi
         ;;
     help)
         print_machines
@@ -315,8 +332,10 @@ for drive in "${DRIVES[@]}"; do
     QEMU_DRIVE_FLAGS+=(-drive "$drive")
 done
 
-if [ "${CDBOOT}" = true ]; then
+if [ "$CDBOOT" = "true" ]; then
     ADDITIONAL_FLAGS+=(-boot d)
+elif [ "$FDBOOT" = "true" ]; then
+    ADDITIONAL_FLAGS+=(-boot a)
 fi
 
 # shellcheck disable=2086

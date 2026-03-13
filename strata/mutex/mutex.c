@@ -51,8 +51,8 @@ static void unblock_blocking_thread(struct StMutex *mtx)
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "unblocking thread #%d\n", th_to_unblock->id);
 
     th_to_unblock->mutex_blocking_next = NULL;
-    if (th_to_unblock->status == THREAD_STATE_BLOCKING) {
-        th_to_unblock->status = THREAD_STATE_RUNNING;
+    if (th_to_unblock->state == THREAD_STATE_BLOCKING) {
+        th_to_unblock->state = THREAD_STATE_RUNNING;
     }
 }
 
@@ -69,7 +69,7 @@ StStatus StMutex_Lock(struct StMutex *mtx)
     while (mtx->locked) {
         StThread_UnlockPreemption();
 
-        th->status = THREAD_STATE_BLOCKING;
+        th->state = THREAD_STATE_BLOCKING;
 
         add_blocking_thread(mtx, th);
 
@@ -86,7 +86,7 @@ StStatus StMutex_Lock(struct StMutex *mtx)
     return STATUS_SUCCESS;
 }
 
-StStatus StMutex_TryLock(struct StMutex *mtx)
+StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)
 {
     StStatus status;
     struct StThread *th;
@@ -99,13 +99,17 @@ StStatus StMutex_TryLock(struct StMutex *mtx)
     if (mtx->locked) {
         StThread_UnlockPreemption();
 
-        return STATUS_MUTEX_LOCKED;
+        if (locked) *locked = 0;
+
+        return STATUS_SUCCESS;
     }
 
     mtx->locked = 1;
     mtx->owner = th;
 
     StThread_UnlockPreemption();
+
+    if (locked) *locked = 1;
 
     return STATUS_SUCCESS;
 }

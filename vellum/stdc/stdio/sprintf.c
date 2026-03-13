@@ -2,8 +2,6 @@
 
 #include <limits.h>
 
-#undef sprintf
-
 int sprintf(char *__restrict buf, const char *__restrict fmt, ...)
 {
     va_list args;

@@ -17,10 +17,10 @@ struct ata_command {
 
 struct ide_interface {
     status_t (*send_command)(struct device *, struct ata_command *);
-    status_t (*send_command_pio_input)(
+    status_t (*send_command_pVlA_Input)(
         struct device *, struct ata_command *, void *, size_t, size_t, size_t *
     );
-    status_t (*send_command_pio_output)(
+    status_t (*send_command_pVlA_Output)(
         struct device *, struct ata_command *, const void *, size_t, size_t, size_t *
     );
     status_t (*send_command_packet)(struct device *, int, const uint8_t *, size_t, size_t);

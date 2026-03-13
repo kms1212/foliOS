@@ -5,10 +5,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <vellum/asm/instruction.h>
-#include <vellum/asm/intrinsics/invlpg.h>
-#include <vellum/asm/intrinsics/register.h>
-#include <vellum/asm/page.h>
+#include <vellum/arch/intrinsics/invlpg.h>
+#include <vellum/arch/intrinsics/register.h>
+
+#include <vellum/plat/instruction.h>
+#include <vellum/plat/page.h>
 
 #include <vellum/log.h>
 #include <vellum/macros.h>
@@ -58,7 +59,7 @@ status_t mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
     memset(pma_bitmap, 0, pma_bitmap_size);
 
     LOG_DEBUG(
-        "PMA bitmap initialized to 0x%p. basepfn=%lu limitpfn=%lu\n",
+        "PMA bitmap initialized to 0x%p. basepfn=%zu limitpfn=%zu\n",
         pma_bitmap,
         pma_base_pfn,
         pma_limit_pfn
@@ -97,7 +98,7 @@ status_t mm_pma_mark_reserved(uintptr_t base_paddr, uintptr_t limit_paddr)
         PBM_SET(i, PBM_RESERVED);
     }
 
-    LOG_TRACE("marked frame %08lX-%08lX to reserved\n", base_page, limit_page);
+    LOG_TRACE("marked frame %08zX-%08zX to reserved\n", base_page, limit_page);
 
     return STATUS_SUCCESS;
 }
@@ -150,7 +151,7 @@ status_t mm_pma_allocate_frame(size_t count, pfn_t *pfn)
     if (pfn) *pfn = pma_base_pfn + alloc_start_idx;
 
     LOG_TRACE(
-        "allocated frame %lu-%lu\n",
+        "allocated frame %zu-%zu\n",
         pma_base_pfn + alloc_start_idx,
         pma_base_pfn + alloc_start_idx + count - 1
     );
@@ -176,7 +177,7 @@ void mm_pma_free_frame(pfn_t pfn, size_t frame_count)
     }
 
     LOG_TRACE(
-        "freed frame %08lX-%08lX\n",
+        "freed frame %08zX-%08zX\n",
         pma_base_pfn + free_start_idx,
         pma_base_pfn + free_start_idx + frame_count - 1
     );
@@ -196,7 +197,7 @@ static status_t init_page_directory(void)
 {
     status_t status;
     pfn_t new_pt_pfn;
-    union page_table_entry *pt;
+    union VlA_PageTableEntry *pt;
 
     for (int i = 1; i < 1023; i++) {
         page_dir_recursive.pde[i].raw = 0x00000002;
@@ -229,17 +230,17 @@ status_t mm_init(void)
     if (!CHECK_SUCCESS(status)) return status;
 
     LOG_DEBUG("setting up registers...\n");
-    _ia32_write_cr3((uintptr_t)&page_dir_recursive);
-    cr0 = _ia32_read_cr0();
+    VlA_WriteCr3((uintptr_t)&page_dir_recursive);
+    cr0 = VlA_ReadCr0();
     cr0 |= CR0_PG;
-    _ia32_write_cr0(cr0);
+    VlA_WriteCr0(cr0);
 
     return STATUS_SUCCESS;
 }
 
 status_t mm_vpn_to_pfn(vpn_t vpn, pfn_t *pfn)
 {
-    union page_table_entry *pt =
+    union VlA_PageTableEntry *pt =
         (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
 
     if (vpn > 0x000FFFFF) return STATUS_INVALID_VALUE;
@@ -268,16 +269,16 @@ status_t mm_vaddr_to_paddr(void *vaddr, uintptr_t *paddr)
 static void invalidate_page(vpn_t vpn)
 {
     if (!_pc_invlpg_undefined) {
-        _ia32_invlpg((void *)(vpn * PAGE_SIZE));
+        VlA_Invlpg((void *)(vpn * PAGE_SIZE));
     } else {
-        _ia32_write_cr3(_ia32_read_cr3());
+        VlA_WriteCr3(VlA_ReadCr3());
     }
 }
 
 static status_t map(pfn_t pfn, vpn_t vpn, uint32_t flags)
 {
     status_t status;
-    union page_table_entry *pt = (void *)0xFFC00000;
+    union VlA_PageTableEntry *pt = (void *)0xFFC00000;
     pfn_t new_pt_pfn;
 
     if (vpn > 0x000FFFFF) return STATUS_INVALID_VALUE;
@@ -356,7 +357,7 @@ status_t mm_map(pfn_t pfn, vpn_t vpn, size_t page_count, uint32_t flags)
     // TODO: rollback if failed
 
     LOG_TRACE(
-        "mapped page %lu-%lu to frame %lu-%lu\n",
+        "mapped page %zu-%zu to frame %zu-%zu\n",
         pfn,
         pfn + page_count - 1,
         vpn,
@@ -368,7 +369,7 @@ status_t mm_map(pfn_t pfn, vpn_t vpn, size_t page_count, uint32_t flags)
 
 static void unmap(vpn_t vpn)
 {
-    union page_table_entry *pt =
+    union VlA_PageTableEntry *pt =
         (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
 
     if (vpn > 0x000FFFFF) return;
@@ -383,7 +384,7 @@ static void unmap(vpn_t vpn)
 
 status_t mm_unmap(vpn_t vpn, size_t page_count)
 {
-    LOG_TRACE("unmapping page %lu-%lu\n", vpn, vpn + page_count - 1);
+    LOG_TRACE("unmapping page %zu-%zu\n", vpn, vpn + page_count - 1);
 
     for (size_t i = 0; i < page_count; i++) {
         unmap(vpn + i);

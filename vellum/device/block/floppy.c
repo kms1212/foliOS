@@ -15,17 +15,17 @@ struct floppy_data {
 
 static status_t get_block_size(struct device *dev, size_t *size)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, size_t *result)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t write(struct device *dev, lba_t lba, const void *buf, size_t count, size_t *result)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static const struct block_interface blkif = {
@@ -49,9 +49,9 @@ static void floppy_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"floppy\"");
+        VlP_Panic(status, "cannot register device driver \"floppy\"");
     }
 
     drv->name = "floppy";
@@ -88,10 +88,10 @@ static status_t probe(
     status = fdcdev->driver->get_interface(fdcdev, "fdc", (const void **)&fdcif);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("rd", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("rd", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -112,7 +112,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -124,7 +124,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

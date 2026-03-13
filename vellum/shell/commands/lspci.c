@@ -59,7 +59,7 @@ static struct command lspci_command = {
 
 static void lspci_command_init(void)
 {
-    shell_command_register(&lspci_command);
+    VlShell_RegisterCommand(&lspci_command);
 }
 
 REGISTER_SHELL_COMMAND(lspci, lspci_command_init)

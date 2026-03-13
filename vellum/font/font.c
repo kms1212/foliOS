@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/bios/video.h>
+#include <vellum/plat/bios/video.h>
 
 #include <vellum/compiler.h>
 #include <vellum/encoding/cp437.h>
@@ -26,7 +26,7 @@ struct glyph_header {
     uint8_t reserved[3];
 } __packed;
 
-status_t font_use(const char *path)
+status_t VlFont_Use(const char *path)
 {
     long file_size;
     char signature[4];
@@ -73,7 +73,7 @@ status_t font_use(const char *path)
     return STATUS_SUCCESS;
 }
 
-status_t font_get_glyph_dimension(wchar_t codepoint, int *width, int *height)
+status_t VlFont_GetGlyphDimension(wchar_t codepoint, int *width, int *height)
 {
     if (!font_file_data) {
         if (width) {
@@ -104,7 +104,7 @@ status_t font_get_glyph_dimension(wchar_t codepoint, int *width, int *height)
     return STATUS_SUCCESS;
 }
 
-status_t font_get_glyph_data(wchar_t codepoint, uint8_t *buf, size_t size)
+status_t VlFont_GetGlyphData(wchar_t codepoint, uint8_t *buf, size_t size)
 {
     status_t status;
     uint8_t cp437_char;
@@ -115,7 +115,7 @@ status_t font_get_glyph_data(wchar_t codepoint, uint8_t *buf, size_t size)
     if (!font_file_data) {
         if (size < 16) return STATUS_INVALID_VALUE;
 
-        status = enc_utf32_to_cp437(codepoint, &cp437_char);
+        status = StEnc_Utf32ToCp437(codepoint, &cp437_char);
         if (!CHECK_SUCCESS(status)) return status;
 
         memcpy(buf, (const uint8_t *)vbios_font + 16 * cp437_char, 16);
@@ -141,5 +141,5 @@ status_t font_get_glyph_data(wchar_t codepoint, uint8_t *buf, size_t size)
 
 __constructor static void _init_vbios_font(void)
 {
-    _pc_bios_video_get_font_data(0x06, &vbios_font, NULL);
+    VlBiosP_GetVideoFontData(0x06, &vbios_font, NULL);
 }

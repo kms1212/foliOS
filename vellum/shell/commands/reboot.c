@@ -1,10 +1,10 @@
 #include <vellum/shell.h>
 
-#include <vellum/asm/power.h>
+#include <vellum/plat/power.h>
 
 __noreturn static int reboot_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    _pc_reboot();
+    VlP_Reboot();
 }
 
 static struct command reboot_command = {
@@ -15,7 +15,7 @@ static struct command reboot_command = {
 
 static void reboot_command_init(void)
 {
-    shell_command_register(&reboot_command);
+    VlShell_RegisterCommand(&reboot_command);
 }
 
 REGISTER_SHELL_COMMAND(reboot, reboot_command_init)

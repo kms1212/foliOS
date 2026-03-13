@@ -17,7 +17,7 @@ static struct command clear_command = {
 
 static void clear_command_init(void)
 {
-    shell_command_register(&clear_command);
+    VlShell_RegisterCommand(&clear_command);
 }
 
 REGISTER_SHELL_COMMAND(clear, clear_command_init)

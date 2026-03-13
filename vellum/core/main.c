@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/bios/bootinfo.h>
-#include <vellum/asm/bios/misc.h>
-#include <vellum/asm/power.h>
+#include <vellum/plat/bios/bootinfo.h>
+#include <vellum/plat/bios/misc.h>
+#include <vellum/plat/power.h>
 
 #include <vellum/device.h>
 #include <vellum/filesystem.h>
@@ -26,7 +26,7 @@
 
 #define MODULE_NAME "main"
 
-void setup_tty(void)
+static void setup_tty(void)
 {
     status_t status;
     struct device *fbdev;
@@ -37,56 +37,56 @@ void setup_tty(void)
     struct device *ttydev;
     struct device_driver *ttydrv;
 
-    status = device_find("video0", &fbdev);
+    status = VlDev_Find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "find_device() failed: 0x%08X\n", status);
-        panic(status, "video device not available");
+        fprintf(stderr, "find_device() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "video device not available");
     }
 
     status = fbdev->driver->get_interface(fbdev, "framebuffer", (const void **)&fbi);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "get_interface() failed: 0x%08X\n", status);
-        panic(status, "failed to get interface from device");
+        fprintf(stderr, "get_interface() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "failed to get interface from device");
     }
 
-    status = device_driver_find("vconsole", &condrv);
+    status = VlDev_FindDriver("vconsole", &condrv);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "find_device_driver() failed: 0x%08X\n", status);
-        panic(status, "failed to initialize essential virtual device");
+        fprintf(stderr, "find_device_driver() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "failed to initialize essential virtual device");
     }
 
     status = condrv->probe(&condev, condrv, fbdev, NULL, 0);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "register_device() failed: 0x%08X\n", status);
-        panic(status, "failed to initialize essential virtual device");
+        fprintf(stderr, "register_device() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "failed to initialize essential virtual device");
     }
 
     status = condev->driver->get_interface(condev, "console", (const void **)&vci);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "get_interface() failed: 0x%08X\n", status);
-        panic(status, "failed to get interface from device");
+        fprintf(stderr, "get_interface() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "failed to get interface from device");
     }
 
-    status = device_driver_find("ansiterm", &ttydrv);
+    status = VlDev_FindDriver("ansiterm", &ttydrv);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "find_device_driver() failed: 0x%08X\n", status);
-        panic(status, "failed to initialize essential virtual device");
+        fprintf(stderr, "find_device_driver() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "failed to initialize essential virtual device");
     }
 
     status = ttydrv->probe(&ttydev, ttydrv, condev, NULL, 0);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "register_device() failed: 0x%08X\n", status);
-        panic(status, "failed to initialize essential virtual device");
+        fprintf(stderr, "register_device() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "failed to initialize essential virtual device");
     }
 
     if (freopendevice("tty0", stdout)) {
-        panic(STATUS_UNKNOWN_ERROR, "failed to reopen essential file");
+        VlP_Panic(STATUS_UNKNOWN_ERROR, "failed to reopen essential file");
     }
     if (freopendevice("tty0", stderr)) {
-        panic(STATUS_UNKNOWN_ERROR, "failed to reopen essential file");
+        VlP_Panic(STATUS_UNKNOWN_ERROR, "failed to reopen essential file");
     }
     if (freopendevice("kbd0", stdin)) {
-        panic(STATUS_UNKNOWN_ERROR, "failed to reopen essential file");
+        VlP_Panic(STATUS_UNKNOWN_ERROR, "failed to reopen essential file");
     }
 }
 
@@ -95,7 +95,7 @@ const char *config_password;
 time_t config_timezone_offset;
 int config_rtc_utc;
 
-void read_config(void)
+static void read_config(void)
 {
     status_t status;
     FILE *cfg_fp = NULL;
@@ -125,13 +125,13 @@ void read_config(void)
 
     cfg_str = malloc(cfg_len);
     if (!cfg_str) {
-        panic(STATUS_UNKNOWN_ERROR, "failed to allocate memory");
+        VlP_Panic(STATUS_UNKNOWN_ERROR, "failed to allocate memory");
     }
     fread(cfg_str, cfg_len, 1, cfg_fp);
 
-    status = json_parse(cfg_str, cfg_len, &json);
+    status = VlJson_Parse(cfg_str, cfg_len, &json);
     if (!CHECK_SUCCESS(status) || !json || json->type != JVT_OBJECT) {
-        panic(STATUS_INVALID_FORMAT, "invalid config file");
+        VlP_Panic(STATUS_INVALID_FORMAT, "invalid config file");
     }
 
     free(cfg_str);
@@ -140,17 +140,17 @@ void read_config(void)
     config_data = json;
 
     /* read out password */
-    status = json_object_find_value(&config_data->obj, "password", &password);
+    status = VlJson_GetObjectElementValue(&config_data->obj, "password", &password);
     if (!CHECK_SUCCESS(status) || !password) {
         config_password = NULL;
     } else if (password->type == JVT_STRING) {
         config_password = password->str;
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"password\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"password\" has invalid value type");
     }
 
     /* read out timezone */
-    status = json_object_find_value(&config_data->obj, "timezone", &timezone);
+    status = VlJson_GetObjectElementValue(&config_data->obj, "timezone", &timezone);
     if (!CHECK_SUCCESS(status) || !timezone) {
         config_timezone_offset = 0;
     } else if (timezone->type == JVT_STRING) {
@@ -158,41 +158,41 @@ void read_config(void)
     } else if (timezone->type == JVT_NUMBER) {
         config_timezone_offset = timezone->num;
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"timezone\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"timezone\" has invalid value type");
     }
 
     /* read out whether rtc stores utc */
-    status = json_object_find_value(&config_data->obj, "rtc_utc", &rtc_utc);
+    status = VlJson_GetObjectElementValue(&config_data->obj, "rtc_utc", &rtc_utc);
     if (!CHECK_SUCCESS(status) || !rtc_utc) {
         config_rtc_utc = 1; /* assume that rtc stores utc time */
     } else if (rtc_utc->type == JVT_BOOLEAN) {
         config_rtc_utc = rtc_utc->boolean;
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"rtc_utc\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"rtc_utc\" has invalid value type");
     }
 
     /* run startup script */
-    status = json_object_find_value(&config_data->obj, "start_script", &start_script);
+    status = VlJson_GetObjectElementValue(&config_data->obj, "start_script", &start_script);
     if (!CHECK_SUCCESS(status) || !start_script) {
         // skip running startup script
     } else if (start_script->type == JVT_STRING) {
-        shell_execute(NULL, start_script->str);
+        VlShell_Execute(NULL, start_script->str);
     } else if (start_script->type == JVT_ARRAY) {
         for (struct json_array_elem *elem = start_script->arr.elem; elem; elem = elem->next) {
             if (elem->value->type != JVT_STRING) {
-                panic(
+                VlP_Panic(
                     STATUS_INVALID_FORMAT,
                     "an element of array \"start_script\" has invalid value type"
                 );
             }
-            shell_execute(NULL, elem->value->str);
+            VlShell_Execute(NULL, elem->value->str);
         }
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"start_script\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"start_script\" has invalid value type");
     }
 }
 
-int show_menu(struct json_value *menu, int root_menu)
+static int show_menu(struct json_value *menu, int root_menu)
 {
     status_t status;
     struct device *kbd;
@@ -213,58 +213,58 @@ int show_menu(struct json_value *menu, int root_menu)
     struct json_value *submenu = NULL;
 
     /* read out title */
-    status = json_object_find_value(&menu->obj, "title", &title);
+    status = VlJson_GetObjectElementValue(&menu->obj, "title", &title);
     if (!CHECK_SUCCESS(status) || !title) {
         title_value = NULL;
     } else if (title->type == JVT_STRING) {
         title_value = title->str;
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"title\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"title\" has invalid value type");
     }
 
     /* read out option selection timeout */
-    status = json_object_find_value(&menu->obj, "timeout", &timeout);
+    status = VlJson_GetObjectElementValue(&menu->obj, "timeout", &timeout);
     if (!CHECK_SUCCESS(status) || !timeout) {
         timeout_value = 5;
     } else if (timeout->type == JVT_NUMBER) {
         timeout_value = (int)timeout->num;
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"timeout\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"timeout\" has invalid value type");
     }
 
     /* read out default option entry */
-    status = json_object_find_value(&menu->obj, "default", &_default);
+    status = VlJson_GetObjectElementValue(&menu->obj, "default", &_default);
     if (!CHECK_SUCCESS(status) || !_default) {
         default_value = 0;
     } else if (_default->type == JVT_NUMBER) {
         default_value = (int)_default->num;
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"default\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"default\" has invalid value type");
     }
 
-    status = device_find("kbd0", &kbd);
+    status = VlDev_Find("kbd0", &kbd);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "keyboard not detected");
+        VlP_Panic(status, "keyboard not detected");
     }
 
     status = kbd->driver->get_interface(kbd, "hid", (const void **)&hidi);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "failed to get interface from device");
+        VlP_Panic(status, "failed to get interface from device");
     }
 
-    status = json_object_find_value(&menu->obj, "options", &options);
+    status = VlJson_GetObjectElementValue(&menu->obj, "options", &options);
     if (!CHECK_SUCCESS(status) || !options) {
-        panic(
+        VlP_Panic(
             !CHECK_SUCCESS(status) ? status : STATUS_INVALID_FORMAT,
             "element \"options\" not found"
         );
     } else if (options->type != JVT_ARRAY) {
-        panic(STATUS_INVALID_FORMAT, "element \"options\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"options\" has invalid value type");
     }
 
-    status = json_array_get_element_count(&options->arr, &option_count);
+    status = VlJson_GetArrayElementCount(&options->arr, &option_count);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot get element count of element \"options\"");
+        VlP_Panic(status, "cannot get element count of element \"options\"");
     }
 
 reselect:
@@ -281,17 +281,20 @@ reselect:
     while (!selected) {
         printf("\x1b[?25l\x1b[5;0H");
         for (int i = 0; i < option_count; i++) {
-            status = json_array_find_value(&options->arr, i, &option);
+            status = VlJson_GetArrayElementValue(&options->arr, i, &option);
             if (!CHECK_SUCCESS(status) || !option || option->type != JVT_OBJECT) {
-                panic(
+                VlP_Panic(
                     STATUS_INVALID_FORMAT,
                     "an element of array \"options\" is not found or has invalid type"
                 );
             }
 
-            status = json_object_find_value(&option->obj, "name", &option_name);
+            status = VlJson_GetObjectElementValue(&option->obj, "name", &option_name);
             if (!CHECK_SUCCESS(status) || !option_name || option_name->type != JVT_STRING) {
-                panic(STATUS_INVALID_FORMAT, "element \"name\" is not found or has invalid type");
+                VlP_Panic(
+                    STATUS_INVALID_FORMAT,
+                    "element \"name\" is not found or has invalid type"
+                );
             }
 
             if (selection == i) {
@@ -358,9 +361,9 @@ reselect:
         return 1;
     }
 
-    status = json_array_find_value(&options->arr, selection, &option);
+    status = VlJson_GetArrayElementValue(&options->arr, selection, &option);
     if (!CHECK_SUCCESS(status) || !option || option->type != JVT_OBJECT) {
-        panic(
+        VlP_Panic(
             STATUS_INVALID_FORMAT,
             "an element of array \"options\" is not found or has invalid type"
         );
@@ -368,30 +371,30 @@ reselect:
 
     fputs("\x1b[3J\x1b[0;0f\x1b[?25h", stdout);
 
-    status = json_object_find_value(&option->obj, "script", &option_script);
+    status = VlJson_GetObjectElementValue(&option->obj, "script", &option_script);
     if (!CHECK_SUCCESS(status) || !option_script) {
     } else if (option_script->type == JVT_STRING) {
-        shell_execute(NULL, option_script->str);
+        VlShell_Execute(NULL, option_script->str);
     } else if (option_script->type == JVT_ARRAY) {
         for (struct json_array_elem *elem = option_script->arr.elem; elem; elem = elem->next) {
             if (elem->value->type != JVT_STRING) {
-                panic(
+                VlP_Panic(
                     STATUS_INVALID_FORMAT,
                     "an element of array \"script\" has invalid value type"
                 );
             }
-            shell_execute(NULL, elem->value->str);
+            VlShell_Execute(NULL, elem->value->str);
         }
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"script\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"script\" has invalid value type");
     }
 
-    status = json_object_find_value(&option->obj, "submenu", &submenu);
+    status = VlJson_GetObjectElementValue(&option->obj, "submenu", &submenu);
     if (!CHECK_SUCCESS(status) || !submenu) {
     } else if (submenu->type == JVT_OBJECT) {
         if (show_menu(submenu, 0)) goto reselect;
     } else {
-        panic(STATUS_INVALID_FORMAT, "element \"script\" has invalid value type");
+        VlP_Panic(STATUS_INVALID_FORMAT, "element \"script\" has invalid value type");
     }
 
     return 0;
@@ -407,18 +410,18 @@ __noreturn void main(void)
     read_config();
 
     if (config_data) {
-        status = json_object_find_value(&config_data->obj, "menu", &menu);
+        status = VlJson_GetObjectElementValue(&config_data->obj, "menu", &menu);
         if (!CHECK_SUCCESS(status) || !menu) {
         } else if (menu->type == JVT_OBJECT) {
             show_menu(menu, 1);
         } else {
-            panic(STATUS_INVALID_FORMAT, "element \"menu\" has invalid value type");
+            VlP_Panic(STATUS_INVALID_FORMAT, "element \"menu\" has invalid value type");
         }
     } else {
         printf("boot configuration file not found.\n");
     }
 
     for (;;) {
-        shell_execute(NULL, "shell");
+        VlShell_Execute(NULL, "shell");
     }
 }

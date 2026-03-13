@@ -21,6 +21,6 @@ struct resource {
     uint32_t flags;
 };
 
-struct resource *create_resource(struct resource *prev);
+struct resource *VlRes_Create(struct resource *prev);
 
 #endif  // __VELLUM_RESOURCE_H__

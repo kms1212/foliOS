@@ -86,9 +86,9 @@ static void folifs_init(void)
     status_t status;
     struct fs_driver *drv;
 
-    status = filesystem_driver_create(&drv);
+    status = VlFs_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register fs driver \"folifs\"");
+        VlP_Panic(status, "cannot register fs driver \"folifs\"");
     }
 
     drv->name = "folifs";
@@ -172,7 +172,7 @@ static status_t mount(
     if (!CHECK_SUCCESS(status)) return status;
     if (block_size != 512) return STATUS_SIZE_CHECK_FAILURE;
 
-    status = filesystem_create(&fs, drv, dev, name);
+    status = VlFs_Create(&fs, drv, dev, name);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -241,7 +241,7 @@ has_error:
     }
 
     if (fs) {
-        filesystem_remove(fs);
+        VlFs_Remove(fs);
     }
 
     return status;
@@ -255,29 +255,29 @@ static status_t unmount(struct filesystem *fs)
 
     free(data);
 
-    filesystem_remove(fs);
+    VlFs_Remove(fs);
 
     return STATUS_SUCCESS;
 }
 
 static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t seek(struct fs_file *file, off_t offset, int origin)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t tell(struct fs_file *file, off_t *result)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static void close(struct fs_file *file) {}
@@ -294,24 +294,24 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
     // dir->fs = fs;
     // dir->data = dir_data;
 
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t open_directory(
     struct fs_directory *dir, const char *name, struct fs_directory **dirout
 )
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t rewind_directory(struct fs_directory *dir)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static void close_directory(struct fs_directory *dir) {}

@@ -43,7 +43,7 @@ static const uint8_t unicode_cp437_table_4[] = {
     0x00, 0x05, 0x00, 0x03, 0x04, 0x00, 0x00, 0x00, 0x0D, 0x0E, 0x00, 0x00, 0x00, 0x00,
 };
 
-status_t enc_utf32_to_cp437(wchar_t utf32, uint8_t *cp437out)
+status_t StEnc_Utf32ToCp437(wchar_t utf32, uint8_t *cp437out)
 {
     uint8_t cp437;
 

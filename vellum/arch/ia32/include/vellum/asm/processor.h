@@ -1,6 +1,0 @@
-#ifndef __VELLUM_ASM_PROCESSOR_H__
-#define __VELLUM_ASM_PROCESSOR_H__
-
-#define __PROCESSOR_LITTLE_ENDIAN 1
-
-#endif  // __VELLUM_ASM_PROCESSOR_H__

@@ -7,7 +7,7 @@ __always_inline void StA_Sti(void) {}
 
 __always_inline void StA_Cli(void) {}
 
-__always_inline void StA_Halt(void) {}
+__always_inline void StA_Hlt(void) {}
 
 __always_inline void StA_Pause(void) {}
 

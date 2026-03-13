@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <vellum/asm/io.h>
+#include <vellum/arch/io.h>
 
 static int out_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -18,15 +18,15 @@ static int out_handler(struct shell_instance *inst, int argc, char **argv)
     switch (*argv[2]) {
     case 'b':
     case 'B':
-        io_out8(addr, value);
+        VlA_Out8(addr, value);
         break;
     case 'w':
     case 'W':
-        io_out16(addr, value);
+        VlA_Out16(addr, value);
         break;
     case 'd':
     case 'D':
-        io_out32(addr, value);
+        VlA_Out32(addr, value);
         break;
     default:
         return 1;
@@ -43,7 +43,7 @@ static struct command out_command = {
 
 static void out_command_init(void)
 {
-    shell_command_register(&out_command);
+    VlShell_RegisterCommand(&out_command);
 }
 
 REGISTER_SHELL_COMMAND(out, out_command_init)

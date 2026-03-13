@@ -117,7 +117,7 @@ static struct command testtty_command = {
 
 static void testtty_command_init(void)
 {
-    shell_command_register(&testtty_command);
+    VlShell_RegisterCommand(&testtty_command);
 }
 
 REGISTER_SHELL_COMMAND(testtty, testtty_command_init)

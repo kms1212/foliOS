@@ -58,7 +58,7 @@ static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, siz
         };
     }
 
-    status = data->ideif->send_command_pio_input(data->idedev, &cmd, buf, 512, count, &xfer_count);
+    status = data->ideif->send_command_pVlA_Input(data->idedev, &cmd, buf, 512, count, &xfer_count);
     if (!CHECK_SUCCESS(status)) return status;
 
     if (result) *result = xfer_count;
@@ -68,7 +68,7 @@ static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, siz
 
 static status_t write(struct device *dev, lba_t lba, const void *buf, size_t count, size_t *result)
 {
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static const struct block_interface blkif = {
@@ -92,9 +92,9 @@ static void ata_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"ata\"");
+        VlP_Panic(status, "cannot register device driver \"ata\"");
     }
 
     drv->name = "ata";
@@ -135,10 +135,10 @@ static status_t probe(
     status = idedev->driver->get_interface(idedev, "ide", (const void **)&ideif);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("fd", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("fd", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -163,19 +163,19 @@ static status_t probe(
         .drive_head = 0xA0 | (data->slave ? 0x10 : 0x00),
     };
 
-    status = ideif->send_command_pio_input(idedev, &cmd, &ata_ident, sizeof(ata_ident), 1, NULL);
+    status = ideif->send_command_pVlA_Input(idedev, &cmd, &ata_ident, sizeof(ata_ident), 1, NULL);
     if (!CHECK_SUCCESS(status)) {
         goto has_error;
     }
 
     LOG_DEBUG("detecting partition table...\n");
-    status = device_driver_find("mbr", &ptdrv);
+    status = VlDev_FindDriver("mbr", &ptdrv);
     if (CHECK_SUCCESS(status)) {
         status = ptdrv->probe(&ptdev, ptdrv, dev, NULL, 0);
         if (CHECK_SUCCESS(status)) return STATUS_SUCCESS;
     }
 
-    status = device_driver_find("gpt", &ptdrv);
+    status = VlDev_FindDriver("gpt", &ptdrv);
     if (CHECK_SUCCESS(status)) {
         status = ptdrv->probe(&ptdev, ptdrv, dev, NULL, 0);
         if (CHECK_SUCCESS(status)) return STATUS_SUCCESS;
@@ -193,7 +193,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -205,7 +205,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <vellum/asm/io.h>
+#include <vellum/arch/io.h>
 
 static int write_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -28,7 +28,7 @@ static struct command write_command = {
 
 static void write_command_init(void)
 {
-    shell_command_register(&write_command);
+    VlShell_RegisterCommand(&write_command);
 }
 
 REGISTER_SHELL_COMMAND(write, write_command_init)

@@ -7,9 +7,10 @@
 #include <uacpi/acpi.h>
 #include <uacpi/kernel_api.h>
 
-#include <vellum/asm/bios/mem.h>
-#include <vellum/asm/intrinsics/register.h>
-#include <vellum/asm/pc_page.h>
+#include <vellum/arch/intrinsics/register.h>
+
+#include <vellum/plat/bios/mem.h>
+#include <vellum/plat/page.h>
 
 #include <vellum/device.h>
 #include <vellum/elf.h>
@@ -43,7 +44,7 @@ static status_t count_smap_entry(int *result)
     int count = 0;
 
     do {
-        status = _pc_bios_mem_query_map(&cursor, &smap_entry, sizeof(smap_entry));
+        status = VlBiosP_QueryMemoryMap(&cursor, &smap_entry, sizeof(smap_entry));
         if (!CHECK_SUCCESS(status)) return status;
 
         count++;
@@ -73,7 +74,7 @@ static void fill_pagetable_frame_entries(
     uint32_t filled_entries = 0;
 
     if (max_count-- > 0) {
-        entries[filled_entries].pfn_base = (_ia32_read_cr3() & 0xFFFFF000) >> 12;
+        entries[filled_entries].pfn_base = (VlA_ReadCr3() & 0xFFFFF000) >> 12;
         entries[filled_entries].count = 1;
         entries[filled_entries].type = BEUT_PAGETABLE;
         filled_entries++;
@@ -107,7 +108,7 @@ static int count_kernel_ufent(void *load_vaddr, uint32_t max_count)
         prev_pfn = pfn;
     }
 
-    LOG_DEBUG("count = %lu\n", count);
+    LOG_DEBUG("count = %" PRIu32 "\n", count);
 
     return count;
 }
@@ -157,13 +158,13 @@ static status_t load_kernel(
     size_t program_size = 0;
     void *load_paddr = NULL;
 
-    status = elf_open(path, &elf);
+    status = VlElf_Open(path, &elf);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: failed to open file\n", argv0);
         return status;
     }
 
-    status = elf_get_header(elf, &ident, sizeof(ident));
+    status = VlElf_GetHeader(elf, &ident, sizeof(ident));
     if (!CHECK_SUCCESS(status)) return status;
 
     if (ident.class == ELFCLASS32) {
@@ -171,7 +172,7 @@ static status_t load_kernel(
 
         LOG_DEBUG("calculating program offset and size...\n");
         for (int i = 0; i < elf->ehdr32.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr32, sizeof(phdr32));
+            status = VlElf_GetProgramHeader(elf, i, &phdr32, sizeof(phdr32));
             if (!CHECK_SUCCESS(status)) return status;
 
             if (!load_paddr || (uintptr_t)load_paddr > phdr32.paddr) {
@@ -187,7 +188,7 @@ static status_t load_kernel(
 
         LOG_DEBUG("calculating program offset and size...\n");
         for (int i = 0; i < elf->ehdr64.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr64, sizeof(phdr64));
+            status = VlElf_GetProgramHeader(elf, i, &phdr64, sizeof(phdr64));
             if (!CHECK_SUCCESS(status)) return status;
 
             if (!load_paddr || (uintptr_t)load_paddr > phdr64.paddr) {
@@ -211,22 +212,22 @@ static status_t load_kernel(
     LOG_DEBUG("loading program...\n");
     if (ident.class == ELFCLASS32) {
         for (int i = 0; i < elf->ehdr32.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr32, sizeof(phdr32));
+            status = VlElf_GetProgramHeader(elf, i, &phdr32, sizeof(phdr32));
             if (!CHECK_SUCCESS(status)) return status;
 
             if (phdr32.type != PT_LOAD) continue;
 
-            status = elf_load_program(elf, i, NULL);
+            status = VlElf_LoadProgram(elf, i, NULL);
             if (!CHECK_SUCCESS(status)) return status;
         }
     } else if (ident.class == ELFCLASS64) {
         for (int i = 0; i < elf->ehdr64.phnum; i++) {
-            status = elf_get_program_header(elf, i, &phdr64, sizeof(phdr64));
+            status = VlElf_GetProgramHeader(elf, i, &phdr64, sizeof(phdr64));
             if (!CHECK_SUCCESS(status)) return status;
 
             if (phdr64.type != PT_LOAD) continue;
 
-            status = elf_load_program(elf, i, NULL);
+            status = VlElf_LoadProgram(elf, i, NULL);
             if (!CHECK_SUCCESS(status)) return status;
         }
     }
@@ -274,7 +275,7 @@ static status_t make_bootinfo_table(
     struct bootinfo_entry_pagetable_vpn *entry_pagetable_vpn;
     uint32_t strtab_cursor;
 
-    status = device_find("video0", &fbdev);
+    status = VlDev_Find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot find device\n", argv[0]);
         return status;
@@ -426,7 +427,7 @@ static status_t make_bootinfo_table(
     entry_memory_map->entry_count = mmap_entry_count;
     smap_cursor = 0;
     for (int i = 0; i < mmap_entry_count; i++) {
-        _pc_bios_mem_query_map(&smap_cursor, &smap_entry, sizeof(smap_entry));
+        VlBiosP_QueryMemoryMap(&smap_cursor, &smap_entry, sizeof(smap_entry));
         entry_memory_map->entries[i].base =
             (uint64_t)smap_entry.base_addr_high << 32 | smap_entry.base_addr_low;
         entry_memory_map->entries[i].size =
@@ -532,11 +533,11 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     char path[PATH_MAX];
-    if (path_is_absolute(argv[1])) {
+    if (VlPath_IsAbsolute(argv[1])) {
         strncpy(path, argv[1], sizeof(path) - 1);
     } else {
         strncpy(path, inst->working_dir_path, sizeof(path) - 1);
-        path_join(path, sizeof(path), argv[1]);
+        VlPath_Join(path, sizeof(path), argv[1]);
 
         if (!inst->fs) {
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
@@ -567,7 +568,7 @@ static struct command loadst_command = {
 
 __constructor static void init()
 {
-    shell_command_register(&loadst_command);
+    VlShell_RegisterCommand(&loadst_command);
 }
 
 status_t _start(int argc, char **argv)
@@ -577,5 +578,5 @@ status_t _start(int argc, char **argv)
 
 __destructor static void deinit(void)
 {
-    shell_command_unregister(&loadst_command);
+    VlShell_UnregisterCommand(&loadst_command);
 }

@@ -2,8 +2,6 @@
 
 #include <vellum/panic.h>
 
-#undef fprintf
-
 int __fprintf_chk(FILE *__restrict stream, int flag, const char *__restrict fmt, ...)
 {
     va_list args;

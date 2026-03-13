@@ -17,7 +17,7 @@ project("foliOS")
 add_subdirectory(tools)  # host tools
 
 # Project configurations
-set(TARGET "ia32-pc-bios" CACHE STRING "Target triple (arch-board-firmware)")
+set(TARGET "ia32-pc-bios" CACHE STRING "Target triplet (arch-board-firmware)")
 set(CONFIG_PRESET "default" CACHE STRING "Preset name of build configuration")
 option(ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
 option(BUILD_TESTING "Build tests" OFF)
@@ -60,6 +60,7 @@ ExternalProject_Add(vellum
         -DCMAKE_C_CLANG_TIDY:STRING=${VELLUM_C_CLANG_TIDY}
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=${CMAKE_EXPORT_COMPILE_COMMANDS}
         -DCMAKE_COMPILER_LAUNCHER:FILEPATH=${CMAKE_COMPILER_LAUNCHER}
+        -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/${VELLUM_TARGET_ARCH}/Toolchain.cmake
     CMAKE_ARGS
         -DTARGET_ARCH=${VELLUM_TARGET_ARCH}
         -DTARGET_PLATFORM=${TARGET_PLATFORM}
@@ -83,6 +84,7 @@ ExternalProject_Add(strata
         -DCMAKE_C_CLANG_TIDY:STRING=${STRATA_C_CLANG_TIDY}
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=${CMAKE_EXPORT_COMPILE_COMMANDS}
         -DCMAKE_COMPILER_LAUNCHER:FILEPATH=${CMAKE_COMPILER_LAUNCHER}
+        -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/${TARGET_ARCH}/Toolchain.cmake
     CMAKE_ARGS
         -DTARGET_ARCH=${TARGET_ARCH}
         -DTARGET_PLATFORM=${TARGET_PLATFORM}

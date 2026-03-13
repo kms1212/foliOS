@@ -12,6 +12,8 @@
 static struct StA_GdtEntry _pc_gdt[GDT_ENTRY_COUNT];
 static struct StA_Gdtr _pc_gdtr;
 
+extern char _early_stack[];
+
 static void gdt_load(void)
 {
     __asm__ volatile(  //
@@ -61,8 +63,6 @@ static void set_gdt_system_entry(
     ssent->access_byte.raw = access;
 }
 
-extern int _early_stack;
-
 void StP_InitGdt(void)
 {
     struct StA_Tss *tss = StP_GetTss();
@@ -81,7 +81,7 @@ void StP_InitGdt(void)
     StA_Lgdt(&_pc_gdtr);
 
     StP_InitTss();
-    StP_SetTssStack((uintptr_t)&_early_stack);
+    StP_SetTssStack((uintptr_t)_early_stack);
 
     gdt_load();
 

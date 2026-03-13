@@ -3,7 +3,7 @@
 
 #include <strata/compiler.h>
 
-__always_inline void StA_Halt(void)
+__always_inline void StA_Hlt(void)
 {
     __asm__ volatile("hlt");
 }

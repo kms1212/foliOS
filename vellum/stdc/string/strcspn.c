@@ -1,7 +1,5 @@
 #include <string.h>
 
-#undef strcspn
-
 size_t strcspn(const char *p1, const char *p2)
 {
     size_t ret = 0;

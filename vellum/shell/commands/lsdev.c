@@ -25,7 +25,7 @@ static void print_dev_tree(struct device *parent_dev, int indent, uint32_t chain
 
 static int lsdev_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    struct device *dev = device_get_first_dev();
+    struct device *dev = VlDev_GetFirst();
     struct device *last_root_dev = NULL;
 
     printf("System\n");
@@ -59,7 +59,7 @@ static struct command lsdev_command = {
 
 static void lsdev_command_init(void)
 {
-    shell_command_register(&lsdev_command);
+    VlShell_RegisterCommand(&lsdev_command);
 }
 
 REGISTER_SHELL_COMMAND(lsdev, lsdev_command_init)

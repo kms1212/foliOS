@@ -142,6 +142,7 @@ StStatus StThreadP_SetupThreadUserStack(
     const char *const *envs
 )
 {
+    StStatus status;
     struct StMm_AddressSpace *asp = th->process->address_space;
     uintptr_t rsp = th->umode_stack_ptr;
     size_t data_size = 0;
@@ -150,7 +151,7 @@ StStatus StThreadP_SetupThreadUserStack(
     char *args_start;
     size_t args_size = 0;
     void *random_start;
-    void *auxv_start;
+    void *execfn_start;
 
     // envs
     for (int i = 0; i < env_count; i++) {
@@ -166,6 +167,10 @@ StStatus StThreadP_SetupThreadUserStack(
     data_size += args_size;
     args_start = (void *)(rsp - data_size);
 
+    // execfn
+    data_size += strlen(args[0]) + 1;
+    execfn_start = (void *)(rsp - data_size);
+
     // random data
     data_size = ALIGN(data_size, 16);
     data_size += sizeof(uint8_t) * 16;
@@ -173,17 +178,18 @@ StStatus StThreadP_SetupThreadUserStack(
 
     // auxv
     struct StElf64_Auxv auxv[] = {
-        {AT_ENTRY, (uint64_t)th->umode_entry},
-        {AT_PAGESZ, 4096},
+        {AT_ENTRY, (uintptr_t)th->umode_entry},
+        {AT_PAGESZ, PAGE_SIZE},
         {AT_UID, 0},
         {AT_EUID, 0},
         {AT_GID, 0},
         {AT_EGID, 0},
-        {AT_RANDOM, (uint64_t)rsp - data_size},
+        {AT_RANDOM, (uintptr_t)random_start},
+        {AT_EXECFN, (uintptr_t)execfn_start},
+        {AT_SYSINFO, (uintptr_t)0xFFFF800000000000},
         {AT_NULL, 0},
     };
     data_size += sizeof(auxv);
-    auxv_start = (void *)(rsp - data_size);
 
     // make stack space and align stack pointer
     rsp -= data_size;
@@ -192,19 +198,26 @@ StStatus StThreadP_SetupThreadUserStack(
         rsp -= sizeof(uint64_t);
     }
 
-    // fill auxv
-    StMm_WriteLocal(asp, (uintptr_t)auxv_start, auxv, sizeof(auxv));
+    // fill execfn
+    status = StMm_WriteLocal(asp, (uintptr_t)execfn_start, args[0], strlen(args[0]) + 1);
+    if (!CHECK_SUCCESS(status)) goto has_error;
 
     // fill random data
     uint8_t random_data[16];
     memset(random_data, 0xA5, sizeof(random_data));
-    StMm_WriteLocal(asp, (uintptr_t)random_start, random_data, sizeof(random_data));
+    status = StMm_WriteLocal(asp, (uintptr_t)random_start, random_data, sizeof(random_data));
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    // fill auxv
+    status = StMm_WriteLocal(asp, rsp, auxv, sizeof(auxv));
+    if (!CHECK_SUCCESS(status)) goto has_error;
 
     // fill & push envp
     push_u64(asp, &rsp, 0);
     for (int i = env_count - 1; i >= 0; i--) {
         size_t slen = strlen(envs[i]) + 1;
-        StMm_WriteLocal(asp, (uintptr_t)envs_start + envs_size - slen, envs[i], slen);
+        status = StMm_WriteLocal(asp, (uintptr_t)envs_start + envs_size - slen, envs[i], slen);
+        if (!CHECK_SUCCESS(status)) goto has_error;
         envs_size -= slen;
         push_u64(asp, &rsp, (uint64_t)envs_start + envs_size);
     }
@@ -213,7 +226,8 @@ StStatus StThreadP_SetupThreadUserStack(
     push_u64(asp, &rsp, 0);
     for (int i = arg_count - 1; i >= 0; i--) {
         size_t slen = strlen(args[i]) + 1;
-        StMm_WriteLocal(asp, (uintptr_t)args_start + args_size - slen, args[i], slen);
+        status = StMm_WriteLocal(asp, (uintptr_t)args_start + args_size - slen, args[i], slen);
+        if (!CHECK_SUCCESS(status)) goto has_error;
         args_size -= slen;
         push_u64(asp, &rsp, (uint64_t)args_start + args_size);
     }
@@ -224,6 +238,9 @@ StStatus StThreadP_SetupThreadUserStack(
     th->umode_stack_ptr = rsp;
 
     return STATUS_SUCCESS;
+
+has_error:
+    return status;
 }
 
 void StThreadP_FreeThreadUserStack(struct StThread *th __in)
@@ -304,12 +321,12 @@ StStatus StThreadP_Switch(
     StCpuLocalP_GetData()->kernel_rsp = kstack_top;
 
     /* set FS base */
-    if (next->platform_data.fs_base != StA_ReadMsr(MSR_FS_BASE)) {
+    if (next->platform_data.fs_base != current->platform_data.fs_base) {
         StA_WriteMsr(MSR_FS_BASE, next->platform_data.fs_base);
     }
 
     /* set GS base */
-    if (next->platform_data.gs_base != StA_ReadMsr(MSR_KERNEL_GS_BASE)) {
+    if (next->platform_data.gs_base != current->platform_data.fs_base) {
         StA_WriteMsr(MSR_KERNEL_GS_BASE, next->platform_data.gs_base);
     }
 

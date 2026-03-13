@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-void path_iter_init(struct path_iterator *it, const char *path)
+void VlPath_InitIter(struct path_iterator *it, const char *path)
 {
     it->path = path;
     it->cursor = path;
@@ -20,7 +20,7 @@ void path_iter_init(struct path_iterator *it, const char *path)
     }
 }
 
-int path_iter_next(struct path_iterator *it)
+int VlPath_AdvanceIter(struct path_iterator *it)
 {
     const char *p = it->cursor;
     it->has_separator = (*p == '/');
@@ -51,7 +51,7 @@ int path_iter_next(struct path_iterator *it)
     return *it->cursor == '\0';
 }
 
-char *path_join(char *dest, size_t len, const char *src)
+char *VlPath_Join(char *dest, size_t len, const char *src)
 {
     size_t dest_slen = strnlen(dest, len);
     char *cur = dest + dest_slen;
@@ -73,14 +73,14 @@ char *path_join(char *dest, size_t len, const char *src)
     return dest;
 }
 
-char *path_normalize(char *dest, size_t len, const char *src)
+char *VlPath_Normalize(char *dest, size_t len, const char *src)
 {
     if (!dest || len == 0 || !src) {
         return NULL;
     }
 
     struct path_iterator it;
-    path_iter_init(&it, src);
+    VlPath_InitIter(&it, src);
 
     char *write_pos = dest;
     char *dest_end = dest + len - 1;
@@ -102,7 +102,7 @@ char *path_normalize(char *dest, size_t len, const char *src)
 
     int asdf;
     do {
-        asdf = path_iter_next(&it);
+        asdf = VlPath_AdvanceIter(&it);
 
         if (first_loop) {
             if (it.has_separator) {
@@ -221,7 +221,7 @@ char *path_normalize(char *dest, size_t len, const char *src)
     return dest;
 }
 
-char *path_get_fsname(char *buf, size_t len, const char *path)
+char *VlPath_GetFsname(char *buf, size_t len, const char *path)
 {
     const char *fsname_end = strchr(path, ':');
     if (!fsname_end) {
@@ -236,7 +236,7 @@ char *path_get_fsname(char *buf, size_t len, const char *path)
     return buf;
 }
 
-char *path_get_dirname(char *buf, size_t len, const char *path)
+char *VlPath_GetDirname(char *buf, size_t len, const char *path)
 {
     const char *dirname_end = strrchr(path, '/');
     if (!dirname_end) {
@@ -250,22 +250,22 @@ char *path_get_dirname(char *buf, size_t len, const char *path)
     return buf;
 }
 
-char *path_get_basename(char *buf, size_t len, const char *path)
+char *VlPath_GetBasename(char *buf, size_t len, const char *path)
 {
     return buf;
 }
 
-char *path_get_stem(char *buf, size_t len, const char *path)
+char *VlPath_GetStem(char *buf, size_t len, const char *path)
 {
     return buf;
 }
 
-char *path_get_extension(char *buf, size_t len, const char *path)
+char *VlPath_GetExtension(char *buf, size_t len, const char *path)
 {
     return buf;
 }
 
-int path_is_absolute(const char *path)
+int VlPath_IsAbsolute(const char *path)
 {
     if (path[0] == '/') {
         return 1;
@@ -279,4 +279,4 @@ int path_is_absolute(const char *path)
     return 0;
 }
 
-int path_compare(const char *path1, const char *path2, int case_sensitive);
+int VlPath_Compare(const char *path1, const char *path2, int case_sensitive);

@@ -2,10 +2,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
-#include <vellum/asm/time.h>
+#include <vellum/arch/intrinsics/misc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/isr.h>
+#include <vellum/plat/time.h>
 
 #include <vellum/device.h>
 #include <vellum/hid.h>
@@ -35,9 +36,9 @@ static status_t wait_for_status_register(
 
     uint64_t tick_start = get_global_tick();
 
-    while ((io_in8(data->io_ctrl) & mask) != value) {
+    while ((VlA_In8(data->io_ctrl) & mask) != value) {
         if (get_global_tick() - tick_start > timeout) return STATUS_IO_TIMEOUT;
-        _ia32_pause();
+        VlA_Pause();
     }
 
     return STATUS_SUCCESS;
@@ -51,11 +52,11 @@ static status_t read_ccb(struct device *dev, uint8_t *value)
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
-    io_out8(data->io_ctrl, 0x20);
+    VlA_Out8(data->io_ctrl, 0x20);
 
     status = wait_for_status_register(dev, 0x01, 0x01, 2);
     if (!CHECK_SUCCESS(status)) return status;
-    ccb = io_in8(data->io_data);
+    ccb = VlA_In8(data->io_data);
 
     if (value) *value = ccb;
 
@@ -69,11 +70,11 @@ static status_t write_ccb(struct device *dev, uint8_t value)
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
-    io_out8(data->io_ctrl, 0x60);
+    VlA_Out8(data->io_ctrl, 0x60);
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
-    io_out8(data->io_data, value);
+    VlA_Out8(data->io_data, value);
 
     return STATUS_SUCCESS;
 }
@@ -86,7 +87,7 @@ static status_t enable_port(struct device *dev, int port)
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
-    io_out8(data->io_ctrl, port ? 0xA8 : 0xAE);
+    VlA_Out8(data->io_ctrl, port ? 0xA8 : 0xAE);
 
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) return status;
@@ -105,7 +106,7 @@ static status_t disable_port(struct device *dev, int port)
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
-    io_out8(data->io_ctrl, port ? 0xA7 : 0xAD);
+    VlA_Out8(data->io_ctrl, port ? 0xA7 : 0xAD);
 
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) return status;
@@ -123,14 +124,14 @@ static status_t test_port(struct device *dev, int port)
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
-    io_out8(data->io_ctrl, port ? 0xA9 : 0xAB);
+    VlA_Out8(data->io_ctrl, port ? 0xA9 : 0xAB);
 
     status = wait_for_status_register(dev, 0x01, 0x01, 2);
     if (!CHECK_SUCCESS(status)) return status;
 
     LOG_DEBUG("testing port #%d\n", port);
 
-    return io_in8(data->io_data) ? STATUS_HARDWARE_NOT_FOUND : STATUS_SUCCESS;
+    return VlA_In8(data->io_data) ? STATUS_HARDWARE_NOT_FOUND : STATUS_SUCCESS;
 }
 
 static status_t send_data(struct device *dev, int port, const uint8_t *buf, int len)
@@ -142,13 +143,13 @@ static status_t send_data(struct device *dev, int port, const uint8_t *buf, int 
         if (port) {
             status = wait_for_status_register(dev, 0x00, 0x02, 2);
             if (!CHECK_SUCCESS(status)) return status;
-            io_out8(data->io_ctrl, 0xD4);
+            VlA_Out8(data->io_ctrl, 0xD4);
         }
 
         status = wait_for_status_register(dev, 0x00, 0x02, 2);
         if (!CHECK_SUCCESS(status)) return status;
 
-        io_out8(data->io_data, buf[i]);
+        VlA_Out8(data->io_data, buf[i]);
     }
 
     return STATUS_SUCCESS;
@@ -163,7 +164,7 @@ static status_t recv_data(struct device *dev, int port, uint8_t *buf, int len)
         status = wait_for_status_register(dev, 0x01, 0x01, 2);
         if (!CHECK_SUCCESS(status)) return status;
 
-        buf[i] = io_in8(data->io_data);
+        buf[i] = VlA_In8(data->io_data);
     }
 
     return STATUS_SUCCESS;
@@ -173,7 +174,7 @@ static status_t irq_get_byte(struct device *dev, uint8_t *result)
 {
     struct i8042_data *data = (struct i8042_data *)dev->data;
 
-    uint8_t byte = io_in8(data->io_data);
+    uint8_t byte = VlA_In8(data->io_data);
 
     if (result) *result = byte;
 
@@ -204,9 +205,9 @@ static void i8042_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"i8042\"");
+        VlP_Panic(status, "cannot register device driver \"i8042\"");
     }
 
     drv->name = "i8042";
@@ -238,10 +239,10 @@ static status_t probe(
         goto has_error;
     }
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("ps2c", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("ps2c", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -266,7 +267,7 @@ static status_t probe(
 
     LOG_DEBUG("flushing output buffer...\n");
     /* flush the output buffer*/
-    io_in8(data->io_data);
+    VlA_In8(data->io_data);
 
     LOG_DEBUG("disabling translation & IRQ...\n");
     /* disable translation & IRQ */
@@ -278,11 +279,11 @@ static status_t probe(
 
     LOG_DEBUG("running controller self-test...\n");
     /* perform controller self-test */
-    io_out8(data->io_ctrl, 0xAA);
+    VlA_Out8(data->io_ctrl, 0xAA);
 
     status = wait_for_status_register(dev, 0x01, 0x01, 2);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    if (io_in8(data->io_data) != 0x55) return STATUS_HARDWARE_FAILED;
+    if (VlA_In8(data->io_data) != 0x55) return STATUS_HARDWARE_FAILED;
 
     LOG_DEBUG("disabling translation & IRQ again...\n");
     /* disable translation & IRQ (again) */
@@ -293,12 +294,12 @@ static status_t probe(
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     /* initialize child devices */
-    status = device_driver_find("ps2_keyboard", &kbdrv);
+    status = VlDev_FindDriver("ps2_keyboard", &kbdrv);
     if (!CHECK_SUCCESS(status)) {
         kbdrv = NULL;
     }
 
-    status = device_driver_find("ps2_mouse", &msdrv);
+    status = VlDev_FindDriver("ps2_mouse", &msdrv);
     if (!CHECK_SUCCESS(status)) {
         msdrv = NULL;
     }
@@ -365,7 +366,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -380,12 +381,12 @@ static status_t remove(struct device *dev)
     }
 
     /* enable translation & IRQ */
-    io_out8(data->io_ctrl, 0x60);
-    io_out8(data->io_data, 0x67);
+    VlA_Out8(data->io_ctrl, 0x60);
+    VlA_Out8(data->io_data, 0x67);
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

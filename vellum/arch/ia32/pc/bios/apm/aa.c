@@ -1,9 +1,9 @@
-#include <vellum/asm/apm.h>
+#include <vellum/plat/apm.h>
 
-#include <vellum/asm/bios/apm.h>
-#include <vellum/asm/bios/bioscall.h>
-#include <vellum/asm/farptr.h>
-#include <vellum/asm/pc_gdt.h>
+#include <vellum/plat/bios/apm.h>
+#include <vellum/plat/bios/bioscall.h>
+#include <vellum/plat/farptr.h>
+#include <vellum/plat/gdt.h>
 
 #define MAKE_STATUS(code) (code ? (0xA0001500 | (code)) : STATUS_SUCCESS)
 

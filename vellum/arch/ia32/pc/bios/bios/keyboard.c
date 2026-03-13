@@ -1,22 +1,22 @@
-#include <vellum/asm/bios/keyboard.h>
+#include <vellum/plat/bios/keyboard.h>
 
-#include <vellum/asm/bios/bioscall.h>
+#include <vellum/plat/bios/bioscall.h>
 
-void _pc_bios_keyboard_get_stroke(uint8_t *scancode, char *ascii)
+void VlBiosP_GetKeyboardStroke(uint8_t *scancode, char *ascii)
 {
     struct bioscall_regs regs = {.a.b.h = 0x10};
 
-    _pc_bios_call(0x16, &regs);
+    VlBiosP_Call(0x16, &regs);
 
     if (scancode) *scancode = regs.a.b.h;
     if (ascii) *ascii = (char)regs.a.b.l;
 }
 
-int _pc_bios_keyboard_check_stroke(uint8_t *scancode, char *ascii)
+int VlBiosP_CheckKeyboardStroke(uint8_t *scancode, char *ascii)
 {
     struct bioscall_regs regs = {.a.b.h = 0x11};
 
-    _pc_bios_call(0x16, &regs);
+    VlBiosP_Call(0x16, &regs);
 
     if (!regs.a.w) return 1;
 
@@ -26,11 +26,11 @@ int _pc_bios_keyboard_check_stroke(uint8_t *scancode, char *ascii)
     return 0;
 }
 
-uint16_t _pc_bios_keyboard_get_state(void)
+uint16_t VlBiosP_GetKeyboardState(void)
 {
     struct bioscall_regs regs = {.a.b.h = 0x12};
 
-    _pc_bios_call(0x16, &regs);
+    VlBiosP_Call(0x16, &regs);
 
     return regs.a.w;
 }

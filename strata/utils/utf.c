@@ -35,23 +35,24 @@ StStatus StUtf_CountUtf8Chars(
         }
 
         if (len == 2) {
-            if (((uint8_t)src[i + 1] & 0xC0) != 0x80)
+            if (((uint8_t)src[i + 1] & 0xC0) != 0x80) {
                 valid = 0;
-            else if ((((c & 0x1F) << 6) | ((uint8_t)src[i + 1] & 0x3F)) < 0x80)
+            } else if ((((c & 0x1F) << 6) | ((uint8_t)src[i + 1] & 0x3F)) < 0x80) {
                 valid = 0;
+            }
         } else if (len == 3) {
-            if (((uint8_t)src[i + 1] & 0xC0) != 0x80 || ((uint8_t)src[i + 2] & 0xC0) != 0x80)
+            if (((uint8_t)src[i + 1] & 0xC0) != 0x80 || ((uint8_t)src[i + 2] & 0xC0) != 0x80) {
                 valid = 0;
-            else {
+            } else {
                 uint32_t wc = ((c & 0x0F) << 12) | (((uint8_t)src[i + 1] & 0x3F) << 6) |
                     ((uint8_t)src[i + 2] & 0x3F);
                 if (wc < 0x800 || (wc >= 0xD800 && wc <= 0xDFFF)) valid = 0;
             }
         } else if (len == 4) {
             if (((uint8_t)src[i + 1] & 0xC0) != 0x80 || ((uint8_t)src[i + 2] & 0xC0) != 0x80 ||
-                ((uint8_t)src[i + 3] & 0xC0) != 0x80)
+                ((uint8_t)src[i + 3] & 0xC0) != 0x80) {
                 valid = 0;
-            else {
+            } else {
                 uint32_t wc = ((c & 0x07) << 18) | (((uint8_t)src[i + 1] & 0x3F) << 12) |
                     (((uint8_t)src[i + 2] & 0x3F) << 6) | ((uint8_t)src[i + 3] & 0x3F);
                 if (wc < 0x10000 || wc > UTF8_MAX_CODEPOINT) valid = 0;
@@ -81,38 +82,39 @@ StStatus StUtf_Utf8ToUtf32(
         uint8_t c = (uint8_t)src[i];
         uint32_t wc = UTF_REPLACEMENT_CODEPOINT;
         int len = get_seq_len(c);
-        int valid = 1;
 
-        if (i + len > src_size) {  // Buffer Overrun
+        if (i + len > src_size) {
             i = src_size;
-            valid = 0;
         } else if (len == 0) {
             i++;
-            valid = 0;
         } else {
-            /* 디코딩 및 유효성 검사 */
+            int valid = 1;
+
             if (len == 1)
                 wc = c;
             else if (len == 2) {
-                if (((uint8_t)src[i + 1] & 0xC0) != 0x80)
+                if (((uint8_t)src[i + 1] & 0xC0) != 0x80) {
                     valid = 0;
-                else
+                } else {
                     wc = ((c & 0x1F) << 6) | ((uint8_t)src[i + 1] & 0x3F);
+                }
                 if (wc < 0x80) valid = 0;
             } else if (len == 3) {
-                if (((uint8_t)src[i + 1] & 0xC0) != 0x80 || ((uint8_t)src[i + 2] & 0xC0) != 0x80)
+                if (((uint8_t)src[i + 1] & 0xC0) != 0x80 || ((uint8_t)src[i + 2] & 0xC0) != 0x80) {
                     valid = 0;
-                else
+                } else {
                     wc = ((c & 0x0F) << 12) | (((uint8_t)src[i + 1] & 0x3F) << 6) |
                         ((uint8_t)src[i + 2] & 0x3F);
+                }
                 if (wc < 0x800 || (wc >= 0xD800 && wc <= 0xDFFF)) valid = 0;
             } else if (len == 4) {
                 if (((uint8_t)src[i + 1] & 0xC0) != 0x80 || ((uint8_t)src[i + 2] & 0xC0) != 0x80 ||
-                    ((uint8_t)src[i + 3] & 0xC0) != 0x80)
+                    ((uint8_t)src[i + 3] & 0xC0) != 0x80) {
                     valid = 0;
-                else
+                } else {
                     wc = ((c & 0x07) << 18) | (((uint8_t)src[i + 1] & 0x3F) << 12) |
                         (((uint8_t)src[i + 2] & 0x3F) << 6) | ((uint8_t)src[i + 3] & 0x3F);
+                }
                 if (wc < 0x10000 || wc > UTF8_MAX_CODEPOINT) valid = 0;
             }
 
@@ -128,7 +130,9 @@ StStatus StUtf_Utf8ToUtf32(
         count++;
     }
 
-    *countout = count;
+    if (count < dest_size) dest[count] = U'\0';
+
+    if (countout) *countout = count;
     return STATUS_SUCCESS;
 }
 
@@ -140,14 +144,13 @@ StStatus StUtf_Utf32ToUtf8(
     size_t *countout __out
 )
 {
-    size_t i = 0;  // src index
-    size_t b = 0;  // dest byte index
+    size_t i = 0;
+    size_t b = 0;
 
     while (i < src_size) {
         St_Utf32Char wc = src[i++];
         int needed = 0;
 
-        /* 필요한 바이트 수 계산 */
         if (wc < 0x80)
             needed = 1;
         else if (wc < 0x800)
@@ -157,11 +160,11 @@ StStatus StUtf_Utf32ToUtf8(
         else if (wc <= UTF8_MAX_CODEPOINT)
             needed = 4;
         else
-            needed = 3;  // Replacement Char (EF BF BD)
+            needed = 3;
 
         /* 출력 버퍼 공간 확인 */
         if (b + needed > dest_size) {
-            break; /* 공간 부족 시 중단 (Truncate) */
+            break;
         }
 
         if (needed == 1) {
@@ -170,7 +173,7 @@ StStatus StUtf_Utf32ToUtf8(
             dest[b] = (St_Utf8Char)(0xC0 | (wc >> 6));
             dest[b + 1] = (St_Utf8Char)(0x80 | (wc & 0x3F));
         } else if (needed == 3) {
-            if (wc > UTF8_MAX_CODEPOINT) {  // Replacement
+            if (wc > UTF8_MAX_CODEPOINT) {
                 dest[b] = (St_Utf8Char)0xEF;
                 dest[b + 1] = (St_Utf8Char)0xBF;
                 dest[b + 2] = (St_Utf8Char)0xBD;
@@ -189,6 +192,8 @@ StStatus StUtf_Utf32ToUtf8(
         b += needed;
     }
 
-    *countout = b;
+    if (b < dest_size) dest[b] = '\0';
+
+    if (countout) *countout = b;
     return STATUS_SUCCESS;
 }

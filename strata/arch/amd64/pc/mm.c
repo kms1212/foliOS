@@ -751,5 +751,5 @@ StStatus StMmP_CopyLocal(
 )
 {
     // TODO: implement
-    return STATUS_UNIMPLEMENTED;
+    return STATUS_NOT_IMPLEMENTED;
 }

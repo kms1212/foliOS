@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-#include <vellum/asm/intrinsics/cpuid.h>
+#include <vellum/arch/intrinsics/cpuid.h>
 
 static int check_cpuid_available(void)
 {
@@ -33,14 +33,14 @@ static int cpuid_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     uint32_t eax, ebx, ecx, edx;
-    _ia32_cpuid(0, &eax, &ebx, &ecx, &edx);
+    VlA_Cpuid(0, &eax, &ebx, &ecx, &edx);
 
     max_param = eax;
     uint32_t vendor_str[3] = {ebx, edx, ecx};
     printf("Vendor String: %12s\n", (char *)vendor_str);
 
     if (max_param >= 1) {
-        _ia32_cpuid(1, &eax, &ebx, &ecx, &edx);
+        VlA_Cpuid(1, &eax, &ebx, &ecx, &edx);
 
         printf("Processor Type: %1lX\n", (eax & 0x00003000) >> 12);
         printf("Model ID: %02lX\n", ((eax & 0x000F0000) >> 12) | ((eax & 0x000000F0) >> 4));
@@ -92,7 +92,7 @@ static int cpuid_handler(struct shell_instance *inst, int argc, char **argv)
         printf("\n");
     }
 
-    _ia32_cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
+    VlA_Cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
     max_param = eax;
 
     if (max_param >= 0x80000001) {
@@ -160,9 +160,9 @@ static int cpuid_handler(struct shell_instance *inst, int argc, char **argv)
     if (max_param >= 0x80000004) {
         uint32_t brand_str[12];
 
-        _ia32_cpuid(0x80000002, &brand_str[0], &brand_str[1], &brand_str[2], &brand_str[3]);
-        _ia32_cpuid(0x80000003, &brand_str[4], &brand_str[5], &brand_str[6], &brand_str[7]);
-        _ia32_cpuid(0x80000004, &brand_str[8], &brand_str[9], &brand_str[10], &brand_str[11]);
+        VlA_Cpuid(0x80000002, &brand_str[0], &brand_str[1], &brand_str[2], &brand_str[3]);
+        VlA_Cpuid(0x80000003, &brand_str[4], &brand_str[5], &brand_str[6], &brand_str[7]);
+        VlA_Cpuid(0x80000004, &brand_str[8], &brand_str[9], &brand_str[10], &brand_str[11]);
 
         printf("Brand String: %48s\n", (char *)brand_str);
     }
@@ -178,7 +178,7 @@ static struct command cpuid_command = {
 
 static void cpuid_command_init(void)
 {
-    shell_command_register(&cpuid_command);
+    VlShell_RegisterCommand(&cpuid_command);
 }
 
 REGISTER_SHELL_COMMAND(cpuid, cpuid_command_init)

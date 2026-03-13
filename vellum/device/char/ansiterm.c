@@ -1379,9 +1379,9 @@ static void ansiterm_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"ansiterm\"");
+        VlP_Panic(status, "cannot register device driver \"ansiterm\"");
     }
 
     drv->name = "ansiterm";
@@ -1413,10 +1413,10 @@ static status_t probe(
     status = condev->driver->get_interface(condev, "console", (const void **)&conif);
     if (!conif) goto has_error;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("tty", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("tty", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -1455,7 +1455,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -1467,7 +1467,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

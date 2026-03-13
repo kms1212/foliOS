@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <vellum/asm/elf.h>
+#include <vellum/arch/elf.h>
 
 #include <vellum/compiler.h>
 #include <vellum/status.h>
@@ -516,21 +516,21 @@ struct elf_file {
     size_t symtab_size;
 };
 
-status_t elf_open(const char *path, struct elf_file **elf);
-void elf_close(struct elf_file *elf);
+status_t VlElf_Open(const char *path, struct elf_file **elf);
+void VlElf_Close(struct elf_file *elf);
 
-status_t elf_get_header(struct elf_file *elf, void *buf, size_t len);
+status_t VlElf_GetHeader(struct elf_file *elf, void *buf, size_t len);
 
-status_t elf_get_program_header(struct elf_file *elf, unsigned int index, void *buf, size_t lne);
-status_t elf_load_program(struct elf_file *elf, unsigned int index, void *paddr);
+status_t VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *buf, size_t lne);
+status_t VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr);
 
-status_t elf_get_section_header(struct elf_file *elf, unsigned int index, void *buf, size_t len);
-status_t elf_get_section_name(struct elf_file *elf, unsigned int index, const char **name);
-status_t elf_find_section(struct elf_file *elf, const char *name, unsigned int *idx);
-status_t elf_load_section(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+status_t VlElf_GetSectionHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+status_t VlElf_GetSectionName(struct elf_file *elf, unsigned int index, const char **name);
+status_t VlElf_FindSection(struct elf_file *elf, const char *name, unsigned int *idx);
+status_t VlElf_LoadSection(struct elf_file *elf, unsigned int index, void *buf, size_t len);
 
-status_t elf_find_symbol(struct elf_file *elf, const char *name, unsigned int *index);
-status_t elf_get_symbol(struct elf_file *elf, unsigned int index, void *buf, size_t len);
-status_t elf_get_symbol_count(struct elf_file *elf, unsigned int *count);
+status_t VlElf_FindSymbol(struct elf_file *elf, const char *name, unsigned int *index);
+status_t VlElf_GetSymbol(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+status_t VlElf_GetSymbolCount(struct elf_file *elf, unsigned int *count);
 
 #endif  // __VELLUM_ELF_H__

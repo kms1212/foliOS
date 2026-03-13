@@ -1,8 +1,8 @@
-#include <vellum/asm/bios/disk.h>
+#include <vellum/plat/bios/disk.h>
 
 #include <stdint.h>
 
-#include <vellum/asm/bios/bioscall.h>
+#include <vellum/plat/bios/bioscall.h>
 
 struct dap {
     uint8_t dap_size;
@@ -16,20 +16,18 @@ struct dap {
 
 #define MAKE_STATUS(code) ((code) ? (0xA0001300 | (code)) : STATUS_SUCCESS)
 
-status_t _pc_bios_disk_reset(uint8_t drive)
+status_t VlBiosP_ResetDisk(uint8_t drive)
 {
     struct bioscall_regs regs = {.a.b.h = 0x00, .d.b.l = drive};
 
-    if (_pc_bios_call(0x13, &regs) || regs.a.b.h) {
+    if (VlBiosP_Call(0x13, &regs) || regs.a.b.h) {
         return MAKE_STATUS(regs.a.b.h);
     }
 
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_disk_read(
-    uint8_t drive, struct chs chs, uint8_t count, void *buf, uint8_t *result
-)
+status_t VlBiosP_ReadDisk(uint8_t drive, struct chs chs, uint8_t count, void *buf, uint8_t *result)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x02,
@@ -42,7 +40,7 @@ status_t _pc_bios_disk_read(
         .b.w = (uintptr_t)buf & 0x000F,
     };
 
-    if (_pc_bios_call(0x13, &regs) || regs.a.b.h) {
+    if (VlBiosP_Call(0x13, &regs) || regs.a.b.h) {
         return MAKE_STATUS(regs.a.b.h);
     }
 
@@ -53,7 +51,7 @@ status_t _pc_bios_disk_read(
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_disk_write(
+status_t VlBiosP_WriteDisk(
     uint8_t drive, struct chs chs, uint8_t count, const void *buf, uint8_t *result
 )
 {
@@ -68,7 +66,7 @@ status_t _pc_bios_disk_write(
         .b.w = (uintptr_t)buf & 0x000F,
     };
 
-    if (_pc_bios_call(0x13, &regs) || regs.a.b.h) {
+    if (VlBiosP_Call(0x13, &regs) || regs.a.b.h) {
         return MAKE_STATUS(regs.a.b.h);
     }
 
@@ -79,7 +77,7 @@ status_t _pc_bios_disk_write(
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_disk_get_params(
+status_t VlBiosP_GetDiskParams(
     uint8_t drive,
     uint8_t *hdd_count,
     uint8_t *type,
@@ -94,7 +92,7 @@ status_t _pc_bios_disk_get_params(
         .di.w = 0,
     };
 
-    if (_pc_bios_call(0x13, &regs) || regs.a.b.h) {
+    if (VlBiosP_Call(0x13, &regs) || regs.a.b.h) {
         return MAKE_STATUS(regs.a.b.h);
     }
 
@@ -116,7 +114,7 @@ status_t _pc_bios_disk_get_params(
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_disk_check_ext(
+status_t VlBiosP_CheckDiskExtension(
     uint8_t drive, uint8_t *edd_version, uint16_t *subset_support_flags
 )
 {
@@ -126,12 +124,12 @@ status_t _pc_bios_disk_check_ext(
         .d.b.l = drive,
     };
 
-    if (_pc_bios_call(0x13, &regs)) {
+    if (VlBiosP_Call(0x13, &regs)) {
         return MAKE_STATUS(regs.a.b.h);
     }
 
     if (regs.b.w != 0xAA55) {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_SUPPORTED;
     }
 
     if (edd_version) {
@@ -144,7 +142,7 @@ status_t _pc_bios_disk_check_ext(
     return 0;
 }
 
-status_t _pc_bios_disk_read_ext(uint8_t drive, lba_t lba, uint16_t count, void *buf)
+status_t VlBiosP_ReadDiskExtended(uint8_t drive, lba_t lba, uint16_t count, void *buf)
 {
     struct dap dap = {
         .dap_size = sizeof(struct dap),
@@ -162,14 +160,14 @@ status_t _pc_bios_disk_read_ext(uint8_t drive, lba_t lba, uint16_t count, void *
         .si.w = (uintptr_t)&dap & 0x000F,
     };
 
-    if (_pc_bios_call(0x13, &regs) || regs.a.b.h) {
+    if (VlBiosP_Call(0x13, &regs) || regs.a.b.h) {
         return MAKE_STATUS(regs.a.b.h);
     }
 
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_disk_write_ext(uint8_t drive, lba_t lba, uint16_t count, const void *buf)
+status_t VlBiosP_WriteDiskExtended(uint8_t drive, lba_t lba, uint16_t count, const void *buf)
 {
     struct dap dap = {
         .dap_size = sizeof(struct dap),
@@ -187,14 +185,14 @@ status_t _pc_bios_disk_write_ext(uint8_t drive, lba_t lba, uint16_t count, const
         .si.w = (uintptr_t)&dap & 0x000F,
     };
 
-    if (_pc_bios_call(0x13, &regs) || regs.a.b.h) {
+    if (VlBiosP_Call(0x13, &regs) || regs.a.b.h) {
         return MAKE_STATUS(regs.a.b.h);
     }
 
     return STATUS_SUCCESS;
 }
 
-status_t _pc_bios_disk_get_params_ext(uint8_t drive, struct bios_extended_drive_params *params)
+status_t VlBiosP_GetDiskParamsExtended(uint8_t drive, struct bios_extended_drive_params *params)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x48,
@@ -203,7 +201,7 @@ status_t _pc_bios_disk_get_params_ext(uint8_t drive, struct bios_extended_drive_
         .si.w = (uintptr_t)params & 0x000F,
     };
 
-    if (_pc_bios_call(0x13, &regs) || regs.a.b.h) {
+    if (VlBiosP_Call(0x13, &regs) || regs.a.b.h) {
         return MAKE_STATUS(regs.a.b.h);
     }
 

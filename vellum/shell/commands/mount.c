@@ -14,13 +14,13 @@ static int mount_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     struct device *blkdev;
-    status = device_find(argv[1], &blkdev);
+    status = VlDev_Find(argv[1], &blkdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: could not find device\n", argv[0]);
         return 1;
     }
 
-    status = filesystem_auto_mount(blkdev, argv[2]);
+    status = VlFs_MountAuto(blkdev, argv[2]);
     if (!CHECK_SUCCESS(status)) return 1;
 
     return 0;
@@ -34,7 +34,7 @@ static struct command mount_command = {
 
 static void mount_command_init(void)
 {
-    shell_command_register(&mount_command);
+    VlShell_RegisterCommand(&mount_command);
 }
 
 REGISTER_SHELL_COMMAND(mount, mount_command_init)

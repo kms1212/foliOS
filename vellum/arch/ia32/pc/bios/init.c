@@ -1,24 +1,26 @@
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/apm.h>
-#include <vellum/asm/bios/bootinfo.h>
-#include <vellum/asm/bios/disk.h>
-#include <vellum/asm/bios/keyboard.h>
-#include <vellum/asm/bios/mem.h>
-#include <vellum/asm/bios/misc.h>
-#include <vellum/asm/bios/video.h>
-#include <vellum/asm/idt.h>
-#include <vellum/asm/instruction.h>
-#include <vellum/asm/intrinsics/rdtsc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
-#include <vellum/asm/pc_gdt.h>
-#include <vellum/asm/pci/cfgspace.h>
-#include <vellum/asm/pic.h>
+#include <vellum/arch/idt.h>
+#include <vellum/arch/intrinsics/rdtsc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/apm.h>
+#include <vellum/plat/bios/bootinfo.h>
+#include <vellum/plat/bios/disk.h>
+#include <vellum/plat/bios/keyboard.h>
+#include <vellum/plat/bios/mem.h>
+#include <vellum/plat/bios/misc.h>
+#include <vellum/plat/bios/video.h>
+#include <vellum/plat/gdt.h>
+#include <vellum/plat/instruction.h>
+#include <vellum/plat/isr.h>
+#include <vellum/plat/pci/cfgspace.h>
+#include <vellum/plat/pic.h>
 
 #include <vellum/compiler.h>
 #include <vellum/debug.h>
@@ -50,9 +52,9 @@ static ssize_t early_stderr_write(void *cookie, const char *buf, size_t count)
 {
     for (size_t i = 0; buf[i] && i < count; i++) {
         if (buf[i] == '\n') {
-            _pc_bios_video_write_tty('\r');
+            VlBiosP_WriteVideoTty('\r');
         }
-        _pc_bios_video_write_tty(buf[i]);
+        VlBiosP_WriteVideoTty(buf[i]);
     }
 
     return (ssize_t)count;
@@ -65,7 +67,7 @@ static const struct cookie_io_functions early_stderr_io = {
 static ssize_t early_stddbg_write(void *cookie, const char *buf, size_t count)
 {
     for (size_t i = 0; buf[i] && i < count; i++) {
-        io_out8(0x00E9, buf[i]);
+        VlA_Out8(0x00E9, buf[i]);
     }
 
     return (ssize_t)count;
@@ -88,7 +90,7 @@ static status_t init_pma(void)
     base_paddr = 0;
     limit_paddr = 0;
     do {
-        _pc_bios_mem_query_map(&smap_cursor, &smap_entry, sizeof(smap_entry));
+        VlBiosP_QueryMemoryMap(&smap_cursor, &smap_entry, sizeof(smap_entry));
         smap_base = (uint64_t)smap_entry.base_addr_high << 32 | smap_entry.base_addr_low;
         smap_size = (uint64_t)smap_entry.length_high << 32 | smap_entry.length_low;
 
@@ -109,7 +111,7 @@ static status_t init_pma(void)
     /* mark smaller reserved area inside the previous area */
     smap_cursor = 0;
     do {
-        _pc_bios_mem_query_map(&smap_cursor, &smap_entry, sizeof(smap_entry));
+        VlBiosP_QueryMemoryMap(&smap_cursor, &smap_entry, sizeof(smap_entry));
         smap_base = (uint64_t)smap_entry.base_addr_high << 32 | smap_entry.base_addr_low;
         smap_size = (uint64_t)smap_entry.length_high << 32 | smap_entry.length_low;
 
@@ -142,7 +144,7 @@ static status_t init_nonpnp_devices(int has_acpi)
     if (has_acpi) {
         uacpi_status = uacpi_table_fadt(&fadt);
         if (uacpi_unlikely_error(uacpi_status)) {
-            panic(uacpi_status, "Could not find FADT (has_acpi=%d)", has_acpi);
+            VlP_Panic(uacpi_status, "Could not find FADT (has_acpi=%d)", has_acpi);
         }
 
         if (fadt->hdr.revision >= 3) {
@@ -174,7 +176,7 @@ static status_t init_nonpnp_devices(int has_acpi)
             },
         };
 
-        status = device_driver_find("debugout", &drv);
+        status = VlDev_FindDriver("debugout", &drv);
         if (!CHECK_SUCCESS(status)) return status;
 
         status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -217,7 +219,7 @@ static status_t init_nonpnp_devices(int has_acpi)
             },
         };
 
-        status = device_driver_find("i8042", &drv);
+        status = VlDev_FindDriver("i8042", &drv);
         if (!CHECK_SUCCESS(status)) return status;
 
         status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -243,7 +245,7 @@ static status_t init_nonpnp_devices(int has_acpi)
             },
         };
 
-        status = device_driver_find("rtc_isa", &drv);
+        status = VlDev_FindDriver("rtc_isa", &drv);
         if (!CHECK_SUCCESS(status)) return status;
 
         status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -280,7 +282,7 @@ static status_t init_nonpnp_devices(int has_acpi)
                 },
             };
 
-            status = device_driver_find("uart_isa", &drv);
+            status = VlDev_FindDriver("uart_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
 
             status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -316,7 +318,7 @@ static status_t init_nonpnp_devices(int has_acpi)
                 },
             };
 
-            status = device_driver_find("ieee1284_isa", &drv);
+            status = VlDev_FindDriver("ieee1284_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
 
             status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -348,7 +350,7 @@ static status_t init_nonpnp_devices(int has_acpi)
                 },
             };
 
-            status = device_driver_find("fdc_isa", &drv);
+            status = VlDev_FindDriver("fdc_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
 
             status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -380,7 +382,7 @@ static status_t init_nonpnp_devices(int has_acpi)
                 },
             };
 
-            status = device_driver_find("ide_isa", &drv);
+            status = VlDev_FindDriver("ide_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
 
             /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -412,7 +414,7 @@ static status_t init_nonpnp_devices(int has_acpi)
                 },
             };
 
-            status = device_driver_find("ide_isa", &drv);
+            status = VlDev_FindDriver("ide_isa", &drv);
             if (!CHECK_SUCCESS(status)) return status;
 
             /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
@@ -424,7 +426,7 @@ static status_t init_nonpnp_devices(int has_acpi)
         struct device *dev;
         struct device_driver *drv;
 
-        status = device_driver_find("vga", &drv);
+        status = VlDev_FindDriver("vga", &drv);
         if (!CHECK_SUCCESS(status)) return status;
 
         status = drv->probe(&dev, drv, NULL, NULL, 0);
@@ -469,7 +471,7 @@ status_t mount_boot_filesystem(void)
     uint8_t sect0[512];
     size_t sect_size;
 
-    bootdisk = device_get_first_dev();
+    bootdisk = VlDev_GetFirst();
 
     for (; bootdisk; bootdisk = bootdisk->next) {
         status = bootdisk->driver->get_interface(bootdisk, "block", (const void **)&blki);
@@ -488,7 +490,7 @@ status_t mount_boot_filesystem(void)
 
     LOG_DEBUG("boot filesystem found from device \"%s\"\n", bootdisk->name);
 
-    status = filesystem_auto_mount(bootdisk, "boot");
+    status = VlFs_MountAuto(bootdisk, "boot");
     if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
@@ -501,18 +503,18 @@ uint64_t get_global_tick(void)
     return global_tick;
 }
 
-static void pit_isr(void *data, struct interrupt_frame *frame, struct trap_regs *regs, int num)
+static void pit_isr(void *data, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num)
 {
     global_tick++;
 }
 
-static void bkpt_handler(struct interrupt_frame *frame, struct trap_regs *regs, int num)
+static void bkpt_handler(struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num)
 {
-    fprintf(stderr, "Breakpoint at %04X:%08lX\n", frame->cs, frame->eip);
+    fprintf(stderr, "Breakpoint at %04" PRIX16 ":%08" PRIX32 "\n", frame->cs, frame->eip);
 
     fprintf(
         stderr,
-        "EAX=%08lX EBX=%08lX ECX=%08lX EDX=%08lX\n",
+        "EAX=%08" PRIX32 " EBX=%08" PRIX32 " ECX=%08" PRIX32 " EDX=%08" PRIX32 "\n",
         regs->eax,
         regs->ebx,
         regs->ecx,
@@ -520,7 +522,7 @@ static void bkpt_handler(struct interrupt_frame *frame, struct trap_regs *regs, 
     );
     fprintf(
         stderr,
-        "ESI=%08lX EDI=%08lX EBP=%08lX ESP=%08lX\n",
+        "ESI=%08" PRIX32 " EDI=%08" PRIX32 " EBP=%08" PRIX32 " ESP=%08" PRIX32 "\n",
         regs->esi,
         regs->edi,
         regs->ebp,
@@ -528,18 +530,25 @@ static void bkpt_handler(struct interrupt_frame *frame, struct trap_regs *regs, 
     );
     fprintf(
         stderr,
-        "CS=%04X DS=%04X ES=%04X FS=%04X GS=%04X\n",
+        "CS=%04" PRIX16 " DS=%04" PRIX16 " ES=%04" PRIX16 " FS=%04" PRIX16 " GS=%04" PRIX16 "\n",
         frame->cs,
         regs->ds,
         regs->es,
         regs->fs,
         regs->gs
     );
-    fprintf(stderr, "EFLAGS=%08lX\n", frame->eflags);
+    fprintf(stderr, "EFLAGS=%08" PRIX32 "\n", frame->eflags);
 
     uint32_t bp = regs->ebp;
     for (int i = 0; bp; i++) {
-        fprintf(stderr, "Frame #%d: %08lX %04X:%08lX\n", i, bp, frame->cs, ((uint32_t *)bp)[1]);
+        fprintf(
+            stderr,
+            "Frame #%d: %08" PRIX32 " %04" PRIX16 ":%08" PRIX32 "\n",
+            i,
+            bp,
+            frame->cs,
+            ((uint32_t *)bp)[1]
+        );
         bp = ((uint32_t *)bp)[0];
     }
 }
@@ -548,11 +557,11 @@ static void init_pit(void)
 {
     static const uint16_t pit_value = 1193182 / 20;
 
-    io_out8(0x0043, 0x34);
-    io_out8(0x0040, pit_value & 0xFF);
-    io_out8(0x0040, (pit_value >> 8) & 0xFF);
+    VlA_Out8(0x0043, 0x34);
+    VlA_Out8(0x0040, pit_value & 0xFF);
+    VlA_Out8(0x0040, (pit_value >> 8) & 0xFF);
 
-    _pc_isr_unmask_interrupt(0x20);
+    VlIntP_Unmask(0x20);
 }
 
 int _pc_invlpg_undefined;
@@ -583,17 +592,17 @@ __noreturn void _pc_init(void)
     LOG_DEBUG("testing whether invlpg available...\n");
     status = _pc_instruction_test(invlpg_test, 3, &_pc_invlpg_undefined);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "failed to test instruction invlpg");
+        VlP_Panic(status, "failed to test instruction invlpg");
     }
 
     LOG_DEBUG("testing whether rdtsc available...\n");
     status = _pc_instruction_test(rdtsc_test, 2, &_pc_rdtsc_undefined);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "failed to test instruction rdtsc");
+        VlP_Panic(status, "failed to test instruction rdtsc");
     }
 
     LOG_DEBUG("initializing ISRs...\n");
-    _pc_isr_init();
+    VlIntP_Init();
 
     LOG_DEBUG("initializing GDT...\n");
     _pc_gdt_init();
@@ -601,21 +610,21 @@ __noreturn void _pc_init(void)
     LOG_DEBUG("initializing physical memory allocator...\n");
     status = init_pma();
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "failed to initialize physical memory allocator");
+        VlP_Panic(status, "failed to initialize physical memory allocator");
     }
 
     LOG_DEBUG("initializing memory management...\n");
     status = mm_init();
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "failed to initialize memory management");
+        VlP_Panic(status, "failed to initialize memory management");
     }
 
     LOG_DEBUG("reloading VBR sector...\n");
-    _pc_bios_disk_get_params(_pc_boot_drive, NULL, NULL, &bootdisk_geom, NULL);
-    struct chs chs = disk_lba_to_chs(_pc_boot_part_base, bootdisk_geom);
-    status = _pc_bios_disk_read(_pc_boot_drive, chs, 1, _pc_boot_sector, NULL);
+    VlBiosP_GetDiskParams(_pc_boot_drive, NULL, NULL, &bootdisk_geom, NULL);
+    struct chs chs = VlDisk_LbaToChs(_pc_boot_part_base, bootdisk_geom);
+    status = VlBiosP_ReadDisk(_pc_boot_drive, chs, 1, _pc_boot_sector, NULL);
     if (!CHECK_SUCCESS(status)) {
-        panic(
+        VlP_Panic(
             status,
             "could not reload VBR sector %02X:(%d, %d, %d)",
             _pc_boot_drive,
@@ -627,8 +636,8 @@ __noreturn void _pc_init(void)
 
     _pc_pic_remap_int(0x20, 0x28);
 
-    _pc_isr_add_trap_handler(0x03, bkpt_handler, NULL);
-    _pc_isr_add_interrupt_handler(0x20, NULL, pit_isr, NULL);
+    VlIntP_AddTrapHandler(0x03, bkpt_handler, NULL);
+    VlIntP_AddInterruptHandler(0x20, NULL, pit_isr, NULL);
 
     LOG_DEBUG("initializing PIT...\n");
     init_pit();
@@ -645,13 +654,13 @@ __noreturn void _pc_init(void)
         (&__init_array_start)[i]();
     }
 
-    interrupt_enable();
+    VlA_EnableInterrupt();
 
     LOG_DEBUG("initializing non-PnP devices...\n");
     status = init_nonpnp_devices(has_acpi);
     if (!CHECK_SUCCESS(status)) {
-        fprintf(stderr, "init_nonpnp_devices() failed: 0x%08X\n", status);
-        panic(status, "failed to initialize essential non-PnP devices");
+        fprintf(stderr, "init_nonpnp_devices() failed: 0x%08lX\n", status);
+        VlP_Panic(status, "failed to initialize essential non-PnP devices");
     }
 
     // /* Disable BIOS USB emulation */
@@ -668,17 +677,17 @@ __noreturn void _pc_init(void)
     // int pci_count = pci_host_scan(pci_devices, ARRAY_SIZE(pci_devices));
 
     // /* PC Speaker */
-    // io_out8(0x43, 0xb6);
-    // io_out8(0x42, (uint8_t)(pit_value / 10));
-    // io_out8(0x42, (uint8_t)((pit_value / 10) >> 8));
+    // VlA_Out8(0x43, 0xb6);
+    // VlA_Out8(0x42, (uint8_t)(pit_value / 10));
+    // VlA_Out8(0x42, (uint8_t)((pit_value / 10) >> 8));
 
     // for (int i = 0; i < 4; i++) {
     //     uint64_t tick_start = global_tick;
-    //     uint8_t tmp = io_in8(0x61);
-    //     io_out8(0x61, tmp | 3);
+    //     uint8_t tmp = VlA_In8(0x61);
+    //     VlA_Out8(0x61, tmp | 3);
     //     while (global_tick - tick_start < 50) {}
     //     tick_start = global_tick;
-    //     io_out8(0x61, tmp & 0xFC);
+    //     VlA_Out8(0x61, tmp & 0xFC);
     //     while (global_tick - tick_start < 50) {}
     // }
 
@@ -691,7 +700,7 @@ __noreturn void _pc_init(void)
     LOG_DEBUG("starting main...\n");
     main();
 
-    panic(STATUS_UNKNOWN_ERROR, "Kernel returned");
+    VlP_Panic(STATUS_UNKNOWN_ERROR, "Kernel returned");
 }
 
 void _pc_cleanup(void)

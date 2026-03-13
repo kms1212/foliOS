@@ -58,6 +58,8 @@ target_compile_options(stage1 PUBLIC
         -Wno-unused-function
         -pedantic
         -pedantic-errors
+        -fno-function-sections
+        -fno-data-sections
     >
 )
 target_link_libraries(stage1 gcc)
@@ -90,7 +92,7 @@ target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(vellum PRIVATE "${CMAKE_BINARY_DIR}")
 
 target_sources(vellum PRIVATE gdt.c init.c isr.c isr.S panic.c power.c start.S instruction.c)
-target_link_options(vellum PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript.lds")
+target_link_options(vellum PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript.lds" -Wl,-print-gc-sections)
 set_target_properties(vellum PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript.lds;${CMAKE_CURRENT_BINARY_DIR}/stage1.elf")
 
 add_subdirectory(acpi)
@@ -106,11 +108,3 @@ add_custom_target(vellum_execbin ALL
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Creating vellum executable binary"
 )
-
-# add_custom_target(vellum_hdimage ALL
-#     COMMAND dd if=/dev/zero of="${CMAKE_BINARY_DIR}/boot/hd.img" bs=1048576 count=16
-#     COMMAND "${CMAKE_BINARY_DIR}/tools/mkfs.folifs/mkfs.folifs" -b "${CMAKE_CURRENT_BINARY_DIR}/fdboot.bin" -j 2M -l "HDBOOT" -N 2 -O "emos" -r 8 -s 1 -u 00000000-0000-0000-0000-000000000000 -iv "${CMAKE_BINARY_DIR}/boot/hd.img"
-#     DEPENDS vellum mkfs.folifs-host
-#     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-#     COMMENT "Creating vellum hd image"
-# )

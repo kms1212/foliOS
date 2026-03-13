@@ -4,8 +4,8 @@
     
     .section .text
     .code32
-    .globl  _pc_bios_bootnext
-_pc_bios_bootnext:
+    .globl  VlBiosP_BootFromNextDevice
+VlBiosP_BootFromNextDevice:
     push    %ebp
     mov     %esp, %ebp
 

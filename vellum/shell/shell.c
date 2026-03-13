@@ -22,7 +22,7 @@ static int set_handler(struct shell_instance *inst, int argc, char **argv)
         return 1;
     }
 
-    status = shell_set_variable(inst, argv[1], argv[2]);
+    status = VlShell_SetVariable(inst, argv[1], argv[2]);
     if (!CHECK_SUCCESS(status)) return 1;
 
     return 0;
@@ -58,7 +58,7 @@ static struct shell_instance global_inst = {
     },
 };
 
-int shell_execute(struct shell_instance *inst, const char *line)
+int VlShell_Execute(struct shell_instance *inst, const char *line)
 {
     status_t status;
     char line_buf[4096];
@@ -72,14 +72,14 @@ int shell_execute(struct shell_instance *inst, const char *line)
     size_t elem_buf_len = sizeof(elem_buf);
     int newargc = 0;
 
-    status = shell_expand(inst, line, line_buf, sizeof(line_buf));
+    status = VlShell_Expand(inst, line, line_buf, sizeof(line_buf));
     if (!CHECK_SUCCESS(status)) {
         return 1;
     }
     line = line_buf;
 
     while (newargc < ARRAY_SIZE(newargv)) {
-        line = shell_parse(line, elem_cursor, elem_buf_len);
+        line = VlShell_Parse(line, elem_cursor, elem_buf_len);
         newargv[newargc] = elem_cursor;
         if (!line) break;
 
@@ -129,16 +129,16 @@ int shell_handler(struct shell_instance *inst, int argc, char **argv)
             printf("%s", new_inst.working_dir_path);
         }
 
-        shell_readline("> ", line_buf, sizeof(line_buf));
+        VlShell_Readline("> ", line_buf, sizeof(line_buf));
 
-        result = shell_execute(&new_inst, line_buf);
+        result = VlShell_Execute(&new_inst, line_buf);
         if (result < 0) break;
     }
 
     return 0;
 }
 
-status_t shell_command_register(struct command *cmd)
+status_t VlShell_RegisterCommand(struct command *cmd)
 {
     if (!command_list_head) {
         command_list_head = cmd;
@@ -153,7 +153,7 @@ status_t shell_command_register(struct command *cmd)
     return STATUS_SUCCESS;
 }
 
-void shell_command_unregister(struct command *cmd)
+void VlShell_UnregisterCommand(struct command *cmd)
 {
     if (!command_list_head) return;
 
@@ -176,7 +176,7 @@ static struct command set_command = {
 
 static void set_init(void)
 {
-    shell_command_register(&set_command);
+    VlShell_RegisterCommand(&set_command);
 }
 
 REGISTER_SHELL_COMMAND(set, set_init)
@@ -189,7 +189,7 @@ static struct command help = {
 
 static void help_init(void)
 {
-    shell_command_register(&help);
+    VlShell_RegisterCommand(&help);
 }
 
 REGISTER_SHELL_COMMAND(help, help_init)
@@ -202,7 +202,7 @@ static struct command shell_command = {
 
 static void shell_command_init(void)
 {
-    shell_command_register(&shell_command);
+    VlShell_RegisterCommand(&shell_command);
 }
 
 REGISTER_SHELL_COMMAND(shell, shell_command_init)

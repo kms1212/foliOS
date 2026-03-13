@@ -25,6 +25,6 @@ __noreturn void StP_Panic(StStatus status, const char *fmt, ...)
 
     StA_Cli();
     for (;;) {
-        StA_Halt();
+        StA_Hlt();
     }
 }

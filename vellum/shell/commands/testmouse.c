@@ -13,7 +13,7 @@ static int testmouse_handler(struct shell_instance *inst, int argc, char **argv)
 {
     status_t status;
     struct device *msdev;
-    status = device_find("mouse0", &msdev);
+    status = VlDev_Find("mouse0", &msdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot find device\n", argv[0]);
         return 1;
@@ -24,7 +24,7 @@ static int testmouse_handler(struct shell_instance *inst, int argc, char **argv)
     if (!CHECK_SUCCESS(status)) return 1;
 
     struct device *fbdev;
-    status = device_find("video0", &fbdev);
+    status = VlDev_Find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot find device\n", argv[0]);
         return 1;
@@ -120,7 +120,7 @@ static struct command testmouse_command = {
 
 static void testmouse_command_init(void)
 {
-    shell_command_register(&testmouse_command);
+    VlShell_RegisterCommand(&testmouse_command);
 }
 
 REGISTER_SHELL_COMMAND(testmouse, testmouse_command_init)

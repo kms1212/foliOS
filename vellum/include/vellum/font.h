@@ -5,9 +5,9 @@
 
 #include <vellum/status.h>
 
-status_t font_use(const char *path);
+status_t VlFont_Use(const char *path);
 
-status_t font_get_glyph_dimension(wchar_t codepoint, int *width, int *height);
-status_t font_get_glyph_data(wchar_t codepoint, uint8_t *buf, size_t size);
+status_t VlFont_GetGlyphDimension(wchar_t codepoint, int *width, int *height);
+status_t VlFont_GetGlyphData(wchar_t codepoint, uint8_t *buf, size_t size);
 
 #endif  // __VELLUM_FONT_H__

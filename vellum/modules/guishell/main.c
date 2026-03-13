@@ -595,13 +595,13 @@ static void draw_char(int xpos, int ypos, uint32_t color, wchar_t ch)
 
     use_fallback = 0;
 
-    status = font_get_glyph_dimension(ch, &cwidth, &cheight);
+    status = VlFont_GetGlyphDimension(ch, &cwidth, &cheight);
     if (!CHECK_SUCCESS(status) || (cwidth != 8 && cwidth != 16) || cheight != 16) {
         use_fallback = 1;
     }
 
     if (!use_fallback) {
-        status = font_get_glyph_data(ch, font_glyph, sizeof(font_glyph));
+        status = VlFont_GetGlyphData(ch, font_glyph, sizeof(font_glyph));
         if (!CHECK_SUCCESS(status)) {
             use_fallback = 1;
         }
@@ -1090,7 +1090,7 @@ static int guishell_handler(struct shell_instance *inst, int argc, char **argv)
     uint16_t key, flags;
     int mouse_xpos = 0, mouse_ypos = 0, should_exit;
 
-    status = device_find("video0", &fbdev);
+    status = VlDev_Find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot find device\n", argv[0]);
         return 1;
@@ -1108,7 +1108,7 @@ static int guishell_handler(struct shell_instance *inst, int argc, char **argv)
         return 1;
     }
 
-    status = device_find("kbd0", &kbdev);
+    status = VlDev_Find("kbd0", &kbdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: cannot find device\n", argv[0]);
         return 1;
@@ -1120,7 +1120,7 @@ static int guishell_handler(struct shell_instance *inst, int argc, char **argv)
         return 1;
     }
 
-    status = device_find("mouse0", &msdev);
+    status = VlDev_Find("mouse0", &msdev);
     if (!CHECK_SUCCESS(status)) {
         msdev = NULL;
     }
@@ -1251,7 +1251,7 @@ static int guishell_handler(struct shell_instance *inst, int argc, char **argv)
         }
     }
 
-    shell_execute(NULL, "clear");
+    VlShell_Execute(NULL, "clear");
 
     return 0;
 }
@@ -1264,7 +1264,7 @@ static struct command guishell_command = {
 
 __constructor static void init()
 {
-    shell_command_register(&guishell_command);
+    VlShell_RegisterCommand(&guishell_command);
 }
 
 status_t _start(int argc, char **argv)
@@ -1274,5 +1274,5 @@ status_t _start(int argc, char **argv)
 
 __destructor static void deinit(void)
 {
-    shell_command_unregister(&guishell_command);
+    VlShell_UnregisterCommand(&guishell_command);
 }

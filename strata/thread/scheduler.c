@@ -31,7 +31,7 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    if (th->status != THREAD_STATE_FINISHED) {
+    if (th->state != THREAD_STATE_FINISHED) {
         return STATUS_THREAD_NOT_FINISHED;
     }
 
@@ -79,22 +79,22 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
             next_thread = scheduler->runqueue_head;
         }
 
-        switch (next_thread->status) {
+        switch (next_thread->state) {
         case THREAD_STATE_RUNNING:
             break;
         case THREAD_STATE_PENDING:
-            next_thread->status = THREAD_STATE_RUNNING;
+            next_thread->state = THREAD_STATE_RUNNING;
             break;
         case THREAD_STATE_SLEEPING:
             if (StTimeP_GetUptimeMicroseconds() >= next_thread->sleep_until_uptime_us) {
-                next_thread->status = THREAD_STATE_RUNNING;
+                next_thread->state = THREAD_STATE_RUNNING;
             }
             break;
         default:
             break;
         }
 
-        if (next_thread->status == THREAD_STATE_RUNNING) {
+        if (next_thread->state == THREAD_STATE_RUNNING) {
             break;
         }
     } while (next_thread != scheduler->current_thread);
@@ -122,7 +122,7 @@ int StScheduler_CheckHasOtherRunnableThread(void)
     for (struct StThread *current = scheduler->runqueue_head; current; current = current->next) {
         if (current == scheduler->current_thread) continue;
 
-        if (current->status == THREAD_STATE_RUNNING || current->status == THREAD_STATE_PENDING) {
+        if (current->state == THREAD_STATE_RUNNING || current->state == THREAD_STATE_PENDING) {
             result = 1;
             break;
         }
@@ -146,14 +146,14 @@ StStatus StScheduler_Maintain(void)
 
     /* check waiting threads */
     for (current = scheduler->runqueue_head; current; current = current->next) {
-        if (current->status != THREAD_STATE_WAITING) continue;
+        if (current->state != THREAD_STATE_WAITING) continue;
         if (!current->wait_list) continue;
 
         unwait_thread = 1;
 
         for (int i = 0; i < current->wait_count; i++) {
             if (!current->wait_list[i]) continue;
-            if (current->wait_list[i]->status != THREAD_STATE_FINISHED) {
+            if (current->wait_list[i]->state != THREAD_STATE_FINISHED) {
                 unwait_thread = 0;
                 break;
             }
@@ -163,7 +163,7 @@ StStatus StScheduler_Maintain(void)
 
         if (unwait_thread) {
             current->wait_list = NULL;
-            current->status = THREAD_STATE_RUNNING;
+            current->state = THREAD_STATE_RUNNING;
         }
     }
 
@@ -173,7 +173,7 @@ StStatus StScheduler_Maintain(void)
     while (current) {
         struct StThread *next = current->next;
 
-        if (current->status == THREAD_STATE_FINISHED) {
+        if (current->state == THREAD_STATE_FINISHED) {
             int is_detached = current->is_detached;
             struct StThread *thread_to_remove = current;
 

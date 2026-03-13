@@ -4,8 +4,8 @@
     
     .section .text
     .code32
-    .globl  _pc_bios_call
-_pc_bios_call:
+    .globl  VlBiosP_Call
+VlBiosP_Call:
     push    %ebp                        # set up stack base pointer
     mov     %esp, %ebp
 

@@ -4,7 +4,7 @@
 #include <byteswap.h>
 #include <stdint.h>
 
-#include <vellum/asm/processor.h>
+#include <vellum/arch/processor.h>
 
 #define LITTLE_ENDIAN 1
 #define BIG_ENDIAN    2

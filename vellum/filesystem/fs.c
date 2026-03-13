@@ -7,12 +7,12 @@
 
 static struct filesystem *fs_list_head = NULL;
 
-struct filesystem *filesystem_get_first_fs(void)
+struct filesystem *VlFs_GetFirst(void)
 {
     return fs_list_head;
 }
 
-status_t filesystem_create(
+status_t VlFs_Create(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 )
 {
@@ -20,7 +20,7 @@ status_t filesystem_create(
     struct filesystem *fs;
     struct filesystem *conflicting_fs;
 
-    status = filesystem_find(name, &conflicting_fs);
+    status = VlFs_Find(name, &conflicting_fs);
     if (CHECK_SUCCESS(status)) return STATUS_DUPLICATE_ENTRY;
 
     fs = calloc(1, sizeof(*fs));
@@ -47,7 +47,7 @@ status_t filesystem_create(
     return STATUS_SUCCESS;
 }
 
-void filesystem_remove(struct filesystem *fs)
+void VlFs_Remove(struct filesystem *fs)
 {
     struct filesystem *prev_fs = NULL;
 
@@ -65,7 +65,7 @@ void filesystem_remove(struct filesystem *fs)
     free(fs);
 }
 
-status_t filesystem_find(const char *name, struct filesystem **fsout)
+status_t VlFs_Find(const char *name, struct filesystem **fsout)
 {
     for (struct filesystem *current = fs_list_head; current; current = current->next) {
         if (strncmp(current->name, name, sizeof(current->name)) == 0) {
@@ -79,7 +79,7 @@ status_t filesystem_find(const char *name, struct filesystem **fsout)
 
 static struct fs_driver *driver_list_head = NULL;
 
-status_t filesystem_driver_create(struct fs_driver **drvout)
+status_t VlFs_CreateDriver(struct fs_driver **drvout)
 {
     struct fs_driver *drv;
 
@@ -101,7 +101,7 @@ status_t filesystem_driver_create(struct fs_driver **drvout)
     return STATUS_SUCCESS;
 }
 
-status_t filesystem_driver_find(const char *name, struct fs_driver **drv)
+status_t VlFs_FindDriver(const char *name, struct fs_driver **drv)
 {
     for (struct fs_driver *current = driver_list_head; current; current = current->next) {
         if (strcmp(name, current->name) == 0) {
@@ -113,7 +113,7 @@ status_t filesystem_driver_find(const char *name, struct fs_driver **drv)
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t filesystem_auto_mount(struct device *__restrict dev, const char *__restrict name)
+status_t VlFs_MountAuto(struct device *__restrict dev, const char *__restrict name)
 {
     status_t status;
 
@@ -125,5 +125,5 @@ status_t filesystem_auto_mount(struct device *__restrict dev, const char *__rest
         if (CHECK_SUCCESS(status)) return status;
     }
 
-    return STATUS_UNSUPPORTED;
+    return STATUS_NOT_SUPPORTED;
 }

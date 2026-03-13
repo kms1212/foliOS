@@ -12,7 +12,7 @@ time_t time(time_t *time)
     const struct rtc_interface *rtcif;
     struct rtc_time rtctime;
 
-    status = device_find("rtc0", &rtcdev);
+    status = VlDev_Find("rtc0", &rtcdev);
     if (!CHECK_SUCCESS(status)) return 0;
 
     status = rtcdev->driver->get_interface(rtcdev, "rtc", (const void **)&rtcif);

@@ -6,7 +6,7 @@
 
 static int lsfs_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    struct filesystem *current = filesystem_get_first_fs();
+    struct filesystem *current = VlFs_GetFirst();
 
     while (current) {
         printf("%s: type=%s dev=%s\n", current->name, current->driver->name, current->dev->name);
@@ -25,7 +25,7 @@ static struct command lsfs_command = {
 
 static void lsfs_command_init(void)
 {
-    shell_command_register(&lsfs_command);
+    VlShell_RegisterCommand(&lsfs_command);
 }
 
 REGISTER_SHELL_COMMAND(lsfs, lsfs_command_init)

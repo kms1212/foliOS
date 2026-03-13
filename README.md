@@ -48,7 +48,7 @@ Strata moves away from software-heavy isolation, relying instead on hardware pri
 * **User Area:** Adheres to the traditional **Page-Table-Based Isolation**. Each user process possesses a private Virtual Memory Area (VMA), ensuring standard POSIX isolation guarantees. Context switching between user processes involves a standard page table transition.
 * **Module Area:** A shared global address space where modules are isolated via **Intel MPK (Memory Protection Keys)**. This allows domain switching without TLB flushes.
   * **Direct I/O Access (IOPB):** Unlike traditional Microkernels that require a syscall for every port I/O, Strata leverages the **I/O Permission Bitmap (IOPB)** to grant specific modules direct access to hardware ports. This allows Ring 3 drivers to provide I/O performance closer to bare-metal execution for supported port-mapped devices.
-* **Kernel Area:** The privileged core (Ring 0) utilizes a **Converged Isolation Model**. Instead of viewing KPTI solely as a mitigation, Strata integrates strict page table separation into the **MPK Sharding** mechanism.
+* **Kernel Area:** The privileged core utilizes a **Converged Isolation Model**. Instead of viewing KPTI solely as a mitigation, Strata integrates strict page table separation into the **MPK Sharding** mechanism.
   * **Dynamic Mapping:** In User Mode, Kernel and Module areas are strictly **unmapped**, protecting against speculative attacks (Meltdown) and granting the user process full utilization of MPK keys.
   * **Atomic Context Transition:** The transition to Kernel/Module mode involves a strategic CR3 switch that simultaneously maps the privileged areas and loads the target MPK Shard. This amalgamates the cost of Meltdown mitigation with the necessity of domain expansion.
 
@@ -105,13 +105,46 @@ To ensure the integrity of the Security Trusted Domain, the loader enforces stri
   * **Instruction Blacklist:** The use of privilege-altering or context-sensitive instructions is strictly prohibited. If a binary contains `WRPKRU`/`RDPKRU` (Key manipulation), `XRSTOR`/`XSAVE` (CPU state manipulation), or `SYSCALL`/`SYSENTER` (Privilege transition), loading is immediately rejected.
   * **Immutable Executable Mapping:** Modules are subjected to strict **W^X (Write XOR Execute)** enforcement. The loader maps module code sections as Read-Only/Executable (`RX`) and data sections as Read-Write (`RW`). Crucially, modules are **stripped of the capability** to re-map their own memory as executable or allocate new executable pages at runtime, effectively neutralizing JIT-based attacks or self-modifying code.
 
-### 🌲 GNT (Global Node Tree) & Polymorphism
+### 🌲 Global Node Tree (GNT) & Namespace Polymorphism
 
-All system resources—from files and drivers to network sockets—are organized into a **Global Node Tree (GNT)**:
+All system resources—files, device interfaces, IPC endpoints, and kernel services—are represented within a unified hierarchical structure called the **Global Node Tree (GNT)**.  
+The GNT provides a common namespace abstraction that allows heterogeneous system resources to be accessed through a uniform path-based interface.
 
-* **Path-based Discovery:** Resources are accessed via a unified naming scheme (e.g., `/Devices/Net/Eth0`).
-* **Polymorphism:** The GNT supports polymorphic interfaces identified by **UUIDv5** (deterministic hashes of names), ensuring binary compatibility across different versions of the OS.
-* **Reverse Symlinks (Resource Integrity):** To solve the "Dangling Pointer" problem in shared memory, GNT nodes maintain a list of their observers. When a node is destroyed, the kernel uses these reverse links to **immediately invalidate** all remote pointers, reducing common classes of temporal memory safety errors.
+#### Hybrid Path Resolution
+
+Strata implements a hybrid path resolution mechanism designed to balance performance with extensibility.
+
+* **Kernel-Resolved Paths:**  
+  Static or frequently accessed namespaces (e.g., `/System`, `/Devices`) are resolved directly by the kernel using in-memory directory structures.  
+  This avoids user-space mediation for common operations and reduces the overhead typically associated with microkernel-style IPC.
+
+* **Delegated Namespace Resolution:**  
+  When a path refers to a dynamically defined namespace (e.g., semantic version resolution such as `/Packages/FooPackage/^1.2.5`), the kernel delegates resolution of the remaining path component to the responsible module through a `PathResolver` interface.  
+  This allows modules to implement custom naming semantics without requiring kernel modification.
+
+This mechanism effectively enables **namespace polymorphism**, where different segments of the global namespace may implement distinct resolution semantics while preserving a consistent path-based interface for applications.
+
+#### Capability-Oriented Resource Access
+
+Instead of relying on implicit global state (such as a process-wide root directory or current working directory), processes receive explicit **capability handles** during initialization.  
+These handles represent authority over specific nodes in the GNT.
+
+Applications operate relative to these handles, enabling straightforward construction of restricted execution environments.  
+For example, sandboxing can be implemented by providing a process with a capability referencing a restricted subtree of the namespace.
+
+#### Relative Resolution Optimization
+
+To reduce repeated namespace delegation for dynamic namespaces, applications may obtain a **base handle** corresponding to a previously resolved node.  
+Subsequent operations relative to this handle can often be resolved entirely within the kernel's fast-path directory traversal.
+
+This mechanism reduces the overhead associated with repeated dynamic namespace interpretation.
+
+#### Reverse Reference Tracking
+
+GNT nodes maintain metadata about active references to the resource they represent.  
+When a node is removed or invalidated, the kernel can propagate invalidation events to dependent objects or handles.
+
+This reference tracking mechanism helps mitigate classes of errors related to stale or invalid resource references in shared environments.
 
 ### 📂 Package-Based Executable Management
 

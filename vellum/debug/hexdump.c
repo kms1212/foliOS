@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void hexdump(FILE *stream, const void *data, long len, uint32_t offset)
+void VlDbg_Hexdump(FILE *stream, const void *data, long len, uint32_t offset)
 {
     const uint8_t *addr = data;
     long count = 0;

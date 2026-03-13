@@ -13,18 +13,20 @@
 #define LL_DEBUG 4
 #define LL_TRACE 5
 
-void log_set_level(int level);
+void VlLog_SetLevel(int level);
 
-__format_printf(3, 4) void log_printf(int level, const char *module_name, const char *fmt, ...);
-__format_printf(3, 4) void log_isr_printf(int level, const char *module_name, const char *fmt, ...);
+__format_printf(3, 4) void VlLog_Print(int level, const char *module_name, const char *fmt, ...);
+__format_printf(3, 4) void VlLog_IntSafePrint(
+    int level, const char *module_name, const char *fmt, ...
+);
 
-void log_vprintf(int level, const char *module_name, const char *fmt, va_list args);
-void log_isr_vprintf(int level, const char *module_name, const char *fmt, va_list args);
+void VlLog_PrintValist(int level, const char *module_name, const char *fmt, va_list args);
+void VlLog_IntSafePrintValist(int level, const char *module_name, const char *fmt, va_list args);
 
-#define LOG(level, ...)         log_printf(level, MODULE_NAME, __VA_ARGS__)
-#define ILOG(level, ...)        log_isr_printf(level, MODULE_NAME, __VA_ARGS__)
-#define VLOG(level, fmt, args)  log_vprintf(level, MODULE_NAME, fmt, args)
-#define IVLOG(level, fmt, args) log_ivprintf(level, MODULE_NAME, fmt, args)
+#define LOG(level, ...)         VlLog_Print(level, MODULE_NAME, __VA_ARGS__)
+#define ILOG(level, ...)        VlLog_IntSafePrint(level, MODULE_NAME, __VA_ARGS__)
+#define VLOG(level, fmt, args)  VlLog_PrintValist(level, MODULE_NAME, fmt, args)
+#define IVLOG(level, fmt, args) VlLog_IntSafePrintValist(level, MODULE_NAME, fmt, args)
 
 #define LOG_FATAL(...) LOG(LL_FATAL, __VA_ARGS__);
 #define LOG_ERROR(...) LOG(LL_ERROR, __VA_ARGS__);

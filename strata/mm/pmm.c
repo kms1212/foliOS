@@ -415,7 +415,7 @@ static StStatus get_or_create_table(size_t table_idx, struct alloc_table **table
     } else {
         // TODO: use newly allocated table pool created at late init phase.
         LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create allocation table");
-        return STATUS_UNIMPLEMENTED;
+        return STATUS_NOT_IMPLEMENTED;
     }
 
     // Initialize table to all allocated or all unusable.
@@ -462,7 +462,7 @@ static StStatus get_or_create_extentry(
     } else {
         // TODO: use newly allocated table pool created at late init phase.
         LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create extended entry");
-        return STATUS_UNIMPLEMENTED;
+        return STATUS_NOT_IMPLEMENTED;
     }
 
     if (create_as_unusable) {
@@ -755,7 +755,7 @@ StStatus StPmm_LateInit(void)
     }
 
     if (required_metadata_blocks > ALLOC_TABLE_COVERAGE_PAGES) {
-        return STATUS_PHYSICAL_MEMORY_TOO_BIG;
+        return STATUS_TOO_LARGE;
     }
 
     LOG_DEBUG(

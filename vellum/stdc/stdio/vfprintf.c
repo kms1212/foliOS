@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-#undef vfprintf
-
 static int write_file(void *arg, char ch)
 {
     FILE *fp = arg;

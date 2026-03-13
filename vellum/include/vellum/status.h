@@ -1,17 +1,19 @@
 #ifndef __VELLUM_STATUS_H__
 #define __VELLUM_STATUS_H__
 
+#include <stdint.h>
+
 #include <vellum/types.h>
 
-typedef unsigned int status_t;
+typedef uint32_t status_t;
 
 #define STATUS_FAILURE_MASK  0x80000000
 #define STATUS_SEVERITY_MASK 0x40000000
 #define STATUS_AREA_MASK     0x3FFF0000
 #define STATUS_CODE_MASK     0x0000FFFF
 
-#define CHECK_SUCCESS(status) (!((status) & 0x80000000))
-#define CHECK_FAILURE(status) (!!((status) & 0x80000000))
+#define CHECK_SUCCESS(status) ((int32_t)(status) >= 0)
+#define CHECK_FAILURE(status) ((int32_t)(status) < 0)
 
 #define CHECK_NORMAL_FAILURE(status)   (CHECK_FAILURE(status) && (!((status) & 0x40000000)))
 #define CHECK_CRITICAL_FAILURE(status) (CHECK_FAILURE(status) && (!!((status) & 0x40000000)))
@@ -25,9 +27,9 @@ typedef unsigned int status_t;
 #define STATUS_UNEXPECTED_RESULT        0x80000002
 #define STATUS_INVALID_SIGNATURE        0x80000003
 #define STATUS_INVALID_VALUE            0x80000004
-#define STATUS_UNSUPPORTED              0x80000005
+#define STATUS_NOT_SUPPORTED            0x80000005
 #define STATUS_ENTRY_NOT_FOUND          0x80000006
-#define STATUS_UNIMPLEMENTED            0x80000007
+#define STATUS_NOT_IMPLEMENTED          0x80000007
 #define STATUS_HARDWARE_NOT_FOUND       0x80000008
 #define STATUS_HARDWARE_FAILED          0x80000009
 #define STATUS_IO_TIMEOUT               0x8000000A

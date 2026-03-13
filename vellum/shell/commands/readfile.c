@@ -13,11 +13,11 @@ static int readfile_handler(struct shell_instance *inst, int argc, char **argv)
     }
 
     char path[PATH_MAX];
-    if (path_is_absolute(argv[1])) {
+    if (VlPath_IsAbsolute(argv[1])) {
         strncpy(path, argv[1], sizeof(path) - 1);
     } else {
         strncpy(path, inst->working_dir_path, sizeof(path) - 1);
-        path_join(path, sizeof(path), argv[1]);
+        VlPath_Join(path, sizeof(path), argv[1]);
 
         if (!inst->fs) {
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
@@ -51,7 +51,7 @@ static struct command readfile_command = {
 
 static void readfile_command_init(void)
 {
-    shell_command_register(&readfile_command);
+    VlShell_RegisterCommand(&readfile_command);
 }
 
 REGISTER_SHELL_COMMAND(readfile, readfile_command_init)

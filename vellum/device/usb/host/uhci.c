@@ -76,14 +76,14 @@ static void uhci_schedule_transfer(int low_speed, int endpoint, int device_addr,
 // PCI_CFGSPACE_COMMAND, uhci_pcicfgspace_command | 0x0007, sizeof(uhci_pcicfgspace_command));
 
 // /* Reset host controller */
-// io_out16(uhci_pmio_address + UHCI_IOREG_USBCMD, 0x0006);
+// VlA_Out16(uhci_pmio_address + UHCI_IOREG_USBCMD, 0x0006);
 
 // /* Wait and clear GRESET */
 // for (int i = 0; i < (1 << 20); i++) {}
-// io_out16(uhci_pmio_address + UHCI_IOREG_USBCMD, 0x0000);
+// VlA_Out16(uhci_pmio_address + UHCI_IOREG_USBCMD, 0x0000);
 
 // /* Wait for host controller reset */
-// while (io_in16(uhci_pmio_address + UHCI_IOREG_USBCMD) & 0x20) {}
+// while (VlA_In16(uhci_pmio_address + UHCI_IOREG_USBCMD) & 0x20) {}
 
 // /* Initialize frame list */
 // for (int i = 0; i < sizeof(uhci_frame_list) / sizeof(uhci_frame_list[0]); i++) {
@@ -92,44 +92,44 @@ static void uhci_schedule_transfer(int low_speed, int endpoint, int device_addr,
 // }
 
 // /* Set Values */
-// io_out16(uhci_pmio_address + UHCI_IOREG_USBINTR, 0x000F);
-// io_out16(uhci_pmio_address + UHCI_IOREG_FRNUM, 0x0000);
-// io_out8(uhci_pmio_address + UHCI_IOREG_SOFMOD, 0x40);
-// io_out32(uhci_pmio_address + UHCI_IOREG_FRBASE, (uint32_t)uhci_frame_list);
+// VlA_Out16(uhci_pmio_address + UHCI_IOREG_USBINTR, 0x000F);
+// VlA_Out16(uhci_pmio_address + UHCI_IOREG_FRNUM, 0x0000);
+// VlA_Out8(uhci_pmio_address + UHCI_IOREG_SOFMOD, 0x40);
+// VlA_Out32(uhci_pmio_address + UHCI_IOREG_FRBASE, (uint32_t)uhci_frame_list);
 
 // /* init status flags */
-// io_out16(uhci_pmio_address + UHCI_IOREG_USBSTS, 0xFFFF);
+// VlA_Out16(uhci_pmio_address + UHCI_IOREG_USBSTS, 0xFFFF);
 
 // /* Start host controller */
-// io_out16(uhci_pmio_address + UHCI_IOREG_USBCMD, 0x0081);
+// VlA_Out16(uhci_pmio_address + UHCI_IOREG_USBCMD, 0x0081);
 
 // /* Scan, enable, and reset controller ports */
 // for (int i = 0; i < 2; i++) {
-//     uint16_t portsc =  io_in16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 :
+//     uint16_t portsc =  VlA_In16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 :
 //     UHCI_IOREG_PORTSC2)); if (portsc & 0x0001) {
 //         /* reset port */
 //         portsc |= 0x0200;
-//         io_out16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2), portsc);
+//         VlA_Out16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2), portsc);
 //         for (int i = 0; i < 1048576; i++) {}
 //         portsc &= ~0x0200;
-//         io_out16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2), portsc);
-//         portsc =  io_in16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2));
+//         VlA_Out16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2), portsc);
+//         portsc =  VlA_In16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2));
 
 //         /* enable port */
 //         portsc |= 0x0004;
-//         io_out16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2), portsc);
-//         portsc =  io_in16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2));
+//         VlA_Out16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2), portsc);
+//         portsc =  VlA_In16(uhci_pmio_address + (i ? UHCI_IOREG_PORTSC1 : UHCI_IOREG_PORTSC2));
 //     }
 
 //     printf("\tPort #%d: connected=%s, enabled=%s, speed=%s\r\n", i, (portsc & 0x0001) ? "true" :
 //     "false", (portsc & 0x0004) ? "true" : "false", (portsc & 0x0100) ? "low" : "full");
 // }
 
-// printf("USBCMD: 0x%04X\r\n", io_in16(uhci_pmio_address + UHCI_IOREG_USBCMD));
-// printf("USBSTS: 0x%04X\r\n", io_in16(uhci_pmio_address + UHCI_IOREG_USBSTS));
-// printf("USBINTR: 0x%04X\r\n", io_in16(uhci_pmio_address + UHCI_IOREG_USBINTR));
-// printf("FRNUM: 0x%04X\r\n", io_in16(uhci_pmio_address + UHCI_IOREG_FRNUM));
-// printf("FRBASE: 0x%08lX\r\n", io_in32(uhci_pmio_address + UHCI_IOREG_FRBASE));
-// printf("SOFMOD: 0x%02X\r\n", io_in8(uhci_pmio_address + UHCI_IOREG_SOFMOD));
-// printf("PORTSC1: 0x%04X\r\n", io_in16(uhci_pmio_address + UHCI_IOREG_PORTSC1));
-// printf("PORTSC2: 0x%04X\r\n", io_in16(uhci_pmio_address + UHCI_IOREG_PORTSC2));
+// printf("USBCMD: 0x%04X\r\n", VlA_In16(uhci_pmio_address + UHCI_IOREG_USBCMD));
+// printf("USBSTS: 0x%04X\r\n", VlA_In16(uhci_pmio_address + UHCI_IOREG_USBSTS));
+// printf("USBINTR: 0x%04X\r\n", VlA_In16(uhci_pmio_address + UHCI_IOREG_USBINTR));
+// printf("FRNUM: 0x%04X\r\n", VlA_In16(uhci_pmio_address + UHCI_IOREG_FRNUM));
+// printf("FRBASE: 0x%08lX\r\n", VlA_In32(uhci_pmio_address + UHCI_IOREG_FRBASE));
+// printf("SOFMOD: 0x%02X\r\n", VlA_In8(uhci_pmio_address + UHCI_IOREG_SOFMOD));
+// printf("PORTSC1: 0x%04X\r\n", VlA_In16(uhci_pmio_address + UHCI_IOREG_PORTSC1));
+// printf("PORTSC2: 0x%04X\r\n", VlA_In16(uhci_pmio_address + UHCI_IOREG_PORTSC2));

@@ -24,7 +24,7 @@ static int readblk_handler(struct shell_instance *inst, int argc, char **argv)
 
     lba = strtoull(argv[2], NULL, 16);
 
-    status = device_find(argv[1], &blkdev);
+    status = VlDev_Find(argv[1], &blkdev);
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "%s: could not find device\n", argv[0]);
         return 1;
@@ -43,7 +43,7 @@ static int readblk_handler(struct shell_instance *inst, int argc, char **argv)
     status = blkif->read(blkdev, lba, buf, 1, NULL);
     if (!CHECK_SUCCESS(status)) return 1;
 
-    hexdump(stdout, buf, blksize, 0);
+    VlDbg_Hexdump(stdout, buf, blksize, 0);
 
     return 0;
 }
@@ -56,7 +56,7 @@ static struct command readblk_command = {
 
 static void readblk_command_init(void)
 {
-    shell_command_register(&readblk_command);
+    VlShell_RegisterCommand(&readblk_command);
 }
 
 REGISTER_SHELL_COMMAND(readblk, readblk_command_init)

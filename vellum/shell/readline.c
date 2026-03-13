@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 
-long shell_readline(const char *__restrict prompt, char *__restrict buf, long len)
+long VlShell_Readline(const char *__restrict prompt, char *__restrict buf, long len)
 {
     fputs(prompt, stdout);
 

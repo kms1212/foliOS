@@ -5,10 +5,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/bios/vbe_pmi.h>
-#include <vellum/asm/bios/video.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/bios/vbe_pmi.h>
+#include <vellum/plat/bios/video.h>
+#include <vellum/plat/isr.h>
 
 #include <vellum/device.h>
 #include <vellum/encoding/cp437.h>
@@ -78,42 +79,42 @@ struct vga_data {
 static void write_cr(int idx, uint8_t val, int mda)
 {
     if (mda) {
-        io_out8(VGA_CR_M_ADDR, idx);
-        io_out8(VGA_CR_M_DATA, val);
+        VlA_Out8(VGA_CR_M_ADDR, idx);
+        VlA_Out8(VGA_CR_M_DATA, val);
     } else {
-        io_out8(VGA_CR_C_ADDR, idx);
-        io_out8(VGA_CR_C_DATA, val);
+        VlA_Out8(VGA_CR_C_ADDR, idx);
+        VlA_Out8(VGA_CR_C_DATA, val);
     }
 }
 
 static uint8_t read_cr(int idx, int mda)
 {
     if (mda) {
-        io_out8(VGA_CR_M_ADDR, idx);
-        return io_in8(VGA_CR_M_DATA);
+        VlA_Out8(VGA_CR_M_ADDR, idx);
+        return VlA_In8(VGA_CR_M_DATA);
     } else {
-        io_out8(VGA_CR_C_ADDR, idx);
-        return io_in8(VGA_CR_C_DATA);
+        VlA_Out8(VGA_CR_C_ADDR, idx);
+        return VlA_In8(VGA_CR_C_DATA);
     }
 }
 
 static void write_ar(int idx, uint8_t val)
 {
-    io_in8(VGA_ISR1);
-    uint8_t temp = io_in8(VGA_AR_AD);
-    io_out8(VGA_AR_AD, idx);
-    io_out8(VGA_AR_AD, val);
-    io_out8(VGA_AR_AD, temp);
+    VlA_In8(VGA_ISR1);
+    uint8_t temp = VlA_In8(VGA_AR_AD);
+    VlA_Out8(VGA_AR_AD, idx);
+    VlA_Out8(VGA_AR_AD, val);
+    VlA_Out8(VGA_AR_AD, temp);
 }
 
 static uint8_t read_ar(int idx)
 {
-    io_in8(VGA_ISR1);
-    uint8_t temp = io_in8(VGA_AR_AD);
-    io_out8(VGA_AR_AD, idx);
-    uint8_t val = io_in8(VGA_AR_DR);
-    io_in8(VGA_ISR1);
-    io_out8(VGA_AR_AD, temp);
+    VlA_In8(VGA_ISR1);
+    uint8_t temp = VlA_In8(VGA_AR_AD);
+    VlA_Out8(VGA_AR_AD, idx);
+    uint8_t val = VlA_In8(VGA_AR_DR);
+    VlA_In8(VGA_ISR1);
+    VlA_Out8(VGA_AR_AD, temp);
     return val;
 }
 
@@ -292,7 +293,7 @@ static status_t setup_bitmap_buffer(struct device *dev, int width, int height, i
     return STATUS_SUCCESS;
 
 has_error:
-    panic(status, "failed to initialize buffers for video");
+    VlP_Panic(status, "failed to initialize buffers for video");
 }
 
 static status_t setup_text_buffer(struct device *dev, int width, int height)
@@ -328,7 +329,7 @@ static status_t setup_text_buffer(struct device *dev, int width, int height)
     return STATUS_SUCCESS;
 
 has_error:
-    panic(status, "failed to initialize buffers for video");
+    VlP_Panic(status, "failed to initialize buffers for video");
 }
 
 static status_t set_cursor_pos(struct device *dev, int col, int row);
@@ -362,7 +363,7 @@ static status_t set_mode_vga(struct device *dev, int mode)
     set_cursor_pos(dev, 0, 0);
 
     LOG_DEBUG("setting video mode...\n");
-    _pc_bios_video_set_mode(mode);
+    VlBiosP_SetVideoMode(mode);
 
     write_ar(0x10, read_ar(0x10) & 0xF7);
 
@@ -379,7 +380,7 @@ static status_t set_mode_vbe(struct device *dev, int mode)
     size_t hw_frame_size;
 
     LOG_DEBUG("getting video mode info...\n");
-    status = _pc_bios_vbe_get_video_mode_info(mode, &vbe_mode_info);
+    status = VlBiosP_GetVbeVideoModeInfo(mode, &vbe_mode_info);
     if (!CHECK_SUCCESS(status)) {
         /* try non-VBE modes */
         if (data->vbe_offers_nonvbe_mode_info) {
@@ -443,7 +444,7 @@ static status_t set_mode_vbe(struct device *dev, int mode)
     data->mode_set_by_vbe = 1;
 
     LOG_DEBUG("setting video mode...\n");
-    status = _pc_bios_vbe_set_video_mode(mode);
+    status = VlBiosP_SetVbeVideoMode(mode);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data->is_switching_mode = 0;
@@ -451,7 +452,7 @@ static status_t set_mode_vbe(struct device *dev, int mode)
     return STATUS_SUCCESS;
 
 has_error:
-    panic(status, "failed to change video mode");
+    VlP_Panic(status, "failed to change video mode");
 }
 
 static status_t set_mode(struct device *dev, int mode)
@@ -461,8 +462,8 @@ static status_t set_mode(struct device *dev, int mode)
 
     status = data->vbe_available ? set_mode_vbe(dev, mode) : set_mode_vga(dev, mode);
 
-    _pc_isr_unmask_interrupt(0x20);
-    _pc_isr_unmask_interrupt(0x28);
+    VlIntP_Unmask(0x20);
+    VlIntP_Unmask(0x28);
 
     for (struct callback_list_entry *current = data->mode_callback_list; current;
          current = current->next) {
@@ -576,7 +577,7 @@ static status_t get_mode_info_vbe(struct device *dev, int mode, struct video_mod
     struct vbe_video_mode_info vbe_mode_info;
     int finding_next_mode;
 
-    status = _pc_bios_vbe_get_controller_info(&vbe_info);
+    status = VlBiosP_GetVbeControllerInfo(&vbe_info);
     if (!CHECK_SUCCESS(status)) return status;
 
     mode_list = (uint16_t *)FARPTR16_TO_VPTR(vbe_info.video_modes);
@@ -585,7 +586,7 @@ static status_t get_mode_info_vbe(struct device *dev, int mode, struct video_mod
     for (int i = 0; mode_list[i] != 0xFFFF; i++) {
         if (mode >= 0 && !finding_next_mode && mode_list[i] != mode) continue;
 
-        status = _pc_bios_vbe_get_video_mode_info(mode_list[i], &vbe_mode_info);
+        status = VlBiosP_GetVbeVideoModeInfo(mode_list[i], &vbe_mode_info);
         if (!CHECK_SUCCESS(status)) return status;
 
         if (vbe_mode_info.memory_model != VBEMM_DIRECT &&
@@ -646,7 +647,7 @@ static status_t get_hw_mode_info_vbe(
 
     if (!data->vbe_offers_nonvbe_mode_info && mode < 0x100) return STATUS_CONFLICTING_STATE;
 
-    status = _pc_bios_vbe_get_video_mode_info(mode, &vbe_mode_info);
+    status = VlBiosP_GetVbeVideoModeInfo(mode, &vbe_mode_info);
     if (!CHECK_SUCCESS(status)) return status;
 
     hwmode->width = vbe_mode_info.width;
@@ -708,7 +709,7 @@ static status_t get_hw_mode_info(struct device *dev, int mode, struct video_hw_m
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
-    if (!data->vbe_available) return STATUS_UNSUPPORTED;
+    if (!data->vbe_available) return STATUS_NOT_SUPPORTED;
 
     if (!data->vbe_offers_nonvbe_mode_info && mode < 0x100) {
         return get_hw_mode_info_vga(dev, mode, hwmode);
@@ -739,7 +740,7 @@ static status_t get_framebuffer(struct device *dev, void **framebuffer)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
-    if (!data->vbe_available) return STATUS_UNSUPPORTED;
+    if (!data->vbe_available) return STATUS_NOT_SUPPORTED;
 
     return get_framebuffer_vbe(dev, framebuffer);
 }
@@ -763,7 +764,7 @@ static status_t fb_invalidate(struct device *dev, int x0, int y0, int x1, int y1
 
     if (data->is_switching_mode) return STATUS_CONFLICTING_STATE;
 
-    if (!data->vbe_available) return STATUS_UNSUPPORTED;
+    if (!data->vbe_available) return STATUS_NOT_SUPPORTED;
 
     return fb_invalidate_vbe(dev, x0, y0, x1, y1);
 }
@@ -787,7 +788,7 @@ static int get_diff_chunk(struct device *dev, int xr, int yr)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
-    if (!data->vbe_available) return STATUS_UNSUPPORTED;
+    if (!data->vbe_available) return STATUS_NOT_SUPPORTED;
 
     return get_diff_chunk_vbe(dev, xr, yr);
 }
@@ -834,7 +835,7 @@ static status_t fb_flush(struct device *dev)
 
     if (data->is_switching_mode) return STATUS_CONFLICTING_STATE;
 
-    if (!data->vbe_available) return STATUS_UNSUPPORTED;
+    if (!data->vbe_available) return STATUS_NOT_SUPPORTED;
 
     return fb_flush_vbe(dev);
 }
@@ -929,7 +930,7 @@ static status_t con_flush(struct device *dev)
             }
 
             src = &data->char_buffer[y * width + x];
-            status = enc_utf32_to_cp437(src->codepoint, &cp437_char);
+            status = StEnc_Utf32ToCp437(src->codepoint, &cp437_char);
             if (!CHECK_SUCCESS(status)) {
                 cp437_char = '?';
             }
@@ -972,10 +973,10 @@ static status_t set_cursor_pos(struct device *dev, int col, int row)
 
     pos = row * width + col;
 
-    io_out8(0x03D4, 0x0F);
-    io_out8(0x03D5, pos & 0xFF);
-    io_out8(0x03D4, 0x0E);
-    io_out8(0x03D5, (pos >> 8) & 0xFF);
+    VlA_Out8(0x03D4, 0x0F);
+    VlA_Out8(0x03D5, pos & 0xFF);
+    VlA_Out8(0x03D4, 0x0E);
+    VlA_Out8(0x03D5, (pos >> 8) & 0xFF);
 
     data->cursor_col = col;
     data->cursor_row = row;
@@ -1046,9 +1047,9 @@ static void vga_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"vga\"");
+        VlP_Panic(status, "cannot register device driver \"vga\"");
     }
 
     drv->name = "vga";
@@ -1072,10 +1073,10 @@ static status_t probe(
     uint16_t vbe_vmode;
     uint16_t *mode_list;
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("video", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("video", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -1097,7 +1098,7 @@ static status_t probe(
     dev->data = data;
 
     LOG_DEBUG("checking wheter VBE is supported...\n");
-    status = _pc_bios_vbe_get_controller_info(&vbe_info);
+    status = VlBiosP_GetVbeControllerInfo(&vbe_info);
     data->vbe_available = CHECK_SUCCESS(status);
     if (data->vbe_available) {
         LOG_DEBUG("VBE supported\n");
@@ -1107,7 +1108,7 @@ static status_t probe(
 
     if (data->vbe_available) {
         LOG_DEBUG("checking whether VBE offers non-VBE video modes...\n");
-        status = _pc_bios_vbe_get_controller_info(&vbe_info);
+        status = VlBiosP_GetVbeControllerInfo(&vbe_info);
         if (!CHECK_SUCCESS(status)) return status;
 
         mode_list = (uint16_t *)FARPTR16_TO_VPTR(vbe_info.video_modes);
@@ -1118,12 +1119,12 @@ static status_t probe(
         }
 
         LOG_DEBUG("getting current video mode...\n");
-        status = _pc_bios_vbe_get_video_mode(&vbe_vmode);
+        status = VlBiosP_GetVbeVideoMode(&vbe_vmode);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
         if (vbe_vmode >= 0x100) {
             LOG_DEBUG("getting current video mode information...\n");
-            status = _pc_bios_vbe_get_video_mode_info(vbe_vmode, &data->vbe_mode_info);
+            status = VlBiosP_GetVbeVideoModeInfo(vbe_vmode, &data->vbe_mode_info);
             if (!CHECK_SUCCESS(status)) goto has_error;
 
             LOG_DEBUG("setting up buffers...\n");
@@ -1143,7 +1144,7 @@ static status_t probe(
                 if (!CHECK_SUCCESS(status)) goto has_error;
                 break;
             default:
-                status = STATUS_UNSUPPORTED;
+                status = STATUS_NOT_SUPPORTED;
                 goto has_error;
             }
         } else {
@@ -1169,7 +1170,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -1193,7 +1194,7 @@ static status_t remove(struct device *dev)
 
     free(data);
 
-    device_remove(dev);
+    VlDev_Remove(dev);
 
     return STATUS_SUCCESS;
 }

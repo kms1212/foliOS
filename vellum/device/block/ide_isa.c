@@ -2,9 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/asm/intrinsics/misc.h>
-#include <vellum/asm/io.h>
-#include <vellum/asm/isr.h>
+#include <vellum/arch/intrinsics/misc.h>
+#include <vellum/arch/io.h>
+
+#include <vellum/plat/isr.h>
 
 #include <vellum/device.h>
 #include <vellum/interface/ide.h>
@@ -41,19 +42,19 @@ static status_t bus_soft_reset(struct device *dev)
     struct ide_data *data = (struct ide_data *)dev->data;
     uint8_t sr;
 
-    io_out8(data->io_base1 + IDEREG_DEVCTRL, 0x04);
-    io_in8(data->io_base1 + IDEREG_ALTSTAT);
-    io_out8(data->io_base1 + IDEREG_DEVCTRL, 0x00);
+    VlA_Out8(data->io_base1 + IDEREG_DEVCTRL, 0x04);
+    VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
+    VlA_Out8(data->io_base1 + IDEREG_DEVCTRL, 0x00);
     for (int i = 0; i < 20; i++) {
-        io_in8(data->io_base1 + IDEREG_ALTSTAT);
+        VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
     }
 
-    sr = io_in8(data->io_base1 + IDEREG_ALTSTAT);
+    sr = VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
     if (sr == 0xFF) return STATUS_HARDWARE_NOT_FOUND;
 
     do {
-        _ia32_pause();
-        sr = io_in8(data->io_base1 + IDEREG_ALTSTAT);
+        VlA_Pause();
+        sr = VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while (sr & 0x80);
 
@@ -65,20 +66,20 @@ static status_t switch_device(struct device *dev, int slave)
     struct ide_data *data = (struct ide_data *)dev->data;
     uint8_t sr;
 
-    if ((io_in8(data->io_base0 + IDEREG_DRVHEAD) & 0x10) != (slave ? 0x10 : 0x00)) {
+    if ((VlA_In8(data->io_base0 + IDEREG_DRVHEAD) & 0x10) != (slave ? 0x10 : 0x00)) {
         LOG_DEBUG("switching device...\n");
-        io_out8(data->io_base0 + IDEREG_DRVHEAD, 0xA0 | (slave ? 0x10 : 0x00));
+        VlA_Out8(data->io_base0 + IDEREG_DRVHEAD, 0xA0 | (slave ? 0x10 : 0x00));
 
     } else {
-        sr = io_in8(data->io_base1 + IDEREG_ALTSTAT);
+        sr = VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
     }
     for (int i = 0; i < 15; i++) {
-        sr = io_in8(data->io_base1 + IDEREG_ALTSTAT);
+        sr = VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
     }
 
     while (sr & 0x80) {
-        _ia32_pause();
-        sr = io_in8(data->io_base0 + IDEREG_STATUS);
+        VlA_Pause();
+        sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     }
 
@@ -96,38 +97,38 @@ static status_t send_command(struct device *dev, struct ata_command *cmd)
     if (!CHECK_SUCCESS(status)) return status;
 
     /* fill up register block */
-    io_out8(data->io_base0 + IDEREG_DRVHEAD, cmd->drive_head);
+    VlA_Out8(data->io_base0 + IDEREG_DRVHEAD, cmd->drive_head);
 
     if (cmd->extended) {
-        io_out8(data->io_base0 + IDEREG_FEATURES, (cmd->features >> 8) & 0xFF);
-        io_out8(data->io_base0 + IDEREG_COUNT, (cmd->count >> 8) & 0xFF);
-        io_out8(data->io_base0 + IDEREG_SECTOR, (cmd->sector >> 8) & 0xFF);
-        io_out8(data->io_base0 + IDEREG_CYLLOW, (cmd->cylinder_low >> 8) & 0xFF);
-        io_out8(data->io_base0 + IDEREG_CYLHIGH, (cmd->cylinder_high >> 8) & 0xFF);
+        VlA_Out8(data->io_base0 + IDEREG_FEATURES, (cmd->features >> 8) & 0xFF);
+        VlA_Out8(data->io_base0 + IDEREG_COUNT, (cmd->count >> 8) & 0xFF);
+        VlA_Out8(data->io_base0 + IDEREG_SECTOR, (cmd->sector >> 8) & 0xFF);
+        VlA_Out8(data->io_base0 + IDEREG_CYLLOW, (cmd->cylinder_low >> 8) & 0xFF);
+        VlA_Out8(data->io_base0 + IDEREG_CYLHIGH, (cmd->cylinder_high >> 8) & 0xFF);
     }
 
-    io_out8(data->io_base0 + IDEREG_FEATURES, cmd->features & 0xFF);
-    io_out8(data->io_base0 + IDEREG_COUNT, cmd->count & 0xFF);
-    io_out8(data->io_base0 + IDEREG_SECTOR, cmd->sector & 0xFF);
-    io_out8(data->io_base0 + IDEREG_CYLLOW, cmd->cylinder_low & 0xFF);
-    io_out8(data->io_base0 + IDEREG_CYLHIGH, cmd->cylinder_high & 0xFF);
+    VlA_Out8(data->io_base0 + IDEREG_FEATURES, cmd->features & 0xFF);
+    VlA_Out8(data->io_base0 + IDEREG_COUNT, cmd->count & 0xFF);
+    VlA_Out8(data->io_base0 + IDEREG_SECTOR, cmd->sector & 0xFF);
+    VlA_Out8(data->io_base0 + IDEREG_CYLLOW, cmd->cylinder_low & 0xFF);
+    VlA_Out8(data->io_base0 + IDEREG_CYLHIGH, cmd->cylinder_high & 0xFF);
 
     /* send command */
-    io_out8(data->io_base0 + IDEREG_COMMAND, cmd->command);
+    VlA_Out8(data->io_base0 + IDEREG_COMMAND, cmd->command);
 
     /* wait until the command is finished */
     do {
-        _ia32_pause();
-        sr = io_in8(data->io_base0 + IDEREG_STATUS);
+        VlA_Pause();
+        sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while (sr & 0x80);
 
     /* read result back */
-    cmd->features = io_in8(data->io_base0 + IDEREG_ERROR);
-    cmd->count = io_in8(data->io_base0 + IDEREG_COUNT);
-    cmd->sector = io_in8(data->io_base0 + IDEREG_SECTOR);
-    cmd->cylinder_low = io_in8(data->io_base0 + IDEREG_CYLLOW);
-    cmd->cylinder_high = io_in8(data->io_base0 + IDEREG_CYLHIGH);
+    cmd->features = VlA_In8(data->io_base0 + IDEREG_ERROR);
+    cmd->count = VlA_In8(data->io_base0 + IDEREG_COUNT);
+    cmd->sector = VlA_In8(data->io_base0 + IDEREG_SECTOR);
+    cmd->cylinder_low = VlA_In8(data->io_base0 + IDEREG_CYLLOW);
+    cmd->cylinder_high = VlA_In8(data->io_base0 + IDEREG_CYLHIGH);
 
     /* check if the command had failed */
     if (sr & 0x21) return STATUS_HARDWARE_FAILED;
@@ -135,7 +136,7 @@ static status_t send_command(struct device *dev, struct ata_command *cmd)
     return STATUS_SUCCESS;
 }
 
-static status_t send_command_pio_input(
+static status_t send_command_pVlA_Input(
     struct device *dev,
     struct ata_command *cmd,
     void *buf,
@@ -156,24 +157,24 @@ static status_t send_command_pio_input(
     /* read out data */
     do {
         do {
-            _ia32_pause();
-            sr = io_in8(data->io_base0 + IDEREG_STATUS);
+            VlA_Pause();
+            sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
             if (sr & 0x21) goto end;
         } while (sr & 0x80);
 
-        io_ins16(data->io_base0 + IDEREG_DATA, buf + xfer_count * size, size / sizeof(uint16_t));
+        VlA_Ins16(data->io_base0 + IDEREG_DATA, buf + xfer_count * size, size / sizeof(uint16_t));
     } while (++xfer_count < count);
 
 end:
     if (result) *result = xfer_count;
 
     /* check error again */
-    sr = io_in8(data->io_base0 + IDEREG_STATUS);
+    sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
 
     return (sr & 0x21) ? STATUS_HARDWARE_FAILED : STATUS_SUCCESS;
 }
 
-static status_t send_command_pio_output(
+static status_t send_command_pVlA_Output(
     struct device *dev,
     struct ata_command *cmd,
     const void *buf,
@@ -194,19 +195,19 @@ static status_t send_command_pio_output(
     /* write out data */
     do {
         do {
-            _ia32_pause();
-            sr = io_in8(data->io_base0 + IDEREG_STATUS);
+            VlA_Pause();
+            sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
             if (sr & 0x01) goto end;
         } while (sr & 0x08);
 
-        io_outs16(data->io_base0 + IDEREG_DATA, buf + xfer_count * size, size / sizeof(uint16_t));
+        VlA_Outs16(data->io_base0 + IDEREG_DATA, buf + xfer_count * size, size / sizeof(uint16_t));
     } while (++xfer_count < count);
 
 end:
     if (result) *result = xfer_count;
 
     /* check error again */
-    sr = io_in8(data->io_base0 + IDEREG_STATUS);
+    sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
 
     return (sr & 0x01) ? STATUS_HARDWARE_FAILED : STATUS_SUCCESS;
 }
@@ -225,32 +226,32 @@ static status_t send_command_packet(
 
     /* send PACKET command */
     LOG_DEBUG("sending PACKET command...\n");
-    io_out8(data->io_base0 + IDEREG_FEATURES, 0x00);
-    io_out8(data->io_base0 + IDEREG_CYLLOW, data_block_size & 0xFF);
-    io_out8(data->io_base0 + IDEREG_CYLHIGH, (data_block_size >> 8) & 0xFF);
-    io_out8(data->io_base0 + IDEREG_COMMAND, 0xA0);
+    VlA_Out8(data->io_base0 + IDEREG_FEATURES, 0x00);
+    VlA_Out8(data->io_base0 + IDEREG_CYLLOW, data_block_size & 0xFF);
+    VlA_Out8(data->io_base0 + IDEREG_CYLHIGH, (data_block_size >> 8) & 0xFF);
+    VlA_Out8(data->io_base0 + IDEREG_COMMAND, 0xA0);
 
     /* wait */
     for (int i = 0; i < 4; i++) {
-        io_in8(data->io_base1 + IDEREG_ALTSTAT);
+        VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
     }
 
     /* wait until the drive is ready to receive the packet */
     LOG_DEBUG("waiting for device to ready...\n");
     do {
-        _ia32_pause();
-        sr = io_in8(data->io_base0 + IDEREG_STATUS);
+        VlA_Pause();
+        sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while ((sr & 0x80) || !(sr & 0x08));
 
     LOG_DEBUG("sending command...\n");
-    io_outs16(data->io_base0 + IDEREG_DATA, (const uint16_t *)packet, packet_size);
+    VlA_Outs16(data->io_base0 + IDEREG_DATA, (const uint16_t *)packet, packet_size);
 
     /* wait until the command is finished */
     LOG_DEBUG("waiting until the command is finished...\n");
     do {
-        _ia32_pause();
-        sr = io_in8(data->io_base0 + IDEREG_STATUS);
+        VlA_Pause();
+        sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
         if (sr & 0x01) return STATUS_HARDWARE_FAILED;
     } while (sr & 0x80);
 
@@ -282,16 +283,16 @@ static status_t send_command_packet_input(
     do {
         LOG_DEBUG("waiting for DRQ...\n");
         do {
-            _ia32_pause();
-            sr = io_in8(data->io_base0 + IDEREG_STATUS);
+            VlA_Pause();
+            sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
             if (sr & 0x01) goto end;
         } while ((sr & 0x80) || !(sr & 0x08));
 
-        xfer_size = ((size_t)io_in8(data->io_base0 + IDEREG_CYLHIGH) << 8) |
-            io_in8(data->io_base0 + IDEREG_CYLLOW);
-        LOG_DEBUG("transfer size=%lu\n", xfer_size);
+        xfer_size = ((size_t)VlA_In8(data->io_base0 + IDEREG_CYLHIGH) << 8) |
+            VlA_In8(data->io_base0 + IDEREG_CYLLOW);
+        LOG_DEBUG("transfer size=%zu\n", xfer_size);
 
-        io_ins16(
+        VlA_Ins16(
             data->io_base0 + IDEREG_DATA,
             buf + xfer_count * size,
             xfer_size / sizeof(uint16_t)
@@ -304,7 +305,7 @@ end:
     if (result) *result = xfer_count;
 
     /* check error again */
-    sr = io_in8(data->io_base0 + IDEREG_STATUS);
+    sr = VlA_In8(data->io_base0 + IDEREG_STATUS);
 
     return (sr & 0x01) ? STATUS_HARDWARE_FAILED : STATUS_SUCCESS;
 }
@@ -320,13 +321,13 @@ static status_t send_command_packet_output(
     size_t *result
 )
 {
-    return STATUS_UNSUPPORTED;
+    return STATUS_NOT_SUPPORTED;
 }
 
 const struct ide_interface ideif = {
     .send_command = send_command,
-    .send_command_pio_input = send_command_pio_input,
-    .send_command_pio_output = send_command_pio_output,
+    .send_command_pVlA_Input = send_command_pVlA_Input,
+    .send_command_pVlA_Output = send_command_pVlA_Output,
     .send_command_packet = send_command_packet,
     .send_command_packet_input = send_command_packet_input,
     .send_command_packet_output = send_command_packet_output,
@@ -345,14 +346,14 @@ static status_t detect_device(struct device *dev, int slave, int *atapi)
     if (!CHECK_SUCCESS(status)) return status;
 
     LOG_DEBUG("switching device...\n");
-    io_out8(data->io_base0 + IDEREG_DRVHEAD, 0xA0 | (slave ? 0x10 : 0x00));
-    io_in8(data->io_base1 + IDEREG_ALTSTAT);
-    io_in8(data->io_base1 + IDEREG_ALTSTAT);
-    io_in8(data->io_base1 + IDEREG_ALTSTAT);
-    sr = io_in8(data->io_base1 + IDEREG_ALTSTAT);
+    VlA_Out8(data->io_base0 + IDEREG_DRVHEAD, 0xA0 | (slave ? 0x10 : 0x00));
+    VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
+    VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
+    VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
+    sr = VlA_In8(data->io_base1 + IDEREG_ALTSTAT);
 
-    cyl_low = io_in8(data->io_base0 + IDEREG_CYLLOW);
-    cyl_high = io_in8(data->io_base0 + IDEREG_CYLHIGH);
+    cyl_low = VlA_In8(data->io_base0 + IDEREG_CYLLOW);
+    cyl_high = VlA_In8(data->io_base0 + IDEREG_CYLHIGH);
 
     if (!sr && cyl_low != 0x14 && cyl_high != 0xEB) return STATUS_HARDWARE_NOT_FOUND;
 
@@ -369,7 +370,7 @@ static status_t detect_device(struct device *dev, int slave, int *atapi)
             .drive_head = 0xA0 | (slave ? 0x10 : 0x00),
         };
 
-        status = send_command_pio_input(dev, &cmd, idbuf, sizeof(idbuf), 1, NULL);
+        status = send_command_pVlA_Input(dev, &cmd, idbuf, sizeof(idbuf), 1, NULL);
         if (!CHECK_SUCCESS(status)) return status;
 
         if (atapi) *atapi = 0;
@@ -387,17 +388,17 @@ static status_t detect_device(struct device *dev, int slave, int *atapi)
             .drive_head = 0xA0 | (slave ? 0x10 : 0x00),
         };
 
-        status = send_command_pio_input(dev, &cmd, idbuf, sizeof(idbuf), 1, NULL);
+        status = send_command_pVlA_Input(dev, &cmd, idbuf, sizeof(idbuf), 1, NULL);
         if (!CHECK_SUCCESS(status)) return status;
 
         if (atapi) *atapi = 1;
         return STATUS_SUCCESS;
     } else {
-        return STATUS_UNSUPPORTED;
+        return STATUS_NOT_SUPPORTED;
     }
 }
 
-static void isr(void *data, struct interrupt_frame *frame, struct trap_regs *regs, int num) {}
+static void isr(void *data, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num) {}
 
 static status_t probe(
     struct device **devout,
@@ -414,9 +415,9 @@ static void ide_isa_init(void)
     status_t status;
     struct device_driver *drv;
 
-    status = device_driver_create(&drv);
+    status = VlDev_CreateDriver(&drv);
     if (!CHECK_SUCCESS(status)) {
-        panic(status, "cannot register device driver \"ide_isa\"");
+        VlP_Panic(status, "cannot register device driver \"ide_isa\"");
     }
 
     drv->name = "ide_isa";
@@ -447,10 +448,10 @@ static status_t probe(
         return STATUS_INVALID_RESOURCE;
     }
 
-    status = device_create(&dev, drv, parent);
+    status = VlDev_Create(&dev, drv, parent);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = device_generate_name("idec", dev->name, sizeof(dev->name));
+    status = VlDev_GenerateName("idec", dev->name, sizeof(dev->name));
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     data = malloc(sizeof(*data));
@@ -465,11 +466,11 @@ static status_t probe(
     data->isr = NULL;
     dev->data = data;
 
-    status = _pc_isr_mask_interrupt(data->irq_ch);
+    status = VlIntP_Mask(data->irq_ch);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("registering interrupt service routine...\n");
-    status = isr_add_interrupt_handler(data->irq_ch, dev, isr, &data->isr);
+    status = VlIntP_AddInterruptHandler(data->irq_ch, dev, isr, &data->isr);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("detecting master device...\n");
@@ -491,12 +492,12 @@ static status_t probe(
     }
 
     if ((master_present && !master_atapi) || (slave_present && !slave_atapi)) {
-        status = device_driver_find("ata", &atadrv);
+        status = VlDev_FindDriver("ata", &atadrv);
         if (!CHECK_SUCCESS(status)) goto has_error;
     }
 
     if ((master_present && master_atapi) || (slave_present && slave_atapi)) {
-        status = device_driver_find("atapi", &atapidrv);
+        status = VlDev_FindDriver("atapi", &atapidrv);
         if (!CHECK_SUCCESS(status)) goto has_error;
     }
 
@@ -538,7 +539,7 @@ static status_t probe(
         }
     }
 
-    status = _pc_isr_unmask_interrupt(data->irq_ch);
+    status = VlIntP_Unmask(data->irq_ch);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (devout) *devout = dev;
@@ -548,10 +549,10 @@ static status_t probe(
     return STATUS_SUCCESS;
 
 has_error:
-    _pc_isr_unmask_interrupt((int)rsrc[2].base);
+    VlIntP_Unmask((int)rsrc[2].base);
 
     if (data && data->isr) {
-        _pc_isr_remove_handler(data->isr);
+        VlIntP_RemoveHandler(data->isr);
     }
 
     if (dev) {
@@ -565,7 +566,7 @@ has_error:
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return status;
@@ -575,9 +576,9 @@ static status_t remove(struct device *dev)
 {
     struct ide_data *data = (struct ide_data *)dev->data;
 
-    _pc_isr_unmask_interrupt(data->irq_ch);
+    VlIntP_Unmask(data->irq_ch);
 
-    _pc_isr_remove_handler(data->isr);
+    VlIntP_RemoveHandler(data->isr);
 
     if (dev) {
         for (struct device *diskdev = dev->first_child; diskdev; diskdev = diskdev->sibling) {
@@ -590,7 +591,7 @@ static status_t remove(struct device *dev)
     }
 
     if (dev) {
-        device_remove(dev);
+        VlDev_Remove(dev);
     }
 
     return STATUS_SUCCESS;

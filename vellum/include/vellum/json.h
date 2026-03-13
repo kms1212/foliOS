@@ -46,14 +46,16 @@ struct json_array_elem {
     struct json_value *value;
 };
 
-void json_destruct(struct json_value *obj);
+void VlJson_Destruct(struct json_value *obj);
 
-status_t json_parse(const char *str, long len, struct json_value **json);
+status_t VlJson_Parse(const char *str, long len, struct json_value **json);
 
-status_t json_object_find_value(
+status_t VlJson_GetObjectElementValue(
     struct json_object *obj, const char *str, struct json_value **value
 );
-status_t json_array_find_value(struct json_array *arr, unsigned int idx, struct json_value **value);
-status_t json_array_get_element_count(struct json_array *arr, unsigned int *count);
+status_t VlJson_GetArrayElementValue(
+    struct json_array *arr, unsigned int idx, struct json_value **value
+);
+status_t VlJson_GetArrayElementCount(struct json_array *arr, unsigned int *count);
 
 #endif  // __VELLUM_JSON_H__

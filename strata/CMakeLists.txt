@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0076 NEW)
-set(CMAKE_TOOLCHAIN_FILE "${ROOT_SOURCE_DIR}/cmake/${TARGET_ARCH}/Toolchain.cmake")
 
 include(ExternalProject)
 
@@ -45,12 +44,14 @@ target_include_directories(strata PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 add_subdirectory(lib)
 add_subdirectory(arch)
 add_subdirectory(elf)
+add_subdirectory(gnt)
 add_subdirectory(init)
 add_subdirectory(interrupt)
 add_subdirectory(log)
 add_subdirectory(mm)
 add_subdirectory(mutex)
 add_subdirectory(stdc)
+add_subdirectory(syscall)
 add_subdirectory(thread)
 add_subdirectory(utils)
 

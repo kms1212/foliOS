@@ -1,3 +1,3 @@
-#include <vellum/asm/bios/vbe_pmi.h>
+#include <vellum/plat/bios/vbe_pmi.h>
 
 #include <stddef.h>

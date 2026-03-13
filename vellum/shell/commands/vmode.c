@@ -5,7 +5,7 @@
 
 #include <getopt.h>
 
-#include <vellum/asm/bios/video.h>
+#include <vellum/plat/bios/video.h>
 
 #include <vellum/device.h>
 #include <vellum/interface/console.h>
@@ -26,7 +26,7 @@ static int list_modes(char *argv0)
     int mode;
     struct video_mode_info mode_info;
 
-    status = device_find("video0", &fbdev);
+    status = VlDev_Find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) return 1;
 
     status = fbdev->driver->get_interface(fbdev, "video", (const void **)&vidif);
@@ -59,7 +59,7 @@ static int set_mode(char *argv0, int text, int width, int height, int bpp)
     int mode, new_mode;
     struct video_mode_info mode_info;
 
-    status = device_find("video0", &fbdev);
+    status = VlDev_Find("video0", &fbdev);
     if (!CHECK_SUCCESS(status)) return 1;
 
     status = fbdev->driver->get_interface(fbdev, "video", (const void **)&vidif);
@@ -162,7 +162,7 @@ static struct command vmode_command = {
 
 static void vmode_command_init(void)
 {
-    shell_command_register(&vmode_command);
+    VlShell_RegisterCommand(&vmode_command);
 }
 
 REGISTER_SHELL_COMMAND(vmode, vmode_command_init)

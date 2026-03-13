@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <vellum/asm/page.h>
+#include <vellum/plat/page.h>
 
 #include <vellum/status.h>
 

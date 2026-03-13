@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <strata/gnt.h>
+#include <strata/utf.h>
 #include <string.h>
 
 #include <zstd.h>
@@ -126,14 +128,44 @@ void test_zstd(void)
     StPool_Free(decompressed_buffer);
 }
 
+void dump_gnt(struct StGnt_Node *node, int depth)
+{
+    St_Utf8Char name_buf[512];
+
+    if (node == g_gnt_root_local) {
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- /\n", depth, "");
+    } else if (node == g_gnt_root_network) {
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- //\n", depth, "");
+    } else {
+        StUtf_Utf32ToUtf8(node->name, node->name_len, name_buf, sizeof(name_buf), NULL);
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "%*s- %s%c\n",
+            depth,
+            "",
+            (char *)name_buf,
+            node->type == GNT_NODETYPE_DIRECTORY ? '/' : ' '
+        );
+    }
+
+    if (node->type != GNT_NODETYPE_DIRECTORY) return;
+
+    node = node->directory.children_head;
+    while (node) {
+        dump_gnt(node, depth + 1);
+
+        node = node->sibling;
+    }
+}
+
 static int shared_value = 0;
 
 static struct StMutex mtx;
 
 static void thread1_main(struct StThread *th);
 
-extern int _userexec_start;
-extern int _userexec_end;
+extern char _userexec_start[];
+extern char _userexec_end[];
 
 static void setup_process(void)
 {
@@ -142,11 +174,11 @@ static void setup_process(void)
     struct StElf_Object *elf;
     struct StElf64_Phdr ph;
     unsigned int ph_count;
-    size_t userexec_size = (uintptr_t)&_userexec_end - (uintptr_t)&_userexec_start;
+    size_t userexec_size = (uintptr_t)_userexec_end - (uintptr_t)_userexec_start;
     uintptr_t entry_point;
     struct StThread *main_thread;
 
-    status = StElf_Open(&_userexec_start, userexec_size, &elf);
+    status = StElf_Open(_userexec_start, userexec_size, &elf);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to open elf");
     }
@@ -336,7 +368,7 @@ static void thread4_main(struct StThread *th)
     }
 }
 
-__section(".text") __noreturn void main(void)
+__noreturn void main(void)
 {
     StStatus status;
     struct bootinfo_entry_header *enthdr = NULL;
@@ -559,6 +591,14 @@ __section(".text") __noreturn void main(void)
 
     test_zstd();
 
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing the Global Node Tree...\n");
+    status = StGnt_Init();
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to initialize the Global Node Tree");
+    }
+
+    dump_gnt(g_gnt_root_local, 0);
+
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing thread system...\n");
     status = StThread_Init(&main_thread);
     if (!CHECK_SUCCESS(status)) {
@@ -582,7 +622,7 @@ __section(".text") __noreturn void main(void)
         } else {
             uint32_t intstatus = StA_SaveInterrupt();
             StA_EnableInterrupt();
-            StA_Halt();
+            StA_Hlt();
             StA_RestoreInterrupt(intstatus);
         }
     }

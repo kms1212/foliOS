@@ -1,7 +1,7 @@
 #ifndef __SETJMP_H__
 #define __SETJMP_H__
 
-#include <vellum/asm/setjmp.h>
+#include <vellum/plat/setjmp.h>
 
 #include <vellum/compiler.h>
 

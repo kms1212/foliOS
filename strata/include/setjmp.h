@@ -1,7 +1,7 @@
 #ifndef __SETJMP_H__
 #define __SETJMP_H__
 
-#include <asm/setjmp.h>
+#include <plat/setjmp.h>
 
 #include <compiler.h>
 

@@ -25,20 +25,20 @@ SECTIONS
 
     . = 0xFFFF800000000000;  /* module area */
 
-    .text :
-    {
-        PROVIDE_HIDDEN(___text_start = .);
-        KEEP(*(.text .text.*))
-        PROVIDE_HIDDEN(__text_end = .);
-    }
-
-    . = ALIGN(4096);
     .rodata :
     {
         PROVIDE_HIDDEN(__rodata_start = .);
         KEEP(*(.rodata.krt_table))
         KEEP(*(.rodata .rodata.*))
         PROVIDE_HIDDEN(__rodata_end = .);
+    }
+
+    . = ALIGN(4096);
+    .text :
+    {
+        PROVIDE_HIDDEN(___text_start = .);
+        KEEP(*(.text .text.*))
+        PROVIDE_HIDDEN(__text_end = .);
     }
 
     PROVIDE_HIDDEN(__end = .);

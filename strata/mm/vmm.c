@@ -42,7 +42,7 @@ static StStatus create_alloc_node(struct vmm_alloc_node **node)
         return STATUS_SUCCESS;
     } else {
         // TODO: allocate a new node from slab allocator.
-        return STATUS_UNIMPLEMENTED;
+        return STATUS_NOT_IMPLEMENTED;
     }
 }
 

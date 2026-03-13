@@ -14,7 +14,7 @@ static int log_level = LL_DEBUG;
 
 #endif
 
-void log_set_level(int level)
+void VlLog_SetLevel(int level)
 {
     if (level < -1) level = -1;
     if (level > 4) level = 4;
@@ -22,21 +22,21 @@ void log_set_level(int level)
     log_level = level;
 }
 
-void log_printf(int level, const char *module_name, const char *fmt, ...)
+void VlLog_Print(int level, const char *module_name, const char *fmt, ...)
 {
     va_list args;
 
     va_start(args, fmt);
-    log_vprintf(level, module_name, fmt, args);
+    VlLog_PrintValist(level, module_name, fmt, args);
     va_end(args);
 }
 
-void log_isr_printf(int level, const char *module_name, const char *fmt, ...)
+void VlLog_IntSafePrint(int level, const char *module_name, const char *fmt, ...)
 {
     va_list args;
 
     va_start(args, fmt);
-    log_isr_vprintf(level, module_name, fmt, args);
+    VlLog_IntSafePrintValist(level, module_name, fmt, args);
     va_end(args);
 }
 
@@ -49,7 +49,7 @@ static const char *ll_str[] = {
     "TRACE",
 };
 
-void log_vprintf(int level, const char *module_name, const char *fmt, va_list args)
+void VlLog_PrintValist(int level, const char *module_name, const char *fmt, va_list args)
 {
     if (log_level < level) return;
 
@@ -59,7 +59,7 @@ void log_vprintf(int level, const char *module_name, const char *fmt, va_list ar
     const struct rtc_interface *rtcif;
     struct rtc_time rtctime;
 
-    status = device_find("rtc0", &rtcdev);
+    status = VlDev_Find("rtc0", &rtcdev);
     if (!CHECK_SUCCESS(status)) {
         time_available = 0;
         goto skip_time;
@@ -98,7 +98,7 @@ skip_time:
     vfprintf(stdout, fmt, args);
 }
 
-void log_isr_vprintf(int level, const char *module_name, const char *fmt, va_list args)
+void VlLog_IntSafePrintValist(int level, const char *module_name, const char *fmt, va_list args)
 {
     if (log_level < level) return;
 
@@ -108,7 +108,7 @@ void log_isr_vprintf(int level, const char *module_name, const char *fmt, va_lis
     const struct rtc_interface *rtcif;
     struct rtc_time rtctime;
 
-    status = device_find("rtc0", &rtcdev);
+    status = VlDev_Find("rtc0", &rtcdev);
     if (!CHECK_SUCCESS(status)) {
         time_available = 0;
         goto skip_time;

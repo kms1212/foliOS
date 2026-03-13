@@ -16,13 +16,13 @@ static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
         return 1;
     }
 
-    if (path_is_absolute(argv[1])) {
+    if (VlPath_IsAbsolute(argv[1])) {
         struct path_iterator iter;
-        path_iter_init(&iter, argv[1]);
+        VlPath_InitIter(&iter, argv[1]);
 
         struct filesystem *newfs;
         if (iter.element[0]) {
-            status = filesystem_find(iter.element, &newfs);
+            status = VlFs_Find(iter.element, &newfs);
             if (!CHECK_SUCCESS(status)) {
                 fprintf(stderr, "%s: failed to open filesystem\n", argv[0]);
                 return 1;
@@ -44,7 +44,7 @@ static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
 
         int iter_result;
         do {
-            iter_result = path_iter_next(&iter);
+            iter_result = VlPath_AdvanceIter(&iter);
             if (iter.element[0] == '\0') {
                 continue;
             }
@@ -71,12 +71,12 @@ static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
         inst->fs = newfs;
 
         char pathbuf[PATH_MAX];
-        if (!path_get_fsname(pathbuf, sizeof(pathbuf), argv[1])[0]) {
+        if (!VlPath_GetFsname(pathbuf, sizeof(pathbuf), argv[1])[0]) {
             snprintf(pathbuf, sizeof(pathbuf), "%s:%s", inst->fs->name, argv[1]);
         } else {
             strncpy(pathbuf, argv[1], sizeof(pathbuf) - 1);
         }
-        path_normalize(inst->working_dir_path, sizeof(inst->working_dir_path), pathbuf);
+        VlPath_Normalize(inst->working_dir_path, sizeof(inst->working_dir_path), pathbuf);
     } else {
         if (!inst->fs) {
             fprintf(stderr, "%s: filesystem not selected\n", argv[0]);
@@ -85,12 +85,12 @@ static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
 
         char pathbuf[PATH_MAX];
         struct path_iterator iter;
-        path_iter_init(&iter, argv[1]);
+        VlPath_InitIter(&iter, argv[1]);
 
         struct fs_directory *newdir = inst->working_dir;
         int iter_result;
         do {
-            iter_result = path_iter_next(&iter);
+            iter_result = VlPath_AdvanceIter(&iter);
             if (iter.element[0] == '\0') {
                 continue;
             }
@@ -112,15 +112,15 @@ static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
             newdir = tmp;
         } while (!iter_result);
 
-        stpncpy(pathbuf, inst->working_dir_path, sizeof(pathbuf));
-        path_join(pathbuf, sizeof(pathbuf), argv[1]);
+        strncpy(pathbuf, inst->working_dir_path, sizeof(pathbuf));
+        VlPath_Join(pathbuf, sizeof(pathbuf), argv[1]);
 
         if (inst->working_dir) {
             inst->working_dir->fs->driver->close_directory(inst->working_dir);
         }
         inst->working_dir = newdir;
 
-        path_normalize(inst->working_dir_path, sizeof(inst->working_dir_path), pathbuf);
+        VlPath_Normalize(inst->working_dir_path, sizeof(inst->working_dir_path), pathbuf);
     }
 
     return 0;
@@ -140,8 +140,8 @@ static struct command chdir_command = {
 
 static void chdir_command_init(void)
 {
-    shell_command_register(&cd_command);
-    shell_command_register(&chdir_command);
+    VlShell_RegisterCommand(&cd_command);
+    VlShell_RegisterCommand(&chdir_command);
 }
 
 REGISTER_SHELL_COMMAND(chdir, chdir_command_init)

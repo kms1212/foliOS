@@ -2,8 +2,6 @@
 
 #include <stdint.h>
 
-#undef strncpy
-
 char *strncpy(char *__restrict dest, const char *__restrict src, size_t maxlen)
 {
     char *d = dest;
@@ -13,8 +11,6 @@ char *strncpy(char *__restrict dest, const char *__restrict src, size_t maxlen)
     if (maxlen) *d = 0;
     return dest;
 }
-
-#undef strcpy
 
 char *strcpy(char *__restrict dest, const char *__restrict src)
 {

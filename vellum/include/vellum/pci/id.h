@@ -12,7 +12,7 @@ struct pci_device_id {
 
 struct pci_device_driver;
 
-int _bus_pci_match_id(
+int VlPci_MatchId(
     const struct pci_device_driver *driver,
     uint16_t vendor_id,
     uint16_t device_id,

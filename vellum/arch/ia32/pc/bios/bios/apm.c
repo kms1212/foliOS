@@ -1,12 +1,12 @@
-#include <vellum/asm/bios/apm.h>
+#include <vellum/plat/bios/apm.h>
 
 #include <stdint.h>
 
-#include <vellum/asm/bios/bioscall.h>
+#include <vellum/plat/bios/bioscall.h>
 
 #define MAKE_STATUS(code) (code ? (0xA0001500 | (code)) : STATUS_SUCCESS)
 
-status_t _pc_bios_apm_check_installation(
+status_t VlBiosP_CheckApmInstallation(
     uint16_t device_id, uint8_t *major_ver, uint8_t *minor_ver, uint16_t *flags
 )
 {
@@ -15,7 +15,7 @@ status_t _pc_bios_apm_check_installation(
         .b.w = device_id,
     };
 
-    if (_pc_bios_call(0x15, &regs)) {
+    if (VlBiosP_Call(0x15, &regs)) {
         return MAKE_STATUS(regs.a.b.h);
     }
 

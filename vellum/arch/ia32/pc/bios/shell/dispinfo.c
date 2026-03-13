@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <vellum/asm/bios/video.h>
+#include <vellum/plat/bios/video.h>
 
 static int dispinfo_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -19,7 +19,7 @@ static int dispinfo_handler(struct shell_instance *inst, int argc, char **argv)
     unit = strtol(argv[1], NULL, 10);
     block = strtol(argv[2], NULL, 10);
 
-    status = _pc_bios_vbeddc_get_edid(unit, block, &buf);
+    status = VlBiosP_GetVbeDdcEdid(unit, block, &buf);
     if (!CHECK_SUCCESS(status)) {
         printf("%s: edid error\n", argv[0]);
         return 1;
@@ -58,7 +58,7 @@ static struct command dispinfo_command = {
 
 static void dispinfo_command_init(void)
 {
-    shell_command_register(&dispinfo_command);
+    VlShell_RegisterCommand(&dispinfo_command);
 }
 
 REGISTER_SHELL_COMMAND(dispinfo, dispinfo_command_init)

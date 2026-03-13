@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include <vellum/asm/page.h>
+#include <vellum/plat/page.h>
 
 // If we are told to not define our own size_t, then we skip the define.
 // #define _HAVE_UINTPTR_T
