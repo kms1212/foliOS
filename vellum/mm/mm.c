@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <vellum/arch/cpufeatures.h>
 #include <vellum/arch/intrinsics/invlpg.h>
 #include <vellum/arch/intrinsics/register.h>
 
@@ -268,7 +269,7 @@ status_t mm_vaddr_to_paddr(void *vaddr, uintptr_t *paddr)
 
 static void invalidate_page(vpn_t vpn)
 {
-    if (!_pc_invlpg_undefined) {
+    if (g_p_cpu_features->has_invlpg) {
         VlA_Invlpg((void *)(vpn * PAGE_SIZE));
     } else {
         VlA_WriteCr3(VlA_ReadCr3());

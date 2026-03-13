@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <vellum/arch/cpufeatures.h>
 #include <vellum/arch/idt.h>
 #include <vellum/arch/intrinsics/rdtsc.h>
 #include <vellum/arch/io.h>
@@ -564,20 +565,6 @@ static void init_pit(void)
     VlIntP_Unmask(0x20);
 }
 
-int _pc_invlpg_undefined;
-int _pc_rdtsc_undefined;
-
-static void invlpg_test(void)
-{
-    __asm__ volatile("invlpg (%0)" : : "r"(0));
-}
-
-static void rdtsc_test(void)
-{
-    uint32_t low, high;
-    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
-}
-
 __noreturn void _pc_init(void)
 {
     status_t status;
@@ -589,16 +576,10 @@ __noreturn void _pc_init(void)
 
     LOG_DEBUG("Starting Vellum...\n");
 
-    LOG_DEBUG("testing whether invlpg available...\n");
-    status = _pc_instruction_test(invlpg_test, 3, &_pc_invlpg_undefined);
+    LOG_DEBUG("Checking CPU Features...\n");
+    status = VlA_CheckCpuFeatures();
     if (!CHECK_SUCCESS(status)) {
-        VlP_Panic(status, "failed to test instruction invlpg");
-    }
-
-    LOG_DEBUG("testing whether rdtsc available...\n");
-    status = _pc_instruction_test(rdtsc_test, 2, &_pc_rdtsc_undefined);
-    if (!CHECK_SUCCESS(status)) {
-        VlP_Panic(status, "failed to test instruction rdtsc");
+        VlP_Panic(status, "failed to check CPU features");
     }
 
     LOG_DEBUG("initializing ISRs...\n");

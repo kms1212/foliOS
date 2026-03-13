@@ -1,3 +1,4 @@
+#include "vellum/arch/cpufeatures.h"
 #include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -93,7 +94,7 @@ retry:
     VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
     if (tm->second != bcd2int(VlA_In8(data->io_data))) goto retry;
 
-    if (!_pc_rdtsc_undefined && data->tsc_diff_per_second) {
+    if (!g_p_cpu_features->has_tsc && data->tsc_diff_per_second) {
         tm->millisecond =
             (int)(((VlA_Rdtsc() - data->prev_tsc_value) >> 16) * 1000 / data->tsc_diff_per_second);
         if (tm->millisecond >= 1000) {
@@ -152,7 +153,7 @@ static void rtc_isr(void *_dev, struct VlA_InterruptFrame *frame, struct trap_re
     VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_C);
     regc = VlA_In8(data->io_data);
 
-    if (!_pc_rdtsc_undefined && (regc & 0x10)) {
+    if (!g_p_cpu_features->has_tsc && (regc & 0x10)) {
         if (data->prev_tsc_value) {
             data->tsc_diff_per_second = (VlA_Rdtsc() - data->prev_tsc_value) >> 16;
         }

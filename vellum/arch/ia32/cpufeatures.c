@@ -13,21 +13,21 @@
 
 #define MODULE_NAME "cpufeat"
 
-static struct StA_CpuFeatures cpu_features;
-const struct StA_CpuFeatures *const g_p_cpu_features = &cpu_features;
+static struct VlA_CpuFeatures cpu_features;
+const struct VlA_CpuFeatures *const g_p_cpu_features = &cpu_features;
 
 static int check_cpuid_available(void)
 {
     int available;
 
-    __asm__ volatile("pushfd\n\t"
-                     "pushfd\n\t"
+    __asm__ volatile("pushfl\n\t"
+                     "pushfl\n\t"
                      "xorl   $0x00200000, (%%esp)\n\t"
-                     "popfd\n\t"
-                     "pushfd\n\t"
+                     "popfl\n\t"
+                     "pushfl\n\t"
                      "pop    %%eax\n\t"
                      "xor    (%%esp), %%eax\n\t"
-                     "popfd\n\t"
+                     "popfl\n\t"
                      "and    $0x00200000, %%eax\n\t"
                      : "=r"(available)
                      :
@@ -47,33 +47,25 @@ status_t VlA_CheckCpuFeatures(void)
     cpu_features.has_cpuid = 1;
     cpu_features.has_invlpg = 1;
 
-    StA_Cpuid(CPUID_VENDOR_STRING, &eax, &ebx, &ecx, &edx);
+    VlA_Cpuid(CPUID_VENDOR_STRING, &eax, &ebx, &ecx, &edx);
     max_param = eax;
-    LOG_DEBUG(
-        LM_CAT_UNCLASSIFIED,
-        "vendor string: %.4s%.4s%.4s\n",
-        (char *)&ebx,
-        (char *)&edx,
-        (char *)&ecx
-    );
+    LOG_DEBUG("vendor string: %.4s%.4s%.4s\n", (char *)&ebx, (char *)&edx, (char *)&ecx);
 
     if (max_param >= CPUID_FEATURES) {
-        StA_Cpuid(CPUID_FEATURES, &eax, &ebx, &ecx, &edx);
+        VlA_Cpuid(CPUID_FEATURES, &eax, &ebx, &ecx, &edx);
 
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "processor type: %1" PRIX32 "\n", (eax & 0x00003000) >> 12);
+        LOG_DEBUG("processor type: %1" PRIX32 "\n", (eax & 0x00003000) >> 12);
         LOG_DEBUG(
-            LM_CAT_UNCLASSIFIED,
             "model id: %02" PRIX32 "\n",
             ((eax & 0x000F0000) >> 12) | ((eax & 0x000000F0) >> 4)
         );
         LOG_DEBUG(
-            LM_CAT_UNCLASSIFIED,
             "family id: %03" PRIX32 "\n",
             ((eax & 0x0FF00000) >> 16) | ((eax & 0x00000F00) >> 8)
         );
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "stepping id: %1" PRIX32 "\n", eax & 0x0000000F);
+        LOG_DEBUG("stepping id: %1" PRIX32 "\n", eax & 0x0000000F);
 
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "branding index: %02" PRIX32 "\n", ebx & 0x000000FF);
+        LOG_DEBUG("branding index: %02" PRIX32 "\n", ebx & 0x000000FF);
 
         if (ecx & bit_SSE3) {
             cpu_features.has_sse3 = 1;
@@ -141,19 +133,11 @@ status_t VlA_CheckCpuFeatures(void)
 
         if (edx & (1 << 28)) {
             cpu_features.has_htt = 1;
-            LOG_DEBUG(
-                LM_CAT_UNCLASSIFIED,
-                "max logical processor id: %" PRId32 "\n",
-                (ebx & 0x00FF0000) >> 16
-            );
+            LOG_DEBUG("max logical processor id: %" PRId32 "\n", (ebx & 0x00FF0000) >> 16);
         }
 
         if (edx & (1 << 9)) {
-            LOG_DEBUG(
-                LM_CAT_UNCLASSIFIED,
-                "local APIC id: %" PRId32 "\n",
-                (ebx & 0xFF000000) >> 16
-            );
+            LOG_DEBUG("local APIC id: %" PRId32 "\n", (ebx & 0xFF000000) >> 16);
         }
 
         if (edx & (1 << 0)) {
@@ -214,11 +198,7 @@ status_t VlA_CheckCpuFeatures(void)
 
         if (edx & (1 << 19)) {
             cpu_features.has_clfsh = 1;
-            LOG_DEBUG(
-                LM_CAT_UNCLASSIFIED,
-                "CLFSH line size: %" PRId32 "\n",
-                (ebx & 0x0000FF00) >> 5
-            );
+            LOG_DEBUG("CLFSH line size: %" PRId32 "\n", (ebx & 0x0000FF00) >> 5);
         }
 
         if (edx & bit_MMX) {
@@ -239,7 +219,7 @@ status_t VlA_CheckCpuFeatures(void)
     }
 
     if (max_param >= CPUID_TSC_INFO) {
-        StA_Cpuid(CPUID_TSC_INFO, &eax, &ebx, &ecx, &edx);
+        VlA_Cpuid(CPUID_TSC_INFO, &eax, &ebx, &ecx, &edx);
 
         cpu_features.tsc_ratio_denom = eax;
         if (ebx) {
@@ -253,11 +233,11 @@ status_t VlA_CheckCpuFeatures(void)
         }
     }
 
-    StA_Cpuid(CPUID_INTEL_EXTENDED, &eax, &ebx, &ecx, &edx);
+    VlA_Cpuid(CPUID_INTEL_EXTENDED, &eax, &ebx, &ecx, &edx);
     max_param_ext = eax;
 
     if (max_param_ext >= CPUID_INTEL_FEATURES) {
-        StA_Cpuid(CPUID_INTEL_FEATURES, &eax, &ebx, &ecx, &edx);
+        VlA_Cpuid(CPUID_INTEL_FEATURES, &eax, &ebx, &ecx, &edx);
 
         if (edx & 0x00100000) {
             cpu_features.has_nx = 1;
@@ -290,7 +270,7 @@ status_t VlA_CheckCpuFeatures(void)
     }
 
     if (max_param_ext >= CPUID_INTEL_PM_INFO_RAS_CAPS) {
-        StA_Cpuid(CPUID_INTEL_PM_INFO_RAS_CAPS, &eax, &ebx, &ecx, &edx);
+        VlA_Cpuid(CPUID_INTEL_PM_INFO_RAS_CAPS, &eax, &ebx, &ecx, &edx);
 
         if (edx & (1 << 8)) {
             cpu_features.is_tsc_invariant = 1;

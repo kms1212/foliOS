@@ -1,4 +1,5 @@
 __assert_fail
+__stage1_end
 _pc_page_dir
 abs
 asctime
@@ -86,7 +87,7 @@ stddbg
 stderr
 stdin
 stdout
-StEnc_Utf32ToCp437
+VlEnc_Utf32ToCp437
 stpcpy
 stpncpy
 strcasecmp

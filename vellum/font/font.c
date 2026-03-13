@@ -115,7 +115,7 @@ status_t VlFont_GetGlyphData(wchar_t codepoint, uint8_t *buf, size_t size)
     if (!font_file_data) {
         if (size < 16) return STATUS_INVALID_VALUE;
 
-        status = StEnc_Utf32ToCp437(codepoint, &cp437_char);
+        status = VlEnc_Utf32ToCp437(codepoint, &cp437_char);
         if (!CHECK_SUCCESS(status)) return status;
 
         memcpy(buf, (const uint8_t *)vbios_font + 16 * cp437_char, 16);

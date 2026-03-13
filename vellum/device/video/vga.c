@@ -930,7 +930,7 @@ static status_t con_flush(struct device *dev)
             }
 
             src = &data->char_buffer[y * width + x];
-            status = StEnc_Utf32ToCp437(src->codepoint, &cp437_char);
+            status = VlEnc_Utf32ToCp437(src->codepoint, &cp437_char);
             if (!CHECK_SUCCESS(status)) {
                 cp437_char = '?';
             }

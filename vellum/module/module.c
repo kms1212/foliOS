@@ -37,7 +37,7 @@ static status_t resolve_symbol_addr(
     void *sym_addr;
     status = _module_find_vellum_symbol(sym_name, &sym_addr);
     if (!CHECK_SUCCESS(status)) {
-        LOG_DEBUG("symbol not found\n");
+        LOG_DEBUG("symbol not found: %s\n", sym_name);
         return status;
     }
 
