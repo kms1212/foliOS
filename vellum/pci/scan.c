@@ -2,8 +2,8 @@
 
 #include <plat/pci/cfgspace.h>
 
-#include <bus/pci/cfgspace.h>
-#include <bus/pci/device.h>
+#include <vellum/pci/cfgspace.h>
+#include <vellum/pci/device.h>
 
 struct pci_device_list {
     struct pci_device *devices;

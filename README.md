@@ -1,6 +1,6 @@
 # foliOS: Next-Generation OS Built on Strata
 
-**foliOS** is a high-performance, secure operating system built on **Strata**, a kernel that implements the **Ambikernel** architecture. By internalizing modern hardware primitives, it bridges the gap between the isolation of Microkernels and the raw performance of monolithic kernels, creating a hybrid environment for the next generation of computing.
+**foliOS** is a high-performance operating system built on **Strata**, a kernel that implements the **Ambikernel** architecture. By internalizing modern hardware primitives, it bridges the gap between the isolation of Microkernels and the raw performance of monolithic kernels, creating a hybrid environment for the next generation of computing.
 
 ## tl;dr
 
