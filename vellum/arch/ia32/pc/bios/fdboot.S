@@ -77,12 +77,14 @@ _start:
     .ascii  "FAT12   "
     
 .start1:
+    cli
     xor     %ax, %ax                    # clear segment registers
     mov     %ax, %ds
     mov     %ax, %es
     mov     %ax, %ss
     mov     $STACK_INIT, %sp            # setup stack pointer
     mov     %sp, %bp
+    sti
 
 .get_drive_geometry:
     push    %dx
@@ -95,8 +97,7 @@ _start:
     xor     %ax, %ax
     mov     %ax, %es
 
-    mov     %dh, %dl
-    xor     %dh, %dh
+    movzx   %dh, %dx
     inc     %dx
     mov     %dx, .bpb_head_count
 
@@ -109,97 +110,80 @@ _start:
     # find BOOTLDR.BIN from the root directory
 
     # calc FAT lba
-    xor     %eax, %eax
-    mov     .bpb_reserved_sectors, %ax
+    movzxw  .bpb_reserved_sectors, %eax
     mov     %eax, .fat_lba
 
     # calc root directory lba
-    xor     %eax, %eax
-    xor     %cx, %cx
-    mov     .bpb_sectors_per_fat, %ax
-    mov     .bpb_fat_count, %cl
+    movzxw  .bpb_sectors_per_fat, %eax
+    movzx   .bpb_fat_count, %cx
     mul     %cx
     add     .bpb_reserved_sectors, %ax
     mov     %eax, .root_dir_lba
 
     # calc cluster start lba
-    xor     %eax, %eax
-    mov     .bpb_root_entries, %ax
-    mov     $32, %bx
-    mulw    %bx
-    add     $0x200, %ax
-    dec     %ax
-    mov     $0x200, %bx
-    divw    %bx
+    movzxw  .bpb_root_entries, %eax
+    shl     $5, %ax
+    add     $0x1FF, %ax
+    shr     $9, %ax
     add     .root_dir_lba, %eax
     mov     %eax, .cluster_start_lba
 
     # read the first sector of the root directory
-    mov     $0x0001, %ax                # read 1 sector
+    xor     %ax, %ax                    # read 1 sector
+    inc     %ax
     mov     $ROOTDIR_BUFFER, %bx        # to buffer starting at 0x7E00
     mov     .root_dir_lba, %cx
     call    read_disk
 
     mov     $ROOTDIR_BUFFER, %si
 .compare_filename:
-    mov     $str_bootfilename, %di      # compare file name
     push    %si
-    push    %di
+    mov     $str_bootfilename, %di      # compare file name
     cmpw    $0x00, (%si)
     jz      .compare_filename.notfound
     mov     $11, %cx
     repe    cmpsb
-    je      .compare_filename.found
-
-    pop     %di
     pop     %si
-    add     $0x20, %si
+    je      .load_fat
+
+    add     $32, %si
     jmp     .compare_filename           # next entry
 
 .compare_filename.notfound:
     mov     $str_bootfile_not_found, %si
     jmp     print_error
 
-.compare_filename.found:
-    pop     %di
-    pop     %si
-
 .load_fat:
     mov     .fat_lba, %ecx
     mov     $FAT_BUFFER, %bx
-    mov     $1, %ax
+    xor     %ax, %ax
+    inc     %ax
     call    read_disk
 
 .load_file:
     # read first cluster
     xor     %di, %di
     mov     26(%si), %dx                # dx = cluster to read
+    mov     $LOAD_SEGMENT, %ax          # set es
+    mov     %ax, %es
 
 .load_file.read:
     push    %dx
-    xor     %eax, %eax                  # clear es
-    mov     %ax, %es
+    xor     %eax, %eax                  # clear eax
 
     mov     %dx, %ax                    # calc cluster to sector lba
-    sub     $2, %ax
-    xor     %bx, %bx
-    mov     .bpb_sectors_per_cluster, %bl
+    dec     %ax
+    dec     %ax
+    movzx   .bpb_sectors_per_cluster, %bx
     mulw    %bx
     add     .cluster_start_lba, %eax
 
     mov     %eax, %ecx                  # read cluster
-    mov     $DATA_BUFFER, %bx
-    mov     .bpb_sectors_per_cluster, %al
+    mov     %di, %bx
     call    read_disk
-
-.load_file.copy:
-    mov     $LOAD_SEGMENT, %ax          # copy buffer to data
-    mov     %ax, %es
-    mov     $DATA_BUFFER, %si
-    xor     %cx, %cx
-    mov     .bpb_sectors_per_cluster, %cl
-    shl     $8, %cx
-    rep     movsw
+    mov     .bpb_sectors_per_cluster, %al
+    shl     $9, %ax
+    add     %ax, %di
 
 .load_file.next_cluster:
     pop     %dx
@@ -219,7 +203,7 @@ _start:
     jz      .load_file.next_cluster.skip_shift
     shr     $4, %bx
 .load_file.next_cluster.skip_shift:
-    and     $0xFFF, %ebx
+    and     $0xFFF, %bx
 
     cmp     $0x0FF8, %bx
     jge     .jump_next
@@ -249,8 +233,7 @@ read_disk:
 
     add     .bpb_hidden_sectors, %ecx
 
-    mov     %ecx, %eax
-    and     $0x0000FFFF, %eax
+    mov     %cx, %ax
     mov     %ecx, %edx
     shr     $16, %edx
 
@@ -259,8 +242,7 @@ read_disk:
     mov     %dx, %bx                     # sector = (LBA % sectors_per_track) + 1
 
     xor     %dx, %dx
-    divw    .bpb_head_count
-                                         # head = temp % head_count
+    divw    .bpb_head_count              # head = temp % head_count
                                          # cylinder = temp / head_count
 
     xchg    %al, %ah
@@ -303,7 +285,7 @@ halt:
     jmp     halt                        # halt
 
 str_diskerror: 
-    .asciz  "Disk read error\r\n"
+    .asciz  "Disk error\r\n"
 
 str_bootfile_not_found:
     .asciz  "STAGE1.X86 not found\r\n"

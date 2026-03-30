@@ -4,7 +4,6 @@
 #include <stddef.h>
 
 #include <strata/limits.h>
-#include <strata/module.h>
 #include <strata/status.h>
 #include <strata/utf.h>
 
@@ -13,6 +12,8 @@ enum StGnt_NodeType {
     GNT_NODETYPE_DIRECTORY,
     GNT_NODETYPE_LINK,
 };
+
+struct StModule;
 
 struct StGnt_Node {
     struct StGnt_Node *next;
@@ -27,13 +28,13 @@ struct StGnt_Node {
 
     union {
         struct {
-            struct StModule *handler;
+            struct StModule *handler_module;
         } leaf;
 
         struct {
             struct StGnt_Node *children_head;
             struct StGnt_Node *children_tail;
-            struct StModule *handler;
+            struct StModule *handler_module;
         } directory;
 
         struct {
@@ -52,6 +53,13 @@ struct StGnt_Node {
 
     void *private_data;
 };
+
+typedef StStatus (*StGnt_ResolveFunc)(
+    struct StGnt_Node *base_node __in,
+    const St_Utf32Char *inner_path __in,
+    struct StGnt_Node **next_node __out,
+    const St_Utf32Char **remaining_path __out
+);
 
 extern struct StGnt_Node *g_gnt_root_network;  // "//"
 extern struct StGnt_Node *g_gnt_root_local;    // "/"

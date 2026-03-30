@@ -2,8 +2,6 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <strata/gnt.h>
-#include <strata/utf.h>
 #include <string.h>
 
 #include <zstd.h>
@@ -18,6 +16,7 @@
 #include <loadst/ramdisk.h>
 #include <strata/compiler.h>
 #include <strata/elf.h>
+#include <strata/gnt.h>
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
@@ -28,6 +27,7 @@
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/types.h>
+#include <strata/utf.h>
 
 #define MODULE_NAME "main"
 
@@ -130,12 +130,43 @@ void test_zstd(void)
 
 void dump_gnt(struct StGnt_Node *node, int depth)
 {
-    St_Utf8Char name_buf[512];
+    St_Utf8Char name_buf[NODENAME_UTF8_MAX];
 
     if (node == g_gnt_root_local) {
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- /\n", depth, "");
     } else if (node == g_gnt_root_network) {
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- //\n", depth, "");
+    } else if (node->type == GNT_NODETYPE_LINK) {
+        StUtf_Utf32ToUtf8(node->name, node->name_len, name_buf, sizeof(name_buf), NULL);
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "%*s- %s%s\n",
+            depth,
+            "",
+            (char *)name_buf,
+            node->type == GNT_NODETYPE_DIRECTORY ? "/" : ""
+        );
+        while (node->type == GNT_NODETYPE_LINK) {
+            node = node->link.virtual.target_node;
+
+            depth++;
+            if (node == g_gnt_root_local) {
+                LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s-> /\n", depth, "");
+            } else if (node == g_gnt_root_network) {
+                LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s-> //\n", depth, "");
+            } else {
+                StUtf_Utf32ToUtf8(node->name, node->name_len, name_buf, sizeof(name_buf), NULL);
+                LOG_DEBUG(
+                    LM_CAT_UNCLASSIFIED,
+                    "%*s-> %s%c\n",
+                    depth,
+                    "",
+                    (char *)name_buf,
+                    node->type == GNT_NODETYPE_DIRECTORY ? '/' : ' '
+                );
+            }
+        }
+        return;
     } else {
         StUtf_Utf32ToUtf8(node->name, node->name_len, name_buf, sizeof(name_buf), NULL);
         LOG_DEBUG(
@@ -598,6 +629,7 @@ __noreturn void main(void)
     }
 
     dump_gnt(g_gnt_root_local, 0);
+    dump_gnt(g_gnt_root_network, 0);
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing thread system...\n");
     status = StThread_Init(&main_thread);

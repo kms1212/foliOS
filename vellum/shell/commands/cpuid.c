@@ -37,7 +37,7 @@ static int cpuid_handler(struct shell_instance *inst, int argc, char **argv)
 
     max_param = eax;
     uint32_t vendor_str[3] = {ebx, edx, ecx};
-    printf("Vendor String: %12s\n", (char *)vendor_str);
+    printf("Vendor String: %.12s\n", (char *)vendor_str);
 
     if (max_param >= 1) {
         VlA_Cpuid(1, &eax, &ebx, &ecx, &edx);
@@ -164,7 +164,7 @@ static int cpuid_handler(struct shell_instance *inst, int argc, char **argv)
         VlA_Cpuid(0x80000003, &brand_str[4], &brand_str[5], &brand_str[6], &brand_str[7]);
         VlA_Cpuid(0x80000004, &brand_str[8], &brand_str[9], &brand_str[10], &brand_str[11]);
 
-        printf("Brand String: %48s\n", (char *)brand_str);
+        printf("Brand String: %.48s\n", (char *)brand_str);
     }
 
     return 0;

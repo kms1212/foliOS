@@ -3,6 +3,7 @@
 
 #include <strata/plat/process.h>
 
+#include <strata/gnt.h>
 #include <strata/mm/owner.h>
 #include <strata/status.h>
 
@@ -30,6 +31,8 @@ struct StProcess {
     enum StProcess_State state;
     int is_dying;
 
+    struct StGnt_Node *gnt_node;
+
     struct StProcessP_PlatformData platform_data;
     struct StMm_AddressSpace *address_space;
 
@@ -41,6 +44,8 @@ struct StProcess {
 
     struct StMm_AllocationOwner alloc_owner;
 };
+
+extern struct StModule *StProcess_Module;
 
 StStatus StProcess_CreateUser(struct StProcess **process __out);
 StStatus StProcess_CreateModule(struct StProcess **process __out);

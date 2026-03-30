@@ -14,7 +14,17 @@ typedef uint8_t St_Utf8Char __nocast;
 #define UTF8_MAX_CODEPOINT        0x10FFFF
 
 StStatus StUtf_CountUtf8Chars(
-    const St_Utf8Char *str __in, size_t str_size __in, size_t *count __out
+    const St_Utf8Char *str __in, size_t bufsize __in, size_t *count __out
+);
+StStatus StUtf_CountUtf32Chars(
+    const St_Utf32Char *str __in, size_t bufsize __in, size_t *count __out
+);
+
+int StUtf_CompareUtf32Chars(
+    const St_Utf32Char *str1 __in,
+    size_t str1_bufsize __in,
+    const St_Utf32Char *str2 __in,
+    size_t str2_bufsize __in
 );
 
 StStatus StUtf_Utf8ToUtf32(

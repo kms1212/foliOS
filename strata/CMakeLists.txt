@@ -49,10 +49,11 @@ add_subdirectory(init)
 add_subdirectory(interrupt)
 add_subdirectory(log)
 add_subdirectory(mm)
+add_subdirectory(module)
 add_subdirectory(mutex)
+add_subdirectory(scheduler)
 add_subdirectory(stdc)
 add_subdirectory(syscall)
-add_subdirectory(thread)
 add_subdirectory(utils)
 
 # Additional Targets

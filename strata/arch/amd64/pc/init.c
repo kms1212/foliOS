@@ -40,6 +40,9 @@ extern char __trampoline_load[];
 extern char _krt_start[];
 extern char _krt_end[];
 
+extern void (*__init_array_start[])(void);
+extern void (*__init_array_end[])(void);
+
 extern char __end[];
 
 size_t _trampoline_runtime_size;
@@ -376,5 +379,15 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     status = init_krt();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize KRT");
+    }
+
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "running constructors...\n");
+    for (int i = 0; &__init_array_start[i] != __init_array_end; i++) {
+        LOG_INFO(
+            LM_CAT_UNCLASSIFIED,
+            "running constructor %p\n",
+            (void *)(uintptr_t)__init_array_start[i]
+        );
+        __init_array_start[i]();
     }
 }

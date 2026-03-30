@@ -46,8 +46,8 @@
 
 extern void main(void);
 
-extern void (*__init_array_start)(void);
-extern void (*__init_array_end)(void);
+extern void (*__init_array_start[])(void);
+extern void (*__init_array_end[])(void);
 
 static ssize_t early_stderr_write(void *cookie, const char *buf, size_t count)
 {
@@ -631,8 +631,8 @@ __noreturn void _pc_init(void)
     }
 
     LOG_DEBUG("running constructors...\n");
-    for (int i = 0; &(&__init_array_start)[i] != &__init_array_end; i++) {
-        (&__init_array_start)[i]();
+    for (int i = 0; &__init_array_start[i] != __init_array_end; i++) {
+        __init_array_start[i]();
     }
 
     VlA_EnableInterrupt();

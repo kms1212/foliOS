@@ -67,6 +67,48 @@ StStatus StUtf_CountUtf8Chars(
     return STATUS_SUCCESS;
 }
 
+StStatus StUtf_CountUtf32Chars(
+    const St_Utf32Char *str __in, size_t bufsize __in, size_t *countout __out
+)
+{
+    size_t s = 0;
+    for (; *str++ && s <= bufsize / sizeof(*str); s++)
+        ;
+    *countout = s;
+    return STATUS_SUCCESS;
+}
+
+int StUtf_CompareUtf32Chars(
+    const St_Utf32Char *str1 __in,
+    size_t str1_bufsize __in,
+    const St_Utf32Char *str2 __in,
+    size_t str2_bufsize __in
+)
+{
+    size_t i = 0;
+    size_t j = 0;
+    int result_val = 0;
+
+    while (i < str1_bufsize && j < str2_bufsize) {
+        if (str1[i] != str2[j]) {
+            result_val = str1[i] - str2[j];
+            break;
+        }
+        i++;
+        j++;
+    }
+
+    if (result_val == 0) {
+        if (i < str1_bufsize && j == str2_bufsize) {
+            result_val = 1;
+        } else if (i == str1_bufsize && j < str2_bufsize) {
+            result_val = -1;
+        }
+    }
+
+    return result_val;
+}
+
 StStatus StUtf_Utf8ToUtf32(
     const St_Utf8Char *src __in,
     size_t src_size __in,

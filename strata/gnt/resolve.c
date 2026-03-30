@@ -59,7 +59,16 @@ static StStatus invoke_resolver(
     const St_Utf32Char **remaining_path __out
 )
 {
-    return STATUS_NOT_IMPLEMENTED;
+    switch (base_node->type) {
+    case GNT_NODETYPE_LEAF:
+        return base_node->leaf.handler_module
+            ->resolve(base_node, inner_path, next_node, remaining_path);
+    case GNT_NODETYPE_DIRECTORY:
+        return base_node->directory.handler_module
+            ->resolve(base_node, inner_path, next_node, remaining_path);
+    default:
+        return STATUS_INVALID_VALUE;
+    }
 }
 
 StStatus StGnt_ResolveLink(struct StGnt_Node *link_node __in, struct StGnt_Node **target_node __out)
@@ -119,9 +128,9 @@ StStatus StGnt_ResolvePath(
         }
 
         if (current->type == GNT_NODETYPE_LEAF) {
-            resolver_module = current->leaf.handler;
+            resolver_module = current->leaf.handler_module;
         } else if (current->type == GNT_NODETYPE_DIRECTORY) {
-            resolver_module = current->directory.handler;
+            resolver_module = current->directory.handler_module;
         }
 
         if (current->type != GNT_NODETYPE_DIRECTORY) {

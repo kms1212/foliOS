@@ -28,10 +28,10 @@ StStatus StGnt_AddNode(
         }
 
         if (parent->type == GNT_NODETYPE_LEAF) {
-            struct StModule *handler = parent->leaf.handler;
+            struct StModule *handler = parent->leaf.handler_module;
 
             parent->type = GNT_NODETYPE_DIRECTORY;
-            parent->directory.handler = handler;
+            parent->directory.handler_module = handler;
             parent->directory.children_head = parent->directory.children_tail = NULL;
         }
 
@@ -51,7 +51,9 @@ StStatus StGnt_AddNode(
     }
 
     if (name) {
-        name_len = strnlen32(name, ARRAY_SIZE(new_node->name));
+        status = StUtf_CountUtf32Chars(name, sizeof(new_node->name), &name_len);
+        if (!CHECK_SUCCESS(status)) goto has_error;
+
         memcpy(new_node->name, name, name_len * sizeof(*new_node->name));
         new_node->name_len = name_len;
     } else {

@@ -30,7 +30,4 @@ char *strrchr(const char *str, int ch);
 size_t strspn(const char *p1, const char *p2);      // not implemented yet
 char *strstr(const char *str, const char *substr);  // not implemented yet
 
-size_t strlen32(const void *str);
-size_t strnlen32(const void *str, size_t maxlen);
-
 #endif  // __STRING_H__
