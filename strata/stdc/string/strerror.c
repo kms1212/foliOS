@@ -1,7 +1,5 @@
 #include <string.h>
 
-#include <errno.h>
-
 #include <strata/macros.h>
 
 static const char *error_string[] = {
@@ -139,15 +137,15 @@ static const char *error_string[] = {
     "Operation not possible due to RF-kill",
 };
 
-char *strerror(int error)
+char *strerror(int errnum)
 {
     static char buffer[128];
 
-    if (error < 0 || error >= ARRAY_SIZE(error_string)) {
+    if (errnum < 0 || errnum >= ARRAY_SIZE(error_string)) {
         return NULL;
     }
 
-    strncpy(buffer, error_string[error], sizeof(buffer) - 1);
+    strncpy(buffer, error_string[errnum], sizeof(buffer) - 1);
     buffer[sizeof(buffer) - 1] = '\0';
     return buffer;
 }

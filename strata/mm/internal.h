@@ -28,7 +28,7 @@ struct pmm_metadata {
     atomic_uint refcount;
     atomic_uint lock;
 
-    uint8_t padding[64 - sizeof(struct pmm_metadata_ipublic_view) - sizeof(atomic_uint) * 2];
+    uint8_t padding[64 - sizeof(struct pmm_metadata_ipublic_view) - (sizeof(atomic_uint) * 2)];
 } __aligned(64);
 
 _Static_assert(

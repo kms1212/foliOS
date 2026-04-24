@@ -9,6 +9,8 @@
 #include <strata/plat/time.h>
 
 #include <strata/process.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 static int log_level = LL_DEFAULT;
 

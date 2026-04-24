@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,27 +8,31 @@
 #include <zstd.h>
 
 #include <strata/arch/interrupt.h>
+#include <strata/arch/intrinsics/misc.h>
 #include <strata/arch/mmu.h>
 
-#include <strata/plat/gdt_constants.h>
 #include <strata/plat/time.h>
 
-#include <loadst/bootinfo.h>
-#include <loadst/ramdisk.h>
 #include <strata/compiler.h>
 #include <strata/elf.h>
 #include <strata/gnt.h>
+#include <strata/limits.h>
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/pmm.h>
+#include <strata/mm/pool.h>
+#include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/mutex.h>
 #include <strata/panic.h>
 #include <strata/process.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
-#include <strata/types.h>
 #include <strata/utf.h>
+
+#include <loadst/bootinfo.h>
 
 #define MODULE_NAME "main"
 
@@ -50,6 +55,8 @@ static int early_print_char(void *_state, char ch)
     height = state->height;
     pitch = state->pitch;
 
+    if (!width) return 1;
+
     switch (ch) {
     case '\0':
         return 1;
@@ -65,7 +72,7 @@ static int early_print_char(void *_state, char ch)
         state->cursor_col--;
         break;
     default:
-        framebuffer[state->cursor_row * width + state->cursor_col] = ch | 0x0700;
+        framebuffer[(state->cursor_row * width) + state->cursor_col] = ch | 0x0700;
         state->cursor_col++;
         break;
     }
@@ -78,9 +85,13 @@ static int early_print_char(void *_state, char ch)
     if (state->cursor_row >= height) {
         line_diff = state->cursor_row - height + 1;
         for (uint32_t i = 0; i < height - line_diff; i++) {
-            memcpy(&framebuffer[i * width], &framebuffer[(i + line_diff) * width], pitch);
+            memcpy(
+                &framebuffer[(size_t)i * width],
+                &framebuffer[((size_t)i + line_diff) * width],
+                pitch
+            );
         }
-        memset(&framebuffer[(height - line_diff) * width], 0, pitch * line_diff);
+        memset(&framebuffer[((size_t)height - line_diff) * width], 0, (size_t)pitch * line_diff);
         state->cursor_row = height - 1;
     }
 
@@ -128,7 +139,37 @@ void test_zstd(void)
     StPool_Free(decompressed_buffer);
 }
 
-void dump_gnt(struct StGnt_Node *node, int depth)
+static void dump_gnt_children(struct StGnt_Node *node, int depth);
+
+static int dump_gnt_node_is_container(const struct StGnt_Node *node)
+{
+    return node && node->type != GNT_NODETYPE_LINK && (node->children_head || node->handler_module);
+}
+
+static struct StGnt_Node *dump_gnt_find_registered_child(
+    struct StGnt_Node *parent, const St_Utf32Char *name, size_t name_len
+)
+{
+    struct StGnt_Node *child;
+
+    if (!parent || parent->type == GNT_NODETYPE_LINK) return NULL;
+
+    child = parent->children_head;
+    while (child) {
+        if (child->name_len == name_len &&
+            memcmp(child->name, name, name_len * sizeof(St_Utf32Char)) == 0) {
+            return child;
+        }
+
+        child = child->sibling;
+    }
+
+    return NULL;
+}
+
+static void dump_gnt_print_resolved_node(  // NOLINT(misc-no-recursion)
+    struct StGnt_Node *node, int depth
+)
 {
     St_Utf8Char name_buf[NODENAME_UTF8_MAX];
 
@@ -144,7 +185,7 @@ void dump_gnt(struct StGnt_Node *node, int depth)
             depth,
             "",
             (char *)name_buf,
-            node->type == GNT_NODETYPE_DIRECTORY ? "/" : ""
+            dump_gnt_node_is_container(node) ? "/" : ""
         );
         while (node->type == GNT_NODETYPE_LINK) {
             node = node->link.virtual.target_node;
@@ -162,7 +203,7 @@ void dump_gnt(struct StGnt_Node *node, int depth)
                     depth,
                     "",
                     (char *)name_buf,
-                    node->type == GNT_NODETYPE_DIRECTORY ? '/' : ' '
+                    dump_gnt_node_is_container(node) ? '/' : ' '
                 );
             }
         }
@@ -175,18 +216,132 @@ void dump_gnt(struct StGnt_Node *node, int depth)
             depth,
             "",
             (char *)name_buf,
-            node->type == GNT_NODETYPE_DIRECTORY ? '/' : ' '
+            dump_gnt_node_is_container(node) ? '/' : ' '
         );
     }
 
-    if (node->type != GNT_NODETYPE_DIRECTORY) return;
+    if (!dump_gnt_node_is_container(node)) return;
 
-    node = node->directory.children_head;
-    while (node) {
-        dump_gnt(node, depth + 1);
+    dump_gnt_children(node, depth);
+}
 
-        node = node->sibling;
+static void dump_gnt_print_entry(const struct StGnt_DirectoryEntry *entry, int depth)
+{
+    St_Utf8Char name_buf[NODENAME_UTF8_MAX];
+
+    if (entry->name_len >= NODENAME_MAX) {
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- <invalid>\n", depth, "");
+        return;
     }
+
+    StUtf_Utf32ToUtf8(entry->name, entry->name_len, name_buf, sizeof(name_buf), NULL);
+    LOG_DEBUG(
+        LM_CAT_UNCLASSIFIED,
+        "%*s- %s%c\n",
+        depth,
+        "",
+        (char *)name_buf,
+        entry->type == GNT_NODETYPE_DIRECTORY ? '/' : ' '
+    );
+}
+
+static void dump_gnt_dump_iterated_entry(  // NOLINT(misc-no-recursion)
+    struct StGnt_Node *parent, const struct StGnt_DirectoryEntry *entry, int depth
+)
+{
+    struct StGnt_Node *child;
+    St_Utf32Char child_name[NODENAME_MAX];
+    StStatus status;
+
+    child = dump_gnt_find_registered_child(parent, entry->name, entry->name_len);
+    if (child) {
+        dump_gnt_print_resolved_node(child, depth);
+        return;
+    }
+
+    dump_gnt_print_entry(entry, depth);
+
+    if (entry->type != GNT_NODETYPE_DIRECTORY || entry->name_len >= NODENAME_MAX) return;
+
+    memcpy(child_name, entry->name, entry->name_len * sizeof(St_Utf32Char));
+    child_name[entry->name_len] = U'\0';
+
+    status = StGnt_ResolvePath(parent, child_name, &child);
+    if (!CHECK_SUCCESS(status)) return;
+    if (!dump_gnt_node_is_container(child)) return;
+
+    dump_gnt_children(child, depth);
+}
+
+static void dump_gnt_children(struct StGnt_Node *node, int depth)  // NOLINT(misc-no-recursion)
+{
+    uint8_t entry_buffer[4096];
+    size_t entry_count;
+    uint64_t cookie = 0;
+    uint64_t next_cookie = 0;
+    StStatus status;
+
+    if (!dump_gnt_node_is_container(node)) return;
+
+    for (;;) {
+        size_t offset = 0;
+
+        entry_count = 0;
+        next_cookie = cookie;
+        status = StGnt_Iterate(
+            node,
+            cookie,
+            entry_buffer,
+            sizeof(entry_buffer),
+            &entry_count,
+            &next_cookie
+        );
+
+        if (CHECK_FAILURE(status) && status != STATUS_END_OF_LIST) {
+            LOG_DEBUG(
+                LM_CAT_UNCLASSIFIED,
+                "%*s- <iterate failed: %08" PRIX32 ">\n",
+                depth + 1,
+                "",
+                status
+            );
+            return;
+        }
+
+        for (size_t i = 0; i < entry_count; i++) {
+            struct StGnt_DirectoryEntry *entry;
+            size_t min_entry_len;
+
+            if (offset + sizeof(struct StGnt_DirectoryEntry) > sizeof(entry_buffer)) {
+                LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- <invalid entry>\n", depth + 1, "");
+                return;
+            }
+
+            entry = (struct StGnt_DirectoryEntry *)&entry_buffer[offset];
+            min_entry_len = offsetof(struct StGnt_DirectoryEntry, name) +
+                (entry->name_len * sizeof(St_Utf32Char));
+
+            if (entry->entry_len < min_entry_len ||
+                offset + entry->entry_len > sizeof(entry_buffer)) {
+                LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- <invalid entry>\n", depth + 1, "");
+                return;
+            }
+
+            dump_gnt_dump_iterated_entry(node, entry, depth + 1);
+            offset += entry->entry_len;
+        }
+
+        if (status == STATUS_END_OF_LIST || entry_count == 0 || next_cookie == cookie) {
+            return;
+        }
+
+        cookie = next_cookie;
+    }
+}
+
+void dump_gnt(struct StGnt_Node *node, int depth)
+{
+    dump_gnt_print_resolved_node(node, depth);
 }
 
 static int shared_value = 0;
@@ -378,7 +533,7 @@ struct print_state pstate;
 static void fb_print_str(int col, int row, const char *str)
 {
     while (*str) {
-        pstate.framebuffer[row * pstate.width + col++] = *str++ | 0x0700;
+        pstate.framebuffer[(row * pstate.width) + col++] = *str++ | 0x0700;
     }
 }
 

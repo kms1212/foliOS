@@ -1,34 +1,13 @@
 #include <strata/gnt.h>
+#include <strata/gnt/path.h>
 
-#include <strata/limits.h>
-#include <strata/module.h>
-#include <strata/utf.h>
 #include <string.h>
 
-static int advance_token(
-    const St_Utf32Char *path __in, const St_Utf32Char **next_token __out, size_t *next_len __out
-)
-{
-    while (*path == '/') {
-        path++;
-    }
-    if (*path == '\0') return 1;
-
-    const St_Utf32Char *token_start = path;
-    size_t len = 0;
-
-    while (*path != '/' && *path != '\0') {
-        if (len < NODENAME_MAX) {
-            len++;
-        }
-        path++;
-    }
-
-    if (next_token) *next_token = token_start;
-    if (next_len) *next_len = len;
-
-    return 0;
-}
+#include <strata/compiler.h>
+#include <strata/limits.h>
+#include <strata/module.h>
+#include <strata/status.h>
+#include <strata/utf.h>
 
 static StStatus resolve_link(
     struct StGnt_Node *link_node __in,
@@ -59,16 +38,14 @@ static StStatus invoke_resolver(
     const St_Utf32Char **remaining_path __out
 )
 {
-    switch (base_node->type) {
-    case GNT_NODETYPE_LEAF:
-        return base_node->leaf.handler_module
-            ->resolve(base_node, inner_path, next_node, remaining_path);
-    case GNT_NODETYPE_DIRECTORY:
-        return base_node->directory.handler_module
-            ->resolve(base_node, inner_path, next_node, remaining_path);
-    default:
-        return STATUS_INVALID_VALUE;
-    }
+    struct StModule *resolver_module;
+
+    if (!base_node || base_node->type == GNT_NODETYPE_LINK) return STATUS_INVALID_VALUE;
+
+    resolver_module = base_node->handler_module;
+    if (!resolver_module || !resolver_module->resolve) return STATUS_NOT_SUPPORTED;
+
+    return resolver_module->resolve(base_node, inner_path, next_node, remaining_path);
 }
 
 StStatus StGnt_ResolveLink(struct StGnt_Node *link_node __in, struct StGnt_Node **target_node __out)
@@ -84,6 +61,7 @@ StStatus StGnt_ResolvePath(
     StStatus status;
     struct StGnt_Node *current = base_node, *link_target, *resolve_target;
     int link_depth = 0;
+    struct StGnt_PathCursor cursor;
 
     if (path[0] == '/') {
         if (path[1] == '/') {
@@ -98,22 +76,22 @@ StStatus StGnt_ResolvePath(
     }
 
     for (;;) {
-        const St_Utf32Char *token_start;
-        size_t token_len;
+        const St_Utf32Char *remaining_path = NULL;
         struct StGnt_Node *child;
         int child_found = 0;
-        struct StModule *resolver_module;
+        struct StModule *resolver_module = NULL;
 
-        if (advance_token(path, &token_start, &token_len)) {
+        StGntPath_Begin(&cursor, path);
+        if (StGntPath_Next(&cursor)) {
             break;
         }
 
-        path = token_start + token_len;
+        path = StGntPath_Remaining(&cursor);
 
-        if (token_len == 1 && token_start[0] == '.') {
+        if (StGntPath_IsDot(&cursor)) {
             continue;
         }
-        if (token_len == 2 && token_start[0] == '.' && token_start[1] == '.') {
+        if (StGntPath_IsDotDot(&cursor)) {
             if (current->parent) {
                 current = current->parent;
             }
@@ -127,23 +105,13 @@ StStatus StGnt_ResolvePath(
             current = link_target;
         }
 
-        if (current->type == GNT_NODETYPE_LEAF) {
-            resolver_module = current->leaf.handler_module;
-        } else if (current->type == GNT_NODETYPE_DIRECTORY) {
-            resolver_module = current->directory.handler_module;
-        }
+        resolver_module = current->handler_module;
+        child = current->children_head;
+        if (!resolver_module && !child) return STATUS_NOT_A_DIRECTORY;
 
-        if (current->type != GNT_NODETYPE_DIRECTORY) {
-            if (!resolver_module) return STATUS_NOT_A_DIRECTORY;
-
-            status = invoke_resolver(current, token_start, &resolve_target, &token_start);
-            if (!CHECK_SUCCESS(status)) return status;
-        }
-
-        child = current->directory.children_head;
         while (child) {
-            if (child->name_len == token_len &&
-                memcmp(child->name, token_start, token_len * sizeof(St_Utf32Char)) == 0) {
+            if (child->name_len == cursor.token_len &&
+                memcmp(child->name, cursor.token, cursor.token_len * sizeof(St_Utf32Char)) == 0) {
                 current = child;
                 child_found = 1;
                 break;
@@ -151,10 +119,15 @@ StStatus StGnt_ResolvePath(
             child = child->sibling;
         }
         if (!child_found) {
-            if (!resolver_module) return STATUS_NOT_A_DIRECTORY;
+            if (!resolver_module) return STATUS_ENTRY_NOT_FOUND;
 
-            status = invoke_resolver(current, token_start, &resolve_target, &token_start);
+            status = invoke_resolver(current, cursor.token, &resolve_target, &remaining_path);
             if (!CHECK_SUCCESS(status)) return status;
+
+            if (!resolve_target || !remaining_path) return STATUS_INVALID_VALUE;
+
+            current = resolve_target;
+            path = remaining_path;
         }
     }
 

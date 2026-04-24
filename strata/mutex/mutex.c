@@ -2,6 +2,7 @@
 
 #include <strata/log.h>
 #include <strata/scheduler.h>
+#include <strata/status.h>
 #include <strata/thread.h>
 
 #define MODULE_NAME "mutex"

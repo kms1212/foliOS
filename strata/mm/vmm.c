@@ -8,15 +8,13 @@
 
 #include <strata/rb.h>
 
-#include <strata/arch/cpufeatures.h>
-#include <strata/arch/intrinsics/invlpg.h>
-#include <strata/arch/intrinsics/register.h>
-#include <strata/arch/mmu.h>
-
+#include <strata/compiler.h>
 #include <strata/log.h>
-#include <strata/macros.h>
-#include <strata/panic.h>
+#include <strata/mm/asp.h>
+#include <strata/mm/owner.h>
+#include <strata/mm/types.h>
 #include <strata/status.h>
+#include <strata/types.h>
 
 #include "internal.h"
 
@@ -40,10 +38,10 @@ static StStatus create_alloc_node(struct vmm_alloc_node **node)
     if (early_alloc_node_pool_used_count < EARLY_ALLOC_NODE_POOL_COUNT) {
         if (node) *node = &early_alloc_node_pool[early_alloc_node_pool_used_count++];
         return STATUS_SUCCESS;
-    } else {
-        // TODO: allocate a new node from slab allocator.
-        return STATUS_NOT_IMPLEMENTED;
     }
+
+    // TODO: allocate a new node from slab allocator.
+    return STATUS_NOT_IMPLEMENTED;
 }
 
 static int compare_alloc(struct StRbtree_Node *node1, struct StRbtree_Node *node2)
@@ -235,6 +233,91 @@ found_hole:
     StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
+}
+
+StStatus StVmm_AllocateLocalPage(
+    struct StMm_AddressSpace *asp __in,
+    St_VirtPage *vpn __out,
+    St_PageCount count __in,
+    StMm_AllocFlags alloc_flags __in
+)
+{
+    StStatus status;
+    struct vmm_alloc_node *new_node;
+    struct StRbtree_Node *curr_rb;
+    St_VirtPage candidate_start;
+    struct StMm_AllocationOwner *owner;
+
+    if (!asp || !vpn) return STATUS_INVALID_VALUE;
+    if (count == 0) return STATUS_INVALID_VALUE;
+
+    owner = &asp->process->alloc_owner;
+
+    StThread_LockPreemption();
+
+    curr_rb = StRbtree_Min(&asp->user_rbtree);
+    candidate_start = asp->user_base_vpn;
+
+    while (curr_rb != NULL) {
+        struct vmm_alloc_node *curr_node = rb_entry(curr_rb, struct vmm_alloc_node, rbnode);
+
+        if (curr_node->base_vpn > candidate_start) {
+            size_t gap = curr_node->base_vpn - candidate_start;
+            if (gap >= count) goto found_hole;
+        }
+
+        candidate_start = curr_node->limit_vpn;
+
+        curr_rb = StRbtree_Successor(&asp->user_rbtree, curr_rb);
+    }
+
+    if (asp->user_limit_vpn > candidate_start) {
+        size_t gap = asp->user_limit_vpn - candidate_start;
+        if (gap >= count) goto found_hole;
+    }
+
+    StThread_UnlockPreemption();
+
+    return STATUS_INSUFFICIENT_MEMORY;
+
+found_hole:
+    status = create_alloc_node(&new_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    new_node->base_vpn = candidate_start;
+    new_node->limit_vpn = candidate_start + count;
+    new_node->owner = owner;
+    new_node->asp = asp;
+
+    if (alloc_flags & AF_VMM_HIDDEN_AT_MAP) {
+        new_node->alloc_type = AT_MAP;
+    } else {
+        new_node->alloc_type = AT_ALLOC;
+    }
+
+    new_node->owner_prev = owner->last_vmm_node;
+    new_node->owner_next = NULL;
+
+    if (owner->last_vmm_node) {
+        ((struct vmm_alloc_node *)owner->last_vmm_node)->owner_next = new_node;
+    } else {
+        owner->first_vmm_node = new_node;
+    }
+
+    owner->last_vmm_node = new_node;
+
+    StRbtree_Insert(&asp->user_rbtree, &new_node->rbnode);
+    asp->user_free_count -= count;
+
+    *vpn = new_node->base_vpn;
+
+    StThread_UnlockPreemption();
+
+    return STATUS_SUCCESS;
+
+has_error:
+    StThread_UnlockPreemption();
+    return status;
 }
 
 StStatus StVmm_AllocateGlobalPageTo(

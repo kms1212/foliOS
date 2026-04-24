@@ -1,9 +1,10 @@
 #include "internal.h"
 
-#include <strata/arch/mmu.h>
-
 #include <strata/mm.h>
+#include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/panic.h>
+#include <strata/status.h>
 #include <strata/thread.h>
 
 int liballoc_lock(void)

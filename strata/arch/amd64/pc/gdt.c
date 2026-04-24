@@ -1,13 +1,16 @@
 #include <strata/plat/gdt.h>
 
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
+#include <strata/arch/gdt.h>
 #include <strata/arch/intrinsics/gdt.h>
 #include <strata/arch/intrinsics/ltr.h>
+#include <strata/arch/tss.h>
 
+#include <strata/plat/gdt_constants.h>
 #include <strata/plat/tss.h>
-
-#include <strata/compiler.h>
 
 static struct StA_GdtEntry _pc_gdt[GDT_ENTRY_COUNT];
 static struct StA_Gdtr _pc_gdtr;

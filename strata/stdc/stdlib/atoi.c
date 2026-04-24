@@ -35,11 +35,8 @@ int atoi(const char *str)
         // check range
         if (ret < 0) {  // we didn't applied sign yet, so it can't be negative
             errno = ERANGE;
-            if (sign) {
-                return INT_MIN;
-            } else {
-                return INT_MAX;
-            }
+
+            return sign ? INT_MIN : INT_MAX;
         }
         str++;
     }

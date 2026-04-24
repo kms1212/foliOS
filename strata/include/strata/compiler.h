@@ -1,6 +1,11 @@
 #ifndef __STRATA_COMPILER_H__
 #define __STRATA_COMPILER_H__
 
+#ifndef __has_attribute
+#    define __has_attribute(x) 0
+
+#endif
+
 /* General attribute maros */
 
 #define __always_inline inline __attribute__((always_inline))
@@ -54,6 +59,63 @@
 #define __sentinel           __attribute__((sentinel))
 #define __warn_unused_result __attribute__((warn_unused_result))
 
+#if __has_attribute(nonnull)
+#    define __nonnull(...) __attribute__((nonnull(__VA_ARGS__)))
+#    define __arg_nonnull __attribute__((nonnull))
+
+#else
+#    define __nonnull(...)
+#    define __arg_nonnull
+
+#endif
+
+#if __has_attribute(returns_nonnull)
+#    define __returns_nonnull __attribute__((returns_nonnull))
+
+#else
+#    define __returns_nonnull
+
+#endif
+
+#if __has_attribute(alloc_size)
+#    define __alloc_size(...) __attribute__((alloc_size(__VA_ARGS__)))
+
+#else
+#    define __alloc_size(...)
+
+#endif
+
+#if __has_attribute(alloc_align)
+#    define __alloc_align(arg_index) __attribute__((alloc_align(arg_index)))
+
+#else
+#    define __alloc_align(arg_index)
+
+#endif
+
+#if __has_attribute(assume_aligned)
+#    define __assume_aligned(align) __attribute__((assume_aligned(align)))
+
+#else
+#    define __assume_aligned(align)
+
+#endif
+
+#if __has_attribute(access)
+#    define __access_read_only(ptr_index, size_index)                                           \
+        __attribute__((access(read_only, ptr_index, size_index)))
+#    define __access_write_only(ptr_index, size_index)                                          \
+        __attribute__((access(write_only, ptr_index, size_index)))
+#    define __access_read_write(ptr_index, size_index)                                          \
+        __attribute__((access(read_write, ptr_index, size_index)))
+
+#else
+#    define __access_read_only(ptr_index, size_index)
+#    define __access_write_only(ptr_index, size_index)
+#    define __access_read_write(ptr_index, size_index)
+
+#endif
+
 /* macros for static analysis & source annotation */
 
 #ifdef __clang__
@@ -78,10 +140,62 @@
 #define __module __annotate("module")
 #define __user   __annotate("user")
 
-#define __must_hold(x)     __annotate_v("must_hold", x)
-#define __acquires(x)      __annotate_v("acquires", x)
-#define __cond_acquires(x) __annotate_v("cond_acquires", x)
-#define __releases(x)      __annotate_v("releases", x)
+#if __has_attribute(capability)
+#    define __capability(name) __attribute__((capability(name)))
+#    define __guarded_by(x)    __attribute__((guarded_by(x)))
+#    define __pt_guarded_by(x) __attribute__((pt_guarded_by(x)))
+
+#else
+#    define __capability(name) __annotate_v("capability", name)
+#    define __guarded_by(x)    __annotate_v("guarded_by", x)
+#    define __pt_guarded_by(x) __annotate_v("pt_guarded_by", x)
+
+#endif
+
+#if __has_attribute(requires_capability)
+#    define __requires_capability(x) __attribute__((requires_capability(x)))
+
+#else
+#    define __requires_capability(x) __annotate_v("must_hold", x)
+
+#endif
+
+#if __has_attribute(acquire_capability)
+#    define __acquire_capability(x) __attribute__((acquire_capability(x)))
+
+#else
+#    define __acquire_capability(x) __annotate_v("acquires", x)
+
+#endif
+
+#if __has_attribute(try_acquire_capability)
+#    define __try_acquire_capability(x) __attribute__((try_acquire_capability(1, x)))
+
+#else
+#    define __try_acquire_capability(x) __annotate_v("cond_acquires", x)
+
+#endif
+
+#if __has_attribute(release_capability)
+#    define __release_capability(x) __attribute__((release_capability(x)))
+
+#else
+#    define __release_capability(x) __annotate_v("releases", x)
+
+#endif
+
+#if __has_attribute(no_thread_safety_analysis)
+#    define __no_thread_safety_analysis __attribute__((no_thread_safety_analysis))
+
+#else
+#    define __no_thread_safety_analysis
+
+#endif
+
+#define __must_hold(x)     __requires_capability(x)
+#define __acquires(x)      __acquire_capability(x)
+#define __cond_acquires(x) __try_acquire_capability(x)
+#define __releases(x)      __release_capability(x)
 
 #define __bitwise __annotate("bitwise")
 #define __nocast  __annotate("nocast")

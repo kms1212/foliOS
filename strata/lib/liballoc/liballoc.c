@@ -1,5 +1,8 @@
 #include <liballoc.h>
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include "internal.h"
 
 /**  Durand's Amazing Super Duper Memory functions.  */

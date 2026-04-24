@@ -1,11 +1,20 @@
 #include <strata/elf.h>
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <strata/log.h>
+#include <strata/arch/elf.h>
+#include <strata/arch/mmu.h>
+
+#include <strata/compiler.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/asp.h>
+#include <strata/mm/pool.h>
+#include <strata/mm/types.h>
+#include <strata/mm/utils.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "elf"
 
@@ -198,7 +207,7 @@ StStatus StElf_LoadProgram(
         }
 
         program_load_addr = phdr32.vaddr;
-        program_size_page = ALIGN_DIV(program_load_addr % PAGE_SIZE + phdr32.memsz, PAGE_SIZE);
+        program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr32.memsz, PAGE_SIZE);
         program_data_offset = phdr32.offset;
         program_memsz = phdr32.memsz;
         program_filesz = phdr32.filesz;
@@ -219,7 +228,7 @@ StStatus StElf_LoadProgram(
         }
 
         program_load_addr = phdr64.vaddr;
-        program_size_page = ALIGN_DIV(program_load_addr % PAGE_SIZE + phdr64.memsz, PAGE_SIZE);
+        program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr64.memsz, PAGE_SIZE);
         program_data_offset = phdr64.offset;
         program_memsz = phdr64.memsz;
         program_filesz = phdr64.filesz;

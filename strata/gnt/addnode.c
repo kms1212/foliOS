@@ -1,12 +1,12 @@
 #include <strata/gnt.h>
 
+#include <stdatomic.h>
 #include <string.h>
 
-#include <strata/macros.h>
+#include <strata/compiler.h>
 #include <strata/mm/pool.h>
-
-static struct StGnt_Node *node_list_head = NULL;
-static struct StGnt_Node *node_list_tail = NULL;
+#include <strata/status.h>
+#include <strata/utf.h>
 
 StStatus StGnt_AddNode(
     struct StGnt_Node *parent __in, const St_Utf32Char *name __in, struct StGnt_Node **node __out
@@ -20,6 +20,7 @@ StStatus StGnt_AddNode(
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     new_node->parent = parent;
+    atomic_init(&new_node->ref_count, 1);
 
     if (parent) {
         if (parent->type == GNT_NODETYPE_LINK) {
@@ -27,27 +28,12 @@ StStatus StGnt_AddNode(
             if (!CHECK_SUCCESS(status)) goto has_error;
         }
 
-        if (parent->type == GNT_NODETYPE_LEAF) {
-            struct StModule *handler = parent->leaf.handler_module;
-
-            parent->type = GNT_NODETYPE_DIRECTORY;
-            parent->directory.handler_module = handler;
-            parent->directory.children_head = parent->directory.children_tail = NULL;
-        }
-
-        if (!parent->directory.children_head) {
-            parent->directory.children_head = parent->directory.children_tail = new_node;
+        if (!parent->children_head) {
+            parent->children_head = parent->children_tail = new_node;
         } else {
-            parent->directory.children_tail->sibling = new_node;
-            parent->directory.children_tail = new_node;
+            parent->children_tail->sibling = new_node;
+            parent->children_tail = new_node;
         }
-    }
-
-    if (!node_list_head) {
-        node_list_head = node_list_tail = new_node;
-    } else {
-        node_list_tail->next = new_node;
-        node_list_tail = new_node;
     }
 
     if (name) {

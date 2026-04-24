@@ -1,15 +1,16 @@
 #include <strata/plat/thread.h>
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <strata/arch/intrinsics/misc.h>
+#include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/intrinsics/xsave.h>
 #include <strata/arch/mmu.h>
 
 #include <strata/plat/cpulocal.h>
-#include <strata/plat/gdt.h>
+#include <strata/plat/gdt_constants.h>
 #include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
 #include <strata/plat/tss.h>
@@ -20,15 +21,19 @@
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
-#include <strata/panic.h>
+#include <strata/mm/types.h>
+#include <strata/mm/utils.h>
+#include <strata/mm/vmm.h>
 #include <strata/process.h>
 #include <strata/scheduler.h>
+#include <strata/status.h>
 #include <strata/thread.h>
 
 #define MODULE_NAME "thread"
 
 extern void _StThreadP_KernelThreadEntry(void);
 extern void _StThreadP_UserThreadEntry(void);
+extern struct StMm_AddressSpace base_asp;
 
 StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in)
 {
@@ -85,7 +90,7 @@ StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in)
         iregs->rbx = (uintptr_t)th->kmode_entry;
         iregs->rdi = (uintptr_t)th;
     } else {
-        iregs->rbx = (uintptr_t)th->umode_entry;
+        iregs->rbx = th->umode_entry;
         iregs->rdi = th->umode_stack_ptr;
     }
 
@@ -178,7 +183,7 @@ StStatus StThreadP_SetupThreadUserStack(
 
     // auxv
     struct StElf64_Auxv auxv[] = {
-        {AT_ENTRY, (uintptr_t)th->umode_entry},
+        {AT_ENTRY, th->umode_entry},
         {AT_PAGESZ, PAGE_SIZE},
         {AT_UID, 0},
         {AT_EUID, 0},
@@ -306,9 +311,12 @@ StStatus StThreadP_Switch(
     /* save FPU/SIMD registers */
     StA_FXSave(&current->platform_data.fx_save_buffer);
 
-    /* switch address space if needed */
-    if (next->type == THREAD_TYPE_USER && current_asp != next->process->address_space) {
+    /* switch address space */
+    if (next->type == THREAD_TYPE_USER) {
         status = StMmP_SwitchAddressSpace(next->process->address_space);
+        if (!CHECK_SUCCESS(status)) return status;
+    } else if (current_asp != &base_asp) {
+        status = StMmP_SwitchAddressSpace(&base_asp);
         if (!CHECK_SUCCESS(status)) return status;
     }
 
@@ -326,7 +334,7 @@ StStatus StThreadP_Switch(
     }
 
     /* set GS base */
-    if (next->platform_data.gs_base != current->platform_data.fs_base) {
+    if (next->platform_data.gs_base != current->platform_data.gs_base) {
         StA_WriteMsr(MSR_KERNEL_GS_BASE, next->platform_data.gs_base);
     }
 

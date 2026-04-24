@@ -5,9 +5,8 @@
 #include <string.h>
 
 #include <strata/arch/cpufeatures.h>
-#include <strata/arch/gdt.h>
-#include <strata/arch/intrinsics/msr.h>
-#include <strata/arch/io.h>
+#include <strata/arch/interrupt.h>
+#include <strata/arch/intrinsics/io.h>
 #include <strata/arch/mmu.h>
 
 #include <strata/plat/cpulocal.h>
@@ -17,6 +16,7 @@
 #include <strata/plat/mm.h>
 #include <strata/plat/pic.h>
 #include <strata/plat/syscall.h>
+#include <strata/plat/thread.h>
 #include <strata/plat/time.h>
 
 #include <strata/compiler.h>
@@ -24,6 +24,9 @@
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/pmm.h>
+#include <strata/mm/pool.h>
+#include <strata/mm/types.h>
 #include <strata/panic.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
@@ -75,7 +78,7 @@ static void *trap_isr(
     int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
 )
 {
-    StSyscallP_Handler(frame, ctx);
+    StSyscallA_Handler(frame, ctx);
 
     return NULL;
 }
@@ -156,6 +159,7 @@ static StStatus init_krt(void)
     return STATUS_SUCCESS;
 }
 
+// NOLINTNEXTLINE(readability-identifier-naming)
 __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 {
     StStatus status;
@@ -370,7 +374,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     init_pit();
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing syscall handler...\n");
-    status = StSyscallP_Init();
+    status = StSyscallA_Init();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize syscall handler");
     }

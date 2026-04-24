@@ -5,6 +5,7 @@
 #include <time.h>
 
 #include <strata/arch/mmu.h>
+
 #include <strata/mm.h>
 
 #define FUZZ_ITERATIONS    50000  // 반복 횟수

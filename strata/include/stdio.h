@@ -19,7 +19,7 @@ __format_printf(3, 4) int snprintf(
 );
 int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list args);
 int vsprintf(char *__restrict buf, const char *__restrict fmt, va_list args);
-int vsnprintf(char *__restrict buf, size_t size, const char *__restrict fmt, va_list args);
+int vsnprintf(char *__restrict buf, size_t len, const char *__restrict fmt, va_list args);
 int sscanf(const char *__restrict str, const char *__restrict fmt, ...);
 
 #    endif  // __STDIO_H__

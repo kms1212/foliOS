@@ -1,11 +1,14 @@
 #include <strata/plat/cpulocal.h>
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <strata/arch/intrinsics/msr.h>
 
 #include <strata/plat/mm.h>
 
 #include <strata/compiler.h>
-#include <strata/log.h>
+#include <strata/status.h>
 
 static struct StCpuLocalP_Data bsp_data;
 __externally_visible int _cpulocal_initialized = 0;

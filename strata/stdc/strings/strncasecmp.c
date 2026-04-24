@@ -1,6 +1,7 @@
 #include <strings.h>
 
 #include <ctype.h>
+#include <stddef.h>
 #include <stdint.h>
 
 int strncasecmp(const char *p1, const char *p2, size_t maxlen)

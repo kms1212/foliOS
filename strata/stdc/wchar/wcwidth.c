@@ -166,7 +166,7 @@ int wcwidth(wchar_t ucs)
     if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0)) return -1;
 
     /* binary search in table of non-spacing characters */
-    if (bisearch(ucs, combining, sizeof(combining) / sizeof(struct interval) - 1)) return 0;
+    if (bisearch(ucs, combining, (sizeof(combining) / sizeof(struct interval)) - 1)) return 0;
 
     /* if we arrive here, ucs is not a combining or C0/C1 control character */
 
@@ -188,11 +188,13 @@ int wcswidth(const wchar_t *pwcs, size_t n)
 {
     int w, width = 0;
 
-    for (; *pwcs && n-- > 0; pwcs++)
-        if ((w = wcwidth(*pwcs)) < 0)
-            return -1;
-        else
-            width += w;
+    for (; *pwcs && n-- > 0; pwcs++) {
+        w = wcwidth(*pwcs);
+
+        if (w < 0) return -1;
+
+        width += w;
+    }
 
     return width;
 }
@@ -253,7 +255,7 @@ int wcwidth_cjk(wchar_t ucs)
     };
 
     /* binary search in table of non-spacing characters */
-    if (bisearch(ucs, ambiguous, sizeof(ambiguous) / sizeof(struct interval) - 1)) return 2;
+    if (bisearch(ucs, ambiguous, ((sizeof(ambiguous) / sizeof(struct interval)) - 1))) return 2;
 
     return wcwidth(ucs);
 }
@@ -262,11 +264,11 @@ int wcswidth_cjk(const wchar_t *pwcs, size_t n)
 {
     int w, width = 0;
 
-    for (; *pwcs && n-- > 0; pwcs++)
-        if ((w = wcwidth_cjk(*pwcs)) < 0)
-            return -1;
-        else
-            width += w;
+    for (; *pwcs && n-- > 0; pwcs++) {
+        w = wcwidth_cjk(*pwcs);
+        if (w < 0) return -1;
+        width += w;
+    }
 
     return width;
 }

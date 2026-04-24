@@ -2,11 +2,11 @@
 
 #include <stdio.h>
 
-#include <strata/compiler.h>
+#include <strata/plat/interrupt.h>
+
 #include <strata/log.h>
-#include <strata/macros.h>
 #include <strata/mm/pool.h>
-#include <strata/panic.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "irq"
 

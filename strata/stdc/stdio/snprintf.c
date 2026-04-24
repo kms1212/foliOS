@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <limits.h>
+#include <stdarg.h>
 
 int snprintf(char *__restrict buf, size_t size, const char *__restrict fmt, ...)
 {

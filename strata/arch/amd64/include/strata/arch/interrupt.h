@@ -22,8 +22,14 @@ struct StA_InterruptFrame {
     uint16_t : 16;
 } __packed;
 
-#define StA_EnableInterrupt  StA_Sti
-#define StA_DisableInterrupt StA_Cli
+__always_inline void StA_EnableInterrupt(void)
+{
+    StA_Sti();
+}
+__always_inline void StA_DisableInterrupt(void)
+{
+    StA_Cli();
+}
 
 __always_inline uint32_t StA_SaveInterrupt(void)
 {

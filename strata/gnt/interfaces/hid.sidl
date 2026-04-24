@@ -1,9 +1,0 @@
-@uuid(%ENV("STRATA_GLOBAL_NAMESPACE"), "strata/interface/hid")
-@prefix("StIfHid_")
-@include("strata/status.h")
-@status_type("StStatus")
-interface Hid {
-    abirevision 0 {
-        // TBD
-    }
-}

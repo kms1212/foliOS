@@ -1,5 +1,10 @@
 #include <strata/uuid.h>
 
+#include <stddef.h>
+
+#include <strata/compiler.h>
+#include <strata/status.h>
+
 StStatus StUuid_GenerateVersion1(struct StUuid *uuid __buf)
 {
     return STATUS_NOT_IMPLEMENTED;

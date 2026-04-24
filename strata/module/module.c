@@ -2,6 +2,9 @@
 
 #include <strata/mm/pool.h>
 
+#include <strata/compiler.h>
+#include <strata/status.h>
+
 static struct StModule *module_list_head = NULL;
 static struct StModule *module_list_tail = NULL;
 

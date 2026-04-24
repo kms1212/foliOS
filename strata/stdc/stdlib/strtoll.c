@@ -64,11 +64,7 @@ long long strtoll(const char *__restrict str, char **__restrict endptr, int base
         // check range
         if (ret < 0) {  // we didn't applied sign yet, so it can't be negative
             errno = ERANGE;
-            if (sign) {
-                return LLONG_MIN;
-            } else {
-                return LLONG_MAX;
-            }
+            return sign ? LLONG_MIN : LLONG_MAX;
         }
         str++;
     }

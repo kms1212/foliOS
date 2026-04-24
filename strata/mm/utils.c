@@ -1,6 +1,12 @@
 #include <strata/mm/utils.h>
 
+#include <stddef.h>
+#include <stdint.h>
+
 #include <strata/plat/mm.h>
+
+#include <strata/compiler.h>
+#include <strata/status.h>
 
 StStatus StMm_ReadLocal(
     struct StMm_AddressSpace *asp __in, uintptr_t addr __in, void *buf __buf, size_t len __in

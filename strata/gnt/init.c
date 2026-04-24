@@ -1,10 +1,21 @@
 #include <strata/gnt.h>
-
-#include <strata/module.h>
+#include <strata/gnt/interface.h>
+#include <strata/process.h>
 #include <strata/status.h>
 
 struct StGnt_Node *g_gnt_root_network;
 struct StGnt_Node *g_gnt_root_local;
+struct StGnt_Node *g_gnt_system_processes;
+
+static StStatus register_directory_interfaces(struct StGnt_Node *node)
+{
+    StStatus status;
+
+    status = StGnt_RegisterInterface(node, &StGntIf_Uuid_Directory, 0, 11);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    return StGnt_RegisterInterface(node, &StGntIf_Uuid_FileInfo, 0, 2);
+}
 
 StStatus StGnt_Init(void)
 {
@@ -44,7 +55,9 @@ StStatus StGnt_Init(void)
     status = StGnt_AddNode(system_node, U"Processes", &processes_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    processes_node->leaf.handler_module = StProcess_Module;
+    processes_node->type = GNT_NODETYPE_DIRECTORY;
+    processes_node->handler_module = StProcess_Module;
+    g_gnt_system_processes = processes_node;
 
     status = StGnt_AddNode(system_node, U"Threads", &threads_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -68,6 +81,45 @@ StStatus StGnt_Init(void)
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = StGnt_AddNode(system_node, U"Volumes", &volumes_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(g_gnt_root_network);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(g_gnt_root_local);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(system_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(kernel_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(processes_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(threads_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(pipes_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(sockets_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(sharedmemories_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(modules_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(devices_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(hardwares_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = register_directory_interfaces(volumes_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     return STATUS_SUCCESS;

@@ -1,8 +1,10 @@
 #include <strata/plat/tss.h>
 
+#include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
-#include <strata/plat/gdt.h>
+#include <strata/arch/tss.h>
 
 static struct StA_Tss _pc_tss;
 

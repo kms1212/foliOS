@@ -1,30 +1,34 @@
 #include <strata/plat/interrupt.h>
 
 #include <inttypes.h>
+#include <stdatomic.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <strata/arch/idt.h>
+#include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/idt.h>
-#include <strata/arch/io.h>
+#include <strata/arch/intrinsics/io.h>
 #include <strata/arch/mmu.h>
 
 #include <strata/plat/cpulocal.h>
-#include <strata/plat/gdt.h>
+#include <strata/plat/gdt_constants.h>
 #include <strata/plat/pic.h>
-#include <strata/plat/tss.h>
 
 #include <strata/compiler.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/macros.h>
-#include <strata/mm.h>
 #include <strata/panic.h>
 #include <strata/scheduler.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 #define MODULE_NAME "irq"
 
 #define DECLARE_ISRxy(x, y) extern void _pc_isr_##x##y(void)
+// NOLINTNEXTLINE(readability-identifier-naming)
 #define DECLARE_ISRx(x)                                                                            \
     DECLARE_ISRxy(x, 0);                                                                           \
     DECLARE_ISRxy(x, 1);                                                                           \
@@ -422,7 +426,7 @@ uint64_t StIntP_GetIrqCount(void)
     return StCpuLocalP_GetData()->irq_count;
 }
 
-__optimize("O0") __externally_visible void *_pc_isr_common(
+__optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
     struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, int num
 )
 {

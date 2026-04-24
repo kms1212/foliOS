@@ -1,5 +1,10 @@
-#include <strata/endian.h>
 #include <strata/utf.h>
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include <strata/compiler.h>
+#include <strata/status.h>
 
 static int get_seq_len(St_Utf8Char c)
 {
@@ -29,7 +34,6 @@ StStatus StUtf_CountUtf8Chars(
         }
 
         if (i + len > src_size) {
-            i = src_size;
             count++;
             break;
         }
@@ -91,7 +95,7 @@ int StUtf_CompareUtf32Chars(
 
     while (i < str1_bufsize && j < str2_bufsize) {
         if (str1[i] != str2[j]) {
-            result_val = str1[i] - str2[j];
+            result_val = (int)str1[i] - (int)str2[j];
             break;
         }
         i++;
@@ -132,9 +136,9 @@ StStatus StUtf_Utf8ToUtf32(
         } else {
             int valid = 1;
 
-            if (len == 1)
+            if (len == 1) {
                 wc = c;
-            else if (len == 2) {
+            } else if (len == 2) {
                 if (((uint8_t)src[i + 1] & 0xC0) != 0x80) {
                     valid = 0;
                 } else {

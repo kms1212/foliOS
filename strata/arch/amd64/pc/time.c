@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include <strata/arch/cpufeatures.h>
+#include <strata/arch/intrinsics/io.h>
 #include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/io.h>
 

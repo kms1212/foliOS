@@ -3,8 +3,8 @@
  * May be freely redistributed, but copyright notice must be retained.
  */
 
-#ifndef _RB_HEADER
-#define _RB_HEADER
+#ifndef __STRATA_RB_H__
+#define __STRATA_RB_H__
 
 #include <stddef.h>
 #include <strata/status.h>
@@ -92,4 +92,4 @@ struct StRbtree_Node *StRbtree_Max(struct StRbtree *rbt);
 int StRbtree_CheckOrder(struct StRbtree *rbt);
 int StRbtree_CheckBlackHeight(struct StRbtree *rbt);
 
-#endif /* _RB_HEADER */
+#endif /* __STRATA_RB_H__ */

@@ -3,10 +3,14 @@
 #include <stdlib.h>
 
 #include <strata/plat/memmap.h>
+#include <strata/plat/mm.h>
 
+#include <strata/compiler.h>
 #include <strata/log.h>
-#include <strata/mm.h>
+#include <strata/mm/pool.h>
+#include <strata/mm/vmm.h>
 #include <strata/process.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "mm"
 

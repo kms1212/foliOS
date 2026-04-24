@@ -1,0 +1,3 @@
+[submodule "tools/sidlc"]
+	path = tools/sidlc
+	url = https://github.com/kms1212/sidlc

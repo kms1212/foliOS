@@ -4,8 +4,11 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include <strata/arch/intrinsics/io.h>
 #include <strata/arch/intrinsics/misc.h>
-#include <strata/arch/io.h>
+
+#include <strata/compiler.h>
+#include <strata/status.h>
 
 static int panic_out(void *data, char ch)
 {

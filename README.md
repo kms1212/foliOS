@@ -165,7 +165,7 @@ foliOS abandons the cluttered `/bin` and `/lib` hierarchy in favor of a strictly
 
 ```sh
 # Clone the repository
-git clone https://github.com/kms1212/foliOS
+git clone https://github.com/kms1212/foliOS --recursive
 cd foliOS
 
 # Configure and build for BIOS-based amd64 machine

@@ -1,7 +1,12 @@
 #include <strata/spinlock.h>
 
+#include <stdint.h>
+
 #include <strata/arch/interrupt.h>
+#include <strata/arch/intrinsics/misc.h>
+
 #include <strata/scheduler.h>
+#include <strata/status.h>
 #include <strata/thread.h>
 
 extern int _pc_irq_level;

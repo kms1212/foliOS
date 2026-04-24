@@ -1,6 +1,10 @@
 #include <strata/mm/pool.h>
 
+#include <stddef.h>
+
 #include <liballoc.h>
+
+#include <strata/compiler.h>
 #include <strata/status.h>
 
 // TODO: Implement pool allocator. liballoc leaks memory (in short term).

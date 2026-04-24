@@ -26,7 +26,7 @@ StStatus StCpuLocalP_Init(void);
 
 __always_inline struct StCpuLocalP_Data *StCpuLocalP_GetData(void)
 {
-    extern int _cpulocal_initialized;
+    extern int _cpulocal_initialized;  // NOLINT
     struct StCpuLocalP_Data *data;
     if (!_cpulocal_initialized) return NULL;
     __asm__ volatile("mov %%gs:0x10, %0" : "=r"(data));

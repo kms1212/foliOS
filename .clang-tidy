@@ -21,6 +21,11 @@ Checks: >
   -readability-isolate-declaration,
   -misc-unused-parameters,
   -gnu-include-next,
+  -readability-non-const-parameter,
+  -readability-function-cognitive-complexity,
+  -readability-inconsistent-declaration-parameter-name,
+  -misc-use-internal-linkage,
+  -clang-analyzer-deadcode.DeadStores,
 
 WarningsAsErrors: ''
 
@@ -28,38 +33,50 @@ WarningsAsErrors: ''
 #   -fno-store-merging
 
 CheckOptions:
+  - key: readability-identifier-naming.GlobalVariableCase
+    value: aNy_CasE
+
+  - key: readability-identifier-naming.GlobalVariableIgnoredRegexp
+    value: '^_?_[a-z0-9_]+$'
+
   - key: readability-identifier-naming.FunctionIgnoredRegexp
-    value: '^St([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
+    value: '^_?St([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
 
   - key: readability-identifier-naming.FunctionCase
-    value: CamelCase
+    value: lower_case
 
   - key: readability-identifier-naming.TypedefIgnoredRegexp
     value: '^St([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
 
   - key: readability-identifier-naming.TypedefCase
-    value: CamelCase
+    value: lower_case
 
   - key: readability-identifier-naming.StructIgnoredRegexp
-    value: '^St([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
+    value: '^St([A-Z][a-zA-Z0-9]*)?(_[A-Z][a-zA-Z0-9]*)?$'
 
   - key: readability-identifier-naming.StructCase
-    value: CamelCase
+    value: lower_case
 
   - key: readability-identifier-naming.EnumIgnoredRegexp
     value: '^St([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
 
   - key: readability-identifier-naming.EnumCase
-    value: CamelCase
+    value: lower_case
 
   - key: readability-identifier-naming.EnumConstantCase
     value: UPPER_CASE
+
+  - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
+    value: '^(_?_[A-Z0-9_]+_H(__)?)|(__[a-z_]+)$'
 
   - key: readability-identifier-naming.MacroDefinitionCase
     value: UPPER_CASE
 
   - key: readability-identifier-naming.ParameterCase
     value: lower_case
+
+  - key: readability-identifier-naming.ParameterIgnoredRegexp
+    value: '^_[a-z0-9_]+$'
 
   - key: readability-identifier-naming.MemberCase
     value: lower_case

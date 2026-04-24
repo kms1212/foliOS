@@ -85,6 +85,7 @@ ExternalProject_Add(strata
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=${CMAKE_EXPORT_COMPILE_COMMANDS}
         -DCMAKE_COMPILER_LAUNCHER:FILEPATH=${CMAKE_COMPILER_LAUNCHER}
         -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/${TARGET_ARCH}/Toolchain.cmake
+        -DSIDLC_EXECUTABLE:FILEPATH=${CMAKE_BINARY_DIR}/tools/sidlc/sidlc
     CMAKE_ARGS
         -DTARGET_ARCH=${TARGET_ARCH}
         -DTARGET_PLATFORM=${TARGET_PLATFORM}
@@ -94,4 +95,31 @@ ExternalProject_Add(strata
         -DBUILD_TESTING=${BUILD_TESTING}
     BUILD_ALWAYS 1
     INSTALL_COMMAND ""
+)
+
+add_dependencies(strata sidlc)
+
+# Static Analysis (clang-tidy)
+add_custom_target(
+    tidy-strata
+    COMMAND "${CMAKE_SOURCE_DIR}/scripts/clang_tidy.sh" --build-dir "${CMAKE_BINARY_DIR}" --component strata
+    DEPENDS strata
+    USES_TERMINAL
+    COMMENT "Running clang-tidy for strata"
+)
+
+add_custom_target(
+    tidy-vellum
+    COMMAND "${CMAKE_SOURCE_DIR}/scripts/clang_tidy.sh" --build-dir "${CMAKE_BINARY_DIR}" --component vellum
+    DEPENDS vellum
+    USES_TERMINAL
+    COMMENT "Running clang-tidy for vellum"
+)
+
+add_custom_target(
+    tidy-all
+    COMMAND "${CMAKE_SOURCE_DIR}/scripts/clang_tidy.sh" --build-dir "${CMAKE_BINARY_DIR}" --component all
+    DEPENDS strata vellum
+    USES_TERMINAL
+    COMMENT "Running clang-tidy for all components"
 )

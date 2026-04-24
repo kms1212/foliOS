@@ -1,9 +1,7 @@
 #include <strata/plat/mm.h>
 
-#include <inttypes.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <strata/status.h>
-#include <strata/thread.h>
 #include <string.h>
 
 #include <strata/arch/cpufeatures.h>
@@ -13,19 +11,20 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/memmap.h>
 
-#include <strata/log.h>
-#include <strata/macros.h>
+#include <strata/compiler.h>
+#include <strata/mm/asp.h>
+#include <strata/mm/pmm.h>
+#include <strata/mm/types.h>
 #include <strata/panic.h>
-#include <strata/types.h>
-
-#include <strata/mm.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 #define MODULE_NAME "mm"
 
 #define PML4_HOLE_START ((St_VirtPage)0x0000000800000000ULL)
 #define PML4_HOLE_END   ((St_VirtPage)0x000FFFF7FFFFFFFFULL)
 
-#define PHYS_TO_VIRT(pa) ((void *)((uintptr_t)(pa) + MEMMAP_DIRECTMAP_VPN_BASE * PAGE_SIZE))
+#define PHYS_TO_VIRT(pa) ((void *)((uintptr_t)(pa) + (MEMMAP_DIRECTMAP_VPN_BASE * PAGE_SIZE)))
 
 #define VIRT_PAGE_MAX       ((St_VirtPage)0x000FFFFFFFFFFFFFUL)
 #define VIRT_PAGE_PML4_MASK ((St_VirtPage)0x0000000FF8000000UL)
@@ -67,7 +66,7 @@ StStatus StMmP_CleanupTempMapping(void)
             for (int k = 0; k < 512; k++) {
                 if (!pt[k].p) continue;
 
-                StA_InvalidatePage((St_VirtPage)((i << 18) + (j << 9) + k));
+                StA_InvalidatePage((i << 18) + (j << 9) + k);
             }
         }
     }
@@ -370,6 +369,14 @@ static StStatus map_memory(
             }
             pt[pte_idx + i] = pte_template;
             pt[pte_idx + i].base = (uint64_t)pfn + i;
+
+            if (mapflags & MF_ZERO_FILL) {
+                memset(
+                    PHYS_TO_VIRT(FRAME_TO_VPTR((St_PhysFrame)pt[pte_idx + i].base)),
+                    0,
+                    PAGE_SIZE
+                );
+            }
         }
 
         count -= chunk_size;

@@ -2,9 +2,11 @@
 
 #include <ctype.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <wchar.h>
 
 #include <strata/macros.h>
 
@@ -17,8 +19,8 @@
 #define SF_PTR    0x40
 
 #define WIDTH_AUTO 0
-#define PREC_ARG   -1
-#define WIDTH_ARG  -1
+#define PREC_ARG   (-1)
+#define WIDTH_ARG  (-1)
 
 enum fmt_spec_type {
     INVALID = 0,
@@ -47,8 +49,8 @@ enum fmt_spec_type {
 };
 
 struct fmt_spec {
-    short width;
-    short precision;
+    int width;
+    int precision;
     uint8_t flags;
     uint8_t base;
     uint8_t type;
@@ -384,7 +386,7 @@ static int print_str(int (*func)(void *, char), void *farg, struct fmt_spec spec
         str = "(null)";
     }
 
-    slen = strlen(str);
+    slen = (int)strlen(str);
 
     if (width < slen) {
         width = slen;
@@ -464,13 +466,13 @@ static int do_print_int(
         }
     } else if (spec.base == 8) {
         while (num) {
-            *rbuf_ptr++ = '0' + num % 8;
+            *rbuf_ptr++ = (char)('0' + (num % 8));
             num /= 8;
             rbuf_len++;
         }
     } else {
         while (num) {
-            *rbuf_ptr++ = '0' + num % 10;
+            *rbuf_ptr++ = (char)('0' + (num % 10));
             num /= 10;
             rbuf_len++;
         }
@@ -564,7 +566,7 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
         num = (unsigned char)va_arg(*args, unsigned int);
         break;
     case BYTE:
-        num = (char)va_arg(*args, int);
+        num = (int)(char)va_arg(*args, int);
         is_signed = 1;
         break;
     case USHORT:

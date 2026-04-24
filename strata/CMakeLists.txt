@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.13)
 cmake_policy(SET CMP0076 NEW)
+if(POLICY CMP0118)
+    cmake_policy(SET CMP0118 NEW)
+endif()
 
 include(ExternalProject)
 
@@ -45,15 +48,18 @@ add_subdirectory(lib)
 add_subdirectory(arch)
 add_subdirectory(elf)
 add_subdirectory(gnt)
+add_subdirectory(handle)
 add_subdirectory(init)
 add_subdirectory(interrupt)
 add_subdirectory(log)
 add_subdirectory(mm)
 add_subdirectory(module)
 add_subdirectory(mutex)
+add_subdirectory(process)
 add_subdirectory(scheduler)
 add_subdirectory(stdc)
 add_subdirectory(syscall)
+add_subdirectory(thread)
 add_subdirectory(utils)
 
 # Additional Targets

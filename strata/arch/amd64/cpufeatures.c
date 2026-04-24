@@ -1,6 +1,7 @@
 #include <strata/arch/cpufeatures.h>
 
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include <cpuid.h>
@@ -11,6 +12,7 @@
 
 #include <strata/log.h>
 #include <strata/panic.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "cpufeat"
 

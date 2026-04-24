@@ -1,11 +1,11 @@
 #include <strata/scheduler.h>
 
 #include <strata/plat/cpulocal.h>
-#include <strata/plat/scheduler.h>
 #include <strata/plat/time.h>
 
 #include <strata/log.h>
-#include <strata/panic.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 #define MODULE_NAME "sched"
 
@@ -42,7 +42,7 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
         }
     }
 
-    for (struct StThread *current = scheduler->runqueue_head; current->next;
+    for (struct StThread *current = scheduler->runqueue_head; current && current->next;
          current = current->next) {
         if (th == current->next) {
             current->next = th->next;

@@ -167,7 +167,7 @@ _pc_isr_80:
     lea     8(%rbp), %rsi               # registers
     lea     128(%rbp), %rdi             # interrupt frame + error
 
-    call    StSyscallP_Handler          # call syscall handler
+    call    StSyscallA_Handler          # call syscall handler
 
     cli
 
