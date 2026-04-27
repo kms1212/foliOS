@@ -4,7 +4,6 @@
 #include <strata/plat/mm.h>
 
 #include <strata/process.h>
-#include <strata/rb.h>
 
 struct StMm_AddressSpace {
     struct StMm_AddressSpace *next;
@@ -13,7 +12,7 @@ struct StMm_AddressSpace {
 
     struct StMmP_AddressSpace platform_data;
 
-    struct StRbtree user_rbtree;
+    void *user_alloc_head;
     St_VirtPage user_base_vpn, user_limit_vpn;
     St_PageCount user_free_count;
 };

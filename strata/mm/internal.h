@@ -4,8 +4,6 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
-#include <strata/rb.h>
-
 #include <strata/mm/owner.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
@@ -39,7 +37,7 @@ _Static_assert(
 #define AF_VMM_HIDDEN_AT_MAP ((StMm_MapFlags)0x10000000)
 
 struct vmm_alloc_domain {
-    struct StRbtree rbtree;
+    struct vmm_alloc_node *head;
     St_VirtPage base_vpn, limit_vpn;
     St_PageCount free_count;
     int initialized;
@@ -49,13 +47,14 @@ struct vmm_alloc_domain {
 #define AT_MAP   1
 
 struct vmm_alloc_node {
-    struct StRbtree_Node rbnode;
     St_VirtPage base_vpn, limit_vpn;
     struct StMm_AllocationOwner *owner;
     struct vmm_alloc_node *owner_prev, *owner_next;
+    struct vmm_alloc_node *domain_prev, *domain_next;
     struct StMm_AddressSpace *asp;
     uint32_t alloc_type;
     enum StVmm_Domain domain;
+    uint8_t is_live;
 };
 
 #endif  // __MM_INTERNAL_H__
