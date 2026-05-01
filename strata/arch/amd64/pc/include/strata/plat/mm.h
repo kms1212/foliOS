@@ -17,6 +17,7 @@ struct StMm_AddressSpace;
 StStatus StMmP_CleanupTempMapping(void);
 
 StStatus StMmP_InitBaseAddressSpace(void);
+St_PageCount StMmP_ReclaimCachedPageTableFrames(St_PageCount page_budget __in);
 
 StStatus StMmP_CreateAddressSpace(struct StMm_AddressSpace *asp __in);
 void StMmP_RemoveAddressSpace(struct StMm_AddressSpace *asp __in);
@@ -25,6 +26,10 @@ StStatus StMmP_SwitchAddressSpace(struct StMm_AddressSpace *asp __in);
 StStatus StMmP_GlobalVirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional);
 StStatus StMmP_LocalVirtPageToPhysFrame(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
+);
+StStatus StMmP_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
+StStatus StMmP_GetLocalPageFlags(
+    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 );
 
 StStatus StMmP_MapGlobalContiguousMemory(

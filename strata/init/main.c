@@ -1,4 +1,6 @@
+#include "strata/plat/cpulocal.h"
 #include <inttypes.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -44,7 +46,7 @@ struct print_state {
     uint32_t cursor_col, cursor_row;
 };
 
-static int early_print_char(void *_state, char ch)
+int early_print_char(void *_state, char ch)
 {
     struct print_state *state = _state;
     uint16_t *framebuffer;
@@ -56,6 +58,8 @@ static int early_print_char(void *_state, char ch)
     pitch = state->pitch;
 
     if (!width) return 1;
+
+    StThread_LockPreemption();
 
     switch (ch) {
     case '\0':
@@ -77,9 +81,9 @@ static int early_print_char(void *_state, char ch)
         break;
     }
 
-    if (state->cursor_col >= width) {
-        state->cursor_row += state->cursor_col / width;
-        state->cursor_col %= width;
+    if (state->cursor_col >= width - 22) {
+        state->cursor_row += state->cursor_col / (width - 22);
+        state->cursor_col %= width - 22;
     }
 
     if (state->cursor_row >= height) {
@@ -88,12 +92,20 @@ static int early_print_char(void *_state, char ch)
             memcpy(
                 &framebuffer[(size_t)i * width],
                 &framebuffer[((size_t)i + line_diff) * width],
-                pitch
+                sizeof(*framebuffer) * (width - 22)
             );
         }
-        memset(&framebuffer[((size_t)height - line_diff) * width], 0, (size_t)pitch * line_diff);
+        for (uint32_t i = 0; i < line_diff; i++) {
+            memset(
+                &framebuffer[((size_t)height - line_diff + i) * width],
+                0,
+                sizeof(*framebuffer) * (width - 22)
+            );
+        }
         state->cursor_row = height - 1;
     }
+
+    StThread_UnlockPreemption();
 
     return 0;
 }
@@ -353,7 +365,7 @@ static void thread1_main(struct StThread *th);
 extern char _userexec_start[];
 extern char _userexec_end[];
 
-static void setup_process(void)
+static int setup_user_process(struct StProcess **process_out __out)
 {
     StStatus status;
     struct StProcess *process;
@@ -363,6 +375,11 @@ static void setup_process(void)
     size_t userexec_size = (uintptr_t)_userexec_end - (uintptr_t)_userexec_start;
     uintptr_t entry_point;
     struct StThread *main_thread;
+    uint32_t process_count;
+
+    StProcess_GetCount(&process_count);
+
+    if (process_count >= 10) return 1;
 
     status = StElf_Open(_userexec_start, userexec_size, &elf);
     if (!CHECK_SUCCESS(status)) {
@@ -385,6 +402,13 @@ static void setup_process(void)
             St_Panic(status, "failed to get program header");
         }
 
+        if (ph.type == PT_TLS) {
+            process->tls_image_addr = (uintptr_t)ph.vaddr;
+            process->tls_file_size = (size_t)ph.filesz;
+            process->tls_mem_size = (size_t)ph.memsz;
+            process->tls_align = (size_t)ph.addralign;
+        }
+
         if (ph.type != PT_LOAD) continue;
 
         status = StElf_LoadProgram(elf, i, process->address_space);
@@ -401,13 +425,11 @@ static void setup_process(void)
     StElf_Close(elf);
 
     const char *args[] = {"test", NULL};
-    const char *envs[] = {"PATH=/bin", NULL};
+    const char *envs[] = {"LANG=C.UTF-8", "TERM=dumb", NULL};
 
     status = StThread_CreateUserMain(
         process,
         entry_point,
-        (St_PageCount)16,
-        (St_PageCount)16,
         ARRAY_SIZE(args) - 1,
         args,
         ARRAY_SIZE(envs) - 1,
@@ -420,13 +442,16 @@ static void setup_process(void)
 
     process->main_thread = main_thread;
 
-    StThread_Detach(process->main_thread);
+    *process_out = process;
+
+    return 0;
 }
 
 static void thread3_main(struct StThread *th)
 {
     uint64_t start_tick = StTimeP_GetGlobalTick();
     uint32_t time = 0;
+    struct StProcess *process = NULL;
 
     do {
         if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
@@ -434,7 +459,7 @@ static void thread3_main(struct StThread *th)
                 St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
             }
             shared_value = 1;
-            for (volatile int i = 0; i < 1024; i++) {
+            for (volatile int i = 0; i < 65536; i++) {
             }
             shared_value = 0;
             StMutex_Unlock(&mtx);
@@ -443,9 +468,10 @@ static void thread3_main(struct StThread *th)
         StThread_Sleep(1);
 
         time = StTimeP_GetGlobalTick() - start_tick;
-    } while (time < 50);
+    } while (time < 2);
 
-    setup_process();
+    if (setup_user_process(&process)) return;
+    StThread_Detach(process->main_thread);
 }
 
 static void thread2_main(struct StThread *th)
@@ -461,7 +487,7 @@ static void thread2_main(struct StThread *th)
                 St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
             }
             shared_value = 1;
-            for (volatile int i = 0; i < 1024; i++) {
+            for (volatile int i = 0; i < 65536; i++) {
             }
             shared_value = 0;
             StMutex_Unlock(&mtx);
@@ -470,11 +496,16 @@ static void thread2_main(struct StThread *th)
         StThread_Sleep(1);
 
         time = StTimeP_GetGlobalTick() - start_tick;
-    } while (time < 100);
+    } while (time < 5);
 
-    status = StThread_CreateKernel(thread1_main, 16, &new_thread);
+    status = StThread_CreateKernel(thread1_main, &new_thread);
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to create kernel thread");
+        LOG_WARN(
+            LM_CAT_UNCLASSIFIED,
+            "thread2_main: failed to create kernel thread (status=%08X)\n",
+            status
+        );
+        return;
     }
 
     StThread_Detach(new_thread);
@@ -487,6 +518,7 @@ static void thread1_main(struct StThread *th)
     uint32_t time = 0, prev_time = 0;
     struct StThread *new_thread1, *new_thread2;
     struct StThread *waitlist[2];
+    struct StProcess *process = NULL;
 
     do {
         if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
@@ -494,7 +526,7 @@ static void thread1_main(struct StThread *th)
                 St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
             }
             shared_value = 1;
-            for (volatile int i = 0; i < 1024; i++) {
+            for (volatile int i = 0; i < 65536; i++) {
             }
             shared_value = 0;
             StMutex_Unlock(&mtx);
@@ -506,19 +538,32 @@ static void thread1_main(struct StThread *th)
             continue;
         }
         prev_time = time;
-    } while (time < 100);
+    } while (time < 5);
 
-    status = StThread_CreateKernel(thread2_main, 16, &new_thread1);
+    status = StThread_CreateKernel(thread2_main, &new_thread1);
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to create kernel thread");
+        LOG_WARN(
+            LM_CAT_UNCLASSIFIED,
+            "thread1_main: failed to create thread2 (status=%08X)\n",
+            status
+        );
+        return;
     }
 
-    status = StThread_CreateKernel(thread3_main, 16, &new_thread2);
+    status = StThread_CreateKernel(thread3_main, &new_thread2);
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to create kernel thread");
+        LOG_WARN(
+            LM_CAT_UNCLASSIFIED,
+            "thread1_main: failed to create thread3 (status=%08X)\n",
+            status
+        );
+        StThread_Detach(new_thread1);
+        return;
     }
 
-    setup_process();
+    if (!setup_user_process(&process)) {
+        StThread_Detach(process->main_thread);
+    }
 
     waitlist[0] = new_thread1;
     waitlist[1] = new_thread2;
@@ -540,18 +585,109 @@ static void fb_print_str(int col, int row, const char *str)
 static void thread4_main(struct StThread *th)
 {
     St_PageCount total_frames, free_frames;
+    uint32_t thread_count, process_count;
+    uint64_t uptime_us, syscall_count, ctxswitch_count, irq_count, idle_runtime_us;
+    uint64_t prev_sample_uptime_us = 0;
+    uint64_t prev_sample_idle_us = 0;
+    uint64_t cpu_busy_hundredths = 0;
 
     char buf[512];
 
     for (;;) {
         StPmm_GetTotalFrameCount(&total_frames);
         StPmm_GetFreeFrameCount(&free_frames);
+        StThread_GetCount(&thread_count);
+        StProcess_GetCount(&process_count);
+        uptime_us = StTimeP_GetUptimeMicroseconds();
+        syscall_count = atomic_load(&StCpuLocalP_GetData()->syscall_count);
+        irq_count = atomic_load(&StCpuLocalP_GetData()->irq_count);
+        ctxswitch_count = atomic_load(&StCpuLocalP_GetData()->ctxswitch_count);
+        StScheduler_GetIdleRuntime(&idle_runtime_us);
 
-        snprintf(buf, sizeof(buf), "%zu / %zu", free_frames, total_frames);
-        fb_print_str(80 - 23, 0, buf);
+        if (!prev_sample_uptime_us) {
+            prev_sample_uptime_us = uptime_us;
+            prev_sample_idle_us = idle_runtime_us;
+        } else if (uptime_us - prev_sample_uptime_us >= 250000) {
+            uint64_t window_us = uptime_us - prev_sample_uptime_us;
+            uint64_t idle_delta_us = idle_runtime_us - prev_sample_idle_us;
+            uint64_t busy_delta_us = (idle_delta_us >= window_us) ? 0 : (window_us - idle_delta_us);
 
-        StThread_Sleep(1);
+            cpu_busy_hundredths = (busy_delta_us * 10000) / window_us;
+            prev_sample_uptime_us = uptime_us;
+            prev_sample_idle_us = idle_runtime_us;
+        }
+
+        snprintf(
+            buf,
+            sizeof(buf),
+            "CPU: %13" PRIu64 ".%02" PRIu64 "%%",
+            cpu_busy_hundredths / 100,
+            cpu_busy_hundredths % 100
+        );
+        fb_print_str(80 - 22, 0, buf);
+
+        snprintf(buf, sizeof(buf), "MEM: %7zu / %7zu", total_frames - free_frames, total_frames);
+        fb_print_str(80 - 22, 1, buf);
+
+        snprintf(buf, sizeof(buf), "NTH: %6" PRIu32 " NPR: %5" PRIu32, thread_count, process_count);
+        fb_print_str(80 - 22, 2, buf);
+
+        snprintf(buf, sizeof(buf), "NSC: %17" PRIu64, syscall_count);
+        fb_print_str(80 - 22, 3, buf);
+
+        snprintf(buf, sizeof(buf), "NIR: %17" PRIu64, irq_count);
+        fb_print_str(80 - 22, 4, buf);
+
+        snprintf(buf, sizeof(buf), "NCS: %17" PRIu64, ctxswitch_count);
+        fb_print_str(80 - 22, 5, buf);
+
+        snprintf(
+            buf,
+            sizeof(buf),
+            "SUT: %4" PRId64 ":%02" PRId64 ":%02" PRId64 ".%06" PRId64,
+            uptime_us / 1000000 / 60 / 60,
+            uptime_us / 1000000 / 60 % 60,
+            uptime_us / 1000000 % 60,
+            uptime_us % 1000000
+        );
+        fb_print_str(80 - 22, 6, buf);
+
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "used memory: %zu\n",
+            (uint64_t)(total_frames - free_frames) * PAGE_SIZE
+        );
+
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "cpu usage: %" PRIu64 ".%" PRIu64 "%%\n",
+            cpu_busy_hundredths / 100,
+            cpu_busy_hundredths % 100
+        );
+
+        StThread_Sleep(250);
     }
+}
+
+static void thread5_main(struct StThread *th)
+{
+    struct StProcess *process = NULL;
+    struct StThread *waitlist[1];
+
+    for (;; StThread_Sleep(250)) {
+        if (setup_user_process(&process)) continue;
+        waitlist[0] = process->main_thread;
+        StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
+        StThread_Remove(process->main_thread);
+    }
+}
+
+int do_nothing(void *ctx, char ch)
+{
+    (void)ctx;
+    (void)ch;
+
+    return 1;
 }
 
 __noreturn void main(void)
@@ -647,7 +783,8 @@ __noreturn void main(void)
     memset(fb, 0, (size_t)fbent->pitch * fbent->height);
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "reinitializing early logger...\n");
-    // StLog_EarlyInit(early_print_char, &pstate);
+    /* Keep debugcon logger during bring-up to preserve full boot logs. */
+    // StLog_EarlyInit(do_nothing, NULL);
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "### bootinfo table start ###\n");
 
@@ -792,25 +929,43 @@ __noreturn void main(void)
         St_Panic(status, "failed to initialize thread system");
     }
 
-    setup_process();
-
     StMutex_Init(&mtx);
-    StThread_CreateKernel(thread1_main, 16, &thread1);
-    StThread_Detach(thread1);
+    status = StThread_CreateKernel(thread1_main, &thread1);
+    if (CHECK_SUCCESS(status)) {
+        StThread_Detach(thread1);
+    } else {
+        LOG_WARN(LM_CAT_UNCLASSIFIED, "main: failed to create thread1 (status=%08X)\n", status);
+    }
 
-    StThread_CreateKernel(thread4_main, 16, &thread4);
-    StThread_Detach(thread4);
+    status = StThread_CreateKernel(thread4_main, &thread4);
+    if (CHECK_SUCCESS(status)) {
+        StThread_Detach(thread4);
+    } else {
+        LOG_WARN(LM_CAT_UNCLASSIFIED, "main: failed to create thread4 (status=%08X)\n", status);
+    }
 
     for (;;) {
-        StScheduler_Maintain();
+        if (StScheduler_ShouldMaintain()) {
+            StScheduler_Maintain();
+        }
 
         if (StScheduler_CheckHasOtherRunnableThread()) {
             StThread_Yield();
         } else {
+            uint64_t idle_start_us;
+            uint64_t idle_end_us;
+            StThread_RunDeferredReap((St_PageCount)64);
+
+            idle_start_us = StTimeP_GetUptimeMicroseconds();
             uint32_t intstatus = StA_SaveInterrupt();
             StA_EnableInterrupt();
             StA_Hlt();
             StA_RestoreInterrupt(intstatus);
+            idle_end_us = StTimeP_GetUptimeMicroseconds();
+
+            if (idle_end_us > idle_start_us) {
+                StScheduler_AccountIdleRuntime(idle_end_us - idle_start_us);
+            }
         }
     }
 }

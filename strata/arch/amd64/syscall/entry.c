@@ -29,7 +29,7 @@ int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Conte
 
     switch (ctx->rax) {
     case SYS_NODE_OPEN: {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": OPEN\n", syscall_count);
+        LOG_TRACE(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": OPEN\n", syscall_count);
 
         const uint8_t *path = (const uint8_t *)ctx->rdi;  // TODO: use copy_from_user
         uint32_t flags = ctx->rsi;
@@ -38,14 +38,14 @@ int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Conte
         return StSyscall_Open(path, flags, handle);
     }
     case SYS_NODE_CLOSE: {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": CLOSE\n", syscall_count);
+        LOG_TRACE(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": CLOSE\n", syscall_count);
 
         uint32_t handle = ctx->rdi;
 
         return StSyscall_Close(handle);
     }
     case SYS_NODE_QUERY: {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": QUERY\n", syscall_count);
+        LOG_TRACE(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": QUERY\n", syscall_count);
 
         uint32_t handle = ctx->rdi;
         const struct StUuid *if_uuid = (const struct StUuid *)ctx->rsi;  // TODO: use copy_from_user
@@ -56,7 +56,7 @@ int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Conte
         return StSyscall_Query(handle, if_uuid, request_abiver, funcid_base, result_abiver);
     }
     case SYS_NODE_CALL_REG: {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": CALL_REG\n", syscall_count);
+        LOG_TRACE(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": CALL_REG\n", syscall_count);
 
         uint32_t handle = ctx->rdi;
         uint32_t funcid = ctx->rsi;
@@ -68,7 +68,7 @@ int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Conte
         return StSyscall_CallReg(handle, funcid, arg0, arg1, arg2, arg3);
     }
     case SYS_NODE_CALL_PTR: {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": CALL_PTR\n", syscall_count);
+        LOG_TRACE(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": CALL_PTR\n", syscall_count);
 
         uint32_t handle = ctx->rdi;
         uint32_t funcid = ctx->rsi;
@@ -80,6 +80,19 @@ int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Conte
         return StSyscall_CallPtr(handle, funcid, args, result, arg0, arg1);
     }
     default:
+        LOG_TRACE(
+            LM_CAT_UNCLASSIFIED,
+            "syscall #%" PRIu64 ": UNKNOWN %" PRIu64 " (rdi=%#" PRIx64 ", rsi=%#" PRIx64
+            ", rdx=%#" PRIx64 ", r10=%#" PRIx64 ", r8=%#" PRIx64 ", r9=%#" PRIx64 ")\n",
+            syscall_count,
+            ctx->rax,
+            ctx->rdi,
+            ctx->rsi,
+            ctx->rdx,
+            ctx->r10,
+            ctx->r8,
+            ctx->r9
+        );
         return -(int64_t)ENOSYS;
     }
 }

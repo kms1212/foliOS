@@ -193,10 +193,9 @@ StStatus StElf_LoadProgram(
     uintptr_t program_load_addr;
     size_t program_size_page;
     uintptr_t program_data_offset;
-    size_t program_memsz;
     size_t program_filesz;
     int allocated = 0;
-    uint32_t map_flags = MF_USER_DEFAULT;
+    uint32_t map_flags = MF_USER_DEFAULT | MF_ZERO_FILL;
 
     if (elf->ident.class == ELFCLASS32) {
         status = StElf_GetProgramHeader(elf, index, &phdr32, sizeof(phdr32));
@@ -209,7 +208,6 @@ StStatus StElf_LoadProgram(
         program_load_addr = phdr32.vaddr;
         program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr32.memsz, PAGE_SIZE);
         program_data_offset = phdr32.offset;
-        program_memsz = phdr32.memsz;
         program_filesz = phdr32.filesz;
 
         if (!(phdr32.flags & PF_X)) {
@@ -230,7 +228,6 @@ StStatus StElf_LoadProgram(
         program_load_addr = phdr64.vaddr;
         program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr64.memsz, PAGE_SIZE);
         program_data_offset = phdr64.offset;
-        program_memsz = phdr64.memsz;
         program_filesz = phdr64.filesz;
 
         if (!(phdr64.flags & PF_X)) {
@@ -250,7 +247,7 @@ StStatus StElf_LoadProgram(
         ADDR_TO_PAGE(program_load_addr),
         program_size_page,
         AF_DEFAULT,
-        MF_USER_DEFAULT & ~MF_USER
+        map_flags
     );
     if (!CHECK_SUCCESS(status)) goto has_error;
     allocated = 1;
@@ -258,22 +255,6 @@ StStatus StElf_LoadProgram(
     // copy program data
     status =
         copy_from_img_to_local(elf, program_data_offset, asp, program_load_addr, program_filesz);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    // zero-fill if needed
-    if (program_memsz > program_filesz) {
-        status = StMm_SetLocal(
-            asp,
-            program_load_addr + program_filesz,
-            0,
-            program_memsz - program_filesz
-        );
-        if (!CHECK_SUCCESS(status)) goto has_error;
-    }
-
-    // fixup page map flags
-    status =
-        StMm_SetLocalPageFlags(asp, ADDR_TO_PAGE(program_load_addr), program_size_page, map_flags);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     return STATUS_SUCCESS;

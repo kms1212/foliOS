@@ -88,14 +88,27 @@ static void *pit_isr(
 )
 {
     StStatus status;
+    struct StThread *current_thread;
     struct StThread *next_thread;
     void *next_stack_ptr;
 
     global_tick++;
 
     if (StThread_IsPreemptionEnabled()) {
+        if (StScheduler_ShouldMaintain()) {
+            status = StScheduler_Maintain();
+            if (!CHECK_SUCCESS(status)) return NULL;
+        }
+
         status = StScheduler_GetNextThread(&next_thread);
         if (!CHECK_SUCCESS(status) || !next_thread) return NULL;
+
+        status = StScheduler_GetCurrentThread(&current_thread);
+        if (!CHECK_SUCCESS(status)) return NULL;
+
+        if (next_thread == current_thread) {
+            return NULL;
+        }
 
         status = StThreadP_Switch(next_thread, ctx, &next_stack_ptr);
         if (!CHECK_SUCCESS(status)) return NULL;
@@ -221,6 +234,12 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     status = StA_ActivateCommonCpuFeatures();
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to activate common CPU features");
+    }
+
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing FPU/SIMD state...\n");
+    status = StThreadP_InitializeFpuSimdState();
+    if (!CHECK_SUCCESS(status) && status != STATUS_ALREADY_PERFORMED) {
+        St_Panic(status, "failed to initialize FPU/SIMD state");
     }
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "starting uptime counter...\n");

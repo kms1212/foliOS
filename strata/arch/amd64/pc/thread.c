@@ -1,12 +1,14 @@
 #include <strata/plat/thread.h>
 
+#include "config.h"
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <strata/arch/interrupt.h>
+#include <strata/arch/intrinsics/fpu_simd.h>
 #include <strata/arch/intrinsics/msr.h>
-#include <strata/arch/intrinsics/xsave.h>
 #include <strata/arch/mmu.h>
 
 #include <strata/plat/cpulocal.h>
@@ -16,36 +18,170 @@
 #include <strata/plat/tss.h>
 
 #include <strata/compiler.h>
+#include <strata/arch/cpufeatures.h>
 #include <strata/elf.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
 #include <strata/mm/utils.h>
 #include <strata/mm/vmm.h>
+#include <strata/panic.h>
 #include <strata/process.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 
-#define MODULE_NAME "thread"
+#define MODULE_NAME                          "thread"
+#define THREAD_KERNEL_STACK_CACHE_MAX_STACKS ((St_PageCount)8)
+#define THREAD_KERNEL_STACK_CACHE_MAX_PAGES                                                        \
+    (STRATA_KSTACK_PAGE_COUNT * THREAD_KERNEL_STACK_CACHE_MAX_STACKS)
+#define THREAD_KERNEL_STACK_CACHE_LOW_FREE_WATERMARK ((St_PageCount)2048)
 
 extern void _StThreadP_KernelThreadEntry(void);
 extern void _StThreadP_UserThreadEntry(void);
 extern struct StMm_AddressSpace base_asp;
 
+struct cached_kernel_stack {
+    struct cached_kernel_stack *next;
+};
+
+static struct cached_kernel_stack *kernel_stack_cache_head = NULL;
+static St_PageCount kernel_stack_cache_pages = 0;
+static struct StThreadP_PlatformData clean_platform_data;
+static uint64_t xstate_mask = 0;
+static int xsave_context_enabled = 0;
+static int avx_context_enabled = 0;
+static int clean_fx_state_initialized = 0;
+
+static void save_fpu_simd_state(struct StThreadP_PlatformData *platform_data)
+{
+    if (xsave_context_enabled) {
+        StA_XSave(&platform_data->xstate_buffer, xstate_mask);
+    } else {
+        StA_FXSave(&platform_data->xstate_buffer.fx);
+    }
+}
+
+static void restore_fpu_simd_state(const struct StThreadP_PlatformData *platform_data)
+{
+    if (xsave_context_enabled) {
+        StA_XRestore(&platform_data->xstate_buffer, xstate_mask);
+    } else {
+        StA_FXRestore((union StA_FXSaveBuffer *)&platform_data->xstate_buffer.fx);
+    }
+}
+
+StStatus StThreadP_InitializeFpuSimdState(void)
+{
+    struct StThreadP_PlatformData saved_platform_data;
+
+    if (clean_fx_state_initialized) return STATUS_ALREADY_PERFORMED;
+
+    xsave_context_enabled = g_p_cpu_features->has_xsave;
+    avx_context_enabled = xsave_context_enabled && g_p_cpu_features->has_avx;
+    xstate_mask = xsave_context_enabled ? (avx_context_enabled ? 0x7ULL : 0x3ULL) : 0;
+
+    memset(&saved_platform_data, 0, sizeof(saved_platform_data));
+    save_fpu_simd_state(&saved_platform_data);
+    StA_FNInit();
+    StA_LdMxcsr(0x1F80);
+    if (avx_context_enabled) {
+        StA_VZeroAll();
+    } else {
+        StA_ZeroXmmRegisters();
+    }
+
+    memset(&clean_platform_data, 0, sizeof(clean_platform_data));
+    save_fpu_simd_state(&clean_platform_data);
+    restore_fpu_simd_state(&saved_platform_data);
+
+    clean_fx_state_initialized = 1;
+
+    return STATUS_SUCCESS;
+}
+
+void StThreadP_InitializePlatformData(struct StThread *th)
+{
+    if (!th) return;
+
+    if (!clean_fx_state_initialized) {
+        St_Panic(
+            STATUS_CONFLICTING_STATE,
+            "clean FPU/SIMD state was not initialized before thread creation"
+        );
+    }
+
+    memcpy(&th->platform_data, &clean_platform_data, sizeof(th->platform_data));
+}
+
+static int should_use_kernel_stack_cache(const struct StThread *th)
+{
+    return th && th->kmode_stack_page_count == STRATA_KSTACK_PAGE_COUNT;
+}
+
+St_PageCount StThreadP_ReclaimCachedKernelStacks(St_PageCount page_budget)
+{
+    St_PageCount reclaimed_pages = 0;
+
+    while (page_budget == 0 || reclaimed_pages < page_budget) {
+        struct cached_kernel_stack *cached_stack;
+        St_VirtPage base_vpn;
+
+        StThread_LockPreemption();
+
+        cached_stack = kernel_stack_cache_head;
+        if (cached_stack) {
+            kernel_stack_cache_head = cached_stack->next;
+            kernel_stack_cache_pages -= STRATA_KSTACK_PAGE_COUNT;
+        }
+
+        StThread_UnlockPreemption();
+
+        if (!cached_stack) break;
+
+        base_vpn = ADDR_TO_PAGE((uintptr_t)cached_stack);
+        StMm_FreeGlobal(VMM_DOMAIN_KERNEL_SLOW, base_vpn, STRATA_KSTACK_PAGE_COUNT);
+
+        reclaimed_pages += STRATA_KSTACK_PAGE_COUNT;
+    }
+
+    return reclaimed_pages;
+}
+
 StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in)
 {
     StStatus status;
     St_VirtPage kmode_stack_base_vpn;
+    struct cached_kernel_stack *cached_stack;
+
+    if (should_use_kernel_stack_cache(th)) {
+        StThread_LockPreemption();
+
+        cached_stack = kernel_stack_cache_head;
+        if (cached_stack) {
+            kernel_stack_cache_head = cached_stack->next;
+            kernel_stack_cache_pages -= th->kmode_stack_page_count;
+        }
+
+        StThread_UnlockPreemption();
+
+        if (cached_stack) {
+            kmode_stack_base_vpn = ADDR_TO_PAGE((uintptr_t)cached_stack);
+            th->kmode_stack_base_vpn = kmode_stack_base_vpn;
+            th->kmode_stack_ptr = PAGE_TO_VPTR(kmode_stack_base_vpn + th->kmode_stack_page_count);
+            return STATUS_SUCCESS;
+        }
+    }
 
     /* allocate thread stack */
     status = StMm_AllocateGlobalSparse(
         VMM_DOMAIN_KERNEL_SLOW,
         &kmode_stack_base_vpn,
         th->kmode_stack_page_count,
-        &th->alloc_owner,
+        NULL,
         AF_DEFAULT,
         MF_KERNEL_DEFAULT
     );
@@ -104,6 +240,31 @@ StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in)
 
 void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
 {
+    StStatus status;
+    St_PageCount free_frames = 0;
+
+    if (should_use_kernel_stack_cache(th)) {
+        status = StPmm_GetFreeFrameCount(&free_frames);
+        if (CHECK_SUCCESS(status) && free_frames > THREAD_KERNEL_STACK_CACHE_LOW_FREE_WATERMARK) {
+            StThread_LockPreemption();
+
+            if (kernel_stack_cache_pages + th->kmode_stack_page_count <=
+                THREAD_KERNEL_STACK_CACHE_MAX_PAGES) {
+                struct cached_kernel_stack *cached_stack =
+                    (struct cached_kernel_stack *)PAGE_TO_VPTR(th->kmode_stack_base_vpn);
+
+                cached_stack->next = kernel_stack_cache_head;
+                kernel_stack_cache_head = cached_stack;
+                kernel_stack_cache_pages += th->kmode_stack_page_count;
+
+                StThread_UnlockPreemption();
+                return;
+            }
+
+            StThread_UnlockPreemption();
+        }
+    }
+
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "freeing thread kernel stack...\n");
 
     StMm_FreeGlobal(VMM_DOMAIN_KERNEL_SLOW, th->kmode_stack_base_vpn, th->kmode_stack_page_count);
@@ -309,7 +470,7 @@ StStatus StThreadP_Switch(
     current->kmode_stack_ptr = (void *)((uintptr_t)ctx - 8);
 
     /* save FPU/SIMD registers */
-    StA_FXSave(&current->platform_data.fx_save_buffer);
+    save_fpu_simd_state(&current->platform_data);
 
     /* switch address space */
     if (next->type == THREAD_TYPE_USER) {
@@ -321,7 +482,7 @@ StStatus StThreadP_Switch(
     }
 
     /* restore FPU/SIMD registers */
-    StA_FXRestore(&next->platform_data.fx_save_buffer);
+    restore_fpu_simd_state(&next->platform_data);
 
     /* set kernel stack pointer */
     kstack_top = PAGE_TO_ADDR(next->kmode_stack_base_vpn + next->kmode_stack_page_count);
@@ -339,8 +500,10 @@ StStatus StThreadP_Switch(
     }
 
     /* switch to next thread */
-    status = StScheduler_SetCurrentThread(next);
+    status = StScheduler_SwitchCurrentThread(next);
     if (!CHECK_SUCCESS(status)) return status;
+
+    atomic_fetch_add(&StCpuLocalP_GetData()->ctxswitch_count, 1);
 
     LOG_TRACE(
         LM_CAT_THREAD | LM_SUBCAT_TASK_SWITCH,
@@ -359,12 +522,25 @@ __attribute__((noinline)) __externally_visible void *_StThreadP_DoYield(
 )
 {
     StStatus status;
+    struct StThread *current_thread;
     struct StThread *next_thread;
     void *volatile next_stack_ptr;
 
     if (StThread_IsPreemptionEnabled()) {
+        if (StScheduler_ShouldMaintain()) {
+            status = StScheduler_Maintain();
+            if (!CHECK_SUCCESS(status)) return NULL;
+        }
+
         status = StScheduler_GetNextThread(&next_thread);
         if (!CHECK_SUCCESS(status) || !next_thread) return NULL;
+
+        status = StScheduler_GetCurrentThread(&current_thread);
+        if (!CHECK_SUCCESS(status) || !current_thread) return NULL;
+
+        if (next_thread == current_thread) {
+            return NULL;
+        }
 
         status = StThreadP_Switch(next_thread, ctx, (void **)&next_stack_ptr);
         if (!CHECK_SUCCESS(status)) return NULL;

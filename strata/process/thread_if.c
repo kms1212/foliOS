@@ -8,6 +8,7 @@
 #include <strata/compiler.h>
 #include <strata/gnt.h>
 #include <strata/handle.h>
+#include <strata/mm/utils.h>
 #include <strata/process.h>
 #include <strata/status.h>
 #include <strata/thread.h>
@@ -158,17 +159,73 @@ static StStatus thr_terminate(void *context, StHandle handle, StStatus exit_code
     return STATUS_NOT_SUPPORTED;
 }
 
+static StStatus initialize_static_tls(struct StThread *thread, uintptr_t fs_base)
+{
+    static const size_t k_copy_chunk_size = 256;
+
+    StStatus status;
+    struct StProcess *process;
+    uintptr_t tls_start;
+    uint8_t buf[k_copy_chunk_size];
+    size_t remaining;
+    size_t copied;
+
+    if (!thread || !thread->process) return STATUS_INVALID_VALUE;
+
+    process = thread->process;
+    if (!process->tls_mem_size) return STATUS_SUCCESS;
+    if (!fs_base || process->tls_mem_size > fs_base) return STATUS_INVALID_VALUE;
+
+    tls_start = fs_base - process->tls_mem_size;
+
+    status = StMm_SetLocal(
+        process->address_space,
+        tls_start,
+        0,
+        process->tls_mem_size
+    );
+    if (!CHECK_SUCCESS(status)) return status;
+
+    remaining = process->tls_file_size;
+    copied = 0;
+    while (remaining) {
+        size_t chunk = remaining;
+        if (chunk > sizeof(buf)) {
+            chunk = sizeof(buf);
+        }
+
+        status = StMm_ReadLocal(
+            process->address_space,
+            process->tls_image_addr + copied,
+            buf,
+            chunk
+        );
+        if (!CHECK_SUCCESS(status)) return status;
+
+        status = StMm_WriteLocal(process->address_space, tls_start + copied, buf, chunk);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        copied += chunk;
+        remaining -= chunk;
+    }
+
+    return STATUS_SUCCESS;
+}
+
 static StStatus thr_set_tls_base(
     void *context, StHandle handle, StIfThr_RegisterId register_id, void *tls_address
 )
 {
     struct thread_dispatch_context *ctx = (struct thread_dispatch_context *)context;
+    StStatus status;
 
     (void)handle;
     if (!ctx || !ctx->thread) return STATUS_INVALID_VALUE;
 
     switch (register_id) {
     case THREAD_REGISTERID_FS:
+        status = initialize_static_tls(ctx->thread, (uintptr_t)tls_address);
+        if (!CHECK_SUCCESS(status)) return status;
         return StThreadP_SetFsBase(ctx->thread, (uintptr_t)tls_address);
     case THREAD_REGISTERID_GS:
         return StThreadP_SetGsBase(ctx->thread, (uintptr_t)tls_address);

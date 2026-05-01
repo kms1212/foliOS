@@ -30,6 +30,10 @@ __noreturn void VlP_Panic(status_t status, const char *fmt, ...)
 
     VlA_Cli();
 
+    for (;;) {
+        VlA_Hlt();
+    }
+
     /* enable keyboard translation */
     VlA_Out8(0x0064, 0x60);
     VlA_Out8(0x0060, 0x63);

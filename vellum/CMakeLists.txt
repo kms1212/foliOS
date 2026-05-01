@@ -23,6 +23,7 @@ target_compile_options(vellum PUBLIC
         -Wall
         -Wunused-result
         -Wno-unused-function
+        -Wno-unused-const-variable
     >
 )
 target_link_libraries(vellum gcc)

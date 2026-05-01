@@ -19,11 +19,11 @@
 static void log_uuid_hex(const char *label, const struct StUuid *uuid)
 {
     if (!uuid) {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%s <null>\n", label);
+        LOG_TRACE(LM_CAT_UNCLASSIFIED, "%s <null>\n", label);
         return;
     }
 
-    LOG_DEBUG(
+    LOG_TRACE(
         LM_CAT_UNCLASSIFIED,
         "%s %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X\n",
         label,
@@ -90,7 +90,7 @@ StStatus StSyscall_Query(
             uint32_t entry_base = 0;
             struct StGnt_NodeInterface *entry = node->interface_head;
 
-            LOG_DEBUG(
+            LOG_TRACE(
                 LM_CAT_UNCLASSIFIED,
                 "query miss: handle %" PRIu32 ", request abi %" PRIu32 "\n",
                 handle,
@@ -98,7 +98,7 @@ StStatus StSyscall_Query(
             );
 
             while (entry) {
-                LOG_DEBUG(
+                LOG_TRACE(
                     LM_CAT_UNCLASSIFIED,
                     "query available: base=%" PRIu32 ", abi=%" PRIu32 ", span=%" PRIu32 "\n",
                     entry_base,
@@ -115,7 +115,7 @@ StStatus StSyscall_Query(
         goto done;
     }
 
-    LOG_DEBUG(
+    LOG_TRACE(
         LM_CAT_UNCLASSIFIED,
         "query: handle %" PRIu32
         ", interface %02X%02X%02X%02X-%02X%02X-%02X%02X-%02X%02X-%02X%02X%02X%02X%02X%02X, abi "

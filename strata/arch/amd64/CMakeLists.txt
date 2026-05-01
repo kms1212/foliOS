@@ -60,11 +60,3 @@ target_compile_options(strata PUBLIC
     >
 )
 target_link_options(strata PUBLIC -mcmodel=kernel)
-
-target_compile_options(liballoc PUBLIC 
-    $<$<COMPILE_LANGUAGE:C>:
-        -mcmodel=kernel
-        -mno-sse -mno-sse2 -mno-mmx -mno-80387 -mno-avx
-        -mgeneral-regs-only
-    >
-)

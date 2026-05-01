@@ -437,11 +437,7 @@ static const char hex_table_lower[] = "0123456789abcdef";
 static const char hex_table_upper[] = "0123456789ABCDEF";
 
 static int do_print_int(
-    int (*func)(void *, char),
-    void *farg,
-    unsigned long long num,
-    struct fmt_spec spec,
-    int is_signed
+    int (*func)(void *, char), void *farg, uintmax_t num, struct fmt_spec spec, int is_signed
 )
 {
     char rbuf[22], *rbuf_ptr = rbuf;  // buffer of reversed digits
@@ -526,7 +522,7 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
 {
     int is_signed = 0;
     int char_cnt = 0;
-    unsigned long long num;
+    uintmax_t num;
 
     // get number
     switch (spec.type) {

@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.13)
 include(FetchContent)
 
 add_subdirectory(jsmn)
-add_subdirectory(liballoc)
 
 
 FetchContent_Declare(zstd

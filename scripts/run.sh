@@ -74,7 +74,6 @@ case $QEMU_MACHINE in
             pc-testdev
         )
         DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
-        ADDITIONAL_FLAGS=(-debugcon stdio)
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
             DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
@@ -105,7 +104,6 @@ case $QEMU_MACHINE in
         DRIVES=(
             "file=disk.img,id=fd0,if=none,format=raw"
         )
-        ADDITIONAL_FLAGS=(-debugcon stdio)
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd0")
             DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
@@ -128,7 +126,6 @@ case $QEMU_MACHINE in
             pci-testdev
         )
         DRIVES=("file=disk.img,id=fd0,index=0,if=none,format=raw")
-        ADDITIONAL_FLAGS=(-debugcon stdio)
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
             DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
@@ -152,7 +149,6 @@ case $QEMU_MACHINE in
             pc-testdev
         )
         DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
-        ADDITIONAL_FLAGS=(-debugcon stdio)
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
             DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
@@ -181,7 +177,6 @@ case $QEMU_MACHINE in
             usb-mouse
         )
         DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
-        ADDITIONAL_FLAGS=(-debugcon stdio)
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd0")
             DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
@@ -204,7 +199,6 @@ case $QEMU_MACHINE in
             pci-testdev
         )
         DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
-        ADDITIONAL_FLAGS=(-debugcon stdio)
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
             DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")

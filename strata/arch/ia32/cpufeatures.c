@@ -213,9 +213,11 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_xsave = 1;
         }
 
-        if (ecx & bit_OSXSAVE) {
-            cpu_features.has_osxsave = 1;
-        }
+        /*
+         * Ignore CPUID.OSXSAVE here. It reflects whether the current software
+         * environment has already enabled CR4.OSXSAVE, not a standalone CPU
+         * capability bit.
+         */
 
         if (ecx & bit_AVX) {
             cpu_features.has_avx = 1;

@@ -170,7 +170,7 @@ static void *switch_thread(struct StA_InterruptFrame *frame, struct StIntP_Conte
     current_thread->kmode_stack_ptr = (void *)(ctx->pushal.esp - sizeof(*ctx) - 4);
 
     /* switch to next thread */
-    status = StScheduler_SetCurrentThread(next_thread);
+    status = StScheduler_SwitchCurrentThread(next_thread);
     if (!CHECK_SUCCESS(status)) return NULL;
 
     return next_thread->kmode_stack_ptr;

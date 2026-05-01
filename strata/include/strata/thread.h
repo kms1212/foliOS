@@ -44,6 +44,7 @@ struct StThread {
     int is_detached;
     int is_main;
     int is_dying;
+    int is_reap_queued;
 
     struct StThreadP_PlatformData platform_data;
 
@@ -63,7 +64,18 @@ struct StThread {
 
     uint64_t sleep_until_uptime_us;
 
+    /*
+     * Scheduler metadata:
+     * - sched_pass: monotonically increasing fairness key.
+     * - sched_run_count: number of slices selected for this thread.
+     */
+    uint64_t sched_pass;
+    uint64_t sched_run_count;
+    uint64_t runtime_total_us;
+    uint64_t last_scheduled_in_us;
+
     struct StMm_AllocationOwner alloc_owner;
+    St_PageCount deferred_reap_page_count;
 };
 
 StStatus StThread_Init(struct StThread **main_thread __out);
@@ -74,29 +86,25 @@ void StThread_UnlockPreemption(void);
 int StThread_IsPreemptionEnabled(void);
 
 StStatus StThread_CreateKernel(
-    StThread_EntryFunction entry __in,
-    St_PageCount stack_page_count __in,
-    struct StThread **threadout __out
-);
-StStatus StThread_CreateUser(
-    struct StProcess *process __in,
-    uintptr_t entry __in,
-    St_PageCount kstack_page_count __in,
-    St_PageCount ustack_page_count __in,
-    struct StThread **threadout __out
+    StThread_EntryFunction entry __in, struct StThread **threadout __out
 );
 StStatus StThread_CreateUserMain(
     struct StProcess *process __in,
     uintptr_t entry __in,
-    St_PageCount kstack_page_count __in,
-    St_PageCount ustack_page_count __in,
     int arg_count __in,
     const char *const *args __in,
     int env_count __in,
     const char *const *envs __in,
     struct StThread **threadout __out
 );
+StStatus StThread_CreateUser(
+    struct StProcess *process __in, uintptr_t entry __in, struct StThread **threadout __out
+);
 StStatus StThread_Remove(struct StThread *thread __in);
+
+StStatus StThread_GetCount(uint32_t *count __out);
+StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_us __out);
+void StThread_RunDeferredReap(St_PageCount page_budget __in);
 
 StStatus StThread_Detach(struct StThread *thread __in);
 StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_ms __in);

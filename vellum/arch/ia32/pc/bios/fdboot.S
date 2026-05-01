@@ -132,7 +132,7 @@ _start:
     xor     %ax, %ax                    # read 1 sector
     inc     %ax
     mov     $ROOTDIR_BUFFER, %bx        # to buffer starting at 0x7E00
-    mov     .root_dir_lba, %cx
+    mov     .root_dir_lba, %ecx
     call    read_disk
 
     mov     $ROOTDIR_BUFFER, %si

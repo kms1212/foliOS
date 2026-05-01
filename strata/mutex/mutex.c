@@ -65,26 +65,23 @@ StStatus StMutex_Lock(struct StMutex *mtx)
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
 
-    StThread_LockPreemption();
+    for (;;) {
+        StThread_LockPreemption();
 
-    while (mtx->locked) {
-        StThread_UnlockPreemption();
+        if (!mtx->locked) {
+            mtx->locked = 1;
+            mtx->owner = th;
+
+            StThread_UnlockPreemption();
+            return STATUS_SUCCESS;
+        }
 
         th->state = THREAD_STATE_BLOCKING;
-
         add_blocking_thread(mtx, th);
 
+        StThread_UnlockPreemption();
         StThread_Yield();
-
-        StThread_LockPreemption();
     }
-
-    mtx->locked = 1;
-    mtx->owner = th;
-
-    StThread_UnlockPreemption();
-
-    return STATUS_SUCCESS;
 }
 
 StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)

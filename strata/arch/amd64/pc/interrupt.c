@@ -65,22 +65,22 @@ DECLARE_ISRx(e);
 DECLARE_ISRx(f);
 
 #define SET_INT_ENTRY(num)                                                                         \
-    _pc_idt[0x##num] = (struct StA_IdtEntry)                                                       \
+    _pc_idt[0x##num] = (struct StA_IdtGateDescriptor)                                              \
     {                                                                                              \
         .offset_low = (uint64_t)_pc_isr_##num & 0xFFFF, .segment_selector = SEG_SEL_KERNEL_CODE,   \
-        .attributes.raw = 0x8E00, .offset_mid = ((uint64_t)_pc_isr_##num >> 16) & 0xFFFF,          \
+        .attributes = 0x8E00, .offset_mid = ((uint64_t)_pc_isr_##num >> 16) & 0xFFFF,              \
         .offset_high = ((uint64_t)_pc_isr_##num >> 32) & 0xFFFFFFFF,                               \
     }
 
 #define SET_TRAP_ENTRY(num)                                                                        \
-    _pc_idt[0x##num] = (struct StA_IdtEntry)                                                       \
+    _pc_idt[0x##num] = (struct StA_IdtGateDescriptor)                                              \
     {                                                                                              \
         .offset_low = (uint64_t)_pc_isr_##num & 0xFFFF, .segment_selector = SEG_SEL_KERNEL_CODE,   \
-        .attributes.raw = 0xEE00, .offset_mid = ((uint64_t)_pc_isr_##num >> 16) & 0xFFFF,          \
+        .attributes = 0xEE00, .offset_mid = ((uint64_t)_pc_isr_##num >> 16) & 0xFFFF,              \
         .offset_high = ((uint64_t)_pc_isr_##num >> 32) & 0xFFFFFFFF,                               \
     }
 
-static struct StA_IdtEntry _pc_idt[256] __aligned(PAGE_SIZE);
+static struct StA_IdtGateDescriptor _pc_idt[256] __aligned(PAGE_SIZE);
 static struct StInt_Handler *_pc_isr_table[256];
 static struct StA_Idtr idtr;
 

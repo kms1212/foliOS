@@ -120,7 +120,7 @@ StStatus StSyscall_CallReg(
     int handled = 0;
     long args[4];
 
-    LOG_DEBUG(
+    LOG_TRACE(
         LM_CAT_UNCLASSIFIED,
         "call_reg: handle %" PRIu32 ", funcid %" PRIu32 "\n",
         handle,
@@ -147,7 +147,7 @@ StStatus StSyscall_CallReg(
     status = handler_module->dispatch_args(node, handle, funcid, args);
     StGnt_ReleaseNode(node);
 
-    LOG_DEBUG(
+    LOG_TRACE(
         LM_CAT_UNCLASSIFIED,
         "call_reg result: handle %" PRIu32 ", funcid %" PRIu32 " -> %08" PRIX32 "\n",
         handle,
@@ -173,7 +173,7 @@ StStatus StSyscall_CallPtr(
     int handled = 0;
     long dispatch_args[4];
 
-    LOG_DEBUG(
+    LOG_TRACE(
         LM_CAT_UNCLASSIFIED,
         "call_ptr: handle %" PRIu32 ", funcid %" PRIu32 "\n",
         handle,
@@ -203,7 +203,7 @@ StStatus StSyscall_CallPtr(
     status = handler_module->dispatch_args(node, handle, funcid, dispatch_args);
     StGnt_ReleaseNode(node);
 
-    LOG_DEBUG(
+    LOG_TRACE(
         LM_CAT_UNCLASSIFIED,
         "call_ptr result: handle %" PRIu32 ", funcid %" PRIu32 " -> %08" PRIX32 "\n",
         handle,

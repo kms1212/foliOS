@@ -12,7 +12,7 @@
 #include <strata/plat/gdt_constants.h>
 #include <strata/plat/tss.h>
 
-static struct StA_GdtEntry _pc_gdt[GDT_ENTRY_COUNT];
+static struct StA_GdtSegmentDescriptor _pc_gdt[GDT_ENTRY_COUNT];
 static struct StA_Gdtr _pc_gdtr;
 
 extern char _early_stack[];
@@ -44,16 +44,17 @@ static void set_gdt_entry(int idx, uint32_t base, uint32_t limit, uint8_t access
     _pc_gdt[idx].base_high = (base & 0xFF000000) >> 24;
 
     _pc_gdt[idx].limit_low = limit & 0xFFFF;
-    _pc_gdt[idx].limit_flags.raw = ((flags << 4) & 0xF0) | ((limit >> 16) & 0xF);
+    _pc_gdt[idx].limit_flags = ((flags << 4) & 0xF0) | ((limit >> 16) & 0xF);
 
-    _pc_gdt[idx].access_byte.raw = access;
+    _pc_gdt[idx].access_byte = access;
 }
 
 static void set_gdt_system_entry(
     int idx, uint64_t base, uint32_t limit, uint8_t access, uint32_t flags
 )
 {
-    struct StA_GdtSystemSegmentEntry *ssent = (struct StA_GdtSystemSegmentEntry *)&_pc_gdt[idx];
+    struct StA_GdtSystemSegmentDescriptor *ssent =
+        (struct StA_GdtSystemSegmentDescriptor *)&_pc_gdt[idx];
 
     ssent->base_low = base & 0xFFFF;
     ssent->base_mid_low = (base & 0xFF0000) >> 16;
@@ -61,9 +62,9 @@ static void set_gdt_system_entry(
     ssent->base_high = (base & 0xFFFFFFFF00000000ULL) >> 32;
 
     ssent->limit_low = limit & 0xFFFF;
-    ssent->limit_flags.raw = ((flags << 4) & 0xF0) | ((limit >> 16) & 0xF);
+    ssent->limit_flags = ((flags << 4) & 0xF0) | ((limit >> 16) & 0xF);
 
-    ssent->access_byte.raw = access;
+    ssent->access_byte = access;
 }
 
 void StP_InitGdt(void)

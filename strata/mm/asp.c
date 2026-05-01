@@ -11,6 +11,7 @@
 #include <strata/mm/vmm.h>
 #include <strata/process.h>
 #include <strata/status.h>
+#include <strata/thread.h>
 
 #define MODULE_NAME "mm"
 
@@ -18,6 +19,27 @@ struct StMm_AddressSpace base_asp;
 
 static struct StMm_AddressSpace *first_asp = &base_asp;
 static struct StMm_AddressSpace *last_asp = &base_asp;
+
+static void unlink_address_space(struct StMm_AddressSpace *asp)
+{
+    struct StMm_AddressSpace *prev;
+
+    if (!asp || asp == &base_asp) return;
+
+    prev = &base_asp;
+    while (prev->next && prev->next != asp) {
+        prev = prev->next;
+    }
+
+    if (prev->next != asp) return;
+
+    prev->next = asp->next;
+    if (last_asp == asp) {
+        last_asp = prev;
+    }
+
+    asp->next = NULL;
+}
 
 StStatus StMm_InitBaseAddressSpace(void)
 {
@@ -50,8 +72,10 @@ StStatus StMm_CreateAddressSpace(
 
     new_asp->next = NULL;
 
+    StThread_LockPreemption();
     last_asp->next = new_asp;
     last_asp = new_asp;
+    StThread_UnlockPreemption();
 
     *asp = new_asp;
 
@@ -84,6 +108,10 @@ void StMm_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
      * which frees the VMM pages. We don't need to iterate here because
      * StMm_AddressSpace doesn't own the alloc_owner directly in the same way.
      */
+
+    StThread_LockPreemption();
+    unlink_address_space(asp);
+    StThread_UnlockPreemption();
 
     StMmP_RemoveAddressSpace(asp);
     StPool_Free(asp);

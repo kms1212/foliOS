@@ -160,6 +160,8 @@
 #define ALLOC_TABLE_PTR_ARRAY_SIZE      4096
 #define EARLY_ALLOC_TABLE_POOL_COUNT    128
 #define EARLY_EXTENDED_ENTRY_POOL_COUNT 128
+#define ALLOC_TABLE_POOL_LOW_WATERMARK  8
+#define EXTENTRY_POOL_LOW_WATERMARK     16
 #define METADATA_BLOCK_ENTRY_COUNT      (PAGE_SIZE / sizeof(struct pmm_metadata))
 
 #define ALLOCENT_COVERAGE_PAGES       PAGES_PER_ALLOCTABLE_ENTRY
@@ -224,6 +226,13 @@ static struct extended_entry early_extended_entry_pool[EARLY_EXTENDED_ENTRY_POOL
     __aligned(PAGE_SIZE);
 static int early_extentry_pool_used_count = 0;
 
+static struct alloc_table *dynamic_alloctbl_freelist = NULL;
+static size_t dynamic_alloctbl_free_count = 0;
+static struct extended_entry *dynamic_extentry_freelist = NULL;
+static size_t dynamic_extentry_free_count = 0;
+static int is_topping_up_alloctbl_pool = 0;
+static int is_topping_up_extentry_pool = 0;
+
 /* statistics */
 static size_t total_frames = 0;
 static size_t free_frames = 0;
@@ -232,6 +241,167 @@ static size_t free_frames = 0;
 static int allocation_available = 0;
 static int remarking_unavailable = 0;
 static int metadata_available = 0;
+
+#define PHYS_TO_DIRECTMAP_PTR(pa)                                                                  \
+    ((void *)((uintptr_t)(pa) + PAGE_TO_ADDR(MEMMAP_DIRECTMAP_VPN_BASE)))
+
+static void push_dynamic_alloc_table(struct alloc_table *table)
+{
+    struct alloc_table *next = dynamic_alloctbl_freelist;
+    memcpy(table, &next, sizeof(next));
+    dynamic_alloctbl_freelist = table;
+    dynamic_alloctbl_free_count++;
+}
+
+static struct alloc_table *pop_dynamic_alloc_table(void)
+{
+    struct alloc_table *table = dynamic_alloctbl_freelist;
+    struct alloc_table *next;
+    if (!table) return NULL;
+
+    memcpy(&next, table, sizeof(next));
+    dynamic_alloctbl_freelist = next;
+    dynamic_alloctbl_free_count--;
+
+    return table;
+}
+
+static void push_dynamic_extentry(struct extended_entry *entry)
+{
+    struct extended_entry *next = dynamic_extentry_freelist;
+    memcpy(entry->state_flags, &next, sizeof(next));
+    dynamic_extentry_freelist = entry;
+    dynamic_extentry_free_count++;
+}
+
+static struct extended_entry *pop_dynamic_extentry(void)
+{
+    struct extended_entry *entry = dynamic_extentry_freelist;
+    struct extended_entry *next;
+    if (!entry) return NULL;
+
+    memcpy(&next, entry->state_flags, sizeof(next));
+    dynamic_extentry_freelist = next;
+    dynamic_extentry_free_count--;
+
+    return entry;
+}
+
+static int is_dynamic_alloc_table(const struct alloc_table *table)
+{
+    uintptr_t addr;
+    uintptr_t early_start;
+    uintptr_t early_end;
+
+    if (!table) return 0;
+
+    addr = (uintptr_t)table;
+    early_start = (uintptr_t)&early_alloc_table_pool[0];
+    early_end = (uintptr_t)&early_alloc_table_pool[EARLY_ALLOC_TABLE_POOL_COUNT];
+
+    if (addr < early_start || addr >= early_end) return 1;
+    return 0;
+}
+
+static int alloc_table_is_all_free(const struct alloc_table *table)
+{
+    if (!table) return 0;
+    for (size_t i = 0; i < ARRAY_SIZE(table->entries); i++) {
+        if (table->entries[i].bitmap != ALLOCENT_BMP_FREE) return 0;
+    }
+    return 1;
+}
+
+static size_t get_alloctbl_pool_remaining(void)
+{
+    size_t early_remaining = 0;
+    if (early_alloctbl_pool_used_count < EARLY_ALLOC_TABLE_POOL_COUNT) {
+        early_remaining = EARLY_ALLOC_TABLE_POOL_COUNT - (size_t)early_alloctbl_pool_used_count;
+    }
+    return early_remaining + dynamic_alloctbl_free_count;
+}
+
+static size_t get_extentry_pool_remaining(void)
+{
+    size_t early_remaining = 0;
+    if (early_extentry_pool_used_count < EARLY_EXTENDED_ENTRY_POOL_COUNT) {
+        early_remaining = EARLY_EXTENDED_ENTRY_POOL_COUNT - (size_t)early_extentry_pool_used_count;
+    }
+    return early_remaining + dynamic_extentry_free_count;
+}
+
+static StStatus topup_alloc_table_pool(void)
+{
+    StStatus status;
+    St_PhysFrame pfn = (St_PhysFrame)-1;
+    struct alloc_table *table;
+
+    if (!allocation_available) return STATUS_CONFLICTING_STATE;
+    if (is_topping_up_alloctbl_pool) return STATUS_SUCCESS;
+
+    is_topping_up_alloctbl_pool = 1;
+
+    status = StPmm_AllocateContiguousFrame(&pfn, (St_PageCount)1, NULL, AF_DEFAULT);
+    if (CHECK_SUCCESS(status)) {
+        table = PHYS_TO_DIRECTMAP_PTR(FRAME_TO_ADDR(pfn));
+        push_dynamic_alloc_table(table);
+    }
+
+    is_topping_up_alloctbl_pool = 0;
+    return status;
+}
+
+static StStatus topup_extentry_pool(void)
+{
+    StStatus status;
+    St_PhysFrame pfn = (St_PhysFrame)-1;
+    struct extended_entry *base;
+    size_t count;
+
+    if (!allocation_available) return STATUS_CONFLICTING_STATE;
+    if (is_topping_up_extentry_pool) return STATUS_SUCCESS;
+
+    is_topping_up_extentry_pool = 1;
+
+    status = StPmm_AllocateContiguousFrame(&pfn, (St_PageCount)1, NULL, AF_DEFAULT);
+    if (CHECK_SUCCESS(status)) {
+        base = PHYS_TO_DIRECTMAP_PTR(FRAME_TO_ADDR(pfn));
+        count = PAGE_SIZE / sizeof(struct extended_entry);
+        for (size_t i = 0; i < count; i++) {
+            push_dynamic_extentry(&base[i]);
+        }
+    }
+
+    is_topping_up_extentry_pool = 0;
+    return status;
+}
+
+static void maybe_topup_management_pools(void)
+{
+    StStatus status;
+
+    if (!allocation_available) return;
+
+    if (!is_topping_up_alloctbl_pool &&
+        get_alloctbl_pool_remaining() <= ALLOC_TABLE_POOL_LOW_WATERMARK) {
+        status = topup_alloc_table_pool();
+        if (!CHECK_SUCCESS(status)) {
+            LOG_WARN(
+                LM_CAT_UNCLASSIFIED,
+                "failed to top up alloc-table pool (status=%08X)\n",
+                status
+            );
+        }
+    }
+
+    if (!is_topping_up_extentry_pool &&
+        get_extentry_pool_remaining() <= EXTENTRY_POOL_LOW_WATERMARK) {
+        status = topup_extentry_pool();
+        if (!CHECK_SUCCESS(status)) {
+            LOG_WARN(LM_CAT_UNCLASSIFIED, "failed to top up extentry pool (status=%08X)\n", status);
+        }
+    }
+}
 
 static int get_order(size_t count)
 {
@@ -344,6 +514,8 @@ static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int align_ord
 
 static inline void allocate_from_bitmap_entry(uint64_t *entry, unsigned index, int order)
 {
+    uint64_t old_entry_value = *entry;
+
     switch (order) {
     case 0:
         *entry |= alloc_masks[index];
@@ -368,10 +540,14 @@ static inline void allocate_from_bitmap_entry(uint64_t *entry, unsigned index, i
     }
 
     propagate_up(entry, index, order, 1);
+
+    // LOG_DEBUG(LM_CAT_UNCLASSIFIED, "A:%016lx:%016lx\n", old_entry_value, *entry);
 }
 
 static inline void free_to_bitmap_entry(uint64_t *entry, unsigned index, int order)
 {
+    uint64_t old_entry_value = *entry;
+
     switch (order) {
     case 0:
         *entry &= ~alloc_masks[index];
@@ -395,10 +571,13 @@ static inline void free_to_bitmap_entry(uint64_t *entry, unsigned index, int ord
         return;
     }
     propagate_up(entry, index, order, 0);
+
+    // LOG_DEBUG(LM_CAT_UNCLASSIFIED, "F:%016lx:%016lx\n", old_entry_value, *entry);
 }
 
 static StStatus get_or_create_table(size_t table_idx, struct alloc_table **table)
 {
+    StStatus status;
     int create_as_free = 1;
     struct alloc_table *new_table = NULL;
 
@@ -415,13 +594,22 @@ static StStatus get_or_create_table(size_t table_idx, struct alloc_table **table
         create_as_free = 0;
     }
 
+    maybe_topup_management_pools();
+
+    if (get_alloctbl_pool_remaining() == 0 && !is_topping_up_alloctbl_pool &&
+        allocation_available) {
+        status = topup_alloc_table_pool();
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
     // Need to allocate a new table.
     if (early_alloctbl_pool_used_count < EARLY_ALLOC_TABLE_POOL_COUNT) {
         new_table = &early_alloc_table_pool[early_alloctbl_pool_used_count++];
+    } else if (dynamic_alloctbl_free_count > 0) {
+        new_table = pop_dynamic_alloc_table();
     } else {
-        // TODO: use newly allocated table pool created at late init phase.
         LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create allocation table");
-        return STATUS_NOT_IMPLEMENTED;
+        return STATUS_INSUFFICIENT_MEMORY;
     }
 
     // Initialize table to all allocated or all unusable.
@@ -447,6 +635,7 @@ static StStatus get_or_create_extentry(
     struct alloc_table *table, unsigned entry_idx, struct extended_entry **entry
 )
 {
+    StStatus status;
     int create_as_unusable = 0;
     struct extended_entry *new_entry = NULL;
 
@@ -462,13 +651,22 @@ static StStatus get_or_create_extentry(
         create_as_unusable = 1;
     }
 
+    maybe_topup_management_pools();
+
+    if (get_extentry_pool_remaining() == 0 && !is_topping_up_extentry_pool &&
+        allocation_available) {
+        status = topup_extentry_pool();
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
     // need to allocate a new extended entry.
     if (early_extentry_pool_used_count < EARLY_EXTENDED_ENTRY_POOL_COUNT) {
         new_entry = &early_extended_entry_pool[early_extentry_pool_used_count++];
+    } else if (dynamic_extentry_free_count > 0) {
+        new_entry = pop_dynamic_extentry();
     } else {
-        // TODO: use newly allocated table pool created at late init phase.
         LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create extended entry");
-        return STATUS_NOT_IMPLEMENTED;
+        return STATUS_INSUFFICIENT_MEMORY;
     }
 
     if (create_as_unusable) {
@@ -569,6 +767,13 @@ static void do_free_contiguous_frame(St_PhysFrame pfn, int order)
 
         ATPA_ORDER_BMP_SET(alloc_table_ptr_array[table_idx], order);
 
+        if (alloc_table_is_all_free(table)) {
+            alloc_table_ptr_array[table_idx] = ATPA_FREE;
+            if (is_dynamic_alloc_table(table)) {
+                push_dynamic_alloc_table(table);
+            }
+        }
+
         return;
     }
 
@@ -595,6 +800,13 @@ static void do_free_contiguous_frame(St_PhysFrame pfn, int order)
     ATPA_ORDER_BMP_SET(alloc_table_ptr_array[table_idx], order);
 
     free_frames += (1ULL << order);
+
+    if (alloc_table_is_all_free(table)) {
+        alloc_table_ptr_array[table_idx] = ATPA_FREE;
+        if (is_dynamic_alloc_table(table)) {
+            push_dynamic_alloc_table(table);
+        }
+    }
 }
 
 StStatus StPmm_Init(void)
@@ -607,6 +819,12 @@ StStatus StPmm_Init(void)
     free_frames = 0;
     early_alloctbl_pool_used_count = 0;
     early_extentry_pool_used_count = 0;
+    dynamic_alloctbl_freelist = NULL;
+    dynamic_alloctbl_free_count = 0;
+    dynamic_extentry_freelist = NULL;
+    dynamic_extentry_free_count = 0;
+    is_topping_up_alloctbl_pool = 0;
+    is_topping_up_extentry_pool = 0;
 
     return STATUS_SUCCESS;
 }
@@ -915,7 +1133,9 @@ StStatus StPmm_LateInit(void)
 
     metadata_available = 1;
 
-    // TODO: allocate additional pools
+    /* Seed management pools once, then keep topping up on demand. */
+    (void)topup_alloc_table_pool();
+    (void)topup_extentry_pool();
 
     return STATUS_SUCCESS;
 }
@@ -950,9 +1170,15 @@ StStatus StPmm_AllocateContiguousFrame(
     ssize_t table_search_start;
     ssize_t table_align_jump;
 
-    LOG_TRACE(LM_CAT_UNCLASSIFIED, "allocating %zu pages\n", count);
-
-    if (!allocation_available) return STATUS_CONFLICTING_STATE;
+    if (!allocation_available) {
+        LOG_ERROR(
+            LM_CAT_UNCLASSIFIED,
+            "StPmm_AllocateContiguousFrame: allocation unavailable (count=%zu flags=%08X)\n",
+            count,
+            alloc_flags
+        );
+        return STATUS_CONFLICTING_STATE;
+    }
 
     order = get_order(count);
     if (order < 0) return STATUS_INVALID_VALUE;
@@ -1023,7 +1249,7 @@ StStatus StPmm_AllocateContiguousFrame(
             }
 
             if (!allocatable) continue;
-            LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.-.-)\n", i);
+            // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.-.-)\n", i);
 
             allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES;
 
@@ -1097,7 +1323,8 @@ StStatus StPmm_AllocateContiguousFrame(
                 table_start = (size_t)normal_table_search_start;
                 if (table_start + table_entries_needed > table_entry_count) continue;
 
-                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i, normal_table_search_start);
+                // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i,
+                // normal_table_search_start);
 
                 status = get_or_create_table(i, &table);
                 if (!CHECK_SUCCESS(status)) goto has_error;
@@ -1111,8 +1338,8 @@ StStatus StPmm_AllocateContiguousFrame(
                     table->entries[table_start + j].bitmap = ALLOCENT_BMP_FULL_ALLOC;
                 }
 
-                allocated_pfn = (i * ALLOC_TABLE_COVERAGE_PAGES) +
-                    (table_start * ALLOCENT_COVERAGE_PAGES);
+                allocated_pfn =
+                    (i * ALLOC_TABLE_COVERAGE_PAGES) + (table_start * ALLOCENT_COVERAGE_PAGES);
 
                 // allocate and fill metadata directory & metadata
                 status = create_metadata(allocated_pfn, owner, order);
@@ -1147,7 +1374,7 @@ StStatus StPmm_AllocateContiguousFrame(
 
                 if (!allocatable) continue;
                 allocated_pfn = (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES);
-                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i, j);
+                // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i, j);
 
                 // mark entire entry as allocated
                 for (size_t k = 0; k < table_entries_needed; k++) {
@@ -1196,7 +1423,7 @@ StStatus StPmm_AllocateContiguousFrame(
                 St_Panic(STATUS_UNEXPECTED_RESULT, "how did you do that?");
             }
 
-            LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%d)\n", i, table_search_start, index);
+            // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%d)\n", i, table_search_start, index);
 
             allocate_from_bitmap_entry(&table->entries[table_search_start].bitmap, index, order);
 
@@ -1268,7 +1495,7 @@ StStatus StPmm_AllocateContiguousFrame(
 
                 if (index < 0) continue;
 
-                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%zd) (extended)\n", i, j, index);
+                // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%zd) (extended)\n", i, j, index);
 
                 {
                     size_t used_begin = (size_t)index;
@@ -1287,7 +1514,7 @@ StStatus StPmm_AllocateContiguousFrame(
                 index = find_free_frame_idx_bitmap_entry(table->entries[j].bitmap, align_order);
                 if (index < 0) continue;
 
-                LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%zd) (bitmap)\n", i, j, index);
+                // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.%zd) (bitmap)\n", i, j, index);
 
                 allocate_from_bitmap_entry(&table->entries[j].bitmap, index, order);
             }
@@ -1309,11 +1536,24 @@ StStatus StPmm_AllocateContiguousFrame(
     }
 
 success:
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "allocated %zu frames at %013zX\n", count, allocated_pfn);
+
     StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
 
 has_error:
+    LOG_ERROR(
+        LM_CAT_UNCLASSIFIED,
+        "StPmm_AllocateContiguousFrame failed: count=%zu flags=%08X order=%d align_order=%d "
+        "status=%08X free_frames=%zu\n",
+        count,
+        alloc_flags,
+        order,
+        align_order,
+        status,
+        free_frames
+    );
     StThread_UnlockPreemption();
 
     return status;
@@ -1328,12 +1568,12 @@ StStatus StPmm_AcquireContiguousFrame(St_PhysFrame pfn __in)
 
     prev_refcount = atomic_fetch_add_explicit(&metadata->refcount, 1, memory_order_relaxed);
 
-    LOG_TRACE(
-        LM_CAT_UNCLASSIFIED,
-        "refcount: %" PRId32 " -> %" PRId32 "\n",
-        prev_refcount,
-        prev_refcount + 1
-    );
+    // LOG_TRACE(
+    //     LM_CAT_UNCLASSIFIED,
+    //     "refcount: %" PRId32 " -> %" PRId32 "\n",
+    //     prev_refcount,
+    //     prev_refcount + 1
+    // );
 
     return STATUS_SUCCESS;
 }
@@ -1350,7 +1590,12 @@ void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
 
     prev_refcount = atomic_fetch_sub_explicit(&metadata->refcount, 1, memory_order_relaxed);
 
-    LOG_TRACE(LM_CAT_UNCLASSIFIED, "freeing %" PRIu64 " pages\n", (1UL << metadata->public.order));
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "freeing %" PRIu64 " pages at %013zX\n",
+        (1UL << metadata->public.order),
+        pfn
+    );
 
     if (prev_refcount > 1) return;
     if (prev_refcount == 0) {

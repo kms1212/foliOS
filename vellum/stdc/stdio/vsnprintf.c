@@ -1,13 +1,13 @@
 #include <stdio.h>
 
-struct cb_args {
+struct cb_data {
     char *buf;
     size_t len;
 };
 
 static int write_buffer(void *_args, char ch)
 {
-    struct cb_args *args = _args;
+    struct cb_data *args = _args;
 
     if (args->len < 1) {
         return 1;
@@ -21,7 +21,7 @@ static int write_buffer(void *_args, char ch)
 
 int vsnprintf(char *buf, size_t len, const char *fmt, va_list args)
 {
-    struct cb_args cb_args = {
+    struct cb_data cb_args = {
         .buf = buf,
         .len = len,
     };

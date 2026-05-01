@@ -37,7 +37,6 @@ struct StA_CpuFeatures {
     uint32_t has_popcnt : 1;
     uint32_t has_aes_ni : 1;
     uint32_t has_xsave : 1;
-    uint32_t has_osxsave : 1;
     uint32_t has_avx : 1;
     uint32_t has_f16c : 1;
     uint32_t has_nx : 1;

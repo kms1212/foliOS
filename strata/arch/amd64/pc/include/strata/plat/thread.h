@@ -1,24 +1,33 @@
 #ifndef __STRATA_PLAT_THREAD_H__
 #define __STRATA_PLAT_THREAD_H__
 
-#include <strata/arch/intrinsics/xsave.h>
+#include <strata/arch/intrinsics/fpu_simd.h>
 #include <strata/plat/interrupt.h>
 
 #include <strata/compiler.h>
+#include <strata/mm/types.h>
 #include <strata/status.h>
 
 struct StThreadP_PlatformData {
     uintptr_t fs_base;
     uintptr_t gs_base;
 
-    union StA_FXSaveBuffer fx_save_buffer;
+    /*
+     * TODO: Thread allocation does not yet guarantee the 64-byte alignment
+     * required by XSAVE/XRSTOR buffers. Fix allocation alignment next.
+     */
+    union StA_XStateBuffer xstate_buffer;
 };
 
 struct StThread;
 
+StStatus StThreadP_InitializeFpuSimdState(void);
+void StThreadP_InitializePlatformData(struct StThread *th __inout);
+
 StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in);
 StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in);
 void StThreadP_FreeThreadKernelStack(struct StThread *th __in);
+St_PageCount StThreadP_ReclaimCachedKernelStacks(St_PageCount page_budget __in);
 
 StStatus StThreadP_AllocateThreadUserStack(struct StThread *th __in);
 StStatus StThreadP_SetupThreadUserStack(

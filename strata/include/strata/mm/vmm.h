@@ -69,4 +69,18 @@ void StVmm_FreeLocalPage(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 
+StStatus StVmm_GetGlobalAllocationRange(
+    enum StVmm_Domain domain __in,
+    St_VirtPage vpn __in,
+    St_VirtPage *begin_vpn __out_optional,
+    St_VirtPage *end_vpn __out_optional
+);
+
+StStatus StVmm_GetLocalAllocationRange(
+    struct StMm_AddressSpace *asp __in,
+    St_VirtPage vpn __in,
+    St_VirtPage *begin_vpn __out_optional,
+    St_VirtPage *end_vpn __out_optional
+);
+
 #endif  // __STRATA_MM_VMM_H__

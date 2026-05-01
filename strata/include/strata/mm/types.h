@@ -34,7 +34,9 @@
 #define AF_ALIGN_MASK ((StMm_AllocFlags)0x000003F0)
 #define AF_ALIGN_AUTO ((StMm_AllocFlags)0x00000000)
 #define AF_ALIGN(a)                                                                                \
-    ((StMm_AllocFlags)(((uint32_t)((a) < 1 ? 0 : __builtin_ctzll(a)) << 4) & AF_ALIGN_MASK))
+    ((StMm_AllocFlags)((                                                                           \
+        (uint32_t)((a) < 1 ? 0 : __builtin_ctzll((unsigned long long)(a)) << 4) & AF_ALIGN_MASK    \
+    )))
 
 #define AF_DEFAULT (AF_PMM_BELOW_NONE | AF_ALIGN_AUTO)
 
@@ -44,9 +46,15 @@
 #define MF_WRITETHRU_CACHE ((StMm_MapFlags)0x00000008)
 #define MF_NO_EXECUTE      ((StMm_MapFlags)0x00000010)
 #define MF_GLOBAL          ((StMm_MapFlags)0x00000020)
+#define MF_SOFTWARE_0      ((StMm_MapFlags)0x00000040)
+#define MF_SOFTWARE_1      ((StMm_MapFlags)0x00000080)
+#define MF_SOFTWARE_2      ((StMm_MapFlags)0x00000100)
 #define MF_IMMEDIATE       ((StMm_MapFlags)0x00010000)
 #define MF_ZERO_FILL       ((StMm_MapFlags)0x00020000)
 #define MF_NO_HUGE         ((StMm_MapFlags)0x00040000)
+
+#define MF_POOL_LARGE_ALLOC MF_SOFTWARE_0
+#define MF_POOL_SUBPOOL     MF_SOFTWARE_1
 
 #define MF_KERNEL_DEFAULT (MF_WRITABLE)
 #define MF_USER_DEFAULT   (MF_WRITABLE | MF_USER)

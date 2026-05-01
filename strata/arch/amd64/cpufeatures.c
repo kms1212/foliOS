@@ -130,9 +130,11 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_xsave = 1;
         }
 
-        if (ecx & bit_OSXSAVE) {
-            cpu_features.has_osxsave = 1;
-        }
+        /*
+         * Ignore CPUID.OSXSAVE here. It reports whether the current software
+         * environment has already enabled CR4.OSXSAVE, not an independent CPU
+         * capability. Strata decides that during activation.
+         */
 
         if (ecx & bit_AVX) {
             cpu_features.has_avx = 1;
@@ -334,7 +336,7 @@ StStatus StA_ActivateCommonCpuFeatures(void)
     }
 
     /* osxsave */
-    if (cpu_features.has_osxsave) {
+    if (cpu_features.has_xsave) {
         cr4 |= 0x0000000000040000;
     }
 
@@ -355,9 +357,16 @@ StStatus StA_ActivateCommonCpuFeatures(void)
 
     StA_WriteMsr(MSR_EFER, efer);
 
-    if (cpu_features.has_xsave && cpu_features.has_avx) {
+    if (cpu_features.has_xsave) {
         uint64_t xcr0 = StA_ReadXcr0();
-        xcr0 |= 0x0000000000000006;
+
+        /*
+         * Enable x87/SSE state for XSAVE. Add AVX state when available.
+         */
+        xcr0 |= 0x0000000000000003;
+        if (cpu_features.has_avx) {
+            xcr0 |= 0x0000000000000004;
+        }
         StA_WriteXcr0(xcr0);
     }
 

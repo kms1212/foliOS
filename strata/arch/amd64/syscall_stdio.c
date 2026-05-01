@@ -25,6 +25,7 @@ enum stdio_node_kind {
     STDIO_NODE_STDERR,
 };
 
+
 static int node_name_equals(
     const struct StGnt_Node *node, const St_Utf32Char *name, size_t name_len
 )
@@ -51,10 +52,13 @@ static enum stdio_node_kind get_stdio_node_kind(const struct StGnt_Node *node)
     return STDIO_NODE_NONE;
 }
 
+extern int early_print_char(void *_state, char ch);
+extern struct print_state pstate;
+
 static void stdio_debugcon_write(const uint8_t *buf, uint64_t size)
 {
     for (uint64_t i = 0; i < size; i++) {
-        StIoA_Out8(STDIO_DEBUGCON_PORT, buf[i]);
+        early_print_char(&pstate, buf[i]);
     }
 }
 

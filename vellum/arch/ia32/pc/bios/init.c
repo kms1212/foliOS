@@ -143,6 +143,8 @@ static status_t init_nonpnp_devices(int has_acpi)
     struct acpi_fadt *fadt;
 
     if (has_acpi) {
+        LOG_DEBUG("retrieving ACPI FADT...\n");
+
         uacpi_status = uacpi_table_fadt(&fadt);
         if (uacpi_unlikely_error(uacpi_status)) {
             VlP_Panic(uacpi_status, "Could not find FADT (has_acpi=%d)", has_acpi);
@@ -165,6 +167,8 @@ static status_t init_nonpnp_devices(int has_acpi)
 
 #ifndef NDEBUG
     {
+        LOG_DEBUG("initializing port 0xE9...\n");
+
         struct device *dev;
         struct device_driver *drv;
 
@@ -190,6 +194,8 @@ static status_t init_nonpnp_devices(int has_acpi)
 
     /* find Non-PnP ISA Components */
     if (!skip_8042) {
+        LOG_DEBUG("initializing i8042...\n");
+
         struct device *dev;
         struct device_driver *drv;
 
@@ -228,6 +234,8 @@ static status_t init_nonpnp_devices(int has_acpi)
     }
 
     if (!skip_rtc) {
+        LOG_DEBUG("initializing RTC...\n");
+
         struct device *dev;
         struct device_driver *drv;
 
@@ -255,6 +263,8 @@ static status_t init_nonpnp_devices(int has_acpi)
 
     if (!skip_legacy) {
         for (int i = 0; i < 4; i++) {
+            LOG_DEBUG("initializing UART #%d...\n", i);
+
             uint16_t *io_base_list = (uint16_t *)0x400;
 
             // a workaround to make the compiler shut up in release build
@@ -291,6 +301,8 @@ static status_t init_nonpnp_devices(int has_acpi)
         }
 
         for (int i = 0; i < 3; i++) {
+            LOG_DEBUG("initializing IEEE1284 #%d...\n", i);
+
             uint16_t *io_base_list = (uint16_t *)0x408;
 
             // a workaround to make the compiler shut up in release build
@@ -327,6 +339,8 @@ static status_t init_nonpnp_devices(int has_acpi)
         }
 
         {
+            LOG_DEBUG("initializing FDC...\n");
+
             struct device *dev;
             struct device_driver *drv;
 
@@ -359,6 +373,8 @@ static status_t init_nonpnp_devices(int has_acpi)
         }
 
         {
+            LOG_DEBUG("initializing IDE bus #0...\n");
+
             struct device *dev;
             struct device_driver *drv;
 
@@ -391,6 +407,8 @@ static status_t init_nonpnp_devices(int has_acpi)
         }
 
         {
+            LOG_DEBUG("initializing IDE bus #1...\n");
+
             struct device *dev;
             struct device_driver *drv;
 
@@ -424,6 +442,8 @@ static status_t init_nonpnp_devices(int has_acpi)
     }
 
     {
+        LOG_DEBUG("initializing VGA...\n");
+
         struct device *dev;
         struct device_driver *drv;
 
@@ -572,7 +592,9 @@ __noreturn void _pc_init(void)
     struct chs bootdisk_geom;
 
     freopencookie(NULL, "w", early_stderr_io, stderr);
-    freopencookie(NULL, "w", early_stddbg_io, stddbg);
+    freopencookie(NULL, "w", early_stderr_io, stddbg);
+
+    VlLog_SetLevel(LL_DEBUG);
 
     LOG_DEBUG("Starting Vellum...\n");
 

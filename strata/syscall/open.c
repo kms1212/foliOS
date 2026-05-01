@@ -52,7 +52,7 @@ StStatus StSyscall_Open(const uint8_t *path __in, uint32_t flags __in, uint32_t 
     status = StHandle_Create(&process->handle_table, ST_HANDLE_TYPE_GNT_NODE, node, &new_handle);
     if (!CHECK_SUCCESS(status)) return status;
 
-    LOG_DEBUG(
+    LOG_TRACE(
         LM_CAT_UNCLASSIFIED,
         "path: %s, flags: %08" PRIX32 " -> handle %" PRIu32 "\n",
         (const char *)path,

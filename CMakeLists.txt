@@ -5,13 +5,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 include(CheckLanguage)
 include(CheckTypeSize)
 include(ExternalProject)
-# include(ProcessTarget)
-# include(BuildConfiguration)
+include(ProcessTarget)
+include(BuildConfiguration)
 
 project("foliOS")
-
-# Load build configurations
-# load_build_configuration(TARGET CONFIG_PRESET)
 
 # Subdirectories
 add_subdirectory(tools)  # host tools
@@ -22,15 +19,10 @@ set(CONFIG_PRESET "default" CACHE STRING "Preset name of build configuration")
 option(ENABLE_CLANG_TIDY "Enable clang-tidy" OFF)
 option(BUILD_TESTING "Build tests" OFF)
 
-string(REPLACE "-" ";" TARGET_TEMP ${TARGET})
-list(LENGTH TARGET_TEMP TARGET_TEMP_LEN)
-if (NOT TARGET_TEMP_LEN EQUAL 3)
-    message(FATAL_ERROR "Invalid target format")
-endif()
-list(GET TARGET_TEMP 0 TARGET_ARCH)
-list(GET TARGET_TEMP 1 TARGET_PLATFORM)
-list(GET TARGET_TEMP 2 TARGET_FIRMWARE)
-unset(TARGET_TEMP)
+process_target(TARGET)
+load_build_configuration("${TARGET_CONFIG_ARCH}" "${TARGET_PLATFORM}" "${TARGET_FIRMWARE}" "${CONFIG_PRESET}")
+load_component_build_configuration(strata)
+get_build_configuration_cache_args(BUILD_CONFIGURATION_CACHE_ARGS)
 
 if ("${TARGET_ARCH}" STREQUAL "amd64")
     set(VELLUM_TARGET_ARCH ia32)
@@ -61,6 +53,7 @@ ExternalProject_Add(vellum
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=${CMAKE_EXPORT_COMPILE_COMMANDS}
         -DCMAKE_COMPILER_LAUNCHER:FILEPATH=${CMAKE_COMPILER_LAUNCHER}
         -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/${VELLUM_TARGET_ARCH}/Toolchain.cmake
+        ${BUILD_CONFIGURATION_CACHE_ARGS}
     CMAKE_ARGS
         -DTARGET_ARCH=${VELLUM_TARGET_ARCH}
         -DTARGET_PLATFORM=${TARGET_PLATFORM}
@@ -86,6 +79,7 @@ ExternalProject_Add(strata
         -DCMAKE_COMPILER_LAUNCHER:FILEPATH=${CMAKE_COMPILER_LAUNCHER}
         -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${CMAKE_SOURCE_DIR}/cmake/${TARGET_ARCH}/Toolchain.cmake
         -DSIDLC_EXECUTABLE:FILEPATH=${CMAKE_BINARY_DIR}/tools/sidlc/sidlc
+        ${BUILD_CONFIGURATION_CACHE_ARGS}
     CMAKE_ARGS
         -DTARGET_ARCH=${TARGET_ARCH}
         -DTARGET_PLATFORM=${TARGET_PLATFORM}

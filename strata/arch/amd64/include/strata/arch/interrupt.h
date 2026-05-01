@@ -6,20 +6,21 @@
 #include <strata/arch/intrinsics/misc.h>
 
 #include <strata/compiler.h>
+#include <strata/macros.h>
 
 struct StA_InterruptFrame {
     uint64_t error;
     uint64_t rip;
     uint16_t cs;
-    uint16_t : 16;
-    uint16_t : 16;
-    uint16_t : 16;
+    RESERVE_2BYTES;
+    RESERVE_2BYTES;
+    RESERVE_2BYTES;
     uint64_t rflags;
     uint64_t rsp;
     uint16_t ss;
-    uint16_t : 16;
-    uint16_t : 16;
-    uint16_t : 16;
+    RESERVE_2BYTES;
+    RESERVE_2BYTES;
+    RESERVE_2BYTES;
 } __packed;
 
 __always_inline void StA_EnableInterrupt(void)

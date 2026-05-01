@@ -13,197 +13,36 @@
 
 #ifndef PAGE_SIZE
 #    define PAGE_SIZE 4096
-
 #endif
 
-union StA_PageTableEntry {
-    uint32_t raw;
+typedef uint32_t StA_PageTableEntry;
+typedef uint64_t StA_PaePageTableEntry;
+typedef uint32_t StA_PageDirectoryEntry;
+typedef uint64_t StA_PaePageDirectoryEntry;
+typedef uint64_t StA_PageDirPtrTableEntry;
+typedef uint64_t StA_PageMapLevel4Entry;
+typedef uint64_t StA_PageMapLevel5Entry;
 
-    struct {
-        uint32_t p : 1;
-        uint32_t r_w : 1;
-        uint32_t u_s : 1;
-        uint32_t pwt : 1;
-        uint32_t pcd : 1;
-        uint32_t a : 1;
-        uint32_t d : 1;
-        uint32_t pat : 1;
-        uint32_t g : 1;
-        uint32_t avl : 3;
-        uint32_t base : 20;
-    } __packed;
-} __packed;
+#define STA_MMU_PTE_P         (1ULL << 0)
+#define STA_MMU_PTE_RW        (1ULL << 1)
+#define STA_MMU_PTE_US        (1ULL << 2)
+#define STA_MMU_PTE_PWT       (1ULL << 3)
+#define STA_MMU_PTE_PCD       (1ULL << 4)
+#define STA_MMU_PTE_A         (1ULL << 5)
+#define STA_MMU_PTE_D         (1ULL << 6)
+#define STA_MMU_PTE_PS        (1ULL << 7)
+#define STA_MMU_PTE_PAT       (1ULL << 7)  // For 4KB PTE
+#define STA_MMU_PDE_PAT       (1ULL << 12) // For 2MB/1GB PDE/PDPTE
+#define STA_MMU_PTE_G         (1ULL << 8)
+#define STA_MMU_PTE_SW0       (1ULL << 9)
+#define STA_MMU_PTE_SW1       (1ULL << 10)
+#define STA_MMU_PTE_SW2       (1ULL << 11)
+#define STA_MMU_PTE_XD        (1ULL << 63)
 
-union StA_PaePageTableEntry {
-    uint64_t raw;
+#define STA_MMU_PTE_BASE_MASK 0x000FFFFFFFFFF000ULL
 
-    struct {
-        uint64_t p : 1;
-        uint64_t r_w : 1;
-        uint64_t u_s : 1;
-        uint64_t pwt : 1;
-        uint64_t pcd : 1;
-        uint64_t a : 1;
-        uint64_t d : 1;
-        uint64_t ps : 1;
-        uint64_t g : 1;
-        uint64_t avl0 : 3;
-        uint64_t base : 40;
-        uint64_t avl1 : 7;
-        uint64_t pk : 4;
-        uint64_t xd : 1;
-    } __packed;
-} __packed;
-
-union StA_PageDirectoryEntry {
-    uint32_t raw;
-
-    struct {
-        uint32_t p : 1;
-        uint32_t r_w : 1;
-        uint32_t u_s : 1;
-        uint32_t pwt : 1;
-        uint32_t pcd : 1;
-        uint32_t a : 1;
-        uint32_t avl2 : 1;
-        uint32_t ps : 1;
-        uint32_t avl1 : 4;
-        uint32_t base : 20;
-    } __packed;
-
-    struct {
-        uint32_t p : 1;
-        uint32_t r_w : 1;
-        uint32_t u_s : 1;
-        uint32_t pwt : 1;
-        uint32_t pcd : 1;
-        uint32_t a : 1;
-        uint32_t d : 1;
-        uint32_t ps : 1;
-        uint32_t g : 1;
-        uint32_t avl : 3;
-        uint32_t pat : 1;
-        uint32_t base_high : 8;
-        uint32_t : 1;
-        uint32_t base_low : 10;
-    } __packed huge;
-
-    union StA_PageTableEntry recursive;
-} __packed;
-
-union StA_PaePageDirectoryEntry {
-    uint64_t raw;
-
-    struct {
-        uint64_t p : 1;
-        uint64_t r_w : 1;
-        uint64_t u_s : 1;
-        uint64_t pwt : 1;
-        uint64_t pcd : 1;
-        uint64_t a : 1;
-        uint64_t avl0 : 1;
-        uint64_t ps : 1;
-        uint64_t avl1 : 4;
-        uint64_t base : 40;
-        uint64_t avl2 : 11;
-        uint64_t xd : 1;
-    } __packed;
-
-    struct {
-        uint64_t p : 1;
-        uint64_t r_w : 1;
-        uint64_t u_s : 1;
-        uint64_t pwt : 1;
-        uint64_t pcd : 1;
-        uint64_t a : 1;
-        uint64_t d : 1;
-        uint64_t ps : 1;
-        uint64_t g : 1;
-        uint64_t avl0 : 3;
-        uint64_t pat : 1;
-        uint64_t : 8;
-        uint64_t base : 31;
-        uint64_t avl1 : 7;
-        uint64_t pk : 4;
-        uint64_t xd : 1;
-    } __packed huge;
-} __packed;
-
-union StA_PageDirPtrTableEntry {
-    uint64_t raw;
-
-    struct {
-        uint64_t p : 1;
-        uint64_t r_w : 1;
-        uint64_t u_s : 1;
-        uint64_t pwt : 1;
-        uint64_t pcd : 1;
-        uint64_t a : 1;
-        uint64_t avl0 : 1;
-        uint64_t ps : 1;
-        uint64_t avl1 : 4;
-        uint64_t base : 40;
-        uint64_t avl2 : 11;
-        uint64_t xd : 1;
-    } __packed;
-
-    struct {
-        uint64_t p : 1;
-        uint64_t r_w : 1;
-        uint64_t u_s : 1;
-        uint64_t pwt : 1;
-        uint64_t pcd : 1;
-        uint64_t a : 1;
-        uint64_t d : 1;
-        uint64_t ps : 1;
-        uint64_t g : 1;
-        uint64_t avl0 : 3;
-        uint64_t pat : 1;
-        uint64_t : 17;
-        uint64_t base : 22;
-        uint64_t avl1 : 7;
-        uint64_t pk : 4;
-        uint64_t xd : 1;
-    } __packed huge;
-} __packed;
-
-union StA_PageMapLevel4Entry {
-    uint64_t raw;
-
-    struct {
-        uint64_t p : 1;
-        uint64_t r_w : 1;
-        uint64_t u_s : 1;
-        uint64_t pwt : 1;
-        uint64_t pcd : 1;
-        uint64_t a : 1;
-        uint64_t avl0 : 1;
-        uint64_t : 1;
-        uint64_t avl1 : 4;
-        uint64_t base : 40;
-        uint64_t avl2 : 11;
-        uint64_t xd : 1;
-    } __packed;
-} __packed;
-
-union StA_PageMapLevel5Entry {
-    uint64_t raw;
-
-    struct {
-        uint64_t p : 1;
-        uint64_t r_w : 1;
-        uint64_t u_s : 1;
-        uint64_t pwt : 1;
-        uint64_t pcd : 1;
-        uint64_t a : 1;
-        uint64_t avl0 : 1;
-        uint64_t : 1;
-        uint64_t avl1 : 4;
-        uint64_t base : 40;
-        uint64_t avl2 : 11;
-        uint64_t xd : 1;
-    } __packed;
-} __packed;
+#define STA_MMU_GET_BASE(x)   ((St_PhysFrame)(((x) & STA_MMU_PTE_BASE_MASK) >> 12))
+#define STA_MMU_SET_BASE(x)   (((uint64_t)(x)) << 12)
 
 __always_inline void StA_InvalidatePage(St_VirtPage vpn)
 {
