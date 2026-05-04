@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <strata/arch/mmu_constants.h>
+
 #include <strata/compiler.h>
 
 #define FRAME_TO_UINT(f) ((uintptr_t)(f))

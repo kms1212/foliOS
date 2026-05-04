@@ -1,6 +1,5 @@
 #include <strata/plat/syscall.h>
 
-#include <errno.h>
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stdint.h>
@@ -14,6 +13,7 @@
 #include <strata/plat/interrupt.h>
 #include <strata/plat/syscall_num.h>
 
+#include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/status.h>
 #include <strata/syscall.h>
@@ -23,7 +23,7 @@
 
 extern void _StSyscallA_Handler(void);  // NOLINT
 
-int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
+StStatus StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
 {
     uint64_t syscall_count = atomic_fetch_add(&StCpuLocalP_GetData()->syscall_count, 1);
 
@@ -93,8 +93,20 @@ int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Conte
             ctx->r8,
             ctx->r9
         );
-        return -(int64_t)ENOSYS;
+        return STATUS_INVALID_VALUE;
     }
+}
+
+static void *compat_syscall_handler(
+    int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
+)
+{
+    StStatus status;
+
+    status = StSyscallA_Handler(frame, ctx);
+    ctx->rax = status;
+
+    return NULL;
 }
 
 StStatus StSyscallA_Init(void)
@@ -107,6 +119,8 @@ StStatus StSyscallA_Init(void)
         ((uint64_t)SEG_SEL_KERNEL_CODE << 32) | (((uint64_t)SEG_SEL_USER_DATA - 8) << 48)
     );
     StA_WriteMsr(MSR_SFMASK, 0x0000000000000202);
+
+    StInt_CreateHandler(0x80, NULL, compat_syscall_handler, NULL);
 
     return STATUS_SUCCESS;
 }

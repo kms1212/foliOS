@@ -5,6 +5,7 @@
 
 #include <strata/arch/interrupt.h>
 
+#include <strata/compiler.h>
 #include <strata/status.h>
 
 struct StIntP_Context {
@@ -27,13 +28,13 @@ struct StIntP_Context {
 
 struct StInt_Handler;
 
-StStatus StIntP_Init(void);
-StStatus StIntP_GetFirstHandler(int num, struct StInt_Handler **handler);
-StStatus StIntP_SetFirstHandler(int num, struct StInt_Handler *handler);
-void StIntP_UnsetFirstHandler(int num);
+StStatus StIntP_Init(int use_ioapic __in);
+StStatus StIntP_GetFirstHandler(int num __in, struct StInt_Handler **handler __out);
+StStatus StIntP_SetFirstHandler(int num __in, struct StInt_Handler *handler __in);
+void StIntP_UnsetFirstHandler(int num __in);
 
-StStatus StIntP_Mask(int num);
-StStatus StIntP_Unmask(int num);
+StStatus StIntP_Mask(int num __in);
+StStatus StIntP_Unmask(int num __in);
 
 uint64_t StIntP_GetIrqCount(void);
 

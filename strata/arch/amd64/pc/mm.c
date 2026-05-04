@@ -12,14 +12,16 @@
 #include <strata/plat/memmap.h>
 
 #include <strata/compiler.h>
+#include <strata/mm.h>
 #include <strata/mm/asp.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/panic.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 
-#define MODULE_NAME "mm"
+#define MODULE_NAME                               "mm"
 #define PAGE_TABLE_FRAME_CACHE_MAX_PAGES          ((St_PageCount)128)
 #define PAGE_TABLE_FRAME_CACHE_LOW_FREE_WATERMARK ((St_PageCount)4096)
 
@@ -152,7 +154,8 @@ static StStatus allocate_page_table_frame(St_PhysFrame *pfn, int allow_cache)
 
     StThread_LockPreemption();
 
-    cached_frame = pop_cached_page_table_frame(&page_table_frame_cache_head, &page_table_frame_cache_pages);
+    cached_frame =
+        pop_cached_page_table_frame(&page_table_frame_cache_head, &page_table_frame_cache_pages);
 
     StThread_UnlockPreemption();
 
@@ -202,7 +205,10 @@ St_PageCount StMmP_ReclaimCachedPageTableFrames(St_PageCount page_budget)
 
         StThread_LockPreemption();
 
-        cached_frame = pop_cached_page_table_frame(&page_table_frame_cache_head, &page_table_frame_cache_pages);
+        cached_frame = pop_cached_page_table_frame(
+            &page_table_frame_cache_head,
+            &page_table_frame_cache_pages
+        );
         if (!cached_frame) {
             cached_frame = pop_cached_page_table_frame(
                 &page_table_frame_quarantine_head,
@@ -579,13 +585,28 @@ static StStatus map_memory(
 
     pte_template = 0;
     pte_template |= STA_MMU_PTE_P;
-    if (mapflags & MF_WRITABLE) pte_template |= STA_MMU_PTE_RW; else pte_template &= ~STA_MMU_PTE_RW;
-    if (mapflags & MF_USER) pte_template |= STA_MMU_PTE_US; else pte_template &= ~STA_MMU_PTE_US;
-    if (mapflags & MF_NO_CACHE) pte_template |= STA_MMU_PTE_PCD; else pte_template &= ~STA_MMU_PTE_PCD;
-    if (mapflags & MF_WRITETHRU_CACHE) pte_template |= STA_MMU_PTE_PWT; else pte_template &= ~STA_MMU_PTE_PWT;
+    if (mapflags & MF_WRITABLE)
+        pte_template |= STA_MMU_PTE_RW;
+    else
+        pte_template &= ~STA_MMU_PTE_RW;
+    if (mapflags & MF_USER)
+        pte_template |= STA_MMU_PTE_US;
+    else
+        pte_template &= ~STA_MMU_PTE_US;
+    if (mapflags & MF_NO_CACHE)
+        pte_template |= STA_MMU_PTE_PCD;
+    else
+        pte_template &= ~STA_MMU_PTE_PCD;
+    if (mapflags & MF_WRITETHRU_CACHE)
+        pte_template |= STA_MMU_PTE_PWT;
+    else
+        pte_template &= ~STA_MMU_PTE_PWT;
     pte_template |= mapflags_to_pte_software_bits(mapflags);
     if (g_p_cpu_features->has_nx) {
-        if (mapflags & MF_NO_EXECUTE) pte_template |= STA_MMU_PTE_XD; else pte_template &= ~STA_MMU_PTE_XD;
+        if (mapflags & MF_NO_EXECUTE)
+            pte_template |= STA_MMU_PTE_XD;
+        else
+            pte_template &= ~STA_MMU_PTE_XD;
     }
 
     if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
@@ -599,7 +620,8 @@ static StStatus map_memory(
         pml4e_idx = PML4_INDEX(vpn);
         if (!(pml4[pml4e_idx] & STA_MMU_PTE_P)) {
 
-            if (vpn >= MEMMAP_GLOBAL_VPN_BASE && !(pml4[pml4e_idx] & STA_MMU_PTE_P) && (base_pml4[pml4e_idx] & STA_MMU_PTE_P)) {
+            if (vpn >= MEMMAP_GLOBAL_VPN_BASE && !(pml4[pml4e_idx] & STA_MMU_PTE_P) &&
+                (base_pml4[pml4e_idx] & STA_MMU_PTE_P)) {
                 pml4[pml4e_idx] = base_pml4[pml4e_idx];
 
                 pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
@@ -614,7 +636,10 @@ static StStatus map_memory(
                 temp = (temp & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
                 temp |= STA_MMU_PTE_P;
                 temp |= STA_MMU_PTE_RW;
-                if (mapflags & MF_USER) temp |= STA_MMU_PTE_US; else temp &= ~STA_MMU_PTE_US;
+                if (mapflags & MF_USER)
+                    temp |= STA_MMU_PTE_US;
+                else
+                    temp &= ~STA_MMU_PTE_US;
 
                 if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
                     if ((base_pml4[pml4e_idx] & STA_MMU_PTE_P)) {
@@ -644,10 +669,14 @@ static StStatus map_memory(
             pd = PHYS_TO_VIRT(FRAME_TO_VPTR(alloc_pfn));
 
             pdpt[pdpte_idx] = 0;
-            pdpt[pdpte_idx] = (pdpt[pdpte_idx] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
+            pdpt[pdpte_idx] =
+                (pdpt[pdpte_idx] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
             pdpt[pdpte_idx] |= STA_MMU_PTE_P;
             pdpt[pdpte_idx] |= STA_MMU_PTE_RW;
-            if (mapflags & MF_USER) pdpt[pdpte_idx] |= STA_MMU_PTE_US; else pdpt[pdpte_idx] &= ~STA_MMU_PTE_US;
+            if (mapflags & MF_USER)
+                pdpt[pdpte_idx] |= STA_MMU_PTE_US;
+            else
+                pdpt[pdpte_idx] &= ~STA_MMU_PTE_US;
         } else {
             if ((pdpt[pdpte_idx] & STA_MMU_PTE_PS)) {
                 status = STATUS_CONFLICTING_STATE;
@@ -665,10 +694,14 @@ static StStatus map_memory(
             pt = PHYS_TO_VIRT(FRAME_TO_VPTR(alloc_pfn));
 
             pd[pde_idx] = 0;
-            pd[pde_idx] = (pd[pde_idx] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
+            pd[pde_idx] =
+                (pd[pde_idx] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
             pd[pde_idx] |= STA_MMU_PTE_P;
             pd[pde_idx] |= STA_MMU_PTE_RW;
-            if (mapflags & MF_USER) pd[pde_idx] |= STA_MMU_PTE_US; else pd[pde_idx] &= ~STA_MMU_PTE_US;
+            if (mapflags & MF_USER)
+                pd[pde_idx] |= STA_MMU_PTE_US;
+            else
+                pd[pde_idx] &= ~STA_MMU_PTE_US;
         } else {
             if ((pd[pde_idx] & STA_MMU_PTE_PS)) {
                 status = STATUS_CONFLICTING_STATE;
@@ -692,7 +725,8 @@ static StStatus map_memory(
                 goto has_error;
             }
             pt[pte_idx + i] = pte_template;
-            pt[pte_idx + i] = (pt[pte_idx + i] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)pfn + i);
+            pt[pte_idx + i] =
+                (pt[pte_idx + i] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)pfn + i);
 
             if (mapflags & MF_ZERO_FILL) {
                 memset(
@@ -781,13 +815,28 @@ static StStatus remap_memory(
 
     pte_template = 0;
     pte_template |= STA_MMU_PTE_P;
-    if (mapflags & MF_WRITABLE) pte_template |= STA_MMU_PTE_RW; else pte_template &= ~STA_MMU_PTE_RW;
-    if (mapflags & MF_USER) pte_template |= STA_MMU_PTE_US; else pte_template &= ~STA_MMU_PTE_US;
-    if (mapflags & MF_NO_CACHE) pte_template |= STA_MMU_PTE_PCD; else pte_template &= ~STA_MMU_PTE_PCD;
-    if (mapflags & MF_WRITETHRU_CACHE) pte_template |= STA_MMU_PTE_PWT; else pte_template &= ~STA_MMU_PTE_PWT;
+    if (mapflags & MF_WRITABLE)
+        pte_template |= STA_MMU_PTE_RW;
+    else
+        pte_template &= ~STA_MMU_PTE_RW;
+    if (mapflags & MF_USER)
+        pte_template |= STA_MMU_PTE_US;
+    else
+        pte_template &= ~STA_MMU_PTE_US;
+    if (mapflags & MF_NO_CACHE)
+        pte_template |= STA_MMU_PTE_PCD;
+    else
+        pte_template &= ~STA_MMU_PTE_PCD;
+    if (mapflags & MF_WRITETHRU_CACHE)
+        pte_template |= STA_MMU_PTE_PWT;
+    else
+        pte_template &= ~STA_MMU_PTE_PWT;
     pte_template |= mapflags_to_pte_software_bits(mapflags);
     if (g_p_cpu_features->has_nx) {
-        if (mapflags & MF_NO_EXECUTE) pte_template |= STA_MMU_PTE_XD; else pte_template &= ~STA_MMU_PTE_XD;
+        if (mapflags & MF_NO_EXECUTE)
+            pte_template |= STA_MMU_PTE_XD;
+        else
+            pte_template &= ~STA_MMU_PTE_XD;
     }
 
     if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
@@ -1062,4 +1111,27 @@ StStatus StMmP_CopyLocal(
 {
     // TODO: implement
     return STATUS_NOT_IMPLEMENTED;
+}
+
+StStatus StMmP_MapConventionalMemory(St_VirtPage *vpn __out)
+{
+    static int mapped = 0;
+    static St_VirtPage mapped_vpn;
+
+    if (!mapped) {
+        StMm_MapGlobal(
+            VMM_DOMAIN_IO,
+            &mapped_vpn,
+            0,
+            256,
+            NULL,
+            (struct StMm_CompoundFlags){AF_DEFAULT, MF_KERNEL_DEFAULT}
+        );
+
+        mapped = 1;
+    }
+
+    *vpn = mapped_vpn;
+
+    return STATUS_SUCCESS;
 }

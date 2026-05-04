@@ -81,4 +81,6 @@ StStatus StMmP_CopyLocal(
     size_t len __in
 );
 
+StStatus StMmP_MapConventionalMemory(St_VirtPage *vpn __out);
+
 #endif  // __STRATA_PLAT_MM_H__

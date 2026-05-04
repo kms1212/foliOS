@@ -524,7 +524,7 @@ uint64_t get_global_tick(void)
     return global_tick;
 }
 
-static void pit_isr(void *data, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num)
+static void tick_isr(void *data, struct VlA_InterruptFrame *frame, struct trap_regs *regs, int num)
 {
     global_tick++;
 }
@@ -574,7 +574,7 @@ static void bkpt_handler(struct VlA_InterruptFrame *frame, struct trap_regs *reg
     }
 }
 
-static void init_pit(void)
+static void init_timer(void)
 {
     static const uint16_t pit_value = 1193182 / 20;
 
@@ -640,10 +640,10 @@ __noreturn void _pc_init(void)
     _pc_pic_remap_int(0x20, 0x28);
 
     VlIntP_AddTrapHandler(0x03, bkpt_handler, NULL);
-    VlIntP_AddInterruptHandler(0x20, NULL, pit_isr, NULL);
+    VlIntP_AddInterruptHandler(0x20, NULL, tick_isr, NULL);
 
     LOG_DEBUG("initializing PIT...\n");
-    init_pit();
+    init_timer();
 
     LOG_DEBUG("early-initializing ACPI...\n");
     status = acpi_early_init();

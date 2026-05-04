@@ -122,6 +122,10 @@ StStatus StA_CheckCpuFeatures(void)
             cpu_features.has_popcnt = 1;
         }
 
+        if (ecx & (1 << 24)) {
+            cpu_features.has_tsc_deadline = 1;
+        }
+
         if (ecx & (1 << 25)) {
             cpu_features.has_aes_ni = 1;
         }

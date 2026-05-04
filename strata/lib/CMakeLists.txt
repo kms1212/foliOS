@@ -4,6 +4,33 @@ include(FetchContent)
 
 add_subdirectory(jsmn)
 
+if (CONFIG_ENABLE_ACPI)
+    FetchContent_Declare(uacpi
+        URL "https://github.com/uACPI/uACPI/archive/refs/tags/3.1.0.tar.gz"
+        URL_HASH MD5=5272fab5df149aed884d86b6f77b616f
+        DOWNLOAD_EXTRACT_TIMESTAMP false
+    )
+    FetchContent_MakeAvailable(uacpi)
+
+    include("${uacpi_SOURCE_DIR}/uacpi.cmake")
+    target_include_directories(strata SYSTEM PRIVATE ${UACPI_INCLUDES})
+
+    add_library(uacpi.lib STATIC)
+
+    target_compile_features(uacpi.lib PUBLIC c_std_11)
+    target_link_libraries(uacpi.lib gcc)
+    target_compile_definitions(uacpi.lib PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_BAREBONES_MODE=1)
+
+    target_include_directories(uacpi.lib PRIVATE ${UACPI_INCLUDES})
+    target_sources(uacpi.lib PRIVATE ${UACPI_SOURCES})
+
+    set_target_properties(uacpi.lib PROPERTIES C_CLANG_TIDY "")
+
+    target_compile_definitions(strata PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_BAREBONES_MODE=1)
+    target_link_libraries(strata uacpi.lib)
+
+    add_subdirectory(uacpi)
+endif ()
 
 FetchContent_Declare(zstd
     URL "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz"

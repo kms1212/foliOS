@@ -17,7 +17,7 @@ cleanup() {
 trap cleanup SIGINT SIGTERM
 
 tmux new-session -d -s "$SESSION_NAME" -n "VGA" \
-    "scripts/run.sh pc-amd64 -debugcon pipe:$DEBUG_FIFO -cpu max -display curses"
+    "scripts/run.sh pc-amd64 -debugcon pipe:$DEBUG_FIFO -cpu max -display curses -S"
 
 tmux split-window -h -t "$SESSION_NAME" -p 70 "scripts/gdb.sh -t strata amd64 --eval-command=\"tar rem :1234\"; tmux kill-session -t $SESSION_NAME"
 tmux split-window -v -t "$SESSION_NAME.0" "cat $LOG_PIPE"

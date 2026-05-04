@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <strata/arch/apic.h>
 #include <strata/arch/idt.h>
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/idt.h>
@@ -14,6 +15,8 @@
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt_constants.h>
+#include <strata/plat/interrupt_constants.h>
+#include <strata/plat/ioapic.h>
 #include <strata/plat/pic.h>
 
 #include <strata/compiler.h>
@@ -83,9 +86,11 @@ DECLARE_ISRx(f);
 static struct StA_IdtGateDescriptor _pc_idt[256] __aligned(PAGE_SIZE);
 static struct StInt_Handler *_pc_isr_table[256];
 static struct StA_Idtr idtr;
+static int use_ioapic;
 
-StStatus StIntP_Init(void)
+StStatus StIntP_Init(int _use_ioapic __in)
 {
+    use_ioapic = _use_ioapic;
 
     idtr.size = sizeof(_pc_idt) - 1;
     idtr.idt_ptr = (uint64_t)&_pc_idt;
@@ -228,7 +233,7 @@ StStatus StIntP_Init(void)
     SET_INT_ENTRY(7f);
 
     /* traps */
-    SET_TRAP_ENTRY(80);
+    SET_TRAP_ENTRY(80); /* SYSCALL_COMPAT_VECTOR */
 
     /* more hardware interrupts */
     SET_INT_ENTRY(81);
@@ -361,6 +366,10 @@ StStatus StIntP_Init(void)
 
     StA_Lidt(&idtr);
 
+    if (!_use_ioapic) {
+        StPicP_Remap(0x20, 0x28);
+    }
+
     return STATUS_SUCCESS;
 }
 
@@ -395,11 +404,12 @@ StStatus StIntP_Mask(int num)
 
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "masking interrupt #%02X...\n", num);
 
-    if (0x20 <= num && num < 0x30) {
-        /* mask PIC first */
-        StPicP_Mask(num - 0x20);
-    } else {
-        /* TODO: APIC */
+    if (0x20 <= num) {
+        if (use_ioapic) {
+            StIoapicP_Mask(num);
+        } else if (num < 0x30) {
+            StPicP_Mask(num);
+        }
     }
 
     return STATUS_SUCCESS;
@@ -411,11 +421,12 @@ StStatus StIntP_Unmask(int num)
 
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "unmasking interrupt #%02X...\n", num);
 
-    if (0x20 <= num && num < 0x30) {
-        /* unmask PIC too */
-        StPicP_Unmask(num - 0x20);
-    } else {
-        /* TODO: APIC */
+    if (0x20 <= num) {
+        if (use_ioapic) {
+            StIoapicP_Unmask(num);
+        } else if (num < 0x30) {
+            StPicP_Unmask(num);
+        }
     }
 
     return STATUS_SUCCESS;
@@ -432,20 +443,19 @@ __optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
 {
     void *new_esp = NULL;
     int has_error = 0, is_fault = 0;
+    int needs_pic_eoi = 0, needs_apic_eoi = 0;
     struct StInt_Handler *current_isr = _pc_isr_table[num];
 
     atomic_fetch_add(&StCpuLocalP_GetData()->irq_count, 1);
-
     atomic_fetch_add(&StCpuLocalP_GetData()->irq_depth, 1);
 
     if (num < 0x20) {
-        has_error = (0x60227D00 >> num) & 1;
-        is_fault = (0x603B7FE1 >> num) & 1;
-    } else if (num < 0x30) {
-        if (num >= 0x28) {
-            StIoA_Out8(0x00A0, 0x20);
-        }
-        StIoA_Out8(0x0020, 0x20);
+        has_error = (HAS_ERROR_BITMAP >> num) & 1;
+        is_fault = (IS_FAULT_BITMAP >> num) & 1;
+    } else if (num <= LEGACY_IRQ_VECTOR_LIMIT && !use_ioapic) {
+        needs_pic_eoi = 1;
+    } else if (num != SYSCALL_COMPAT_IRQ_VECTOR && num != SPURIOUS_IRQ_VECTOR) {
+        needs_apic_eoi = 1;
     }
 
     if (!current_isr) {
@@ -484,11 +494,18 @@ __optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
 
     while (current_isr) {
         new_esp = current_isr->handler(num, frame, ctx, current_isr->data);
-        if (new_esp) return new_esp;
+        if (new_esp) goto irq_end;
         current_isr = current_isr->next;
+    }
+
+irq_end:
+    if (needs_pic_eoi) {
+        StPicP_SendEoi(num);
+    } else if (needs_apic_eoi) {
+        StApicA_SendEoi();
     }
 
     atomic_fetch_sub(&StCpuLocalP_GetData()->irq_depth, 1);
 
-    return NULL;
+    return new_esp;
 }

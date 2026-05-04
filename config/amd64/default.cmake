@@ -1,0 +1,1 @@
+set(CONFIG_ENABLE_ACPI "1")

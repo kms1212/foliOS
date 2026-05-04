@@ -33,7 +33,7 @@ set_source_files_properties(
     PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/krt/krt.bin"
 )
 
-target_sources(strata PUBLIC cpufeatures.c setjmp.S)
+target_sources(strata PUBLIC apic.c cpufeatures.c setjmp.S)
 target_sources(
     strata
     PRIVATE

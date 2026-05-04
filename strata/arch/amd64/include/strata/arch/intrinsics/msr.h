@@ -23,6 +23,12 @@
 #define MSR_GS_BASE        0xC0000101
 #define MSR_KERNEL_GS_BASE 0xC0000102
 
+#define MSR_IA32_APIC_BASE       0x1B
+#define IA32_APIC_BASE_BSP       (1ULL << 8)
+#define IA32_APIC_BASE_X2APIC    (1ULL << 10)
+#define IA32_APIC_BASE_ENABLE    (1ULL << 11)
+#define IA32_APIC_BASE_ADDR_MASK 0x000FFFFFFFFFF000ULL
+
 __always_inline uint64_t StA_ReadMsr(uint32_t msr)
 {
     uint32_t high, low;

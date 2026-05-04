@@ -1,3 +1,10 @@
+function(_folios_mark_build_config_var_managed name)
+    get_property(_new_managed_vars GLOBAL PROPERTY FOLIOS_BUILD_CONFIG_NEW_MANAGED_VARS)
+    list(APPEND _new_managed_vars "${name}")
+    list(REMOVE_DUPLICATES _new_managed_vars)
+    set_property(GLOBAL PROPERTY FOLIOS_BUILD_CONFIG_NEW_MANAGED_VARS "${_new_managed_vars}")
+endfunction()
+
 function(_folios_apply_build_config_var name value type doc)
     get_property(_initial_cache_vars GLOBAL PROPERTY FOLIOS_BUILD_CONFIG_INITIAL_CACHE_VARS)
     get_property(_previous_managed_vars GLOBAL PROPERTY FOLIOS_BUILD_CONFIG_PREVIOUS_MANAGED_VARS)
@@ -6,7 +13,7 @@ function(_folios_apply_build_config_var name value type doc)
     list(FIND _previous_managed_vars "${name}" _previous_managed_index)
 
     if(_initial_cache_index GREATER -1 AND _previous_managed_index EQUAL -1)
-        return()
+        set(value "${${name}}")
     endif()
 
     if("${type}" STREQUAL "")
@@ -18,15 +25,40 @@ function(_folios_apply_build_config_var name value type doc)
     endif()
 
     set(${name} "${value}" CACHE ${type} "${doc}" FORCE)
-
-    get_property(_new_managed_vars GLOBAL PROPERTY FOLIOS_BUILD_CONFIG_NEW_MANAGED_VARS)
-    list(APPEND _new_managed_vars "${name}")
-    list(REMOVE_DUPLICATES _new_managed_vars)
-    set_property(GLOBAL PROPERTY FOLIOS_BUILD_CONFIG_NEW_MANAGED_VARS "${_new_managed_vars}")
+    _folios_mark_build_config_var_managed("${name}")
 endfunction()
 
-function(folios_build_config_set name value regex doc)
-    _folios_apply_build_config_var("${name}" "${value}" STRING "${doc}")
+function(_folios_is_cache_type value out_var)
+    if(
+        "${value}" STREQUAL "BOOL" OR
+        "${value}" STREQUAL "FILEPATH" OR
+        "${value}" STREQUAL "INTERNAL" OR
+        "${value}" STREQUAL "PATH" OR
+        "${value}" STREQUAL "STRING"
+    )
+        set(${out_var} TRUE PARENT_SCOPE)
+    else()
+        set(${out_var} FALSE PARENT_SCOPE)
+    endif()
+endfunction()
+
+function(folios_build_config_set name value type_or_regex doc)
+    _folios_is_cache_type("${type_or_regex}" _is_cache_type)
+
+    if(_is_cache_type)
+        if(DEFINED ${name} AND NOT "${${name}}" STREQUAL "")
+            _folios_apply_build_config_var("${name}" "${${name}}" "${type_or_regex}" "${doc}")
+        else()
+            _folios_apply_build_config_var("${name}" "${value}" "${type_or_regex}" "${doc}")
+        endif()
+        return()
+    endif()
+
+    if(DEFINED ${name} AND NOT "${${name}}" STREQUAL "")
+        _folios_apply_build_config_var("${name}" "${${name}}" STRING "${doc}")
+    else()
+        _folios_apply_build_config_var("${name}" "${value}" STRING "${doc}")
+    endif()
 
     if(NOT DEFINED ${name} OR "${${name}}" STREQUAL "")
         if("${doc}" STREQUAL "")
@@ -36,11 +68,11 @@ function(folios_build_config_set name value regex doc)
         endif()
     endif()
 
-    if(NOT "${regex}" STREQUAL "" AND NOT "${${name}}" MATCHES "${regex}")
+    if(NOT "${type_or_regex}" STREQUAL "" AND NOT "${${name}}" MATCHES "${type_or_regex}")
         if("${doc}" STREQUAL "")
-            message(FATAL_ERROR "${name} must match regex '${regex}'")
+            message(FATAL_ERROR "${name} must match regex '${type_or_regex}'")
         else()
-            message(FATAL_ERROR "${name} must match regex '${regex}' (${doc})")
+            message(FATAL_ERROR "${name} must match regex '${type_or_regex}' (${doc})")
         endif()
     endif()
 endfunction()

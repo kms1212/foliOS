@@ -9,6 +9,6 @@
 #include <strata/status.h>
 
 StStatus StSyscallA_Init(void);
-int64_t StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx);
+StStatus StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx);
 
 #endif  // __STRATA_PLAT_SYSCALL_H__

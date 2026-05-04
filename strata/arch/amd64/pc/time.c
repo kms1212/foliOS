@@ -1,83 +1,108 @@
-#include <strata/plat/time.h>
+#include "config.h"
 
 #include <inttypes.h>
+#include <stdatomic.h>
 #include <stdint.h>
 
 #include <strata/arch/cpufeatures.h>
+#include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/io.h>
 #include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/io.h>
 
+#include <strata/plat/interrupt.h>
+#include <strata/plat/hpet.h>
+#include <strata/plat/interrupt_constants.h>
+#include <strata/plat/pit.h>
+#include <strata/plat/time.h>
+
+#include <strata/interrupt.h>
 #include <strata/log.h>
+#include <strata/scheduler.h>
 
 #define MODULE_NAME "time"
 
 static int initialized = 0;
-static int use_tsc;
+static int use_hpet;
 
 static uint64_t uptime_start_counter;
-static uint64_t counter_diff_per_sec;
+static uint64_t uptime_counter_freq;
 
-static void calibrate_tsc_with_pit(void)
+static atomic_uint_fast64_t global_tick = 0;
+
+static void *tick_isr(
+    int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
+)
 {
-    StIoA_Out8(0x0043, 0x30);
-    StIoA_Wait();
-    StIoA_Out8(0x0040, 0xFF);
-    StIoA_Wait();
-    StIoA_Out8(0x0040, 0xFF);
-    StIoA_Wait();
+    atomic_fetch_add(&global_tick, 1);
 
-    uint64_t start_tsc = StA_ReadTsc();
-    uint16_t elapsed_ticks;
-
-    do {
-        StIoA_Out8(0x0043, 0x00);
-
-        uint16_t current_count = StIoA_In8(0x0040);
-        current_count |= StIoA_In8(0x0040) << 8;
-
-        elapsed_ticks = 65536 - current_count;
-    } while (elapsed_ticks < 1193182 / 100);
-
-    uint64_t end_tsc = StA_ReadTsc();
-
-    counter_diff_per_sec = (end_tsc - start_tsc) * 100;
+    return NULL;
 }
 
-void StTimeP_StartUptime(void)
+void StTimeP_EarlyBusyWaitMicroseconds(uint32_t us)
 {
-    if (g_p_cpu_features->has_tsc) {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "using TSC for uptime counter\n");
-        use_tsc = 1;
-        uptime_start_counter = StA_ReadTsc();
-        if (g_p_cpu_features->provides_tsc_ratio && g_p_cpu_features->provides_core_clock_freq) {
-            LOG_DEBUG(LM_CAT_UNCLASSIFIED, "calibration skipped\n");
-            counter_diff_per_sec = g_p_cpu_features->tsc_ratio_numer *
-                g_p_cpu_features->core_clock_freq_hz / g_p_cpu_features->tsc_ratio_denom;
-        } else {
-            LOG_DEBUG(LM_CAT_UNCLASSIFIED, "calibrating TSC... (10 ms period)\n");
-            calibrate_tsc_with_pit();
-            LOG_DEBUG(
+    if (StHpetP_IsInitialized() && CHECK_SUCCESS(StHpetP_SetOneshotAndBusyWait(us))) return;
+
+    StPitP_SetOneshotAndBusyWait(us);
+}
+
+void StTimeP_InitTimer(int _use_hpet __in)
+{
+    use_hpet = _use_hpet;
+
+    if (use_hpet) {
+        uptime_start_counter = StHpetP_GetMainCounter();
+        uptime_counter_freq = StHpetP_GetCounterFrequency();
+
+        if (CHECK_SUCCESS(StHpetP_SetPeriodic(STRATA_TICK_RATE_HZ))) {
+            LOG_INFO(
                 LM_CAT_UNCLASSIFIED,
-                "TSC calibrated: %" PRIu64 " delta per second\n",
-                counter_diff_per_sec
+                "Clock source initialized: HPET main counter, %dHz tick\n",
+                STRATA_TICK_RATE_HZ
             );
+        } else {
+            use_hpet = 0;
         }
-    } else {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "using PIT for uptime counter\n");
-        use_tsc = 0;
-        counter_diff_per_sec = 100;
+    }
+
+    if (!use_hpet) {
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "using PIT tick for uptime counter\n");
+        uptime_counter_freq = STRATA_TICK_RATE_HZ;
         uptime_start_counter = StTimeP_GetGlobalTick();
+
+        StPitP_SetPeriodic(STRATA_TICK_RATE_HZ);
+
+        LOG_INFO(
+            LM_CAT_UNCLASSIFIED,
+            "Clock source initialized: PIT channel 0, %dHz\n",
+            STRATA_TICK_RATE_HZ
+        );
+    } else {
+        StPitP_Stop();
     }
     initialized = 1;
+
+    StInt_CreateHandler(use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE, NULL, tick_isr, NULL);
+
+    StIntP_Unmask(use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE);
 }
 
 uint64_t StTimeP_GetUptimeMicroseconds(void)
 {
     if (!initialized) return 0;
 
-    uint64_t current = use_tsc ? StA_ReadTsc() : StTimeP_GetGlobalTick();
+    uint64_t current = use_hpet ? StHpetP_GetMainCounter() : StTimeP_GetGlobalTick();
     uint64_t ticks_diff = current - uptime_start_counter;
 
-    return ticks_diff * 1000000 / counter_diff_per_sec;
+    return ((__uint128_t)ticks_diff * 1000000ULL) / uptime_counter_freq;
+}
+
+uint64_t StTimeP_GetGlobalTick(void)
+{
+    return global_tick;
+}
+
+uint32_t StTimeP_GetGlobalTickFrequency(void)
+{
+    return STRATA_TICK_RATE_HZ;
 }

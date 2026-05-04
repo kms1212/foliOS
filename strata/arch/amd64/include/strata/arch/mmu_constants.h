@@ -1,0 +1,8 @@
+#ifndef __STRATA_ARCH_MMU_CONSTANTS_H__
+#define __STRATA_ARCH_MMU_CONSTANTS_H__
+
+#ifndef PAGE_SIZE
+#    define PAGE_SIZE 4096
+#endif
+
+#endif  // __STRATA_ARCH_MMU_CONSTANTS_H__

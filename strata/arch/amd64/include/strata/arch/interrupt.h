@@ -8,6 +8,9 @@
 #include <strata/compiler.h>
 #include <strata/macros.h>
 
+#define HAS_ERROR_BITMAP 0x60227D00
+#define IS_FAULT_BITMAP  0x603B7FE1
+
 struct StA_InterruptFrame {
     uint64_t error;
     uint64_t rip;

@@ -109,6 +109,7 @@ struct StA_CpuFeatures {
     uint32_t provides_tsc_ratio : 1;
     uint32_t provides_core_clock_freq : 1;
     uint32_t is_tsc_invariant : 1;
+    uint32_t has_tsc_deadline : 1;
 
     uint32_t tsc_ratio_denom;
     uint32_t tsc_ratio_numer;
