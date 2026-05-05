@@ -70,12 +70,12 @@ static StStatus allocate_xstate_buffer(union StA_XStateBuffer **bufferout)
     );
 }
 
-static StStatus ensure_xstate_buffer(struct StThreadP_PlatformData *platform_data)
+static StStatus ensure_xstate_buffer(union StA_XStateBuffer **xstate_buffer)
 {
-    if (!platform_data) return STATUS_INVALID_VALUE;
-    if (platform_data->xstate_buffer) return STATUS_SUCCESS;
+    if (!xstate_buffer) return STATUS_INVALID_VALUE;
+    if (*xstate_buffer) return STATUS_SUCCESS;
 
-    return allocate_xstate_buffer(&platform_data->xstate_buffer);
+    return allocate_xstate_buffer(xstate_buffer);
 }
 
 static uint64_t get_xstate_bv(const union StA_XStateBuffer *xstate_buffer)
@@ -86,47 +86,17 @@ static uint64_t get_xstate_bv(const union StA_XStateBuffer *xstate_buffer)
     return *xstate_bv;
 }
 
-static StStatus save_fpu_simd_state(struct StThreadP_PlatformData *platform_data)
+static void save_fpu_simd_state(union StA_XStateBuffer *xstate_buffer)
 {
-    StStatus status;
-
-    if (!platform_data) return STATUS_INVALID_VALUE;
-
-    if (xsave_context_enabled && !platform_data->xstate_buffer) {
-        memset(&scratch_xstate_storage, 0, sizeof(scratch_xstate_storage));
-        StA_XSave(&scratch_xstate_storage, xstate_mask);
-
-        if ((get_xstate_bv(&scratch_xstate_storage) & xstate_mask) == 0) {
-            return STATUS_SUCCESS;
-        }
-
-        status = allocate_xstate_buffer(&platform_data->xstate_buffer);
-        if (!CHECK_SUCCESS(status)) return status;
-
-        memcpy(platform_data->xstate_buffer, &scratch_xstate_storage, sizeof(scratch_xstate_storage));
-        return STATUS_SUCCESS;
-    }
-
-    status = ensure_xstate_buffer(platform_data);
-    if (!CHECK_SUCCESS(status)) return status;
-
     if (xsave_context_enabled) {
-        StA_XSave(platform_data->xstate_buffer, xstate_mask);
+        StA_XSave(xstate_buffer, xstate_mask);
     } else {
-        StA_FXSave(&platform_data->xstate_buffer->fx);
+        StA_FXSave(&xstate_buffer->fx);
     }
-
-    return STATUS_SUCCESS;
 }
 
-static void restore_fpu_simd_state(const struct StThreadP_PlatformData *platform_data)
+static void restore_fpu_simd_state(const union StA_XStateBuffer *xstate_buffer)
 {
-    const union StA_XStateBuffer *xstate_buffer;
-
-    xstate_buffer =
-        platform_data && platform_data->xstate_buffer ? platform_data->xstate_buffer
-                                                      : clean_xstate_buffer;
-
     if (xsave_context_enabled) {
         StA_XRestore(xstate_buffer, xstate_mask);
     } else {
@@ -134,12 +104,42 @@ static void restore_fpu_simd_state(const struct StThreadP_PlatformData *platform
     }
 }
 
-StStatus StThreadP_InitializeFpuSimdState(void)
+static StStatus save_thread_fpu_simd_state(union StA_XStateBuffer **xstate_buffer)
 {
     StStatus status;
-    struct StThreadP_PlatformData saved_platform_data;
-    struct StThreadP_PlatformData clean_platform_data;
 
+    if (!xstate_buffer) return STATUS_INVALID_VALUE;
+
+    if (xsave_context_enabled && !*xstate_buffer) {
+        memset(&scratch_xstate_storage, 0, sizeof(scratch_xstate_storage));
+        save_fpu_simd_state(&scratch_xstate_storage);
+
+        if ((get_xstate_bv(&scratch_xstate_storage) & xstate_mask) == 0) {
+            return STATUS_SUCCESS;
+        }
+
+        status = allocate_xstate_buffer(xstate_buffer);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        memcpy(*xstate_buffer, &scratch_xstate_storage, sizeof(scratch_xstate_storage));
+        return STATUS_SUCCESS;
+    }
+
+    status = ensure_xstate_buffer(xstate_buffer);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    save_fpu_simd_state(*xstate_buffer);
+
+    return STATUS_SUCCESS;
+}
+
+static void restore_thread_fpu_simd_state(const union StA_XStateBuffer *xstate_buffer)
+{
+    restore_fpu_simd_state(xstate_buffer ? xstate_buffer : clean_xstate_buffer);
+}
+
+StStatus StThreadP_InitializeFpuSimdState(void)
+{
     if (clean_fx_state_initialized) return STATUS_ALREADY_PERFORMED;
 
     xsave_context_enabled = g_p_cpu_features->has_xsave;
@@ -147,10 +147,7 @@ StStatus StThreadP_InitializeFpuSimdState(void)
     xstate_mask = xsave_context_enabled ? (avx_context_enabled ? 0x7ULL : 0x3ULL) : 0;
 
     memset(&saved_xstate_storage, 0, sizeof(saved_xstate_storage));
-    memset(&saved_platform_data, 0, sizeof(saved_platform_data));
-    saved_platform_data.xstate_buffer = &saved_xstate_storage;
-    status = save_fpu_simd_state(&saved_platform_data);
-    if (!CHECK_SUCCESS(status)) return status;
+    save_fpu_simd_state(&saved_xstate_storage);
 
     StA_FNInit();
     StA_LdMxcsr(0x1F80);
@@ -160,13 +157,10 @@ StStatus StThreadP_InitializeFpuSimdState(void)
         StA_ZeroXmmRegisters();
     }
 
-    memset(&clean_platform_data, 0, sizeof(clean_platform_data));
     memset(&clean_xstate_storage, 0, sizeof(clean_xstate_storage));
-    clean_platform_data.xstate_buffer = &clean_xstate_storage;
-    status = save_fpu_simd_state(&clean_platform_data);
-    if (!CHECK_SUCCESS(status)) return status;
+    save_fpu_simd_state(&clean_xstate_storage);
 
-    restore_fpu_simd_state(&saved_platform_data);
+    restore_fpu_simd_state(&saved_xstate_storage);
 
     clean_fx_state_initialized = 1;
 
@@ -548,7 +542,7 @@ StStatus StThreadP_Switch(
     current->kmode_stack_ptr = (void *)((uintptr_t)ctx - 8);
 
     /* save FPU/SIMD registers */
-    status = save_fpu_simd_state(&current->platform_data);
+    status = save_thread_fpu_simd_state(&current->platform_data.xstate_buffer);
     if (!CHECK_SUCCESS(status)) return status;
 
     /* switch address space */
@@ -561,7 +555,7 @@ StStatus StThreadP_Switch(
     }
 
     /* restore FPU/SIMD registers */
-    restore_fpu_simd_state(&next->platform_data);
+    restore_thread_fpu_simd_state(next->platform_data.xstate_buffer);
 
     /* set kernel stack pointer */
     kstack_top = PAGE_TO_ADDR(next->kmode_stack_base_vpn + next->kmode_stack_page_count);
