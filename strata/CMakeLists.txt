@@ -57,10 +57,12 @@ add_subdirectory(module)
 add_subdirectory(mutex)
 add_subdirectory(process)
 add_subdirectory(scheduler)
+add_subdirectory(spinlock)
 add_subdirectory(stdc)
 add_subdirectory(syscall)
 add_subdirectory(thread)
 add_subdirectory(utils)
+add_subdirectory(temp)
 
 # Additional Targets
 if (BUILD_TESTING)

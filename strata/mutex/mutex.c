@@ -1,18 +1,18 @@
 #include <strata/mutex.h>
 
 #include <strata/log.h>
+#include <strata/plat/time.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 
 #define MODULE_NAME "mutex"
 
-StStatus StMutex_Init(struct StMutex *mtx)
+void StMutex_Init(struct StMutex *mtx)
 {
     mtx->locked = 0;
     mtx->owner = NULL;
-
-    return STATUS_SUCCESS;
+    mtx->blocking_threads = NULL;
 }
 
 static void add_blocking_thread(struct StMutex *mtx, struct StThread *th)
@@ -52,8 +52,36 @@ static void unblock_blocking_thread(struct StMutex *mtx)
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "unblocking thread #%d\n", th_to_unblock->id);
 
     th_to_unblock->mutex_blocking_next = NULL;
-    if (th_to_unblock->state == THREAD_STATE_BLOCKING) {
+    th_to_unblock->sleep_until_uptime_us = 0;
+    if (th_to_unblock->state == THREAD_STATE_BLOCKING ||
+        th_to_unblock->state == THREAD_STATE_SLEEPING) {
         th_to_unblock->state = THREAD_STATE_RUNNING;
+    }
+}
+
+static void remove_blocking_thread(struct StMutex *mtx, struct StThread *th)
+{
+    struct StThread *current;
+    struct StThread *prev;
+
+    if (!mtx || !th) return;
+
+    prev = NULL;
+    current = mtx->blocking_threads;
+    while (current) {
+        if (current == th) {
+            if (prev) {
+                prev->mutex_blocking_next = current->mutex_blocking_next;
+            } else {
+                mtx->blocking_threads = current->mutex_blocking_next;
+            }
+
+            current->mutex_blocking_next = NULL;
+            return;
+        }
+
+        prev = current;
+        current = current->mutex_blocking_next;
     }
 }
 
@@ -77,6 +105,65 @@ StStatus StMutex_Lock(struct StMutex *mtx)
         }
 
         th->state = THREAD_STATE_BLOCKING;
+        add_blocking_thread(mtx, th);
+
+        StThread_UnlockPreemption();
+        StThread_Yield();
+    }
+}
+
+StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
+{
+    StStatus status;
+    struct StThread *th;
+    uint64_t deadline_us;
+
+    status = StScheduler_GetCurrentThread(&th);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (timeout_ms < 0) {
+        return StMutex_Lock(mtx);
+    }
+
+    if (timeout_ms == 0) {
+        int locked = 0;
+
+        status = StMutex_TryLock(mtx, &locked);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        return locked ? STATUS_SUCCESS : STATUS_TIMER_EXPIRED;
+    }
+
+    deadline_us = (StTimeP_GetUptimeNanoseconds() / 1000) + ((uint64_t)timeout_ms * 1000);
+
+    for (;;) {
+        uint64_t now_us;
+
+        StThread_LockPreemption();
+
+        if (!mtx->locked) {
+            mtx->locked = 1;
+            mtx->owner = th;
+            th->mutex_blocking_next = NULL;
+            th->sleep_until_uptime_us = 0;
+
+            StThread_UnlockPreemption();
+            return STATUS_SUCCESS;
+        }
+
+        now_us = StTimeP_GetUptimeNanoseconds() / 1000;
+        if (now_us >= deadline_us) {
+            remove_blocking_thread(mtx, th);
+            th->mutex_blocking_next = NULL;
+            th->sleep_until_uptime_us = 0;
+            th->state = THREAD_STATE_RUNNING;
+
+            StThread_UnlockPreemption();
+            return STATUS_TIMER_EXPIRED;
+        }
+
+        th->sleep_until_uptime_us = deadline_us;
+        th->state = THREAD_STATE_SLEEPING;
         add_blocking_thread(mtx, th);
 
         StThread_UnlockPreemption();

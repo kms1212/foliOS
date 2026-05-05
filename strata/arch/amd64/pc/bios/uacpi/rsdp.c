@@ -1,14 +1,15 @@
-#include <strata/mm.h>
-#include <uacpi/acpi.h>
 #include <uacpi/kernel_api.h>
 
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
 
+#include <uacpi/acpi.h>
+
 #include <strata/plat/bios.h>
 #include <strata/plat/mm.h>
 
+#include <strata/mm.h>
 #include <strata/mm/types.h>
 #include <strata/status.h>
 

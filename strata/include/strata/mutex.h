@@ -10,7 +10,7 @@ struct __capability("mutex") StMutex {
     struct StThread *blocking_threads;
 };
 
-StStatus StMutex_Init(struct StMutex *mtx);
+void StMutex_Init(struct StMutex *mtx);
 
 StStatus StMutex_Lock(struct StMutex *mtx) __acquires(mtx);
 StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms);

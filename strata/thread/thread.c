@@ -34,47 +34,21 @@ static struct StProcess *deferred_process_reap_head = NULL;
 static struct StProcess *deferred_process_reap_tail = NULL;
 static St_PageCount deferred_reap_pending_pages = 0;
 
-struct StThreadAllocationHeader {
-    void *raw_ptr;
-};
-
 static StStatus allocate_thread_object(struct StThread **threadout)
 {
-    enum { THREAD_OBJECT_ALIGNMENT = 64 };
-
-    StStatus status;
-    void *raw_ptr = NULL;
-    uintptr_t aligned_addr;
-    struct StThreadAllocationHeader *header;
-    size_t alloc_size;
-
-    alloc_size =
-        sizeof(struct StThreadAllocationHeader) + sizeof(struct StThread) + THREAD_OBJECT_ALIGNMENT - 1;
-
-    status = StPool_AllocateClear(alloc_size, &raw_ptr);
-    if (!CHECK_SUCCESS(status)) return status;
-
-    aligned_addr = (uintptr_t)raw_ptr + sizeof(struct StThreadAllocationHeader);
-    aligned_addr = (aligned_addr + THREAD_OBJECT_ALIGNMENT - 1) & ~(uintptr_t)(THREAD_OBJECT_ALIGNMENT - 1);
-
-    header = (struct StThreadAllocationHeader *)(aligned_addr - sizeof(*header));
-    header->raw_ptr = raw_ptr;
-
-    if (threadout) {
-        *threadout = (struct StThread *)aligned_addr;
-    }
-
-    return STATUS_SUCCESS;
+    return StPool_AllocateClearAligned(
+        sizeof(struct StThread),
+        __builtin_ctzll((unsigned long long)__alignof__(struct StThread)),
+        (void **)threadout
+    );
 }
 
 static void free_thread_object(struct StThread *thread)
 {
-    struct StThreadAllocationHeader *header;
-
     if (!thread) return;
 
-    header = (struct StThreadAllocationHeader *)((uintptr_t)thread - sizeof(*header));
-    StPool_Free(header->raw_ptr);
+    StThreadP_FreePlatformData(thread);
+    StPool_Free(thread);
 }
 
 static inline atomic_uint_fast32_t *get_preemption_disable_depth_ptr(void)
@@ -647,7 +621,7 @@ StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_us 
         return status;
     }
 
-    now_us = StTimeP_GetUptimeMicroseconds();
+    now_us = StTimeP_GetUptimeNanoseconds() / 1000;
     total_us = thread->runtime_total_us;
 
     if (thread == current_thread && thread->last_scheduled_in_us &&
@@ -714,19 +688,48 @@ StStatus StThread_Sleep(int timeout_ms __in)
 {
     StStatus status;
     struct StThread *current_thread;
+    uint64_t deadline_us;
 
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) return status;
 
+    if (timeout_ms <= 0) return STATUS_SUCCESS;
+
+    deadline_us = (StTimeP_GetUptimeNanoseconds() / 1000) + ((uint64_t)timeout_ms * 1000);
+
     StThread_LockPreemption();
 
     current_thread->state = THREAD_STATE_SLEEPING;
-    current_thread->sleep_until_uptime_us =
-        StTimeP_GetUptimeMicroseconds() + ((uint64_t)timeout_ms * 1000);
+    current_thread->sleep_until_uptime_us = deadline_us;
 
     StThread_UnlockPreemption();
 
-    StThread_Yield();
+    for (;;) {
+        uint64_t now_us;
+
+        StThread_LockPreemption();
+
+        if (current_thread->state != THREAD_STATE_SLEEPING) {
+            StThread_UnlockPreemption();
+            break;
+        }
+
+        now_us = StTimeP_GetUptimeNanoseconds() / 1000;
+        if (now_us >= deadline_us) {
+            current_thread->sleep_until_uptime_us = 0;
+            current_thread->state = THREAD_STATE_RUNNING;
+            StThread_UnlockPreemption();
+            break;
+        }
+
+        StThread_UnlockPreemption();
+
+        if (StScheduler_CheckHasOtherRunnableThread()) {
+            StThread_Yield();
+        } else {
+            StThreadP_IdleUntilInterrupt();
+        }
+    }
 
     return STATUS_SUCCESS;
 }

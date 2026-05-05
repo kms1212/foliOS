@@ -61,6 +61,7 @@ static void update_runnable_state(
     case THREAD_STATE_SLEEPING:
         if (now_us >= thread->sleep_until_uptime_us) {
             thread->state = THREAD_STATE_RUNNING;
+            thread->sleep_until_uptime_us = 0;
             catch_up_runnable_pass(scheduler, thread);
         }
         break;
@@ -111,10 +112,6 @@ static struct StThread *select_next_runnable_thread(
 
         cursor = cursor->next ? cursor->next : scheduler->runqueue_head;
     } while (cursor && cursor != start);
-
-    if (!best) {
-        best = scheduler->current_thread ? scheduler->current_thread : scheduler->runqueue_head;
-    }
 
     if (best && update_accounting) {
         best->sched_pass++;
@@ -197,7 +194,7 @@ StStatus StScheduler_GetCurrentThread(struct StThread **current)
 StStatus StScheduler_GetNextThread(struct StThread **next)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    uint64_t now_us = StTimeP_GetUptimeMicroseconds();
+    uint64_t now_us = StTimeP_GetUptimeNanoseconds() / 1000;
 
     if (next) {
         *next = select_next_runnable_thread(scheduler, now_us, 1);
@@ -221,7 +218,7 @@ StStatus StScheduler_SwitchCurrentThread(struct StThread *th)
     ensure_scheduler_defaults(scheduler);
 
     prev = scheduler->current_thread;
-    now_us = StTimeP_GetUptimeMicroseconds();
+    now_us = StTimeP_GetUptimeNanoseconds() / 1000;
 
     if (prev && prev != th) {
         account_thread_runtime(prev, now_us);
@@ -260,7 +257,7 @@ int StScheduler_CheckHasOtherRunnableThread(void)
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     struct StThread *current = scheduler->current_thread;
     struct StThread *next =
-        select_next_runnable_thread(scheduler, StTimeP_GetUptimeMicroseconds(), 0);
+        select_next_runnable_thread(scheduler, StTimeP_GetUptimeNanoseconds() / 1000, 0);
 
     return next && next != current;
 }

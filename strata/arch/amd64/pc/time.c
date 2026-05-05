@@ -10,8 +10,8 @@
 #include <strata/arch/intrinsics/msr.h>
 #include <strata/arch/io.h>
 
-#include <strata/plat/interrupt.h>
 #include <strata/plat/hpet.h>
+#include <strata/plat/interrupt.h>
 #include <strata/plat/interrupt_constants.h>
 #include <strata/plat/pit.h>
 #include <strata/plat/time.h>
@@ -87,14 +87,14 @@ void StTimeP_InitTimer(int _use_hpet __in)
     StIntP_Unmask(use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE);
 }
 
-uint64_t StTimeP_GetUptimeMicroseconds(void)
+uint64_t StTimeP_GetUptimeNanoseconds(void)
 {
     if (!initialized) return 0;
 
     uint64_t current = use_hpet ? StHpetP_GetMainCounter() : StTimeP_GetGlobalTick();
     uint64_t ticks_diff = current - uptime_start_counter;
 
-    return ((__uint128_t)ticks_diff * 1000000ULL) / uptime_counter_freq;
+    return ((__uint128_t)ticks_diff * 1000000000ULL) / uptime_counter_freq;
 }
 
 uint64_t StTimeP_GetGlobalTick(void)

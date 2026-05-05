@@ -1,3 +1,4 @@
+#include "strata/plat/panic.h"
 #include <strata/arch/apic.h>
 
 #include <strata/arch/cpufeatures.h>
@@ -43,6 +44,11 @@ StStatus StApicA_EnableGlobal(void)
 
     /* enable APIC */
     apic_base_msr_val = StA_ReadMsr(MSR_IA32_APIC_BASE);
+
+    /* panic if it is in x2APIC mode */
+    if (apic_base_msr_val & IA32_APIC_BASE_X2APIC) {
+        return STATUS_NOT_SUPPORTED;
+    }
 
     /* map LAPIC MMIO area */
     status = StMm_MapGlobal(
@@ -102,8 +108,8 @@ StStatus StApicA_InitLapicTimer(void)
 
     if (lapic_is_initialized) return STATUS_NOT_PERMITTED;
 
+    StApicA_WriteLapicRegister(LAPIC_REG_LVT_TIMER, LAPIC_TIMER_MASK);
     StApicA_WriteLapicRegister(LAPIC_REG_TIMER_DCR, 0x03);
-
     StApicA_WriteLapicRegister(LAPIC_REG_TIMER_ICR, 0xFFFFFFFF);
 
     start_lapic = StApicA_ReadLapicRegister(LAPIC_REG_TIMER_CCR);

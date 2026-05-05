@@ -60,3 +60,8 @@ target_compile_options(strata PUBLIC
     >
 )
 target_link_options(strata PUBLIC -mcmodel=kernel)
+
+if (CONFIG_ENABLE_ACPI)
+    target_compile_options(uacpi.lib PUBLIC $<$<COMPILE_LANGUAGE:C>:-mcmodel=kernel>)
+    target_link_options(uacpi.lib PUBLIC -mcmodel=kernel)
+endif ()

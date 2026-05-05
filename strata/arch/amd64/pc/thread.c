@@ -25,6 +25,7 @@
 #include <strata/macros.h>
 #include <strata/mm.h>
 #include <strata/mm/pmm.h>
+#include <strata/mm/pool.h>
 #include <strata/mm/types.h>
 #include <strata/mm/utils.h>
 #include <strata/mm/vmm.h>
@@ -39,6 +40,7 @@
 #define THREAD_KERNEL_STACK_CACHE_MAX_PAGES                                                        \
     (STRATA_KSTACK_PAGE_COUNT * THREAD_KERNEL_STACK_CACHE_MAX_STACKS)
 #define THREAD_KERNEL_STACK_CACHE_LOW_FREE_WATERMARK ((St_PageCount)2048)
+#define XSTATE_HEADER_OFFSET                         512
 
 extern void _StThreadP_KernelThreadEntry(void);
 extern void _StThreadP_UserThreadEntry(void);
@@ -50,33 +52,93 @@ struct cached_kernel_stack {
 
 static struct cached_kernel_stack *kernel_stack_cache_head = NULL;
 static St_PageCount kernel_stack_cache_pages = 0;
-static struct StThreadP_PlatformData clean_platform_data;
+static union StA_XStateBuffer clean_xstate_storage;
+static union StA_XStateBuffer saved_xstate_storage;
+static union StA_XStateBuffer scratch_xstate_storage;
+static union StA_XStateBuffer *clean_xstate_buffer = &clean_xstate_storage;
 static uint64_t xstate_mask = 0;
 static int xsave_context_enabled = 0;
 static int avx_context_enabled = 0;
 static int clean_fx_state_initialized = 0;
 
-static void save_fpu_simd_state(struct StThreadP_PlatformData *platform_data)
+static StStatus allocate_xstate_buffer(union StA_XStateBuffer **bufferout)
 {
-    if (xsave_context_enabled) {
-        StA_XSave(&platform_data->xstate_buffer, xstate_mask);
-    } else {
-        StA_FXSave(&platform_data->xstate_buffer.fx);
+    return StPool_AllocateClearAligned(
+        sizeof(union StA_XStateBuffer),
+        __builtin_ctzll((unsigned long long)__alignof__(union StA_XStateBuffer)),
+        (void **)bufferout
+    );
+}
+
+static StStatus ensure_xstate_buffer(struct StThreadP_PlatformData *platform_data)
+{
+    if (!platform_data) return STATUS_INVALID_VALUE;
+    if (platform_data->xstate_buffer) return STATUS_SUCCESS;
+
+    return allocate_xstate_buffer(&platform_data->xstate_buffer);
+}
+
+static uint64_t get_xstate_bv(const union StA_XStateBuffer *xstate_buffer)
+{
+    const uint64_t *xstate_bv =
+        (const uint64_t *)((const uint8_t *)xstate_buffer + XSTATE_HEADER_OFFSET);
+
+    return *xstate_bv;
+}
+
+static StStatus save_fpu_simd_state(struct StThreadP_PlatformData *platform_data)
+{
+    StStatus status;
+
+    if (!platform_data) return STATUS_INVALID_VALUE;
+
+    if (xsave_context_enabled && !platform_data->xstate_buffer) {
+        memset(&scratch_xstate_storage, 0, sizeof(scratch_xstate_storage));
+        StA_XSave(&scratch_xstate_storage, xstate_mask);
+
+        if ((get_xstate_bv(&scratch_xstate_storage) & xstate_mask) == 0) {
+            return STATUS_SUCCESS;
+        }
+
+        status = allocate_xstate_buffer(&platform_data->xstate_buffer);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        memcpy(platform_data->xstate_buffer, &scratch_xstate_storage, sizeof(scratch_xstate_storage));
+        return STATUS_SUCCESS;
     }
+
+    status = ensure_xstate_buffer(platform_data);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (xsave_context_enabled) {
+        StA_XSave(platform_data->xstate_buffer, xstate_mask);
+    } else {
+        StA_FXSave(&platform_data->xstate_buffer->fx);
+    }
+
+    return STATUS_SUCCESS;
 }
 
 static void restore_fpu_simd_state(const struct StThreadP_PlatformData *platform_data)
 {
+    const union StA_XStateBuffer *xstate_buffer;
+
+    xstate_buffer =
+        platform_data && platform_data->xstate_buffer ? platform_data->xstate_buffer
+                                                      : clean_xstate_buffer;
+
     if (xsave_context_enabled) {
-        StA_XRestore(&platform_data->xstate_buffer, xstate_mask);
+        StA_XRestore(xstate_buffer, xstate_mask);
     } else {
-        StA_FXRestore((union StA_FXSaveBuffer *)&platform_data->xstate_buffer.fx);
+        StA_FXRestore((union StA_FXSaveBuffer *)&xstate_buffer->fx);
     }
 }
 
 StStatus StThreadP_InitializeFpuSimdState(void)
 {
+    StStatus status;
     struct StThreadP_PlatformData saved_platform_data;
+    struct StThreadP_PlatformData clean_platform_data;
 
     if (clean_fx_state_initialized) return STATUS_ALREADY_PERFORMED;
 
@@ -84,8 +146,12 @@ StStatus StThreadP_InitializeFpuSimdState(void)
     avx_context_enabled = xsave_context_enabled && g_p_cpu_features->has_avx;
     xstate_mask = xsave_context_enabled ? (avx_context_enabled ? 0x7ULL : 0x3ULL) : 0;
 
+    memset(&saved_xstate_storage, 0, sizeof(saved_xstate_storage));
     memset(&saved_platform_data, 0, sizeof(saved_platform_data));
-    save_fpu_simd_state(&saved_platform_data);
+    saved_platform_data.xstate_buffer = &saved_xstate_storage;
+    status = save_fpu_simd_state(&saved_platform_data);
+    if (!CHECK_SUCCESS(status)) return status;
+
     StA_FNInit();
     StA_LdMxcsr(0x1F80);
     if (avx_context_enabled) {
@@ -95,7 +161,11 @@ StStatus StThreadP_InitializeFpuSimdState(void)
     }
 
     memset(&clean_platform_data, 0, sizeof(clean_platform_data));
-    save_fpu_simd_state(&clean_platform_data);
+    memset(&clean_xstate_storage, 0, sizeof(clean_xstate_storage));
+    clean_platform_data.xstate_buffer = &clean_xstate_storage;
+    status = save_fpu_simd_state(&clean_platform_data);
+    if (!CHECK_SUCCESS(status)) return status;
+
     restore_fpu_simd_state(&saved_platform_data);
 
     clean_fx_state_initialized = 1;
@@ -114,7 +184,15 @@ void StThreadP_InitializePlatformData(struct StThread *th)
         );
     }
 
-    memcpy(&th->platform_data, &clean_platform_data, sizeof(th->platform_data));
+    memset(&th->platform_data, 0, sizeof(th->platform_data));
+}
+
+void StThreadP_FreePlatformData(struct StThread *th)
+{
+    if (!th || !th->platform_data.xstate_buffer) return;
+
+    StPool_Free(th->platform_data.xstate_buffer);
+    th->platform_data.xstate_buffer = NULL;
 }
 
 static int should_use_kernel_stack_cache(const struct StThread *th)
@@ -470,7 +548,8 @@ StStatus StThreadP_Switch(
     current->kmode_stack_ptr = (void *)((uintptr_t)ctx - 8);
 
     /* save FPU/SIMD registers */
-    save_fpu_simd_state(&current->platform_data);
+    status = save_fpu_simd_state(&current->platform_data);
+    if (!CHECK_SUCCESS(status)) return status;
 
     /* switch address space */
     if (next->type == THREAD_TYPE_USER) {
@@ -515,6 +594,14 @@ StStatus StThreadP_Switch(
     *next_stack_ptr = next->kmode_stack_ptr;
 
     return STATUS_SUCCESS;
+}
+
+void StThreadP_IdleUntilInterrupt(void)
+{
+    uint32_t irqstate = StA_SaveInterrupt();
+
+    StA_EnableInterruptAndHalt();
+    StA_RestoreInterrupt(irqstate);
 }
 
 __attribute__((noinline)) __externally_visible void *_StThreadP_DoYield(

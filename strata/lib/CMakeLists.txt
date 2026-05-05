@@ -19,7 +19,9 @@ if (CONFIG_ENABLE_ACPI)
 
     target_compile_features(uacpi.lib PUBLIC c_std_11)
     target_link_libraries(uacpi.lib gcc)
-    target_compile_definitions(uacpi.lib PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_BAREBONES_MODE=1)
+    target_compile_definitions(uacpi.lib PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_NATIVE_ALLOC_ZEROED=1) # TODO: revert to UACPI_BAREBONES_MODE=1
+
+    set(UACPI_INCLUDES ${UACPI_INCLUDES} PARENT_SCOPE) # TODO: remove this line
 
     target_include_directories(uacpi.lib PRIVATE ${UACPI_INCLUDES})
     target_sources(uacpi.lib PRIVATE ${UACPI_SOURCES})

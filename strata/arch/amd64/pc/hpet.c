@@ -18,29 +18,30 @@
 #include <strata/macros.h>
 #include <strata/mm.h>
 #include <strata/mm/types.h>
+#include <strata/raw_spinlock.h>
 
 #define MODULE_NAME "hpet"
 
-#define HPET_REG_GENERAL_CAP_ID 0x000
-#define HPET_REG_GENERAL_CONFIG 0x010
-#define HPET_REG_GENERAL_INTSTS 0x020
-#define HPET_REG_MAIN_COUNTER   0x0F0
-#define HPET_REG_TIMER0_CONFIG  0x100
+#define HPET_REG_GENERAL_CAP_ID    0x000
+#define HPET_REG_GENERAL_CONFIG    0x010
+#define HPET_REG_GENERAL_INTSTS    0x020
+#define HPET_REG_MAIN_COUNTER      0x0F0
+#define HPET_REG_TIMER0_CONFIG     0x100
 #define HPET_REG_TIMER0_COMPARATOR 0x108
 
-#define HPET_GENERAL_ENABLE               (1ULL << 0)
-#define HPET_GENERAL_LEGACY_REPLACEMENT   (1ULL << 1)
+#define HPET_GENERAL_ENABLE             (1ULL << 0)
+#define HPET_GENERAL_LEGACY_REPLACEMENT (1ULL << 1)
 
-#define HPET_CAP_COUNTER_64BIT            (1ULL << 13)
-#define HPET_CAP_LEGACY_REPLACEMENT       (1ULL << 15)
-#define HPET_CAP_PERIOD_FS_SHIFT          32
+#define HPET_CAP_COUNTER_64BIT      (1ULL << 13)
+#define HPET_CAP_LEGACY_REPLACEMENT (1ULL << 15)
+#define HPET_CAP_PERIOD_FS_SHIFT    32
 
-#define HPET_TIMER_INT_TYPE_LEVEL         (1ULL << 1)
-#define HPET_TIMER_INT_ENABLE             (1ULL << 2)
-#define HPET_TIMER_TYPE_PERIODIC          (1ULL << 3)
-#define HPET_TIMER_PERIODIC_CAPABLE       (1ULL << 4)
-#define HPET_TIMER_SET_COMPARATOR_VALUE   (1ULL << 6)
-#define HPET_TIMER_FORCE_32BIT            (1ULL << 8)
+#define HPET_TIMER_INT_TYPE_LEVEL       (1ULL << 1)
+#define HPET_TIMER_INT_ENABLE           (1ULL << 2)
+#define HPET_TIMER_TYPE_PERIODIC        (1ULL << 3)
+#define HPET_TIMER_PERIODIC_CAPABLE     (1ULL << 4)
+#define HPET_TIMER_SET_COMPARATOR_VALUE (1ULL << 6)
+#define HPET_TIMER_FORCE_32BIT          (1ULL << 8)
 
 static uintptr_t hpet_mmio_base;
 static uint64_t hpet_period_fs;
@@ -48,6 +49,7 @@ static uint64_t hpet_counter_hz;
 static int hpet_counter_is_64bit;
 static int hpet_initialized;
 static uint64_t hpet_last_counter_value;
+static struct StRawSpinlock hpet_lock;
 
 static uint64_t read_hpet64(uintptr_t offset)
 {
@@ -93,6 +95,8 @@ StStatus StHpetP_Init(void)
     uint64_t config;
 
     if (hpet_initialized) return STATUS_ALREADY_PERFORMED;
+
+    StRawSpinlock_Init(&hpet_lock);
 
     uacpi_status = uacpi_table_find_by_signature(ACPI_HPET_SIGNATURE, &table);
     if (uacpi_unlikely_error(uacpi_status)) {
@@ -152,6 +156,8 @@ StStatus StHpetP_Init(void)
         hpet_counter_is_64bit ? "64-bit" : "32-bit"
     );
 
+    uacpi_table_unref(&table);
+
     return STATUS_SUCCESS;
 #endif
 }
@@ -164,6 +170,7 @@ int StHpetP_IsInitialized(void)
 uint64_t StHpetP_GetMainCounter(void)
 {
     uint64_t raw_value;
+    uint32_t irqstate;
 
     if (!hpet_initialized) return 0;
 
@@ -173,11 +180,15 @@ uint64_t StHpetP_GetMainCounter(void)
         return raw_value;
     }
 
+    StRawSpinlock_LockAndSaveIrq(&hpet_lock, &irqstate);
+
     if ((uint32_t)raw_value < (uint32_t)hpet_last_counter_value) {
         hpet_last_counter_value += 1ULL << 32;
     }
     hpet_last_counter_value =
         (hpet_last_counter_value & ~UINT32_C(0xFFFFFFFF)) | (uint32_t)raw_value;
+
+    StRawSpinlock_UnlockAndRestoreIrq(&hpet_lock, irqstate);
 
     return hpet_last_counter_value;
 }
@@ -231,7 +242,8 @@ StStatus StHpetP_SetOneshot(uint64_t us __in)
     if (delta_ticks == 0) return STATUS_INVALID_VALUE;
 
     timer_config = read_hpet64(HPET_REG_TIMER0_CONFIG);
-    timer_config &= ~(HPET_TIMER_INT_TYPE_LEVEL | HPET_TIMER_TYPE_PERIODIC | HPET_TIMER_FORCE_32BIT);
+    timer_config &=
+        ~(HPET_TIMER_INT_TYPE_LEVEL | HPET_TIMER_TYPE_PERIODIC | HPET_TIMER_FORCE_32BIT);
     timer_config |= HPET_TIMER_INT_ENABLE;
     write_hpet64(HPET_REG_TIMER0_CONFIG, timer_config);
 

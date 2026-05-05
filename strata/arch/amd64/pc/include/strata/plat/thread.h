@@ -11,18 +11,14 @@
 struct StThreadP_PlatformData {
     uintptr_t fs_base;
     uintptr_t gs_base;
-
-    /*
-     * TODO: Thread allocation does not yet guarantee the 64-byte alignment
-     * required by XSAVE/XRSTOR buffers. Fix allocation alignment next.
-     */
-    union StA_XStateBuffer xstate_buffer;
+    union StA_XStateBuffer *xstate_buffer;
 };
 
 struct StThread;
 
 StStatus StThreadP_InitializeFpuSimdState(void);
 void StThreadP_InitializePlatformData(struct StThread *th __inout);
+void StThreadP_FreePlatformData(struct StThread *th __inout);
 
 StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in);
 StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in);
@@ -47,5 +43,6 @@ StStatus StThreadP_Switch(
 );
 
 void StThreadP_Yield(void);
+void StThreadP_IdleUntilInterrupt(void);
 
 #endif  // __STRATA_PLAT_THREAD_H__

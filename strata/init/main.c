@@ -1,4 +1,4 @@
-#include "strata/plat/cpulocal.h"
+#include "_deps/uacpi_full_featured-src/include/uacpi/kernel_api.h"
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -13,6 +13,7 @@
 #include <strata/arch/intrinsics/misc.h>
 #include <strata/arch/mmu.h>
 
+#include <strata/plat/cpulocal.h>
 #include <strata/plat/time.h>
 
 #include <strata/compiler.h>
@@ -43,19 +44,19 @@ extern struct bootinfo_table_header *_pc_bootinfo_table;
 struct print_state {
     uint16_t *framebuffer;
     uint32_t width, pitch, height;
-    uint32_t cursor_col, cursor_row;
+    uint32_t cursor1_col, cursor1_row;
+    uint32_t cursor2_col, cursor2_row;
 };
 
 int early_print_char(void *_state, char ch)
 {
     struct print_state *state = _state;
     uint16_t *framebuffer;
-    uint32_t width, height, pitch, line_diff;
+    uint32_t width, height, line_diff;
 
     framebuffer = state->framebuffer;
     width = state->width;
     height = state->height;
-    pitch = state->pitch;
 
     if (!width) return 1;
 
@@ -65,29 +66,29 @@ int early_print_char(void *_state, char ch)
     case '\0':
         return 1;
     case '\n':
-        state->cursor_row++;
+        state->cursor1_row++;
     case '\r':
-        state->cursor_col = 0;
+        state->cursor1_col = 0;
         break;
     case '\t':
-        state->cursor_col = (state->cursor_col + 8) & ~7;
+        state->cursor1_col = (state->cursor1_col + 8) & ~7;
         break;
     case '\b':
-        state->cursor_col--;
+        state->cursor1_col--;
         break;
     default:
-        framebuffer[(state->cursor_row * width) + state->cursor_col] = ch | 0x0700;
-        state->cursor_col++;
+        framebuffer[(state->cursor1_row * width) + state->cursor1_col] = ch | 0x0700;
+        state->cursor1_col++;
         break;
     }
 
-    if (state->cursor_col >= width - 22) {
-        state->cursor_row += state->cursor_col / (width - 22);
-        state->cursor_col %= width - 22;
+    if (state->cursor1_col >= width - 22) {
+        state->cursor1_row += state->cursor1_col / (width - 22);
+        state->cursor1_col %= width - 22;
     }
 
-    if (state->cursor_row >= height) {
-        line_diff = state->cursor_row - height + 1;
+    if (state->cursor1_row >= height) {
+        line_diff = state->cursor1_row - height + 1;
         for (uint32_t i = 0; i < height - line_diff; i++) {
             memcpy(
                 &framebuffer[(size_t)i * width],
@@ -102,7 +103,71 @@ int early_print_char(void *_state, char ch)
                 sizeof(*framebuffer) * (width - 22)
             );
         }
-        state->cursor_row = height - 1;
+        state->cursor1_row = height - 1;
+    }
+
+    StThread_UnlockPreemption();
+
+    return 0;
+}
+
+int early_print_char2(void *_state, char ch)
+{
+    struct print_state *state = _state;
+    uint16_t *framebuffer;
+    uint32_t width, height, line_diff;
+
+    framebuffer = state->framebuffer;
+    width = state->width;
+    height = state->height;
+
+    if (!width) return 1;
+
+    StThread_LockPreemption();
+
+    switch (ch) {
+    case '\0':
+        return 1;
+    case '\n':
+        state->cursor2_row++;
+    case '\r':
+        state->cursor2_col = 58;
+        break;
+    case '\t':
+        state->cursor2_col = (state->cursor2_col + 8) & ~7;
+        break;
+    case '\b':
+        state->cursor2_col--;
+        break;
+    default:
+        framebuffer[(state->cursor2_row * width) + state->cursor2_col] = ch | 0x0700;
+        state->cursor2_col++;
+        break;
+    }
+
+    if (state->cursor2_col >= width) {
+        state->cursor2_row += state->cursor2_col / (width - 58);
+        state->cursor2_col %= width - 58;
+        state->cursor2_col += 58;
+    }
+
+    if (state->cursor2_row >= height) {
+        line_diff = state->cursor2_row - height + 1;
+        for (uint32_t i = 0; i < height - line_diff; i++) {
+            memcpy(
+                &framebuffer[((size_t)i * width) + 58],
+                &framebuffer[(((size_t)i + line_diff) * width) + 58],
+                sizeof(*framebuffer) * (width - 58)
+            );
+        }
+        for (uint32_t i = 0; i < line_diff; i++) {
+            memset(
+                &framebuffer[(((size_t)height - line_diff + i) * width) + 58],
+                0,
+                sizeof(*framebuffer) * (width - 58)
+            );
+        }
+        state->cursor2_row = height - 1;
     }
 
     StThread_UnlockPreemption();
@@ -598,7 +663,7 @@ static void thread4_main(struct StThread *th)
         StPmm_GetFreeFrameCount(&free_frames);
         StThread_GetCount(&thread_count);
         StProcess_GetCount(&process_count);
-        uptime_us = StTimeP_GetUptimeMicroseconds();
+        uptime_us = StTimeP_GetUptimeNanoseconds() / 1000;
         syscall_count = atomic_load(&StCpuLocalP_GetData()->syscall_count);
         irq_count = atomic_load(&StCpuLocalP_GetData()->irq_count);
         ctxswitch_count = atomic_load(&StCpuLocalP_GetData()->ctxswitch_count);
@@ -777,7 +842,9 @@ __noreturn void main(void)
     pstate.width = fbent->width;
     pstate.height = fbent->height;
     pstate.pitch = fbent->pitch;
-    pstate.cursor_col = pstate.cursor_row = 0;
+    pstate.cursor1_col = pstate.cursor1_row = 0;
+    pstate.cursor2_col = 58;
+    pstate.cursor2_row = 10;
 
     void *fb = pstate.framebuffer;
     memset(fb, 0, (size_t)fbent->pitch * fbent->height);
@@ -944,6 +1011,28 @@ __noreturn void main(void)
         LOG_WARN(LM_CAT_UNCLASSIFIED, "main: failed to create thread4 (status=%08X)\n", status);
     }
 
+    extern int acpi_module_main(uint64_t rsdp_base);
+    extern void acpi_module_shutdown(void);
+    uacpi_phys_addr rsdp_base;
+
+    uacpi_kernel_get_rsdp(&rsdp_base);
+    acpi_module_main(rsdp_base);
+
+    for (const char *s = "poweroff in "; *s; s++) {
+        early_print_char2(&pstate, *s);
+    }
+
+    for (int i = 5; i > 0; i--) {
+        early_print_char2(&pstate, (char)('0' + i));
+        early_print_char2(&pstate, '.');
+        early_print_char2(&pstate, '.');
+        early_print_char2(&pstate, '.');
+        early_print_char2(&pstate, '\n');
+        StThread_Sleep(1000);
+    }
+
+    acpi_module_shutdown();
+
     for (;;) {
         if (StScheduler_ShouldMaintain()) {
             StScheduler_Maintain();
@@ -956,12 +1045,11 @@ __noreturn void main(void)
             uint64_t idle_end_us;
             StThread_RunDeferredReap((St_PageCount)64);
 
-            idle_start_us = StTimeP_GetUptimeMicroseconds();
+            idle_start_us = StTimeP_GetUptimeNanoseconds() / 1000;
             uint32_t intstatus = StA_SaveInterrupt();
-            StA_EnableInterrupt();
-            StA_Hlt();
+            StA_EnableInterruptAndHalt();
             StA_RestoreInterrupt(intstatus);
-            idle_end_us = StTimeP_GetUptimeMicroseconds();
+            idle_end_us = StTimeP_GetUptimeNanoseconds() / 1000;
 
             if (idle_end_us > idle_start_us) {
                 StScheduler_AccountIdleRuntime(idle_end_us - idle_start_us);

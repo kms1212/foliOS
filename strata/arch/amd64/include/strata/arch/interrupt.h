@@ -26,10 +26,16 @@ struct StA_InterruptFrame {
     RESERVE_2BYTES;
 } __packed;
 
+__always_inline void StA_EnableInterruptAndHalt(void)
+{
+    __asm__ volatile("sti; hlt" : : : "memory");
+}
+
 __always_inline void StA_EnableInterrupt(void)
 {
     StA_Sti();
 }
+
 __always_inline void StA_DisableInterrupt(void)
 {
     StA_Cli();

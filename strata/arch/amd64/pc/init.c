@@ -1,5 +1,4 @@
 #include "config.h"
-#include "strata/plat/interrupt_constants.h"
 
 #include <inttypes.h>
 #include <stdint.h>
@@ -27,6 +26,7 @@
 #include <strata/plat/gdt.h>
 #include <strata/plat/hpet.h>
 #include <strata/plat/interrupt.h>
+#include <strata/plat/interrupt_constants.h>
 #include <strata/plat/ioapic.h>
 #include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
@@ -248,6 +248,16 @@ static StStatus init_apic(void)
         if (!CHECK_SUCCESS(status)) return status;
     }
 
+    uacpi_status = uacpi_table_unref(&table);
+    if (uacpi_unlikely_error(uacpi_status)) {
+        LOG_ERROR(
+            LM_CAT_UNCLASSIFIED,
+            "could not unref MADT: %s\n",
+            uacpi_status_to_string(uacpi_status)
+        );
+        return MAKE_UACPI_STATUS(uacpi_status);
+    }
+
     return STATUS_SUCCESS;
 }
 
@@ -334,7 +344,7 @@ static void dump_acpi(void)
     struct acpi_madt *madt;
     struct acpi_hpet *hpet;
 
-    if (!uacpi_table_fadt(&fadt)) {
+    if (!uacpi_unlikely_error(uacpi_table_fadt(&fadt))) {
         LOG_DEBUG(LM_CAT_ACPI, "FADT: 0x%p\n", (void *)fadt);
 
         LOG_DEBUG(LM_CAT_ACPI, "\tPreferred PM Profile: %d\n", fadt->preferred_pm_profile);
@@ -421,9 +431,11 @@ static void dump_acpi(void)
         if (fadt->hdr.revision >= 3) {
             LOG_DEBUG(LM_CAT_ACPI, "\tIA-PC Boot Architecture Flags: %04X\n", fadt->iapc_boot_arch);
         }
+
+        uacpi_table_unref(&table);
     }
 
-    if (!uacpi_table_find_by_signature(ACPI_MADT_SIGNATURE, &table)) {
+    if (!uacpi_unlikely_error(uacpi_table_find_by_signature(ACPI_MADT_SIGNATURE, &table))) {
         madt = table.ptr;
         LOG_DEBUG(LM_CAT_ACPI, "MADT: 0x%p\n", (void *)madt);
 
@@ -505,9 +517,11 @@ static void dump_acpi(void)
 
             entry = (void *)((uint8_t *)entry + entry->header.length);
         }
+
+        uacpi_table_unref(&table);
     }
 
-    if (!uacpi_table_find_by_signature(ACPI_HPET_SIGNATURE, &table)) {
+    if (!uacpi_unlikely_error(uacpi_table_find_by_signature(ACPI_HPET_SIGNATURE, &table))) {
         hpet = table.ptr;
         LOG_DEBUG(LM_CAT_ACPI, "HPET: 0x%p\n", (void *)hpet);
 
@@ -524,6 +538,8 @@ static void dump_acpi(void)
         LOG_DEBUG(LM_CAT_ACPI, "\tNumber: %u\n", hpet->number);
         LOG_DEBUG(LM_CAT_ACPI, "\tMinimum Clock Tick: %u\n", hpet->min_clock_tick);
         LOG_DEBUG(LM_CAT_ACPI, "\tFlags: %02X\n", hpet->flags);
+
+        uacpi_table_unref(&table);
     }
 }
 
