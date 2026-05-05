@@ -1,19 +1,19 @@
+#ifndef __STDLIB_H__
+#define __STDLIB_H__
+
 #ifdef TESTING
+#    undef __STDLIB_H__
 #    include_next <stdlib.h>
 
 #else
+#    include <stddef.h>
 
-#    ifndef __STDLIB_H__
-#        define __STDLIB_H__
+#    include <strata/compiler.h>
 
-#        include <stddef.h>
+#    define EXIT_SUCCESS 0
+#    define EXIT_FAILURE 1
 
-#        include <strata/compiler.h>
-
-#        define EXIT_SUCCESS 0
-#        define EXIT_FAILURE 1
-
-#        define RAND_MAX 0x7FFF
+#    define RAND_MAX 0x7FFF
 
 double atof(const char *str);
 
@@ -86,6 +86,6 @@ void *realloc(void *ptr, size_t size);
 
 void free(void *ptr);
 
-#    endif  // __STDLIB_H__
-
 #endif
+
+#endif  // __STDLIB_H__
