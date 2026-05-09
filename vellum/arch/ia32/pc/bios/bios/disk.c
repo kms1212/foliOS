@@ -194,6 +194,10 @@ status_t VlBiosP_WriteDiskExtended(uint8_t drive, lba_t lba, uint16_t count, con
 
 status_t VlBiosP_GetDiskParamsExtended(uint8_t drive, struct bios_extended_drive_params *params)
 {
+    if (params) {
+        params->table_size = sizeof(*params);
+    }
+
     struct bioscall_regs regs = {
         .a.b.h = 0x48,
         .d.b.l = drive,

@@ -26,6 +26,7 @@ static uint8_t sect_buf[4096] __aligned(16);
 static uint8_t clus_buf[4096] __aligned(16);
 static struct fat_bpb_sector *bpb = (struct fat_bpb_sector *)0x7C00;
 static struct chs geom;
+static int use_packet_disk_read;
 
 int memcmp(const void *p1, const void *p2, size_t len)
 {
@@ -67,6 +68,10 @@ static status_t read_disk(lba_t lba, uint8_t count, void *buf)
 
     lba += bpb->hidden_sector_count;
 
+    if (use_packet_disk_read) {
+        return VlBiosP_ReadDiskExtended(_pc_boot_drive, lba, count, buf);
+    }
+
     chs.cylinder = (int)(lba / (lba_t)(geom.head * geom.sector));
     chs.head = (int)((lba / geom.sector) % geom.head);
     chs.sector = (int)((lba % geom.sector) + 1);
@@ -80,18 +85,25 @@ static status_t read_disk(lba_t lba, uint8_t count, void *buf)
 void s1main(void)
 {
     status_t status;
+    uint16_t edd_features = 0;
 
-    PRINT_STR("[stage1] getting disk parameters...\r\n");
-    status = VlBiosP_GetDiskParams(_pc_boot_drive, NULL, NULL, &geom, NULL);
-    if (!CHECK_SUCCESS(status)) {
-        PRINT_STR("[stage1] failed to request disk geometry: ");
-        PRINT_HEX(status);
-        return;
+    PRINT_STR("[stage1] checking disk extensions...\r\n");
+    status = VlBiosP_CheckDiskExtension(_pc_boot_drive, NULL, &edd_features);
+    use_packet_disk_read = CHECK_SUCCESS(status) && (edd_features & EXT_FEATURE_PACKET);
+
+    if (!use_packet_disk_read) {
+        PRINT_STR("[stage1] getting disk parameters...\r\n");
+        status = VlBiosP_GetDiskParams(_pc_boot_drive, NULL, NULL, &geom, NULL);
+        if (!CHECK_SUCCESS(status)) {
+            PRINT_STR("[stage1] failed to request disk geometry: ");
+            PRINT_HEX(status);
+            return;
+        }
     }
 
     uint16_t fat_lba = bpb->reserved_sector_count;
-    uint32_t rootdir_lba = fat_lba + bpb->fat_size16 * bpb->fat_count;
-    uint32_t cluster_start_lba = rootdir_lba + (bpb->root_entry_count * 32 + 511) / 512;
+    uint32_t rootdir_lba = fat_lba + (bpb->fat_size16 * bpb->fat_count);
+    uint32_t cluster_start_lba = rootdir_lba + (((bpb->root_entry_count * 32) + 511) / 512);
     uint16_t bytes_per_cluster = bpb->bytes_per_sector * bpb->sectors_per_cluster;
 
     union fat_dir_entry *entry = NULL;
@@ -139,7 +151,7 @@ file_found: {
     PRINT_STR("[stage1] loading file...\r\n");
     while (current_cluster <= FAT12_MAX_CLUSTER) {
         status = read_disk(
-            cluster_start_lba + (current_cluster - 2) * bpb->sectors_per_cluster,
+            cluster_start_lba + ((current_cluster - 2) * bpb->sectors_per_cluster),
             bpb->sectors_per_cluster,
             clus_buf
         );
@@ -149,16 +161,16 @@ file_found: {
             return;
         }
 
-        for (int i = 0; i < bytes_per_cluster / sizeof(uint32_t); i++) {
+        for (unsigned int i = 0; i < bytes_per_cluster / sizeof(uint32_t); i++) {
             *load_dest++ = ((uint32_t *)clus_buf)[i];
         }
         print_str(".");
 
         if (current_cluster & 1) {
-            current_cluster = (sect_buf[current_cluster * 3 / 2 + 1] << 4) |
+            current_cluster = (sect_buf[(current_cluster * 3 / 2) + 1] << 4) |
                 (sect_buf[current_cluster * 3 / 2] >> 4);
         } else {
-            current_cluster = ((sect_buf[current_cluster * 3 / 2 + 1] & 0xF) << 8) |
+            current_cluster = ((sect_buf[(current_cluster * 3 / 2) + 1] & 0xF) << 8) |
                 sect_buf[current_cluster * 3 / 2];
         }
     }
@@ -168,6 +180,4 @@ file_found: {
     *(void **)&stage2_entry = (void *)__stage2_start;
 
     stage2_entry();
-
-    return;
 }

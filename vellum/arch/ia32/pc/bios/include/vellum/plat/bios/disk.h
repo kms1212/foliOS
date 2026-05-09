@@ -29,6 +29,15 @@ struct bios_disk_base_table {
 #define EDD_VER_2_1 0x21
 #define EDD_VER_3_0 0x30
 
+#define EDD_INFO_REMOVABLE (1U << 2)
+
+#define BIOS_DISK_MAX_PACKET_SECTORS      127
+#define BIOS_DISK_TRANSFER_BUFFER_BASE    0x00080000UL
+#define BIOS_DISK_TRANSFER_BUFFER_SIZE    (BIOS_DISK_MAX_PACKET_SECTORS * 512)
+#define _pc_bios_disk_transfer_buffer     ((uint8_t *)(uintptr_t)BIOS_DISK_TRANSFER_BUFFER_BASE)
+
+#define BIOS_DISK_RESOURCE_SKIP_PARTITIONS (1UL << 0)
+
 struct bios_extended_drive_params {
     uint16_t table_size;
     uint16_t flags;

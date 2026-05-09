@@ -344,6 +344,8 @@ static status_t read_sector(struct filesystem *fs, lba_t lba)
     return STATUS_SUCCESS;
 }
 
+static status_t get_next_cluster(struct filesystem *fs, fatcluster_t *cluster, unsigned int count);
+
 static status_t read_cluster(struct filesystem *fs, fatcluster_t cluster)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
@@ -357,6 +359,63 @@ static status_t read_cluster(struct filesystem *fs, fatcluster_t cluster)
     if (!CHECK_SUCCESS(status)) return status;
 
     data->databuf_lba_start = lba;
+
+    return STATUS_SUCCESS;
+}
+
+static status_t read_contiguous_clusters(
+    struct filesystem *fs,
+    fatcluster_t start_cluster,
+    void *buf,
+    size_t max_cluster_count,
+    size_t *read_cluster_count,
+    fatcluster_t *next_cluster,
+    int *has_next_cluster
+)
+{
+    struct fat_data *data = (struct fat_data *)fs->data;
+    status_t status;
+    fatcluster_t current_cluster = start_cluster;
+    size_t cluster_count = 1;
+
+    if (has_next_cluster) *has_next_cluster = 0;
+
+    while (cluster_count < max_cluster_count) {
+        fatcluster_t candidate = current_cluster;
+
+        status = get_next_cluster(fs, &candidate, 1);
+        if (!CHECK_SUCCESS(status)) break;
+        if (candidate != current_cluster + 1) {
+            if (next_cluster) *next_cluster = candidate;
+            if (has_next_cluster) *has_next_cluster = 1;
+            break;
+        }
+
+        current_cluster = candidate;
+        cluster_count++;
+    }
+
+    if (cluster_count == max_cluster_count) {
+        fatcluster_t candidate = current_cluster;
+
+        status = get_next_cluster(fs, &candidate, 1);
+        if (CHECK_SUCCESS(status)) {
+            if (next_cluster) *next_cluster = candidate;
+            if (has_next_cluster) *has_next_cluster = 1;
+        }
+    }
+
+    status = data->blkif->read(
+        data->blkdev,
+        fatcluster_to_sector(fs, start_cluster),
+        buf,
+        cluster_count * data->sectors_per_cluster,
+        NULL
+    );
+    if (!CHECK_SUCCESS(status)) return status;
+
+    data->databuf_lba_start = -1;
+    if (read_cluster_count) *read_cluster_count = cluster_count;
 
     return STATUS_SUCCESS;
 }
@@ -802,6 +861,34 @@ static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result
         uint32_t read_len = data->cluster_size - cluster_offset;
         if (read_len > len) {
             read_len = len;
+        }
+
+        if (cluster_offset == 0 && len >= data->cluster_size * 2) {
+            size_t read_cluster_count = 0;
+            fatcluster_t next_cluster = 0;
+            int has_next_cluster = 0;
+            size_t direct_read_len;
+
+            status = read_contiguous_clusters(
+                fs,
+                file_data->current_cluster,
+                buf,
+                len / data->cluster_size,
+                &read_cluster_count,
+                &next_cluster,
+                &has_next_cluster
+            );
+            if (!CHECK_SUCCESS(status)) return status;
+
+            direct_read_len = read_cluster_count * data->cluster_size;
+            len -= direct_read_len;
+            buf = (uint8_t *)buf + direct_read_len;
+            total_read_len += direct_read_len;
+            file_data->cursor += direct_read_len;
+
+            if (!has_next_cluster) break;
+            file_data->current_cluster = next_cluster;
+            continue;
         }
 
         status = read_cluster(fs, file_data->current_cluster);

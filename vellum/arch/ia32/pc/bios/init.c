@@ -135,6 +135,107 @@ static status_t init_pma(void)
     return STATUS_SUCCESS;
 }
 
+static uint8_t get_bios_fixed_disk_count(void)
+{
+    const volatile uint8_t *bda_count = (const volatile uint8_t *)0x475;
+    uint8_t int13_count = 0;
+    uint8_t count = *bda_count;
+    status_t status;
+
+    status = VlBiosP_GetDiskParams(0x80, &int13_count, NULL, NULL, NULL);
+    if (CHECK_SUCCESS(status) && count < int13_count) {
+        count = int13_count;
+    }
+
+    return count;
+}
+
+static uint8_t get_bios_removable_disk_count(void)
+{
+    const volatile uint16_t *equipment = (const volatile uint16_t *)0x410;
+    uint16_t flags = *equipment;
+    uint8_t count = 0;
+
+    if (flags & 0x0001) {
+        count = (uint8_t)(((flags >> 6) & 0x3) + 1);
+    }
+
+    if (!(_pc_boot_drive & 0x80) && count <= _pc_boot_drive) {
+        count = (uint8_t)(_pc_boot_drive + 1);
+    }
+
+    return count;
+}
+
+static status_t probe_bios_disk(
+    struct device_driver *drv, uint8_t drive, int required, int skip_partitions
+)
+{
+    status_t status;
+    struct device *dev = NULL;
+
+    struct resource res[] = {
+        {
+            .type = RT_BUS,
+            .base = drive,
+            .limit = drive,
+            .flags = skip_partitions ? BIOS_DISK_RESOURCE_SKIP_PARTITIONS : 0,
+        },
+    };
+
+    status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
+    if (!CHECK_SUCCESS(status)) {
+        if (required) return status;
+
+        LOG_TRACE("BIOS disk %02X unavailable: %08lX\n", drive, status);
+    }
+
+    return STATUS_SUCCESS;
+}
+
+static status_t init_bios_disks(void)
+{
+    status_t status;
+    struct device_driver *drv;
+    uint8_t fixed_count;
+    uint8_t removable_count;
+
+    status = VlDev_FindDriver("biosdisk", &drv);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = probe_bios_disk(drv, _pc_boot_drive, 1, 0);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    fixed_count = get_bios_fixed_disk_count();
+    for (uint8_t i = 0; i < fixed_count; i++) {
+        uint8_t drive = (uint8_t)(0x80 + i);
+
+        if (drive == _pc_boot_drive) continue;
+
+        status = probe_bios_disk(drv, drive, 0, 0);
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
+    removable_count = get_bios_removable_disk_count();
+    for (uint8_t i = 0; i < removable_count; i++) {
+        uint8_t drive = i;
+
+        if (drive == _pc_boot_drive) continue;
+
+        status = probe_bios_disk(drv, drive, 0, 1);
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
+    for (uint8_t drive = 0xE0; drive < 0xF0; drive++) {
+        if (drive == _pc_boot_drive) continue;
+
+        status = probe_bios_disk(drv, drive, 0, 1);
+        if (!CHECK_SUCCESS(status)) return status;
+    }
+
+    return STATUS_SUCCESS;
+}
+
 static status_t init_nonpnp_devices(int has_acpi)
 {
     status_t status;
@@ -337,108 +438,12 @@ static status_t init_nonpnp_devices(int has_acpi)
             status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
             if (!CHECK_SUCCESS(status)) return status;
         }
+    }
 
-        {
-            LOG_DEBUG("initializing FDC...\n");
-
-            struct device *dev;
-            struct device_driver *drv;
-
-            struct resource res[] = {
-                {
-                    .type = RT_IOPORT,
-                    .base = 0x03F0,
-                    .limit = 0x03F7,
-                    .flags = 0,
-                },
-                {
-                    .type = RT_IRQ,
-                    .base = 0x26,
-                    .limit = 0x26,
-                    .flags = 0,
-                },
-                {
-                    .type = RT_DMA,
-                    .base = 0,
-                    .limit = 0,
-                    .flags = 0,
-                },
-            };
-
-            status = VlDev_FindDriver("fdc_isa", &drv);
-            if (!CHECK_SUCCESS(status)) return status;
-
-            status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
-            if (!CHECK_SUCCESS(status)) return status;
-        }
-
-        {
-            LOG_DEBUG("initializing IDE bus #0...\n");
-
-            struct device *dev;
-            struct device_driver *drv;
-
-            struct resource res[] = {
-                {
-                    .type = RT_IOPORT,
-                    .base = 0x01F0,
-                    .limit = 0x01F7,
-                    .flags = 0,
-                },
-                {
-                    .type = RT_IOPORT,
-                    .base = 0x03F6,
-                    .limit = 0x03F7,
-                    .flags = 0,
-                },
-                {
-                    .type = RT_IRQ,
-                    .base = 0x2E,
-                    .limit = 0x2E,
-                    .flags = 0,
-                },
-            };
-
-            status = VlDev_FindDriver("ide_isa", &drv);
-            if (!CHECK_SUCCESS(status)) return status;
-
-            /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
-            // if (!CHECK_SUCCESS(status)) return status;
-        }
-
-        {
-            LOG_DEBUG("initializing IDE bus #1...\n");
-
-            struct device *dev;
-            struct device_driver *drv;
-
-            struct resource res[] = {
-                {
-                    .type = RT_IOPORT,
-                    .base = 0x0170,
-                    .limit = 0x0177,
-                    .flags = 0,
-                },
-                {
-                    .type = RT_IOPORT,
-                    .base = 0x0376,
-                    .limit = 0x0377,
-                    .flags = 0,
-                },
-                {
-                    .type = RT_IRQ,
-                    .base = 0x2F,
-                    .limit = 0x2F,
-                    .flags = 0,
-                },
-            };
-
-            status = VlDev_FindDriver("ide_isa", &drv);
-            if (!CHECK_SUCCESS(status)) return status;
-
-            /* status = */ drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
-            // if (!CHECK_SUCCESS(status)) return status;
-        }
+    {
+        LOG_DEBUG("initializing BIOS disks...\n");
+        status = init_bios_disks();
+        if (!CHECK_SUCCESS(status)) return status;
     }
 
     {
@@ -585,14 +590,31 @@ static void init_timer(void)
     VlIntP_Unmask(0x20);
 }
 
+static status_t reload_boot_sector(void)
+{
+    status_t status;
+    uint16_t edd_features;
+
+    status = VlBiosP_CheckDiskExtension(_pc_boot_drive, NULL, &edd_features);
+    if (CHECK_SUCCESS(status) && (edd_features & EXT_FEATURE_PACKET)) {
+        return VlBiosP_ReadDiskExtended(_pc_boot_drive, _pc_boot_part_base, 1, _pc_boot_sector);
+    }
+
+    struct chs bootdisk_geom;
+    status = VlBiosP_GetDiskParams(_pc_boot_drive, NULL, NULL, &bootdisk_geom, NULL);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    struct chs chs = VlDisk_LbaToChs(_pc_boot_part_base, bootdisk_geom);
+    return VlBiosP_ReadDisk(_pc_boot_drive, chs, 1, _pc_boot_sector, NULL);
+}
+
 __noreturn void _pc_init(void)
 {
     status_t status;
     int has_acpi = 0;
-    struct chs bootdisk_geom;
 
     freopencookie(NULL, "w", early_stderr_io, stderr);
-    freopencookie(NULL, "w", early_stderr_io, stddbg);
+    freopencookie(NULL, "w", early_stddbg_io, stddbg);
 
     VlLog_SetLevel(LL_DEBUG);
 
@@ -623,17 +645,13 @@ __noreturn void _pc_init(void)
     }
 
     LOG_DEBUG("reloading VBR sector...\n");
-    VlBiosP_GetDiskParams(_pc_boot_drive, NULL, NULL, &bootdisk_geom, NULL);
-    struct chs chs = VlDisk_LbaToChs(_pc_boot_part_base, bootdisk_geom);
-    status = VlBiosP_ReadDisk(_pc_boot_drive, chs, 1, _pc_boot_sector, NULL);
+    status = reload_boot_sector();
     if (!CHECK_SUCCESS(status)) {
         VlP_Panic(
             status,
-            "could not reload VBR sector %02X:(%d, %d, %d)",
+            "could not reload VBR sector %02X:%08" PRIX32,
             _pc_boot_drive,
-            chs.cylinder,
-            chs.head,
-            chs.sector
+            _pc_boot_part_base
         );
     }
 
@@ -665,34 +683,6 @@ __noreturn void _pc_init(void)
         fprintf(stderr, "init_nonpnp_devices() failed: 0x%08lX\n", status);
         VlP_Panic(status, "failed to initialize essential non-PnP devices");
     }
-
-    // /* Disable BIOS USB emulation */
-    // _bus_pci_cfg_write16(0, 0, 0, 0xC0, 0x2000);
-    // _bus_pci_cfg_write16(
-    //     uhci_device->bus,
-    //     uhci_device->device,
-    //     uhci_device->function,
-    //     PCI_CFGSPACE_COMMAND,
-    //     PCI_COMMAND_BUS_MASTER,
-    // );
-
-    // /* List PCI Devices */
-    // int pci_count = pci_host_scan(pci_devices, ARRAY_SIZE(pci_devices));
-
-    // /* PC Speaker */
-    // VlA_Out8(0x43, 0xb6);
-    // VlA_Out8(0x42, (uint8_t)(pit_value / 10));
-    // VlA_Out8(0x42, (uint8_t)((pit_value / 10) >> 8));
-
-    // for (int i = 0; i < 4; i++) {
-    //     uint64_t tick_start = global_tick;
-    //     uint8_t tmp = VlA_In8(0x61);
-    //     VlA_Out8(0x61, tmp | 3);
-    //     while (global_tick - tick_start < 50) {}
-    //     tick_start = global_tick;
-    //     VlA_Out8(0x61, tmp & 0xFC);
-    //     while (global_tick - tick_start < 50) {}
-    // }
 
     LOG_DEBUG("mounting boot filesystem...\n");
     status = mount_boot_filesystem();

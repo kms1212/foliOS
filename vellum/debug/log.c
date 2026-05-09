@@ -80,7 +80,7 @@ void VlLog_PrintValist(int level, const char *module_name, const char *fmt, va_l
 skip_time:
     if (time_available) {
         fprintf(
-            stdout,
+            stddbg,
             "%d-%02d-%02dT%02d:%02d:%02d.%03dZ %s [%s] ",
             rtctime.year,
             rtctime.month,
@@ -93,9 +93,9 @@ skip_time:
             ll_str[level]
         );
     } else {
-        fprintf(stdout, "%s [%s] ", module_name, ll_str[level]);
+        fprintf(stddbg, "%s [%s] ", module_name, ll_str[level]);
     }
-    vfprintf(stdout, fmt, args);
+    vfprintf(stddbg, fmt, args);
 }
 
 void VlLog_IntSafePrintValist(int level, const char *module_name, const char *fmt, va_list args)
