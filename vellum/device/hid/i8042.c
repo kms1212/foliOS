@@ -17,6 +17,12 @@
 
 #define MODULE_NAME "i8042"
 
+#define CCB_PORT0_IRQ_ENABLE     (1 << 0)
+#define CCB_PORT1_IRQ_ENABLE     (1 << 1)
+#define CCB_PORT0_CLOCK_DISABLE  (1 << 4)
+#define CCB_PORT1_CLOCK_DISABLE  (1 << 5)
+#define CCB_TRANSLATION_ENABLE   (1 << 6)
+
 struct i8042_data {
     uint16_t io_data, io_ctrl;
     int irq_port0, irq_port1;
@@ -84,6 +90,8 @@ static status_t enable_port(struct device *dev, int port)
     struct i8042_data *data = (struct i8042_data *)dev->data;
     status_t status;
     uint8_t prev_ccb;
+    uint8_t irq_enable = port ? CCB_PORT1_IRQ_ENABLE : CCB_PORT0_IRQ_ENABLE;
+    uint8_t clock_disable = port ? CCB_PORT1_CLOCK_DISABLE : CCB_PORT0_CLOCK_DISABLE;
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
@@ -92,7 +100,7 @@ static status_t enable_port(struct device *dev, int port)
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) return status;
 
-    status = write_ccb(dev, prev_ccb | (port ? 0x02 : 0x01));
+    status = write_ccb(dev, (prev_ccb | irq_enable) & ~clock_disable);
     if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
@@ -103,6 +111,8 @@ static status_t disable_port(struct device *dev, int port)
     struct i8042_data *data = (struct i8042_data *)dev->data;
     status_t status;
     uint8_t prev_ccb;
+    uint8_t irq_enable = port ? CCB_PORT1_IRQ_ENABLE : CCB_PORT0_IRQ_ENABLE;
+    uint8_t clock_disable = port ? CCB_PORT1_CLOCK_DISABLE : CCB_PORT0_CLOCK_DISABLE;
 
     status = wait_for_status_register(dev, 0x00, 0x02, 2);
     if (!CHECK_SUCCESS(status)) return status;
@@ -111,7 +121,7 @@ static status_t disable_port(struct device *dev, int port)
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) return status;
 
-    status = write_ccb(dev, prev_ccb & ~(port ? 0x02 : 0x01));
+    status = write_ccb(dev, (prev_ccb & ~irq_enable) | clock_disable);
     if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
@@ -274,7 +284,10 @@ static status_t probe(
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = write_ccb(dev, prev_ccb & ~0x43);
+    status = write_ccb(
+        dev,
+        prev_ccb & ~(CCB_PORT0_IRQ_ENABLE | CCB_PORT1_IRQ_ENABLE | CCB_TRANSLATION_ENABLE)
+    );
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("running controller self-test...\n");
@@ -290,7 +303,10 @@ static status_t probe(
     status = read_ccb(dev, &prev_ccb);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = write_ccb(dev, prev_ccb & ~0x43);
+    status = write_ccb(
+        dev,
+        prev_ccb & ~(CCB_PORT0_IRQ_ENABLE | CCB_PORT1_IRQ_ENABLE | CCB_TRANSLATION_ENABLE)
+    );
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     /* initialize child devices */
