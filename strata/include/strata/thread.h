@@ -59,10 +59,11 @@ struct StThread {
     uintptr_t umode_entry;
 
     struct StThread **wait_list;
+    uint64_t wait_timeout_ms;
+    StStatus wait_status;
     int wait_count;
-    int wait_timeout_ms;
 
-    uint64_t sleep_until_uptime_us;
+    uint64_t sleep_until_uptime_ns;
 
     /*
      * Scheduler metadata:
@@ -71,8 +72,8 @@ struct StThread {
      */
     uint64_t sched_pass;
     uint64_t sched_run_count;
-    uint64_t runtime_total_us;
-    uint64_t last_scheduled_in_us;
+    uint64_t runtime_total_ns;
+    uint64_t last_scheduled_in_ns;
 
     struct StMm_AllocationOwner alloc_owner;
     St_PageCount deferred_reap_page_count;
@@ -103,13 +104,13 @@ StStatus StThread_CreateUser(
 StStatus StThread_Remove(struct StThread *thread __in);
 
 StStatus StThread_GetCount(uint32_t *count __out);
-StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_us __out);
+StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_ns __out);
 void StThread_RunDeferredReap(St_PageCount page_budget __in);
 
 StStatus StThread_Detach(struct StThread *thread __in);
-StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_ms __in);
+StStatus StThread_Wait(struct StThread **list __in, int count __in, uint64_t timeout_ms __in);
 
-StStatus StThread_Sleep(int timeout_ms __in);
+StStatus StThread_Sleep(uint64_t timeout_ms __in);
 
 void StThread_Yield(void);
 

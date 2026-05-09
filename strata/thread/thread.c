@@ -104,6 +104,41 @@ static void remove_thread_from_process(struct StThread *thread)
     thread->process_next = NULL;
 }
 
+static int wait_list_is_ready(struct StThread **list, int count)
+{
+    int ready = 1;
+
+    for (int i = 0; i < count; i++) {
+        if (!list[i]) continue;
+        if (list[i]->state != THREAD_STATE_FINISHED) {
+            ready = 0;
+            continue;
+        }
+
+        list[i] = NULL;
+    }
+
+    return ready;
+}
+
+static uint64_t get_timeout_deadline_ns(uint64_t now_ns, uint64_t timeout_ms)
+{
+    if (timeout_ms == UINT64_MAX) return 0;
+    if (timeout_ms > (UINT64_MAX - now_ns) / 1000000) return UINT64_MAX;
+
+    return now_ns + (timeout_ms * 1000000);
+}
+
+static void finish_current_wait(struct StThread *thread, StStatus status)
+{
+    thread->wait_list = NULL;
+    thread->wait_count = 0;
+    thread->wait_timeout_ms = 0;
+    thread->wait_status = status;
+    thread->sleep_until_uptime_ns = 0;
+    thread->state = THREAD_STATE_RUNNING;
+}
+
 static St_PageCount get_thread_reap_page_count(const struct StThread *thread)
 {
     St_PageCount pages = 0;
@@ -604,14 +639,14 @@ StStatus StThread_GetCount(uint32_t *count __out)
     return STATUS_SUCCESS;
 }
 
-StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_us __out)
+StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_ns __out)
 {
     struct StThread *current_thread;
-    uint64_t now_us;
-    uint64_t total_us;
+    uint64_t now_ns;
+    uint64_t total_ns;
     StStatus status;
 
-    if (!thread || !runtime_us) return STATUS_INVALID_VALUE;
+    if (!thread || !runtime_ns) return STATUS_INVALID_VALUE;
 
     StThread_LockPreemption();
 
@@ -621,15 +656,15 @@ StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_us 
         return status;
     }
 
-    now_us = StTimeP_GetUptimeNanoseconds() / 1000;
-    total_us = thread->runtime_total_us;
+    now_ns = StTimeP_GetUptimeNanoseconds();
+    total_ns = thread->runtime_total_ns;
 
-    if (thread == current_thread && thread->last_scheduled_in_us &&
-        now_us > thread->last_scheduled_in_us) {
-        total_us += now_us - thread->last_scheduled_in_us;
+    if (thread == current_thread && thread->last_scheduled_in_ns &&
+        now_ns > thread->last_scheduled_in_ns) {
+        total_ns += now_ns - thread->last_scheduled_in_ns;
     }
 
-    *runtime_us = total_us;
+    *runtime_ns = total_ns;
     StThread_UnlockPreemption();
 
     return STATUS_SUCCESS;
@@ -656,56 +691,102 @@ StStatus StThread_Detach(struct StThread *thread)
     return STATUS_SUCCESS;
 }
 
-StStatus StThread_Wait(struct StThread **list __in, int count __in, int timeout_ms __in)
+StStatus StThread_Wait(struct StThread **list __in, int count __in, uint64_t timeout_ms __in)
 {
     StStatus status;
     struct StThread *current_thread;
+    uint64_t deadline_ns;
 
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) return status;
 
+    if (count < 0 || (!list && count > 0)) return STATUS_INVALID_VALUE;
+    if (count == 0) return STATUS_SUCCESS;
+
     for (int i = 0; i < count; i++) {
+        if (!list[i]) continue;
         if (list[i]->is_detached) return STATUS_CONFLICTING_STATE;
+    }
+
+    if (wait_list_is_ready(list, count)) {
+        return STATUS_SUCCESS;
     }
 
     StThread_LockPreemption();
 
-    // TODO: implement timeout
+    if (timeout_ms == 0) {
+        StThread_UnlockPreemption();
+        return STATUS_TIMER_EXPIRED;
+    }
 
+    deadline_ns = get_timeout_deadline_ns(StTimeP_GetUptimeNanoseconds(), timeout_ms);
     current_thread->wait_list = list;
     current_thread->wait_count = count;
     current_thread->wait_timeout_ms = timeout_ms;
+    current_thread->wait_status = STATUS_PENDING;
+    current_thread->sleep_until_uptime_ns = deadline_ns;
     current_thread->state = THREAD_STATE_WAITING;
 
     StThread_UnlockPreemption();
 
-    StThread_Yield();
+    for (;;) {
+        uint64_t now_ns;
+
+        StThread_LockPreemption();
+
+        if (current_thread->state != THREAD_STATE_WAITING) {
+            status = current_thread->wait_status;
+            if (status == STATUS_PENDING) status = STATUS_SUCCESS;
+            current_thread->wait_status = STATUS_SUCCESS;
+            StThread_UnlockPreemption();
+            return status;
+        }
+
+        if (wait_list_is_ready(current_thread->wait_list, current_thread->wait_count)) {
+            finish_current_wait(current_thread, STATUS_SUCCESS);
+            StThread_UnlockPreemption();
+            return STATUS_SUCCESS;
+        }
+
+        now_ns = StTimeP_GetUptimeNanoseconds();
+        if (timeout_ms != UINT64_MAX && now_ns >= deadline_ns) {
+            finish_current_wait(current_thread, STATUS_TIMER_EXPIRED);
+            StThread_UnlockPreemption();
+            return STATUS_TIMER_EXPIRED;
+        }
+
+        StThread_UnlockPreemption();
+
+        if (StScheduler_CheckHasOtherRunnableThread()) {
+            StThread_Yield();
+        } else {
+            StThreadP_IdleUntilInterrupt();
+        }
+    }
 
     return STATUS_SUCCESS;
 }
 
-StStatus StThread_Sleep(int timeout_ms __in)
+StStatus StThread_Sleep(uint64_t timeout_ms __in)
 {
     StStatus status;
     struct StThread *current_thread;
-    uint64_t deadline_us;
+    uint64_t deadline_ns;
 
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) return status;
 
-    if (timeout_ms <= 0) return STATUS_SUCCESS;
-
-    deadline_us = (StTimeP_GetUptimeNanoseconds() / 1000) + ((uint64_t)timeout_ms * 1000);
+    deadline_ns = StTimeP_GetUptimeNanoseconds() + (timeout_ms * 1000000);
 
     StThread_LockPreemption();
 
     current_thread->state = THREAD_STATE_SLEEPING;
-    current_thread->sleep_until_uptime_us = deadline_us;
+    current_thread->sleep_until_uptime_ns = deadline_ns;
 
     StThread_UnlockPreemption();
 
     for (;;) {
-        uint64_t now_us;
+        uint64_t now_ns;
 
         StThread_LockPreemption();
 
@@ -714,9 +795,9 @@ StStatus StThread_Sleep(int timeout_ms __in)
             break;
         }
 
-        now_us = StTimeP_GetUptimeNanoseconds() / 1000;
-        if (now_us >= deadline_us) {
-            current_thread->sleep_until_uptime_us = 0;
+        now_ns = StTimeP_GetUptimeNanoseconds();
+        if (now_ns >= deadline_ns) {
+            current_thread->sleep_until_uptime_ns = 0;
             current_thread->state = THREAD_STATE_RUNNING;
             StThread_UnlockPreemption();
             break;

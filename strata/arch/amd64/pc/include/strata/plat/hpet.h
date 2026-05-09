@@ -9,8 +9,8 @@ int StHpetP_IsInitialized(void);
 uint64_t StHpetP_GetMainCounter(void);
 uint64_t StHpetP_GetCounterFrequency(void);
 StStatus StHpetP_SetPeriodic(uint64_t freq_hz __in);
-StStatus StHpetP_SetOneshot(uint64_t us __in);
-StStatus StHpetP_SetOneshotAndBusyWait(uint64_t us __in);
+StStatus StHpetP_SetOneshot(uint64_t ns __in);
+StStatus StHpetP_SetOneshotAndBusyWait(uint64_t ns __in);
 void StHpetP_Stop(void);
 
 #endif  // __STRATA_PLAT_HPET_H__

@@ -1,4 +1,3 @@
-#include "_deps/uacpi_full_featured-src/include/uacpi/kernel_api.h"
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -8,6 +7,8 @@
 #include <string.h>
 
 #include <zstd.h>
+
+#include <uacpi/kernel_api.h>
 
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/misc.h>
@@ -216,7 +217,13 @@ void test_zstd(void)
     StPool_Free(decompressed_buffer);
 }
 
-static void dump_gnt_children(struct StGnt_Node *node, int depth);
+#define DUMP_GNT_ENTRY_BUFFER_SIZE 4096
+
+struct dump_gnt_context {
+    uint8_t *entry_buffer;
+    St_Utf8Char *name_buf;
+    St_Utf32Char *child_name;
+};
 
 static int dump_gnt_node_is_container(const struct StGnt_Node *node)
 {
@@ -244,24 +251,20 @@ static struct StGnt_Node *dump_gnt_find_registered_child(
     return NULL;
 }
 
-static void dump_gnt_print_resolved_node(  // NOLINT(misc-no-recursion)
-    struct StGnt_Node *node, int depth
-)
+static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node *node, int depth)
 {
-    St_Utf8Char name_buf[NODENAME_UTF8_MAX];
-
     if (node == g_gnt_root_local) {
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- /\n", depth, "");
     } else if (node == g_gnt_root_network) {
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- //\n", depth, "");
     } else if (node->type == GNT_NODETYPE_LINK) {
-        StUtf_Utf32ToUtf8(node->name, node->name_len, name_buf, sizeof(name_buf), NULL);
+        StUtf_Utf32ToUtf8(node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL);
         LOG_DEBUG(
             LM_CAT_UNCLASSIFIED,
             "%*s- %s%s\n",
             depth,
             "",
-            (char *)name_buf,
+            (char *)ctx->name_buf,
             dump_gnt_node_is_container(node) ? "/" : ""
         );
         while (node->type == GNT_NODETYPE_LINK) {
@@ -273,86 +276,58 @@ static void dump_gnt_print_resolved_node(  // NOLINT(misc-no-recursion)
             } else if (node == g_gnt_root_network) {
                 LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s-> //\n", depth, "");
             } else {
-                StUtf_Utf32ToUtf8(node->name, node->name_len, name_buf, sizeof(name_buf), NULL);
+                StUtf_Utf32ToUtf8(
+                    node->name,
+                    node->name_len,
+                    ctx->name_buf,
+                    NODENAME_UTF8_MAX + 1,
+                    NULL
+                );
                 LOG_DEBUG(
                     LM_CAT_UNCLASSIFIED,
                     "%*s-> %s%c\n",
                     depth,
                     "",
-                    (char *)name_buf,
+                    (char *)ctx->name_buf,
                     dump_gnt_node_is_container(node) ? '/' : ' '
                 );
             }
         }
         return;
     } else {
-        StUtf_Utf32ToUtf8(node->name, node->name_len, name_buf, sizeof(name_buf), NULL);
+        StUtf_Utf32ToUtf8(node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL);
         LOG_DEBUG(
             LM_CAT_UNCLASSIFIED,
             "%*s- %s%c\n",
             depth,
             "",
-            (char *)name_buf,
+            (char *)ctx->name_buf,
             dump_gnt_node_is_container(node) ? '/' : ' '
         );
     }
-
-    if (!dump_gnt_node_is_container(node)) return;
-
-    dump_gnt_children(node, depth);
 }
 
-static void dump_gnt_print_entry(const struct StGnt_DirectoryEntry *entry, int depth)
-{
-    St_Utf8Char name_buf[NODENAME_UTF8_MAX];
-
-    if (entry->name_len >= NODENAME_MAX) {
-        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- <invalid>\n", depth, "");
-        return;
-    }
-
-    StUtf_Utf32ToUtf8(entry->name, entry->name_len, name_buf, sizeof(name_buf), NULL);
-    LOG_DEBUG(
-        LM_CAT_UNCLASSIFIED,
-        "%*s- %s%c\n",
-        depth,
-        "",
-        (char *)name_buf,
-        entry->type == GNT_NODETYPE_DIRECTORY ? '/' : ' '
-    );
-}
-
-static void dump_gnt_dump_iterated_entry(  // NOLINT(misc-no-recursion)
-    struct StGnt_Node *parent, const struct StGnt_DirectoryEntry *entry, int depth
+static void dump_gnt_materialize_entry(
+    struct dump_gnt_context *ctx,
+    struct StGnt_Node *parent,
+    const struct StGnt_DirectoryEntry *entry
 )
 {
     struct StGnt_Node *child;
-    St_Utf32Char child_name[NODENAME_MAX];
-    StStatus status;
 
     child = dump_gnt_find_registered_child(parent, entry->name, entry->name_len);
-    if (child) {
-        dump_gnt_print_resolved_node(child, depth);
-        return;
-    }
+    if (child || entry->name_len >= NODENAME_MAX) return;
 
-    dump_gnt_print_entry(entry, depth);
+    memcpy(ctx->child_name, entry->name, entry->name_len * sizeof(St_Utf32Char));
+    ctx->child_name[entry->name_len] = U'\0';
 
-    if (entry->type != GNT_NODETYPE_DIRECTORY || entry->name_len >= NODENAME_MAX) return;
-
-    memcpy(child_name, entry->name, entry->name_len * sizeof(St_Utf32Char));
-    child_name[entry->name_len] = U'\0';
-
-    status = StGnt_ResolvePath(parent, child_name, &child);
-    if (!CHECK_SUCCESS(status)) return;
-    if (!dump_gnt_node_is_container(child)) return;
-
-    dump_gnt_children(child, depth);
+    (void)StGnt_ResolvePath(parent, ctx->child_name, &child);
 }
 
-static void dump_gnt_children(struct StGnt_Node *node, int depth)  // NOLINT(misc-no-recursion)
+static void dump_gnt_materialize_children(
+    struct dump_gnt_context *ctx, struct StGnt_Node *node, int depth
+)
 {
-    uint8_t entry_buffer[4096];
     size_t entry_count;
     uint64_t cookie = 0;
     uint64_t next_cookie = 0;
@@ -368,8 +343,8 @@ static void dump_gnt_children(struct StGnt_Node *node, int depth)  // NOLINT(mis
         status = StGnt_Iterate(
             node,
             cookie,
-            entry_buffer,
-            sizeof(entry_buffer),
+            ctx->entry_buffer,
+            DUMP_GNT_ENTRY_BUFFER_SIZE,
             &entry_count,
             &next_cookie
         );
@@ -389,22 +364,22 @@ static void dump_gnt_children(struct StGnt_Node *node, int depth)  // NOLINT(mis
             struct StGnt_DirectoryEntry *entry;
             size_t min_entry_len;
 
-            if (offset + sizeof(struct StGnt_DirectoryEntry) > sizeof(entry_buffer)) {
+            if (offset + sizeof(struct StGnt_DirectoryEntry) > DUMP_GNT_ENTRY_BUFFER_SIZE) {
                 LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- <invalid entry>\n", depth + 1, "");
                 return;
             }
 
-            entry = (struct StGnt_DirectoryEntry *)&entry_buffer[offset];
+            entry = (struct StGnt_DirectoryEntry *)&ctx->entry_buffer[offset];
             min_entry_len = offsetof(struct StGnt_DirectoryEntry, name) +
                 (entry->name_len * sizeof(St_Utf32Char));
 
             if (entry->entry_len < min_entry_len ||
-                offset + entry->entry_len > sizeof(entry_buffer)) {
+                offset + entry->entry_len > DUMP_GNT_ENTRY_BUFFER_SIZE) {
                 LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- <invalid entry>\n", depth + 1, "");
                 return;
             }
 
-            dump_gnt_dump_iterated_entry(node, entry, depth + 1);
+            dump_gnt_materialize_entry(ctx, node, entry);
             offset += entry->entry_len;
         }
 
@@ -418,7 +393,83 @@ static void dump_gnt_children(struct StGnt_Node *node, int depth)  // NOLINT(mis
 
 void dump_gnt(struct StGnt_Node *node, int depth)
 {
-    dump_gnt_print_resolved_node(node, depth);
+    StStatus status;
+    struct dump_gnt_context *ctx;
+    struct StGnt_Node *current;
+    int current_depth;
+
+    if (!node) return;
+
+    status = StPool_AllocateClear(sizeof(*ctx), (void **)&ctx);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "- <dump context allocation failed: %08" PRIX32 ">\n",
+            status
+        );
+        return;
+    }
+
+    status = StPool_Allocate(DUMP_GNT_ENTRY_BUFFER_SIZE, (void **)&ctx->entry_buffer);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "- <dump buffer allocation failed: %08" PRIX32 ">\n",
+            status
+        );
+        goto cleanup;
+    }
+
+    status = StPool_Allocate(NODENAME_UTF8_MAX + 1, (void **)&ctx->name_buf);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "- <dump name buffer allocation failed: %08" PRIX32 ">\n",
+            status
+        );
+        goto cleanup;
+    }
+
+    status =
+        StPool_Allocate((NODENAME_MAX + 1) * sizeof(*ctx->child_name), (void **)&ctx->child_name);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "- <dump child name buffer allocation failed: %08" PRIX32 ">\n",
+            status
+        );
+        goto cleanup;
+    }
+
+    current = node;
+    current_depth = depth;
+
+    for (;;) {
+        dump_gnt_print_node(ctx, current, current_depth);
+        dump_gnt_materialize_children(ctx, current, current_depth);
+
+        if (dump_gnt_node_is_container(current) && current->children_head) {
+            current = current->children_head;
+            current_depth++;
+            continue;
+        }
+
+        while (current != node && !current->sibling) {
+            current = current->parent;
+            current_depth--;
+            if (!current) goto cleanup;
+        }
+
+        if (current == node) break;
+
+        current = current->sibling;
+    }
+
+cleanup:
+    if (ctx->child_name) StPool_Free(ctx->child_name);
+    if (ctx->name_buf) StPool_Free(ctx->name_buf);
+    if (ctx->entry_buffer) StPool_Free(ctx->entry_buffer);
+    StPool_Free(ctx);
 }
 
 static int shared_value = 0;
@@ -651,9 +702,9 @@ static void thread4_main(struct StThread *th)
 {
     St_PageCount total_frames, free_frames;
     uint32_t thread_count, process_count;
-    uint64_t uptime_us, syscall_count, ctxswitch_count, irq_count, idle_runtime_us;
-    uint64_t prev_sample_uptime_us = 0;
-    uint64_t prev_sample_idle_us = 0;
+    uint64_t uptime_ns, syscall_count, ctxswitch_count, irq_count, idle_runtime_ns;
+    uint64_t prev_sample_uptime_ns = 0;
+    uint64_t prev_sample_idle_ns = 0;
     uint64_t cpu_busy_hundredths = 0;
 
     char buf[512];
@@ -663,23 +714,23 @@ static void thread4_main(struct StThread *th)
         StPmm_GetFreeFrameCount(&free_frames);
         StThread_GetCount(&thread_count);
         StProcess_GetCount(&process_count);
-        uptime_us = StTimeP_GetUptimeNanoseconds() / 1000;
+        uptime_ns = StTimeP_GetUptimeNanoseconds();
         syscall_count = atomic_load(&StCpuLocalP_GetData()->syscall_count);
         irq_count = atomic_load(&StCpuLocalP_GetData()->irq_count);
         ctxswitch_count = atomic_load(&StCpuLocalP_GetData()->ctxswitch_count);
-        StScheduler_GetIdleRuntime(&idle_runtime_us);
+        StScheduler_GetIdleTimeNanoseconds(&idle_runtime_ns);
 
-        if (!prev_sample_uptime_us) {
-            prev_sample_uptime_us = uptime_us;
-            prev_sample_idle_us = idle_runtime_us;
-        } else if (uptime_us - prev_sample_uptime_us >= 250000) {
-            uint64_t window_us = uptime_us - prev_sample_uptime_us;
-            uint64_t idle_delta_us = idle_runtime_us - prev_sample_idle_us;
-            uint64_t busy_delta_us = (idle_delta_us >= window_us) ? 0 : (window_us - idle_delta_us);
+        if (!prev_sample_uptime_ns) {
+            prev_sample_uptime_ns = uptime_ns;
+            prev_sample_idle_ns = idle_runtime_ns;
+        } else if (uptime_ns - prev_sample_uptime_ns >= 250000000) {
+            uint64_t window_ns = uptime_ns - prev_sample_uptime_ns;
+            uint64_t idle_delta_ns = idle_runtime_ns - prev_sample_idle_ns;
+            uint64_t busy_delta_ns = (idle_delta_ns >= window_ns) ? 0 : (window_ns - idle_delta_ns);
 
-            cpu_busy_hundredths = (busy_delta_us * 10000) / window_us;
-            prev_sample_uptime_us = uptime_us;
-            prev_sample_idle_us = idle_runtime_us;
+            cpu_busy_hundredths = (busy_delta_ns * 10000) / window_ns;
+            prev_sample_uptime_ns = uptime_ns;
+            prev_sample_idle_ns = idle_runtime_ns;
         }
 
         snprintf(
@@ -710,10 +761,10 @@ static void thread4_main(struct StThread *th)
             buf,
             sizeof(buf),
             "SUT: %4" PRId64 ":%02" PRId64 ":%02" PRId64 ".%06" PRId64,
-            uptime_us / 1000000 / 60 / 60,
-            uptime_us / 1000000 / 60 % 60,
-            uptime_us / 1000000 % 60,
-            uptime_us % 1000000
+            uptime_ns / 1000 / 1000000 / 60 / 60,
+            uptime_ns / 1000 / 1000000 / 60 % 60,
+            uptime_ns / 1000 / 1000000 % 60,
+            uptime_ns / 1000 % 1000000
         );
         fb_print_str(80 - 22, 6, buf);
 
@@ -987,13 +1038,38 @@ __noreturn void main(void)
         St_Panic(status, "failed to initialize the Global Node Tree");
     }
 
-    dump_gnt(g_gnt_root_local, 0);
-    dump_gnt(g_gnt_root_network, 0);
-
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing thread system...\n");
     status = StThread_Init(&main_thread);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize thread system");
+    }
+
+    uacpi_phys_addr rsdp_base;
+    extern StStatus acpi_module_main(uint64_t rsdp_base);
+    uacpi_kernel_get_rsdp(&rsdp_base);
+    status = acpi_module_main(rsdp_base);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to initialize ACPI module");
+    }
+
+    struct StGnt_Node *gnt_system_hardware_node;
+    status = StGnt_ResolvePath(NULL, U"/System/Hardware", &gnt_system_hardware_node);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to resolve path /System/Hardware");
+    }
+
+    extern StStatus pci_module_main(struct StGnt_Node * parent_node);
+    status = pci_module_main(gnt_system_hardware_node);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to initialize PCI module");
+    }
+
+    dump_gnt(g_gnt_root_local, 0);
+    dump_gnt(g_gnt_root_network, 0);
+
+    status = StTimeP_StartTimer();
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to start timer");
     }
 
     StMutex_Init(&mtx);
@@ -1011,28 +1087,6 @@ __noreturn void main(void)
         LOG_WARN(LM_CAT_UNCLASSIFIED, "main: failed to create thread4 (status=%08X)\n", status);
     }
 
-    extern int acpi_module_main(uint64_t rsdp_base);
-    extern void acpi_module_shutdown(void);
-    uacpi_phys_addr rsdp_base;
-
-    uacpi_kernel_get_rsdp(&rsdp_base);
-    acpi_module_main(rsdp_base);
-
-    for (const char *s = "poweroff in "; *s; s++) {
-        early_print_char2(&pstate, *s);
-    }
-
-    for (int i = 5; i > 0; i--) {
-        early_print_char2(&pstate, (char)('0' + i));
-        early_print_char2(&pstate, '.');
-        early_print_char2(&pstate, '.');
-        early_print_char2(&pstate, '.');
-        early_print_char2(&pstate, '\n');
-        StThread_Sleep(1000);
-    }
-
-    acpi_module_shutdown();
-
     for (;;) {
         if (StScheduler_ShouldMaintain()) {
             StScheduler_Maintain();
@@ -1041,18 +1095,18 @@ __noreturn void main(void)
         if (StScheduler_CheckHasOtherRunnableThread()) {
             StThread_Yield();
         } else {
-            uint64_t idle_start_us;
-            uint64_t idle_end_us;
+            uint64_t idle_start_ns;
+            uint64_t idle_end_ns;
             StThread_RunDeferredReap((St_PageCount)64);
 
-            idle_start_us = StTimeP_GetUptimeNanoseconds() / 1000;
+            idle_start_ns = StTimeP_GetUptimeNanoseconds();
             uint32_t intstatus = StA_SaveInterrupt();
             StA_EnableInterruptAndHalt();
             StA_RestoreInterrupt(intstatus);
-            idle_end_us = StTimeP_GetUptimeNanoseconds() / 1000;
+            idle_end_ns = StTimeP_GetUptimeNanoseconds();
 
-            if (idle_end_us > idle_start_us) {
-                StScheduler_AccountIdleRuntime(idle_end_us - idle_start_us);
+            if (idle_end_ns > idle_start_ns) {
+                StScheduler_AccountIdleTimeNanoseconds(idle_end_ns - idle_start_ns);
             }
         }
     }

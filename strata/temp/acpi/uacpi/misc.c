@@ -1,17 +1,19 @@
-#include <strata/scheduler.h>
+
 #include <uacpi/kernel_api.h>
 
-#include <uacpi/types.h>
 #include <uacpi/platform/types.h>
 #include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #include <strata/arch/intrinsics/misc.h>
 
-#include <strata/log.h>
 #include <strata/plat/panic.h>
 #include <strata/plat/time.h>
-#include <strata/status.h>
 
+#include <strata/log.h>
+#include <strata/panic.h>
+#include <strata/scheduler.h>
+#include <strata/status.h>
 #include <strata/thread.h>
 
 #define MODULE_NAME "acpi"
@@ -42,7 +44,7 @@ uacpi_thread_id uacpi_kernel_get_thread_id(void)
 
     status = StScheduler_GetCurrentThread(&thread);
     if (!CHECK_SUCCESS(status)) {
-        StP_Panic(status, "failed to get current thread");
+        St_Panic(status, "failed to get current thread");
     }
 
     return thread;
@@ -57,7 +59,7 @@ uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request *req)
         LOG_WARN(LM_CAT_ACPI, "ACPI firmware breakpoint request: ctx=%p\n", req->breakpoint.ctx);
         return UACPI_STATUS_OK;
     case UACPI_FIRMWARE_REQUEST_TYPE_FATAL:
-        StP_Panic(
+        St_Panic(
             STATUS_HARDWARE_FAILED,
             "ACPI firmware fatal request: type=%u code=%u arg=%" UACPI_PRIx64,
             req->fatal.type,

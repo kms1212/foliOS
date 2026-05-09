@@ -7,11 +7,11 @@
 #include <uacpi/status.h>
 
 #include <strata/mm/pool.h>
+#include <strata/plat/time.h>
 #include <strata/raw_spinlock.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
-#include <strata/plat/time.h>
 
 #define MODULE_NAME "acpi"
 
@@ -24,13 +24,14 @@ struct acpi_event {
 static void wake_thread(struct StThread *thread)
 {
     thread->mutex_blocking_next = NULL;
-    thread->sleep_until_uptime_us = 0;
+    thread->sleep_until_uptime_ns = 0;
     thread->state = THREAD_STATE_RUNNING;
 }
 
 static int is_waiting(struct acpi_event *event, struct StThread *thread)
 {
-    for (struct StThread *current = event->waiters; current; current = current->mutex_blocking_next) {
+    for (struct StThread *current = event->waiters; current;
+         current = current->mutex_blocking_next) {
         if (current == thread) return 1;
     }
 
@@ -49,7 +50,8 @@ static void remove_waiter(struct acpi_event *event, struct StThread *thread)
 {
     struct StThread *prev = NULL;
 
-    for (struct StThread *current = event->waiters; current; current = current->mutex_blocking_next) {
+    for (struct StThread *current = event->waiters; current;
+         current = current->mutex_blocking_next) {
         if (current != thread) {
             prev = current;
             continue;
@@ -89,13 +91,13 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle event, uacpi_u16 timeout_ms)
 {
     struct acpi_event *acpi_event = event;
     struct StThread *current_thread;
-    uint64_t deadline_us = 0;
+    uint64_t deadline_ns = 0;
     int finite_timeout = timeout_ms != UINT16_MAX;
 
     if (!acpi_event) return UACPI_FALSE;
 
     if (finite_timeout) {
-        deadline_us = (StTimeP_GetUptimeNanoseconds() / 1000) + ((uint64_t)timeout_ms * 1000);
+        deadline_ns = StTimeP_GetUptimeNanoseconds() + ((uint64_t)timeout_ms * 1000000);
     }
 
     if (!timeout_ms) {
@@ -118,7 +120,7 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle event, uacpi_u16 timeout_ms)
 
     for (;;) {
         uint32_t irqstate;
-        uint64_t now_us = StTimeP_GetUptimeNanoseconds() / 1000;
+        uint64_t now_ns = StTimeP_GetUptimeNanoseconds();
 
         StRawSpinlock_LockAndSaveIrq(&acpi_event->lock, &irqstate);
 
@@ -130,7 +132,7 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle event, uacpi_u16 timeout_ms)
             return UACPI_TRUE;
         }
 
-        if (finite_timeout && now_us >= deadline_us) {
+        if (finite_timeout && now_ns >= deadline_ns) {
             remove_waiter(acpi_event, current_thread);
             wake_thread(current_thread);
             StRawSpinlock_UnlockAndRestoreIrq(&acpi_event->lock, irqstate);
@@ -140,7 +142,7 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle event, uacpi_u16 timeout_ms)
         add_waiter(acpi_event, current_thread);
         if (finite_timeout) {
             current_thread->state = THREAD_STATE_SLEEPING;
-            current_thread->sleep_until_uptime_us = deadline_us;
+            current_thread->sleep_until_uptime_ns = deadline_ns;
         } else {
             current_thread->state = THREAD_STATE_BLOCKING;
         }

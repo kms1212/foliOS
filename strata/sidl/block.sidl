@@ -1,0 +1,34 @@
+@uuid("3E30B1DB-32E4-4CD5-999C-02ADFE52C417", "strata/interface/block")
+@prefix("StIfBlk_")
+interface Block {
+    abirevision 0 {
+        struct IoRequest {
+            ptr<opaque> buf;
+            u64 size;
+        };
+
+        @align_size(16)
+        struct IoResult {
+            u64 reqid;
+            u64 status;
+            u64 xfer_size;
+        };
+
+        bitfield<u32> IoFlags {
+            DIRECT : 1;
+        };
+
+        function Read(in u64 start_lba, in const ptr<IoRequest> ioreqvec, in u64 ioreq_size, in u64 ioreq_count, in IoFlags flags, out u64 reqid);
+        function Write(in u64 start_lba, in const ptr<IoRequest> ioreqvec, in u64 ioreq_size, in u64 ioreq_count, in IoFlags flags, out u64 reqid);
+        function Flush(in u64 start_lba, in u64 count, in IoFlags flags, out u64 reqid);
+        function Discard(in u64 start_lba, in u64 count, in IoFlags flags, out u64 reqid);
+
+        function CheckStatus(in u64 reqid, out u64 status);
+        function Wait(in ptr<IoResult> ioresvec, in u64 iores_size, in u64 max_iores_count, in u64 min_iores_count, in u64 timeout_ms, out u64 filled_iores_count);
+        function Cancel(in u64 reqid);
+
+        function GetBlockSize(out u64 block_size);
+        function SetBlockSize(in u64 block_size);
+        function GetMaxLba(out u64 max_lba);
+    }
+}

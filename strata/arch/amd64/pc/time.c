@@ -1,6 +1,7 @@
 #include "config.h"
 
-#include <inttypes.h>
+#include <strata/plat/time.h>
+
 #include <stdatomic.h>
 #include <stdint.h>
 
@@ -14,7 +15,6 @@
 #include <strata/plat/interrupt.h>
 #include <strata/plat/interrupt_constants.h>
 #include <strata/plat/pit.h>
-#include <strata/plat/time.h>
 
 #include <strata/interrupt.h>
 #include <strata/log.h>
@@ -39,11 +39,15 @@ static void *tick_isr(
     return NULL;
 }
 
-void StTimeP_EarlyBusyWaitMicroseconds(uint32_t us)
+void StTimeP_EarlyBusyWaitNanoseconds(uint64_t ns)
 {
-    if (StHpetP_IsInitialized() && CHECK_SUCCESS(StHpetP_SetOneshotAndBusyWait(us))) return;
+    if (!ns) return;
 
-    StPitP_SetOneshotAndBusyWait(us);
+    if (StHpetP_IsInitialized()) {
+        if (CHECK_SUCCESS(StHpetP_SetOneshotAndBusyWait(ns))) return;
+    }
+
+    StPitP_SetOneshotAndBusyWait(ns);
 }
 
 void StTimeP_InitTimer(int _use_hpet __in)
@@ -83,8 +87,15 @@ void StTimeP_InitTimer(int _use_hpet __in)
     initialized = 1;
 
     StInt_CreateHandler(use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE, NULL, tick_isr, NULL);
+}
+
+StStatus StTimeP_StartTimer(void)
+{
+    if (!initialized) return STATUS_NOT_PERMITTED;
 
     StIntP_Unmask(use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE);
+
+    return STATUS_SUCCESS;
 }
 
 uint64_t StTimeP_GetUptimeNanoseconds(void)

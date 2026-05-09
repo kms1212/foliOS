@@ -52,7 +52,7 @@ static void unblock_blocking_thread(struct StMutex *mtx)
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "unblocking thread #%d\n", th_to_unblock->id);
 
     th_to_unblock->mutex_blocking_next = NULL;
-    th_to_unblock->sleep_until_uptime_us = 0;
+    th_to_unblock->sleep_until_uptime_ns = 0;
     if (th_to_unblock->state == THREAD_STATE_BLOCKING ||
         th_to_unblock->state == THREAD_STATE_SLEEPING) {
         th_to_unblock->state = THREAD_STATE_RUNNING;
@@ -116,7 +116,7 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
 {
     StStatus status;
     struct StThread *th;
-    uint64_t deadline_us;
+    uint64_t deadline_ns;
 
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
@@ -134,10 +134,10 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
         return locked ? STATUS_SUCCESS : STATUS_TIMER_EXPIRED;
     }
 
-    deadline_us = (StTimeP_GetUptimeNanoseconds() / 1000) + ((uint64_t)timeout_ms * 1000);
+    deadline_ns = StTimeP_GetUptimeNanoseconds() + ((uint64_t)timeout_ms * 1000000);
 
     for (;;) {
-        uint64_t now_us;
+        uint64_t now_ns;
 
         StThread_LockPreemption();
 
@@ -145,24 +145,24 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
             mtx->locked = 1;
             mtx->owner = th;
             th->mutex_blocking_next = NULL;
-            th->sleep_until_uptime_us = 0;
+            th->sleep_until_uptime_ns = 0;
 
             StThread_UnlockPreemption();
             return STATUS_SUCCESS;
         }
 
-        now_us = StTimeP_GetUptimeNanoseconds() / 1000;
-        if (now_us >= deadline_us) {
+        now_ns = StTimeP_GetUptimeNanoseconds();
+        if (now_ns >= deadline_ns) {
             remove_blocking_thread(mtx, th);
             th->mutex_blocking_next = NULL;
-            th->sleep_until_uptime_us = 0;
+            th->sleep_until_uptime_ns = 0;
             th->state = THREAD_STATE_RUNNING;
 
             StThread_UnlockPreemption();
             return STATUS_TIMER_EXPIRED;
         }
 
-        th->sleep_until_uptime_us = deadline_us;
+        th->sleep_until_uptime_ns = deadline_ns;
         th->state = THREAD_STATE_SLEEPING;
         add_blocking_thread(mtx, th);
 

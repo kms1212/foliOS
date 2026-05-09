@@ -19,6 +19,22 @@ target_compile_options(strata_temp_module_acpi PUBLIC
 target_link_libraries(strata_temp_module_acpi gcc)
 target_compile_definitions(strata_temp_module_acpi PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_NATIVE_ALLOC_ZEROED=1)
 
+# SIDL Files
+sidl_generate_c(
+    SERVER
+    HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/sidl"
+    SRCS_VAR SIDL_SRCS
+    HDRS_VAR SIDL_HDRS
+    FILES
+        "${ROOT_SOURCE_DIR}/sidl/acpi/table/mcfg.sidl"
+)
+
+target_sources(strata_temp_module_acpi PRIVATE ${SIDL_SRCS} ${SIDL_HDRS})
+set_source_files_properties(${SIDL_SRCS} ${SIDL_HDRS} PROPERTIES GENERATED TRUE)
+add_custom_target(temp_module_acpi_sidl_gen DEPENDS ${SIDL_SRCS} ${SIDL_HDRS})
+add_dependencies(strata_temp_module_acpi temp_module_acpi_sidl_gen)
+target_include_directories(strata_temp_module_acpi PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/sidl")
+
 # Include Directories
 target_include_directories(strata_temp_module_acpi PRIVATE "${CMAKE_SOURCE_DIR}")
 target_include_directories(strata_temp_module_acpi SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/include")
@@ -32,9 +48,11 @@ target_include_directories(strata_temp_module_acpi PRIVATE "${ROOT_SOURCE_DIR}/c
 target_include_directories(strata_temp_module_acpi SYSTEM PRIVATE ${UACPI_INCLUDES})
 
 # Sources
-target_sources(strata_temp_module_acpi PRIVATE main.c)
+target_sources(strata_temp_module_acpi PRIVATE main.c ioapic.c acpi_table_mcfg_if.c)
 
+# Subdirectories
 add_subdirectory(arch)
 add_subdirectory(uacpi)
 
+# Kernel Configurations
 target_link_libraries(strata strata_temp_module_acpi uacpi.lib)

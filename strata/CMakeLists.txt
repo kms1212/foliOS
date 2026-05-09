@@ -8,6 +8,10 @@ include(ExternalProject)
 
 project("strata" LANGUAGES C ASM)
 
+# SIDLC configurations
+set(SIDLC_EXECUTABLE "${ROOT_BINARY_DIR}/tools/sidlc/sidlc")
+include("${ROOT_SOURCE_DIR}/tools/sidlc/cmake/UseSIDLC.cmake")
+
 # Project configurations
 option(BUILD_TESTING "Build tests" OFF)
 
@@ -42,6 +46,23 @@ target_include_directories(strata PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(strata SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(strata PRIVATE "${CMAKE_BINARY_DIR}")
 target_include_directories(strata PRIVATE "${ROOT_SOURCE_DIR}/common/include")
+
+# SIDL Files
+sidl_generate_c(
+    SERVER
+    HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/sidl"
+    SRCS_VAR SIDL_SRCS
+    HDRS_VAR SIDL_HDRS
+    FILES
+        "${CMAKE_SOURCE_DIR}/sidl/process.sidl"
+        "${CMAKE_SOURCE_DIR}/sidl/thread.sidl"
+)
+
+target_sources(strata PRIVATE ${SIDL_SRCS} ${SIDL_HDRS})
+set_source_files_properties(${SIDL_SRCS} ${SIDL_HDRS} PROPERTIES GENERATED TRUE)
+add_custom_target(sidl_gen DEPENDS ${SIDL_SRCS} ${SIDL_HDRS})
+add_dependencies(strata sidl_gen)
+target_include_directories(strata PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/sidl")
 
 # Subdirectories
 add_subdirectory(lib)

@@ -6,8 +6,8 @@
 
 StStatus StPitP_Init(void);
 StStatus StPitP_SetPeriodic(uint64_t freq_hz __in);
-StStatus StPitP_SetOneshot(uint64_t us __in);
-void StPitP_SetOneshotAndBusyWait(uint64_t us __in);
+StStatus StPitP_SetOneshot(uint64_t ns __in);
+void StPitP_SetOneshotAndBusyWait(uint64_t ns __in);
 void StPitP_Stop(void);
 
 #endif  // __STRATA_PLAT_PIT_H__

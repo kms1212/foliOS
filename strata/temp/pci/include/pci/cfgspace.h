@@ -1,5 +1,5 @@
-#ifndef __STRATA_PCI_CFGSPACE_H__
-#define __STRATA_PCI_CFGSPACE_H__
+#ifndef __PCI_CFGSPACE_H__
+#define __PCI_CFGSPACE_H__
 
 #include <stdint.h>
 
@@ -122,4 +122,4 @@
 
 #define PCI_BAR_IO_BASE_MASK 0xFFFFFFFC
 
-#endif  // __STRATA_PCI_CFGSPACE_H__
+#endif  // __PCI_CFGSPACE_H__

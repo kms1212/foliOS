@@ -1,0 +1,10 @@
+@uuid("3E30B1DB-32E4-4CD5-999C-02ADFE52C417", "folios/interface/acpi/table/madt")
+@prefix("StIfAcpiTblMadt_")
+interface AcpiTableMadt {
+    abirevision 0 {
+        // TBD
+
+        /* */
+
+    }
+}

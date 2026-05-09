@@ -31,7 +31,8 @@
 #define LM_CAT_UNCLASSIFIED ((uint32_t)0x00000000)
 #define LM_CAT_THREAD       ((uint32_t)0x00010000)
 #define LM_CAT_ACPI         ((uint32_t)0xFFF00000)
-#define LM_CAT_MAX          LM_CAT_THREAD
+#define LM_CAT_PCI          ((uint32_t)0xFFF10000)
+#define LM_CAT_MAX          LM_CAT_PCI
 
 #define LM_SUBCAT_TASK_SWITCH ((uint32_t)0x00000001)
 

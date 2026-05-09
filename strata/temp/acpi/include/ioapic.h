@@ -1,5 +1,5 @@
-#ifndef __STRATA_PLAT_IOAPIC_H__
-#define __STRATA_PLAT_IOAPIC_H__
+#ifndef __IOAPIC_H__
+#define __IOAPIC_H__
 
 #include <stdint.h>
 
@@ -40,4 +40,4 @@ void StIoapicP_Mask(int num __in);
 void StIoapicP_Unmask(int num __in);
 void StIoapicP_SendEoi(int num __in);
 
-#endif  // __STRATA_PLAT_IOAPIC_H__
+#endif  // __IOAPIC_H__

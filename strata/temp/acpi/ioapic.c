@@ -1,4 +1,4 @@
-#include <strata/plat/ioapic.h>
+#include <ioapic.h>
 
 #include <stdint.h>
 
@@ -204,5 +204,3 @@ void StIoapicP_Unmask(int num __in)
     status = StIoapicP_Write(ioapic_idx, IOAPIC_REG_REDTBL_BASE + (pin * 2), entry_low);
     if (!CHECK_SUCCESS(status)) return;
 }
-
-void StIoapicP_SendEoi(int num __in) {}

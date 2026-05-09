@@ -69,7 +69,7 @@ StStatus StProcess_CreateUser(struct StProcess **process __out)
 
     proc->address_space = asp;
     proc->gnt_node = NULL;
-    StHandle_InitTable(&proc->handle_table);
+    StHandle_TableInit(&proc->handle_table);
     proc->state = PROCESS_STATE_PENDING;
     proc->type = PROCESS_TYPE_USER;
 
@@ -141,7 +141,7 @@ void StProcess_FinalizeRemove(struct StProcess *process)
 {
     if (!process) return;
 
-    StHandle_ClearTable(&process->handle_table);
+    StHandle_TableClear(&process->handle_table);
 
     StMm_CleanupOwnerAllocation(&process->alloc_owner);
 

@@ -29,7 +29,7 @@ add_custom_target(userexec_cvt
     DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S.stamp"
 )
 
-target_sources(strata PRIVATE cpulocal.c entry.S gdt.c hpet.c init.c interrupt.c interrupt.S ioapic.c mm.c panic.c pic.c pit.c scheduler.c thread.c thread.S time.c trampoline.S tss.c "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S")
+target_sources(strata PRIVATE cpulocal.c entry.S gdt.c hpet.c init.c interrupt.c interrupt.S mm.c panic.c pic.c pit.c scheduler.c thread.c thread.S time.c trampoline.S tss.c "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S")
 add_dependencies(strata trampoline_cvt)
 add_dependencies(strata userexec_cvt)
 

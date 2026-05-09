@@ -1,13 +1,22 @@
 #include <strata/handle.h>
 
 #include <inttypes.h>
+#include <stdint.h>
+#include <string.h>
 
 #include <strata/compiler.h>
 #include <strata/gnt.h>
+#include <strata/gnt/interface.h>
+#include <strata/limits.h>
 #include <strata/log.h>
 #include <strata/mm/pool.h>
+#include <strata/module.h>
+#include <strata/process.h>
+#include <strata/scheduler.h>
 #include <strata/status.h>
+#include <strata/syscall.h>
 #include <strata/thread.h>
+#include <strata/utf.h>
 
 #define MODULE_NAME "handle"
 
@@ -58,12 +67,12 @@ static void release_handle_object(enum StHandle_Type type, void *object)
     }
 }
 
-void StHandle_ReleaseObject(enum StHandle_Type type, void *object)
+void StHandle_TableReleaseObject(enum StHandle_Type type, void *object)
 {
     release_handle_object(type, object);
 }
 
-void StHandle_InitTable(struct StHandle_Table *table)
+void StHandle_TableInit(struct StHandle_Table *table)
 {
     if (!table) return;
 
@@ -72,7 +81,7 @@ void StHandle_InitTable(struct StHandle_Table *table)
     table->next_id = 0;
 }
 
-StStatus StHandle_Create(
+StStatus StHandle_TableCreate(
     struct StHandle_Table *table, enum StHandle_Type type, void *object, StHandle_Id *handle_out
 )
 {
@@ -134,7 +143,7 @@ has_error:
     return status;
 }
 
-StStatus StHandle_Get(
+StStatus StHandle_TableGet(
     struct StHandle_Table *table,
     StHandle_Id handle,
     enum StHandle_Type *type_out,
@@ -165,7 +174,7 @@ StStatus StHandle_Get(
     return STATUS_SUCCESS;
 }
 
-StStatus StHandle_GetRetained(
+StStatus StHandle_TableGetRetained(
     struct StHandle_Table *table,
     StHandle_Id handle,
     enum StHandle_Type *type_out,
@@ -197,7 +206,7 @@ StStatus StHandle_GetRetained(
     return STATUS_SUCCESS;
 }
 
-StStatus StHandle_Close(struct StHandle_Table *table, StHandle_Id handle)
+StStatus StHandle_TableClose(struct StHandle_Table *table, StHandle_Id handle)
 {
     StStatus status;
     struct StHandle_Entry *prev_entry = NULL;
@@ -240,7 +249,7 @@ StStatus StHandle_Close(struct StHandle_Table *table, StHandle_Id handle)
     return STATUS_SUCCESS;
 }
 
-void StHandle_ClearTable(struct StHandle_Table *table)
+void StHandle_TableClear(struct StHandle_Table *table)
 {
     struct StHandle_Entry *current;
 
@@ -262,4 +271,332 @@ void StHandle_ClearTable(struct StHandle_Table *table)
         StPool_Free(current);
         current = next;
     }
+}
+
+static struct StHandle_Table kernel_handle_table;
+static int kernel_handle_table_initialized = 0;
+
+static struct StHandle_Table *get_kernel_handle_table(void)
+{
+    if (!kernel_handle_table_initialized) {
+        StHandle_TableInit(&kernel_handle_table);
+        kernel_handle_table_initialized = 1;
+    }
+
+    return &kernel_handle_table;
+}
+
+static StStatus get_current_handle_table(struct StHandle_Table **table_out)
+{
+    StStatus status;
+    struct StThread *thread = NULL;
+
+    if (!table_out) return STATUS_INVALID_VALUE;
+
+    status = StScheduler_GetCurrentThread(&thread);
+    if (CHECK_SUCCESS(status) && thread && thread->process) {
+        *table_out = &thread->process->handle_table;
+        return STATUS_SUCCESS;
+    }
+
+    *table_out = get_kernel_handle_table();
+
+    return STATUS_SUCCESS;
+}
+
+static StStatus get_node_from_handle(StHandle handle, struct StGnt_Node **node_out)
+{
+    StStatus status;
+    struct StHandle_Table *table;
+    struct StGnt_Node *node;
+    enum StHandle_Type type;
+
+    status = get_current_handle_table(&table);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StHandle_TableGetRetained(table, (StHandle_Id)handle, &type, (void **)&node);
+    if (!CHECK_SUCCESS(status)) return status;
+    if (type != ST_HANDLE_TYPE_GNT_NODE) {
+        StHandle_TableReleaseObject(type, node);
+        return STATUS_INVALID_HANDLE;
+    }
+
+    if (node_out) *node_out = node;
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StHandle_Open(const uint8_t *path, uint32_t flags, StHandle *handle)
+{
+    size_t path_len;
+    St_Utf32Char path_buf[PATH_MAX];
+    StStatus status;
+    struct StHandle_Table *table;
+    struct StGnt_Node *node;
+    StHandle_Id new_handle;
+
+    if (!path) return STATUS_INVALID_VALUE;
+
+    path_len = strnlen((const char *)path, PATH_UTF8_MAX);
+    status = StUtf_Utf8ToUtf32(path, path_len, path_buf, sizeof(path_buf), NULL);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StGnt_ResolvePath(g_gnt_root_local, path_buf, &node);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = get_current_handle_table(&table);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StHandle_TableCreate(table, ST_HANDLE_TYPE_GNT_NODE, node, &new_handle);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "path: %s, flags: %08" PRIX32 " -> handle %" PRIu32 "\n",
+        (const char *)path,
+        flags,
+        new_handle
+    );
+
+    if (handle) *handle = (StHandle)new_handle;
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StHandle_Close(StHandle handle)
+{
+    StStatus status;
+    struct StHandle_Table *table;
+
+    status = get_current_handle_table(&table);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    return StHandle_TableClose(table, (StHandle_Id)handle);
+}
+
+StStatus StHandle_Query(
+    StHandle handle,
+    const struct StUuid *if_uuid,
+    uint32_t request_abiver,
+    uint32_t *funcid_base,
+    uint32_t *result_abiver
+)
+{
+    StStatus status;
+    struct StGnt_Node *node;
+
+    status = get_node_from_handle(handle, &node);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StGnt_QueryInterface(node, if_uuid, request_abiver, funcid_base, result_abiver);
+    if (!CHECK_SUCCESS(status)) {
+        if (status == STATUS_NOT_SUPPORTED) {
+            uint32_t entry_base = 0;
+            struct StGnt_NodeInterface *entry = node->interface_head;
+
+            LOG_TRACE(
+                LM_CAT_UNCLASSIFIED,
+                "query miss: handle %" PRIu32 ", request abi %" PRIu32 "\n",
+                (StHandle_Id)handle,
+                request_abiver
+            );
+
+            while (entry) {
+                LOG_TRACE(
+                    LM_CAT_UNCLASSIFIED,
+                    "query available: base=%" PRIu32 ", abi=%" PRIu32 ", span=%" PRIu32 "\n",
+                    entry_base,
+                    entry->abi_version,
+                    entry->funcid_span
+                );
+                LOG_TRACE(LM_CAT_UNCLASSIFIED, "query available uuid: %pU\n", (void *)&entry->uuid);
+
+                entry_base += entry->funcid_span;
+                entry = entry->next;
+            }
+        }
+
+        StGnt_ReleaseNode(node);
+        return status;
+    }
+
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "query: handle %" PRIu32 ", interface %pU, abi %" PRIu32 " -> base %" PRIu32
+        ", abi %" PRIu32 "\n",
+        (StHandle_Id)handle,
+        (void *)if_uuid,
+        request_abiver,
+        funcid_base ? *funcid_base : 0,
+        result_abiver ? *result_abiver : 0
+    );
+
+    StGnt_ReleaseNode(node);
+
+    return STATUS_SUCCESS;
+}
+
+static void build_reg_args(
+    unsigned long arg0, unsigned long arg1, unsigned long arg2, unsigned long arg3, long args_out[4]
+)
+{
+    args_out[0] = (long)arg0;
+    args_out[1] = (long)arg1;
+    args_out[2] = (long)arg2;
+    args_out[3] = (long)arg3;
+}
+
+StStatus StHandle_CallReg(
+    StHandle handle,
+    uint32_t funcid,
+    unsigned long arg0,
+    unsigned long arg1,
+    unsigned long arg2,
+    unsigned long arg3
+)
+{
+    StStatus status;
+    struct StGnt_Node *node;
+    struct StModule *handler_module;
+    int handled = 0;
+    long args[4];
+
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "call_reg: handle %" PRIu32 ", funcid %" PRIu32 "\n",
+        (StHandle_Id)handle,
+        funcid
+    );
+
+    status = get_node_from_handle(handle, &node);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StSyscallA_DispatchCallReg(node, funcid, arg0, arg1, arg2, arg3, &handled);
+    if (handled) {
+        StGnt_ReleaseNode(node);
+        return status;
+    }
+
+    build_reg_args(arg0, arg1, arg2, arg3, args);
+
+    handler_module = node->handler_module;
+    if (!handler_module || !handler_module->dispatch_args) {
+        StGnt_ReleaseNode(node);
+        return STATUS_NOT_SUPPORTED;
+    }
+
+    status = handler_module->dispatch_args(node, handle, funcid, args);
+    StGnt_ReleaseNode(node);
+
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "call_reg result: handle %" PRIu32 ", funcid %" PRIu32 " -> %08" PRIX32 "\n",
+        (StHandle_Id)handle,
+        funcid,
+        status
+    );
+
+    return status;
+}
+
+StStatus StHandle_CallPtr(
+    StHandle handle,
+    uint32_t funcid,
+    const void *args,
+    void *result,
+    unsigned long arg0,
+    unsigned long arg1
+)
+{
+    StStatus status;
+    struct StGnt_Node *node;
+    struct StModule *handler_module;
+    int handled = 0;
+    long dispatch_args[4];
+
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "call_ptr: handle %" PRIu32 ", funcid %" PRIu32 "\n",
+        (StHandle_Id)handle,
+        funcid
+    );
+
+    status = get_node_from_handle(handle, &node);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StSyscallA_DispatchCallPtr(node, funcid, args, result, arg0, arg1, &handled);
+    if (handled) {
+        StGnt_ReleaseNode(node);
+        return status;
+    }
+
+    dispatch_args[0] = (long)(uintptr_t)args;
+    dispatch_args[1] = (long)(uintptr_t)result;
+    dispatch_args[2] = (long)arg0;
+    dispatch_args[3] = (long)arg1;
+
+    handler_module = node->handler_module;
+    if (!handler_module || !handler_module->dispatch_args) {
+        StGnt_ReleaseNode(node);
+        return STATUS_NOT_SUPPORTED;
+    }
+
+    status = handler_module->dispatch_args(node, handle, funcid, dispatch_args);
+    StGnt_ReleaseNode(node);
+
+    LOG_TRACE(
+        LM_CAT_UNCLASSIFIED,
+        "call_ptr result: handle %" PRIu32 ", funcid %" PRIu32 " -> %08" PRIX32 "\n",
+        (StHandle_Id)handle,
+        funcid,
+        status
+    );
+
+    return status;
+}
+
+StStatus StHandle_Call0(StHandle handle, uint32_t funcid)
+{
+    return StHandle_CallReg(handle, funcid, 0, 0, 0, 0);
+}
+
+StStatus StHandle_Call1(StHandle handle, uint32_t funcid, unsigned long arg0)
+{
+    return StHandle_CallReg(handle, funcid, arg0, 0, 0, 0);
+}
+
+StStatus StHandle_Call2(StHandle handle, uint32_t funcid, unsigned long arg0, unsigned long arg1)
+{
+    return StHandle_CallReg(handle, funcid, arg0, arg1, 0, 0);
+}
+
+StStatus StHandle_Call3(
+    StHandle handle, uint32_t funcid, unsigned long arg0, unsigned long arg1, unsigned long arg2
+)
+{
+    return StHandle_CallReg(handle, funcid, arg0, arg1, arg2, 0);
+}
+
+StStatus StHandle_Call4(
+    StHandle handle,
+    uint32_t funcid,
+    unsigned long arg0,
+    unsigned long arg1,
+    unsigned long arg2,
+    unsigned long arg3
+)
+{
+    return StHandle_CallReg(handle, funcid, arg0, arg1, arg2, arg3);
+}
+
+StStatus StHandle_CallN(
+    StHandle handle,
+    uint32_t funcid,
+    const void *args,
+    void *result,
+    unsigned long arg0,
+    unsigned long arg1
+)
+{
+    return StHandle_CallPtr(handle, funcid, args, result, arg0, arg1);
 }

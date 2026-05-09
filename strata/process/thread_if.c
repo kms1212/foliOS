@@ -14,7 +14,7 @@
 #include <strata/thread.h>
 #include <strata/utf.h>
 
-#include "sidl/thread.module.h"
+#include "sidl/thread.server.h"
 #include "sidl/thread.types.h"
 
 #define MODULE_NAME "thread"
@@ -271,7 +271,7 @@ static StStatus thr_wait(
     return STATUS_NOT_SUPPORTED;
 }
 
-static const StIfThr_ModuleVTable g_thr_vtable = {
+static const StIfThr_ServerVTable g_thr_vtable = {
     .Suspend = thr_suspend,
     .Resume = thr_resume,
     .GetState = thr_get_state,
@@ -295,5 +295,5 @@ StStatus StThreadIf_DispatchCallArgs(
     status = get_thread_from_thread_node(node, &ctx.thread);
     if (!CHECK_SUCCESS(status)) return status;
 
-    return StIfThr_ModuleDispatchArgs(&g_thr_vtable, &ctx, handle, funcid, args);
+    return StIfThr_ServerDispatchArgs(&g_thr_vtable, &ctx, handle, funcid, args);
 }

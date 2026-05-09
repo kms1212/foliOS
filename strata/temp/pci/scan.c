@@ -1,112 +1,191 @@
-#include "temp/pci/include/pci/cfgspace.h"
 #include <pci/scan.h>
 
-#include <pci/cfgspace.h>
-#include <pci/device.h>
+#include <stdint.h>
 
-struct pci_device_list {
-    struct pci_device *devices;
-    int count;
-    int max_count;
+#include <strata/log.h>
+#include <strata/status.h>
+
+#include <pci/cfgspace.h>
+#include <plat/pci/cfgspace.h>
+
+#define MODULE_NAME "pci"
+
+struct callback_status_set {
+    StPci_BusIterationCallback bus_callback;
+    StPci_DeviceIterationCallback device_callback;
+    StPci_FunctionIterationCallback function_callback;
+    int is_aborted;
 };
 
-int _bus_pci_function_scan(struct pci_device_list *list, int bus, int device, int function)
-{
-    uint16_t vendor_id = _bus_pci_cfg_read16(bus, device, function, PCI_CFGSPACE_VENDORID);
-    uint16_t device_id = _bus_pci_cfg_read16(bus, device, function, PCI_CFGSPACE_DEVICEID);
-    uint8_t base_class = _bus_pci_cfg_read8(bus, device, function, PCI_CFGSPACE_BASE_CLASS);
-    uint8_t sub_class = _bus_pci_cfg_read8(bus, device, function, PCI_CFGSPACE_SUB_CLASS);
-    uint8_t interface = _bus_pci_cfg_read8(bus, device, function, PCI_CFGSPACE_INTERFACE);
+static StStatus scan_pci_bus(
+    void *context,
+    struct callback_status_set *iter_status,
+    enum StPci_ScanIterationDecision parent_iter_decision,
+    uint8_t bus
+);
 
-    if (list->count >= list->max_count) {
-        return -1;
+static StStatus scan_pci_function(
+    void *context,
+    struct callback_status_set *iter_status,
+    enum StPci_ScanIterationDecision parent_iter_decision,
+    uint8_t bus,
+    uint8_t device,
+    uint8_t function
+)
+{
+    StStatus status;
+    enum StPci_ScanIterationDecision iter_decision = parent_iter_decision;
+    uint16_t vendor_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID);
+    uint16_t device_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_DEVICEID);
+    uint8_t base_class = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_BASE_CLASS);
+    uint8_t sub_class = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_SUB_CLASS);
+    uint8_t interface = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_INTERFACE);
+    uint16_t subsystem_vendor_id =
+        StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_VENDOR_ID);
+    uint16_t subsystem_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_ID);
+
+    if (base_class == 0x06 && sub_class == 0x04) {
+        uint8_t secondary_bus = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR1_SECONDARY_BUS);
+
+        if (secondary_bus) {
+            if (iter_decision != ITERATION_BREAK_SIBLINGS && iter_status->bus_callback) {
+                iter_decision = iter_status->bus_callback(context, secondary_bus);
+
+                if (iter_decision == ITERATION_ABORT) {
+                    iter_status->is_aborted = 1;
+                    return STATUS_SUCCESS;
+                }
+            }
+
+            status = scan_pci_bus(context, iter_status, iter_decision, secondary_bus);
+            if (!CHECK_SUCCESS(status)) return status;
+            if (iter_status->is_aborted) return STATUS_SUCCESS;
+        }
     }
 
-    /*
-    list->devices[list->count] = (struct pci_device){
-        .bus = bus,
-        .device = device,
-        .function = function,
-        .vendor_id = vendor_id,
-        .device_id = device_id,
-        .base_class = base_class,
-        .sub_class = sub_class,
-        .interface = interface,
-    };
-    */
+    LOG_DEBUG(
+        LM_CAT_PCI,
+        "device %02X:%02X.%02X, PCI\\VEN_%04X&DEV_%04X&CC_%02X%02X%02X&SUBSYS_%04X%04X\n",
+        bus,
+        device,
+        function,
+        vendor_id,
+        device_id,
+        base_class,
+        sub_class,
+        interface,
+        subsystem_vendor_id,
+        subsystem_id
+    );
 
-    list->count++;
-
-    return 0;
+    return STATUS_SUCCESS;
 }
 
-int _bus_pci_device_scan(struct pci_device_list *list, int bus, int device)
+static StStatus scan_pci_device(
+    void *context,
+    struct callback_status_set *iter_status,
+    enum StPci_ScanIterationDecision parent_iter_decision,
+    uint8_t bus,
+    uint8_t device
+)
 {
-    int ret;
+    StStatus status;
+    int mute_siblings = 0;
 
-    ret = _bus_pci_function_scan(list, bus, device, 0);
-    if (ret) return ret;
+    uint8_t header_type = StPciP_ReadCfg8(bus, device, 0, PCI_CFGHDR_HEADER_TYPE);
 
-    uint8_t header_type = _bus_pci_cfg_read8(bus, device, 0, PCI_CFGSPACE_HEADER_TYPE);
-    if (!(header_type & 0x80)) {
-        return 0;
-    }
+    for (int function = 0; function < ((header_type & PCI_HEADER_TYPE_MULTIFUNC) ? 8 : 1);
+         function++) {
+        enum StPci_ScanIterationDecision iter_decision = parent_iter_decision;
 
-    for (int function = 1; function < 8; function++) {
-        uint16_t vendor_id = _bus_pci_cfg_read16(bus, device, function, PCI_CFGSPACE_VENDORID);
-        if (vendor_id == 0xFFFF) {
-            continue;
+        if (function > 0) {
+            uint16_t vendor_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID);
+            if (vendor_id == 0xFFFF) continue;
         }
 
-        ret = _bus_pci_function_scan(list, bus, device, function);
-        if (ret) return ret;
+        if (iter_decision != ITERATION_SKIP_CHILDREN && iter_decision != ITERATION_BREAK_SIBLINGS &&
+            !mute_siblings && iter_status->function_callback) {
+            iter_decision = iter_status->function_callback(context, bus, device, function);
+
+            if (iter_decision == ITERATION_BREAK_SIBLINGS) {
+                mute_siblings = 1;
+            } else if (iter_decision == ITERATION_ABORT) {
+                iter_status->is_aborted = 1;
+                return STATUS_SUCCESS;
+            }
+        }
+
+        status = scan_pci_function(context, iter_status, iter_decision, bus, device, function);
+        if (!CHECK_SUCCESS(status)) return status;
+        if (iter_status->is_aborted) return STATUS_SUCCESS;
     }
 
-    return 0;
+    return STATUS_SUCCESS;
 }
 
-int _bus_pci_bus_scan(struct pci_device_list *list, int bus)
+static StStatus scan_pci_bus(
+    void *context,
+    struct callback_status_set *iter_status,
+    enum StPci_ScanIterationDecision parent_iter_decision,
+    uint8_t bus
+)
 {
-    int ret;
+    StStatus status;
+    int mute_siblings = 0;
 
     for (int device = 0; device < 32; device++) {
-        uint16_t vendor_id = _bus_pci_cfg_read16(bus, device, 0, PCI_CFGSPACE_VENDORID);
-        if (vendor_id == 0xFFFF) {
-            continue;
+        enum StPci_ScanIterationDecision iter_decision = parent_iter_decision;
+
+        uint16_t vendor_id = StPciP_ReadCfg16(bus, device, 0, PCI_CFGHDR_VENDORID);
+        if (vendor_id == 0xFFFF) continue;
+
+        if (iter_decision != ITERATION_SKIP_CHILDREN && iter_decision != ITERATION_BREAK_SIBLINGS &&
+            !mute_siblings && iter_status->device_callback) {
+            iter_decision = iter_status->device_callback(context, bus, device);
+
+            if (iter_decision == ITERATION_BREAK_SIBLINGS) {
+                mute_siblings = 1;
+            } else if (iter_decision == ITERATION_ABORT) {
+                iter_status->is_aborted = 1;
+                return STATUS_SUCCESS;
+            }
         }
 
-        ret = _bus_pci_device_scan(list, bus, device);
-        if (ret) return ret;
+        status = scan_pci_device(context, iter_status, iter_decision, bus, device);
+        if (!CHECK_SUCCESS(status)) return status;
+        if (iter_status->is_aborted) return STATUS_SUCCESS;
     }
 
-    return 0;
+    return STATUS_SUCCESS;
 }
 
-int pci_host_scan(struct pci_device *buf, int max_count)
+StStatus StPci_ScanBus(
+    void *context,
+    StPci_BusIterationCallback bus_callback,
+    StPci_DeviceIterationCallback device_callback,
+    StPci_FunctionIterationCallback function_callback
+)
 {
-    int ret;
-    struct pci_device_list list;
-    list.devices = buf;
-    list.count = 0;
-    list.max_count = max_count;
+    StStatus status;
+    struct callback_status_set iter_status;
+    enum StPci_ScanIterationDecision iter_decision = ITERATION_CONTINUE;
 
-    uint8_t header_type = _bus_pci_cfg_read8(0, 0, 0, PCI_CFGSPACE_HEADER_TYPE);
+    iter_status.bus_callback = bus_callback;
+    iter_status.device_callback = device_callback;
+    iter_status.function_callback = function_callback;
+    iter_status.is_aborted = 0;
 
-    if (!(header_type & PCI_HEADER_TYPE_MULTIFUNC)) {
-        ret = _bus_pci_bus_scan(&list, 0);
-        if (ret) return ret;
-        return list.count;
-    }
+    if (bus_callback) {
+        iter_decision = bus_callback(context, 0);
 
-    for (int function = 1; function < 8; function++) {
-        uint16_t vendor_id = _bus_pci_cfg_read16(0, 0, 0, PCI_CFGSPACE_VENDORID);
-        if (vendor_id == 0xFFFF) {
-            continue;
+        if (iter_decision == ITERATION_ABORT || iter_decision == ITERATION_BREAK_SIBLINGS) {
+            return STATUS_SUCCESS;
         }
-
-        ret = _bus_pci_function_scan(&list, 0, 0, function);
-        if (ret) return ret;
     }
 
-    return list.count;
+    status = scan_pci_bus(context, &iter_status, iter_decision, 0);
+    if (!CHECK_SUCCESS(status)) return status;
+    if (iter_status.is_aborted) return STATUS_SUCCESS;
+
+    return STATUS_SUCCESS;
 }

@@ -1,8 +1,8 @@
 #ifndef __STRATA_GNT_H__
 #define __STRATA_GNT_H__
 
-#include <stddef.h>
 #include <stdatomic.h>
+#include <stddef.h>
 
 #include <strata/limits.h>
 #include <strata/status.h>
@@ -87,7 +87,9 @@ extern struct StGnt_Node *g_gnt_system_processes;
 
 StStatus StGnt_Init(void);
 StStatus StGnt_AddNode(
-    struct StGnt_Node *parent __in, const St_Utf32Char *name __in, struct StGnt_Node **node __out
+    struct StGnt_Node *parent __in,
+    const St_Utf32Char *name __in,
+    struct StGnt_Node **node __out_optional
 );
 StStatus StGnt_RemoveNode(struct StGnt_Node *node __in);
 void StGnt_AcquireNode(struct StGnt_Node *node __inout);

@@ -9,7 +9,9 @@
 #include <strata/utf.h>
 
 StStatus StGnt_AddNode(
-    struct StGnt_Node *parent __in, const St_Utf32Char *name __in, struct StGnt_Node **node __out
+    struct StGnt_Node *parent __in,
+    const St_Utf32Char *name __in,
+    struct StGnt_Node **node __out_optional
 )
 {
     StStatus status;

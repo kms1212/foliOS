@@ -30,7 +30,8 @@ StStatus StGnt_Init(void)
     struct StGnt_Node *sharedmemories_node;
     struct StGnt_Node *modules_node;
     struct StGnt_Node *devices_node;
-    struct StGnt_Node *hardwares_node;
+    struct StGnt_Node *hardware_node;
+    struct StGnt_Node *firmware_node;
     struct StGnt_Node *volumes_node;
 
     status = StGnt_AddNode(NULL, NULL, &g_gnt_root_network);
@@ -77,7 +78,10 @@ StStatus StGnt_Init(void)
     status = StGnt_AddNode(system_node, U"Devices", &devices_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = StGnt_AddNode(system_node, U"Hardwares", &hardwares_node);
+    status = StGnt_AddNode(system_node, U"Hardware", &hardware_node);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
+    status = StGnt_AddNode(system_node, U"Firmware", &firmware_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = StGnt_AddNode(system_node, U"Volumes", &volumes_node);
@@ -116,7 +120,7 @@ StStatus StGnt_Init(void)
     status = register_directory_interfaces(devices_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = register_directory_interfaces(hardwares_node);
+    status = register_directory_interfaces(hardware_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = register_directory_interfaces(volumes_node);

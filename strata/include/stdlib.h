@@ -15,19 +15,11 @@
 
 #    define RAND_MAX 0x7FFF
 
-double atof(const char *str);
-
 int atoi(const char *str);
 
 long atol(const char *str);
 
 long long atoll(const char *str);
-
-float strtof(const char *__restrict str, char **__restrict endptr);
-
-double strtod(const char *__restrict str, char **__restrict endptr);
-
-long double strtold(const char *__restrict str, char **__restrict endptr);
 
 long strtol(const char *__restrict str, char **__restrict endptr, int base);
 

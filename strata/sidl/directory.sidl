@@ -1,0 +1,63 @@
+@uuid("3E30B1DB-32E4-4CD5-999C-02ADFE52C417", "strata/interface/directory")
+@prefix("StIfDir_")
+interface Directory {
+    abirevision 0 {
+        bitfield<u16> EntryType {
+            DATA : 1;
+            CONTAINER : 1;
+            LINK : 1;
+            DEVICE : 1;
+            MOUNT : 1;
+            VIRTUAL : 1;
+        };
+
+        @align_size(8)
+        @align(8)
+        struct Entry {
+            u64 inode;
+            u64 cookie;
+            u32 entry_len;
+            u16 name_len;
+            EntryType type;
+            array<u8> name;
+        };
+
+        bitfield<u32> CreateFlags {
+            POSIX_PERM : 1;
+            POSIX1E_ACL : 1;
+        };
+
+        struct CreateInfo {
+            CreateFlags flags;
+
+            u64 posix_perm_mode;
+            u64 posix_perm_uid;
+            u64 posix_perm_gid;
+
+            ptr<opaque> posix1e_acl;
+            u64 posix1e_acl_size;
+        };
+
+        bitfield<u32> LookupFlags {
+            NOFOLLOW : 1;
+            DIRECTORY : 1;
+            EXCLUSIVE : 1;
+        };
+
+        function Iterate(in u64 cookie, in ptr<Entry> buffer, in u64 buffer_size, out u64 result_count, out u64 next_cookie);
+        function FindCookie(in const ptr<u8> name, in u64 name_size, out u64 cookie);
+
+        function CreateNode(in const ptr<u8> name, in u64 name_size, in EntryType type, in const ptr<CreateInfo> info, out handle node_handle);
+        function CreateSymlink(in const ptr<u8> name, in u64 name_size, in const ptr<u8> target_path, in u64 target_path_size);
+        function CreateLink(in const ptr<u8> name, in u64 name_size, in handle target_node_handle);
+
+        function Remove(in const ptr<u8> name);
+        function RemoveByCookie(in u64 cookie);
+
+        function Rename(in const ptr<u8> name, in u64 name_size, in u64 new_parent_node_handle, in const ptr<u8> new_name, in u64 new_name_size);
+        function RenameByCookie(in u64 cookie, in u64 new_parent_node_handle, in const ptr<u8> new_name, in u64 new_name_size);
+
+        function Lookup(in const ptr<u8> name, in u64 name_size, in LookupFlags flags, out handle node_handle);
+        function LookupByCookie(in u64 cookie, in LookupFlags flags, out handle node_handle);
+    }
+}

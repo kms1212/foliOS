@@ -12,6 +12,8 @@
 #define PIT_REG_CH2_DATA 0x0042
 #define PIT_REG_MODE_CMD 0x0043
 
+#define NANOSECONDS_PER_SECOND 1000000000ULL
+
 static uint16_t read_counter0(void)
 {
     uint16_t current_value;
@@ -25,6 +27,16 @@ static uint16_t read_counter0(void)
     return current_value;
 }
 
+static uint64_t get_counter_delta_for_nanoseconds(uint64_t ns)
+{
+    __uint128_t ticks;
+
+    if (!ns) return 0;
+
+    ticks = (__uint128_t)ns * PIT_BASE_CLK_HZ;
+    return (uint64_t)((ticks + NANOSECONDS_PER_SECOND - 1) / NANOSECONDS_PER_SECOND);
+}
+
 StStatus StPitP_Init(void)
 {
     return STATUS_SUCCESS;
@@ -34,7 +46,7 @@ StStatus StPitP_SetPeriodic(uint64_t freq_hz __in)
 {
     uint16_t pit_value;
 
-    if (freq_hz > PIT_BASE_CLK_HZ) {
+    if (freq_hz > PIT_BASE_CLK_HZ || !freq_hz) {
         return STATUS_INVALID_VALUE;
     }
 
@@ -50,9 +62,9 @@ StStatus StPitP_SetPeriodic(uint64_t freq_hz __in)
     return STATUS_SUCCESS;
 }
 
-StStatus StPitP_SetOneshot(uint64_t us __in)
+StStatus StPitP_SetOneshot(uint64_t ns __in)
 {
-    uint64_t pit_value = us * PIT_BASE_CLK_HZ / 1000000;
+    uint64_t pit_value = get_counter_delta_for_nanoseconds(ns);
 
     if (pit_value == 0 || pit_value > UINT16_MAX) {
         return STATUS_INVALID_VALUE;
@@ -68,9 +80,10 @@ StStatus StPitP_SetOneshot(uint64_t us __in)
     return STATUS_SUCCESS;
 }
 
-void StPitP_SetOneshotAndBusyWait(uint64_t us __in)
+void StPitP_SetOneshotAndBusyWait(uint64_t ns __in)
 {
-    uint64_t target_count = us * PIT_BASE_CLK_HZ / 1000000, current_target_count;
+    uint64_t target_count = get_counter_delta_for_nanoseconds(ns);
+    uint64_t current_target_count;
     uint16_t current_value;
 
     while (target_count > 0) {

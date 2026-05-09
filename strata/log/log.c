@@ -80,7 +80,7 @@ static const char *ll_str[] = {
 
 static void print_log_header(int level, const char *module_name)
 {
-    uint64_t uptime_us = StTimeP_GetUptimeNanoseconds() / 1000;
+    uint64_t uptime_ns = StTimeP_GetUptimeNanoseconds();
     struct StCpuLocalP_Data *cpulocal = StCpuLocalP_GetData();
     struct StThread *thread = NULL;
     struct StProcess *process = NULL;
@@ -96,8 +96,8 @@ static void print_log_header(int level, const char *module_name)
         log_print_func,
         log_print_state,
         "%5" PRId64 ".%06" PRId64 " ",
-        uptime_us / 1000000,
-        uptime_us % 1000000
+        uptime_ns / 1000 / 1000000,
+        uptime_ns / 1000 % 1000000
     );
 
     if (!cpulocal) {

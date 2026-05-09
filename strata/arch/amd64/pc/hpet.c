@@ -75,9 +75,14 @@ static uint64_t get_raw_main_counter(void)
     return read_hpet32(HPET_REG_MAIN_COUNTER);
 }
 
-static uint64_t get_counter_delta_for_microseconds(uint64_t us)
+static uint64_t get_counter_delta_for_nanoseconds(uint64_t ns)
 {
-    return ((__uint128_t)us * hpet_counter_hz) / 1000000ULL;
+    __uint128_t ticks;
+
+    if (!ns) return 0;
+
+    ticks = (__uint128_t)ns * hpet_counter_hz;
+    return (uint64_t)((ticks + 1000000000ULL - 1) / 1000000000ULL);
 }
 
 StStatus StHpetP_Init(void)
@@ -230,7 +235,7 @@ StStatus StHpetP_SetPeriodic(uint64_t freq_hz __in)
     return STATUS_SUCCESS;
 }
 
-StStatus StHpetP_SetOneshot(uint64_t us __in)
+StStatus StHpetP_SetOneshot(uint64_t ns __in)
 {
     uint64_t timer_config;
     uint64_t delta_ticks;
@@ -238,7 +243,7 @@ StStatus StHpetP_SetOneshot(uint64_t us __in)
 
     if (!hpet_initialized) return STATUS_NOT_PERMITTED;
 
-    delta_ticks = get_counter_delta_for_microseconds(us);
+    delta_ticks = get_counter_delta_for_nanoseconds(ns);
     if (delta_ticks == 0) return STATUS_INVALID_VALUE;
 
     timer_config = read_hpet64(HPET_REG_TIMER0_CONFIG);
@@ -253,14 +258,14 @@ StStatus StHpetP_SetOneshot(uint64_t us __in)
     return STATUS_SUCCESS;
 }
 
-StStatus StHpetP_SetOneshotAndBusyWait(uint64_t us __in)
+StStatus StHpetP_SetOneshotAndBusyWait(uint64_t ns __in)
 {
     uint64_t start_counter;
     uint64_t target_delta;
 
     if (!hpet_initialized) return STATUS_NOT_PERMITTED;
 
-    target_delta = get_counter_delta_for_microseconds(us);
+    target_delta = get_counter_delta_for_nanoseconds(ns);
     if (target_delta == 0) return STATUS_INVALID_VALUE;
 
     start_counter = StHpetP_GetMainCounter();

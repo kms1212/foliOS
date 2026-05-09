@@ -16,7 +16,6 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt_constants.h>
 #include <strata/plat/interrupt_constants.h>
-#include <strata/plat/ioapic.h>
 #include <strata/plat/pic.h>
 
 #include <strata/compiler.h>
@@ -87,6 +86,9 @@ static struct StA_IdtGateDescriptor _pc_idt[256] __aligned(PAGE_SIZE);
 static struct StInt_Handler *_pc_isr_table[256];
 static struct StA_Idtr idtr;
 static int use_ioapic;
+
+void StIoapicP_Mask(int num __in);    // TODO: remove after VIF is implemented
+void StIoapicP_Unmask(int num __in);  // TODO: remove after VIF is implemented
 
 StStatus StIntP_Init(int _use_ioapic __in)
 {

@@ -1,6 +1,7 @@
 #include <strata/scheduler.h>
 
 #include <limits.h>
+#include <stdint.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/time.h>
@@ -49,8 +50,40 @@ static void catch_up_runnable_pass(struct StScheduler_Data *scheduler, struct St
     }
 }
 
+static int waiting_thread_is_ready(struct StThread *thread)
+{
+    int ready = 1;
+
+    if (!thread->wait_list) return 1;
+
+    for (int i = 0; i < thread->wait_count; i++) {
+        if (!thread->wait_list[i]) continue;
+        if (thread->wait_list[i]->state != THREAD_STATE_FINISHED) {
+            ready = 0;
+            continue;
+        }
+
+        thread->wait_list[i] = NULL;
+    }
+
+    return ready;
+}
+
+static void finish_waiting_thread(
+    struct StScheduler_Data *scheduler, struct StThread *thread, StStatus status
+)
+{
+    thread->wait_list = NULL;
+    thread->wait_count = 0;
+    thread->wait_timeout_ms = 0;
+    thread->wait_status = status;
+    thread->sleep_until_uptime_ns = 0;
+    thread->state = THREAD_STATE_RUNNING;
+    catch_up_runnable_pass(scheduler, thread);
+}
+
 static void update_runnable_state(
-    struct StScheduler_Data *scheduler, struct StThread *thread, uint64_t now_us
+    struct StScheduler_Data *scheduler, struct StThread *thread, uint64_t now_ns
 )
 {
     switch (thread->state) {
@@ -59,10 +92,17 @@ static void update_runnable_state(
         catch_up_runnable_pass(scheduler, thread);
         break;
     case THREAD_STATE_SLEEPING:
-        if (now_us >= thread->sleep_until_uptime_us) {
+        if (now_ns >= thread->sleep_until_uptime_ns) {
             thread->state = THREAD_STATE_RUNNING;
-            thread->sleep_until_uptime_us = 0;
+            thread->sleep_until_uptime_ns = 0;
             catch_up_runnable_pass(scheduler, thread);
+        }
+        break;
+    case THREAD_STATE_WAITING:
+        if (waiting_thread_is_ready(thread)) {
+            finish_waiting_thread(scheduler, thread, STATUS_SUCCESS);
+        } else if (thread->wait_timeout_ms != UINT64_MAX && now_ns >= thread->sleep_until_uptime_ns) {
+            finish_waiting_thread(scheduler, thread, STATUS_TIMER_EXPIRED);
         }
         break;
     default:
@@ -70,21 +110,21 @@ static void update_runnable_state(
     }
 }
 
-static void account_thread_runtime(struct StThread *thread, uint64_t now_us)
+static void account_thread_runtime(struct StThread *thread, uint64_t now_ns)
 {
-    uint64_t delta_us;
+    uint64_t delta_ns;
 
     if (!thread) return;
-    if (!thread->last_scheduled_in_us) return;
-    if (now_us <= thread->last_scheduled_in_us) return;
+    if (!thread->last_scheduled_in_ns) return;
+    if (now_ns <= thread->last_scheduled_in_ns) return;
 
-    delta_us = now_us - thread->last_scheduled_in_us;
-    thread->runtime_total_us += delta_us;
-    thread->last_scheduled_in_us = now_us;
+    delta_ns = now_ns - thread->last_scheduled_in_ns;
+    thread->runtime_total_ns += delta_ns;
+    thread->last_scheduled_in_ns = now_ns;
 }
 
 static struct StThread *select_next_runnable_thread(
-    struct StScheduler_Data *scheduler, uint64_t now_us, int update_accounting
+    struct StScheduler_Data *scheduler, uint64_t now_ns, int update_accounting
 )
 {
     struct StThread *start;
@@ -101,7 +141,7 @@ static struct StThread *select_next_runnable_thread(
     cursor = start;
 
     do {
-        update_runnable_state(scheduler, cursor, now_us);
+        update_runnable_state(scheduler, cursor, now_ns);
 
         if (cursor->state == THREAD_STATE_RUNNING) {
             if (!best || cursor->sched_pass < best_pass) {
@@ -134,8 +174,8 @@ StStatus StScheduler_AddThread(struct StThread *th)
 
     th->sched_pass = initial_pass;
     th->sched_run_count = 0;
-    th->runtime_total_us = 0;
-    th->last_scheduled_in_us = 0;
+    th->runtime_total_ns = 0;
+    th->last_scheduled_in_ns = 0;
 
     if (!scheduler->runqueue_head) {
         scheduler->runqueue_head = th;
@@ -194,12 +234,12 @@ StStatus StScheduler_GetCurrentThread(struct StThread **current)
 StStatus StScheduler_GetNextThread(struct StThread **next)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    uint64_t now_us = StTimeP_GetUptimeNanoseconds() / 1000;
+    uint64_t now_ns = StTimeP_GetUptimeNanoseconds();
 
     if (next) {
-        *next = select_next_runnable_thread(scheduler, now_us, 1);
+        *next = select_next_runnable_thread(scheduler, now_ns, 1);
     } else {
-        (void)select_next_runnable_thread(scheduler, now_us, 1);
+        (void)select_next_runnable_thread(scheduler, now_ns, 1);
     }
 
     return STATUS_SUCCESS;
@@ -209,7 +249,7 @@ StStatus StScheduler_SwitchCurrentThread(struct StThread *th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     struct StThread *prev;
-    uint64_t now_us;
+    uint64_t now_ns;
 
     if (!th) {
         return STATUS_INVALID_VALUE;
@@ -218,15 +258,15 @@ StStatus StScheduler_SwitchCurrentThread(struct StThread *th)
     ensure_scheduler_defaults(scheduler);
 
     prev = scheduler->current_thread;
-    now_us = StTimeP_GetUptimeNanoseconds() / 1000;
+    now_ns = StTimeP_GetUptimeNanoseconds();
 
     if (prev && prev != th) {
-        account_thread_runtime(prev, now_us);
+        account_thread_runtime(prev, now_ns);
     }
 
     scheduler->current_thread = th;
-    if (prev != th || !th->last_scheduled_in_us) {
-        th->last_scheduled_in_us = now_us;
+    if (prev != th || !th->last_scheduled_in_ns) {
+        th->last_scheduled_in_ns = now_ns;
     }
 
     if (prev && prev != th) {
@@ -236,20 +276,20 @@ StStatus StScheduler_SwitchCurrentThread(struct StThread *th)
     return STATUS_SUCCESS;
 }
 
-StStatus StScheduler_GetIdleRuntime(uint64_t *idle_runtime_us)
+StStatus StScheduler_GetIdleTimeNanoseconds(uint64_t *idle_runtime_ns)
 {
-    if (idle_runtime_us) {
-        *idle_runtime_us = StCpuLocalP_GetData()->scheduler.idle_runtime_us;
+    if (idle_runtime_ns) {
+        *idle_runtime_ns = StCpuLocalP_GetData()->scheduler.idle_runtime_ns;
     }
 
     return STATUS_SUCCESS;
 }
 
-void StScheduler_AccountIdleRuntime(uint64_t idle_delta_us)
+void StScheduler_AccountIdleTimeNanoseconds(uint64_t idle_delta_ns)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    scheduler->idle_runtime_us += idle_delta_us;
+    scheduler->idle_runtime_ns += idle_delta_ns;
 }
 
 int StScheduler_CheckHasOtherRunnableThread(void)
@@ -257,7 +297,7 @@ int StScheduler_CheckHasOtherRunnableThread(void)
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     struct StThread *current = scheduler->current_thread;
     struct StThread *next =
-        select_next_runnable_thread(scheduler, StTimeP_GetUptimeNanoseconds() / 1000, 0);
+        select_next_runnable_thread(scheduler, StTimeP_GetUptimeNanoseconds(), 0);
 
     return next && next != current;
 }
@@ -289,37 +329,19 @@ void StScheduler_RequestMaintain(void)
 
 StStatus StScheduler_Maintain(void)
 {
-    int unwait_thread;
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     struct StThread *current;
+    uint64_t now_ns;
     int needs_followup_maintain = 0;
 
     ensure_scheduler_defaults(scheduler);
 
     StThread_LockPreemption();
+    now_ns = StTimeP_GetUptimeNanoseconds();
 
     /* check waiting threads */
     for (current = scheduler->runqueue_head; current; current = current->next) {
-        if (current->state != THREAD_STATE_WAITING) continue;
-        if (!current->wait_list) continue;
-
-        unwait_thread = 1;
-
-        for (int i = 0; i < current->wait_count; i++) {
-            if (!current->wait_list[i]) continue;
-            if (current->wait_list[i]->state != THREAD_STATE_FINISHED) {
-                unwait_thread = 0;
-                break;
-            }
-
-            current->wait_list[i] = NULL;
-        }
-
-        if (unwait_thread) {
-            current->wait_list = NULL;
-            current->state = THREAD_STATE_RUNNING;
-            catch_up_runnable_pass(scheduler, current);
-        }
+        update_runnable_state(scheduler, current, now_ns);
     }
 
     /* remove finished detached threads */

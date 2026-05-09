@@ -15,7 +15,7 @@
 #include <strata/thread.h>
 #include <strata/utf.h>
 
-#include "sidl/process.module.h"
+#include "sidl/process.server.h"
 #include "sidl/process.types.h"
 
 #define MODULE_NAME "process"
@@ -187,7 +187,7 @@ static StStatus prc_terminate(void *context, StHandle handle, StStatus exit_code
     ctx->process->state = PROCESS_STATE_TERMINATED;
 
     /*
-     * The process node is retained by StHandle_GetRetained() in the syscall
+     * The process node is retained by StHandle_TableGetRetained() in the handle layer
      * entry path. Terminate never returns, so release it here before exit.
      */
     StGnt_ReleaseNode(ctx->node);
@@ -454,7 +454,7 @@ static StStatus prc_check_mem_map_status(
     return STATUS_NOT_SUPPORTED;
 }
 
-static const StIfPrc_ModuleVTable g_prc_vtable = {
+static const StIfPrc_ServerVTable g_prc_vtable = {
     .Suspend = prc_suspend,
     .Resume = prc_resume,
     .GetState = prc_get_state,
@@ -492,5 +492,5 @@ StStatus StProcessIf_DispatchCallArgs(
     if (!CHECK_SUCCESS(status)) return status;
 
     ctx.node = node;
-    return StIfPrc_ModuleDispatchArgs(&g_prc_vtable, &ctx, handle, funcid, args);
+    return StIfPrc_ServerDispatchArgs(&g_prc_vtable, &ctx, handle, funcid, args);
 }

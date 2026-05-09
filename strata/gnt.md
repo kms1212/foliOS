@@ -38,18 +38,18 @@
 │   │   ├── FastServices/
 │   │   └── Subsystems/
 │   ├── Devices/
-│   │   ├── Debug0 -> ../Hardwares/AcpiSystem/Debug0
-│   │   ├── Keyboard0 -> ../Hardwares/AcpiSystem/HidCon0/Keyboard0
-│   │   ├── Mouse0 -> ../Hardwares/AcpiSystem/HidCon0/Mouse0
-│   │   ├── Rtc0 -> ../Hardwares/AcpiSystem/Rtc0
-│   │   ├── Serial0 -> ../Hardwares/AcpiSystem/Serial0
-│   │   ├── Serial1 -> ../Hardwares/AcpiSystem/Serial1
-│   │   ├── Parallel0 -> ../Hardwares/AcpiSystem/Parallel0
-│   │   ├── Drive0 -> ../Hardwares/AcpiSystem/Floppy0
-│   │   ├── Drive1 -> ../Hardwares/AcpiSystem/Floppy1
-│   │   ├── Drive2 -> ../Hardwares/AcpiSystem/Ata0
-│   │   └── Drive3 -> ../Hardwares/AcpiSystem/Atapi0
-│   ├── Hardwares/
+│   │   ├── Debug0 -> ../Hardware/AcpiSystem/Debug0
+│   │   ├── Keyboard0 -> ../Hardware/AcpiSystem/HidCon0/Keyboard0
+│   │   ├── Mouse0 -> ../Hardware/AcpiSystem/HidCon0/Mouse0
+│   │   ├── Rtc0 -> ../Hardware/AcpiSystem/Rtc0
+│   │   ├── Serial0 -> ../Hardware/AcpiSystem/Serial0
+│   │   ├── Serial1 -> ../Hardware/AcpiSystem/Serial1
+│   │   ├── Parallel0 -> ../Hardware/AcpiSystem/Parallel0
+│   │   ├── Drive0 -> ../Hardware/AcpiSystem/Floppy0
+│   │   ├── Drive1 -> ../Hardware/AcpiSystem/Floppy1
+│   │   ├── Drive2 -> ../Hardware/AcpiSystem/Ata0
+│   │   └── Drive3 -> ../Hardware/AcpiSystem/Atapi0
+│   ├── Hardware/
 │   │   └── AcpiSystem/
 │   │       ├── Cpu0/
 │   │       ├── Memory0/
@@ -87,11 +87,11 @@
 │   │               └── CDROM/  # Volume name specified in filesystem
 │   │                   └── ...  # Volume contents
 │   └── Volumes/
-│       ├── BootVolume -> /System/Hardwares/AcpiSystem/IdeCon0/0/0
-│       ├── SystemVolume -> /System/Hardwares/AcpiSystem/IdeCon0/0/1
-│       ├── FLPDSK0 -> /System/Hardwares/AcpiSystem/FloppyCon0/0/FLPDSK0
-│       ├── FLPDSK1 -> /System/Hardwares/AcpiSystem/FloppyCon0/0/FLPDSK1
-│       └── CDROM -> /System/Hardwares/AcpiSystem/IdeCon0/1/0
+│       ├── BootVolume -> /System/Hardware/AcpiSystem/IdeCon0/0/0
+│       ├── SystemVolume -> /System/Hardware/AcpiSystem/IdeCon0/0/1
+│       ├── FLPDSK0 -> /System/Hardware/AcpiSystem/FloppyCon0/0/FLPDSK0
+│       ├── FLPDSK1 -> /System/Hardware/AcpiSystem/FloppyCon0/0/FLPDSK1
+│       └── CDROM -> /System/Hardware/AcpiSystem/IdeCon0/1/0
 ├── Temp/
 ├── Users/
 │   ├── User0/

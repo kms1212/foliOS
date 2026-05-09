@@ -43,7 +43,7 @@ uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle mutex, uacpi_u16 timeout_ms
         status = StMutex_LockWithTimeout(mutex, (int)timeout_ms);
         lock_success = (status != STATUS_TIMER_EXPIRED) && CHECK_SUCCESS(status);
     }
-    if (!CHECK_SUCCESS(status)) {
+    if (status != STATUS_TIMER_EXPIRED && !CHECK_SUCCESS(status)) {
         return UACPI_STATUS_INTERNAL_ERROR;
     }
 

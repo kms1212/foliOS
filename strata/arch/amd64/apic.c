@@ -25,6 +25,8 @@
 #define LAPIC_TIMER_MODE_PERIODIC 0x20000
 #define LAPIC_TIMER_MASK          0x10000
 
+#define NANOSECONDS_PER_SECOND 1000000000ULL
+
 static uintptr_t lapic_mmio_base;
 static int lapic_is_initialized;
 static uint64_t lapic_ticks_per_sec;
@@ -114,7 +116,7 @@ StStatus StApicA_InitLapicTimer(void)
 
     start_lapic = StApicA_ReadLapicRegister(LAPIC_REG_TIMER_CCR);
 
-    StTimeP_EarlyBusyWaitMicroseconds(10000);
+    StTimeP_EarlyBusyWaitNanoseconds(10000000);
 
     end_lapic = StApicA_ReadLapicRegister(LAPIC_REG_TIMER_CCR);
 
@@ -146,11 +148,16 @@ StStatus StApicA_SetLapicTimerPeriodic(uint64_t freq_hz __in)
     return STATUS_SUCCESS;
 }
 
-StStatus StApicA_SetLapicTimerOneshot(uint64_t us __in)
+StStatus StApicA_SetLapicTimerOneshot(uint64_t ns __in)
 {
-    if (!lapic_is_initialized) return STATUS_NOT_PERMITTED;
+    uint64_t ticks;
 
-    uint64_t ticks = (lapic_ticks_per_sec * us) / 1000000;
+    if (!lapic_is_initialized) return STATUS_NOT_PERMITTED;
+    if (!ns) return STATUS_INVALID_VALUE;
+
+    ticks =
+        (uint64_t)(((__uint128_t)lapic_ticks_per_sec * ns + NANOSECONDS_PER_SECOND - 1) /
+                   NANOSECONDS_PER_SECOND);
     if (ticks == 0 || ticks > UINT32_MAX) return STATUS_INVALID_VALUE;
 
     StApicA_WriteLapicRegister(LAPIC_REG_TIMER_DCR, 0x03);

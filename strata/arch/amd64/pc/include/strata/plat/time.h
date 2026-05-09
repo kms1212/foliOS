@@ -4,9 +4,11 @@
 #include <stdint.h>
 
 #include <strata/compiler.h>
+#include <strata/status.h>
 
-void StTimeP_EarlyBusyWaitMicroseconds(uint32_t us);
+void StTimeP_EarlyBusyWaitNanoseconds(uint64_t ns);
 void StTimeP_InitTimer(int use_hpet __in);
+StStatus StTimeP_StartTimer(void);
 uint64_t StTimeP_GetUptimeNanoseconds(void);
 
 uint64_t StTimeP_GetGlobalTick(void);
