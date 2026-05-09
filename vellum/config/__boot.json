@@ -30,7 +30,7 @@
                             "name": "CLI shell",
                             "script": "shell"
                         },
-                        {   
+                        {
                             "name": "GUI shell",
                             "script": [
                                 "usefont boot:/unifont.bfn",
