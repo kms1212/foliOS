@@ -1,33 +1,103 @@
 #include "acpi_table_mcfg_if.h"
 
 #include <stdint.h>
-#include <string.h>
 
 #include <uacpi/acpi.h>
 #include <uacpi/internal/tables.h>
 #include <uacpi/status.h>
 #include <uacpi/tables.h>
-#include <uacpi/types.h>
 
+#include <strata/compiler.h>
+#include <strata/gnt.h>
 #include <strata/gnt/interface.h>
-#include <strata/module.h>
-#include <strata/panic.h>
-#include <strata/utf.h>
+#include <strata/handle.h>
+#include <strata/mm/pool.h>
+#include <strata/status.h>
+#include <strata/uuid.h>
 
-#include "mcfg.server.h"
+#include "sidl/mcfg.server.h"
+#include "sidl/mcfg.types.h"
 
 #define MAKE_UACPI_STATUS(uacpi_status)                                                            \
     ((uacpi_status)                                                                                \
          ? MAKE_STATUS(MAKE_BASE_STATUS(1, uacpi_status, STATUS_AREA_ACPI), STATUS_ATTR_NONE)      \
          : STATUS_SUCCESS)
 
-static struct StModule *g_acpi_table_mcfg_module;
+struct acpi_table_mcfg_node_context {
+    struct uacpi_installed_table *table;
+    unsigned long table_index;
+};
+
+struct acpi_table_mcfg_dispatch_context {
+    struct StGnt_Node *node;
+    struct uacpi_installed_table *table;
+    unsigned long table_index;
+};
+
 static const struct StUuid g_mcfg_interface_uuid = UUID_ACPITABLEMCFG_INTERFACE_INIT;
 
-static int is_mcfg_node(const struct StGnt_Node *node)
+static int is_mcfg_context(const struct acpi_table_mcfg_node_context *ctx)
 {
-    return node && node->name_len == 4 &&
-        memcmp(node->name, U"MCFG", 4 * sizeof(St_Utf32Char)) == 0;
+    return ctx && ctx->table &&
+        uacpi_signatures_match(ctx->table->hdr.signature, ACPI_MCFG_SIGNATURE);
+}
+
+static StStatus get_mcfg_context_from_node(
+    struct StGnt_Node *node, struct acpi_table_mcfg_dispatch_context *ctx_out
+)
+{
+    struct acpi_table_mcfg_node_context *node_ctx;
+
+    if (!node || !ctx_out) return STATUS_INVALID_VALUE;
+
+    node_ctx = (struct acpi_table_mcfg_node_context *)node->private_data;
+    if (!is_mcfg_context(node_ctx)) return STATUS_NOT_SUPPORTED;
+
+    ctx_out->node = node;
+    ctx_out->table = node_ctx->table;
+    ctx_out->table_index = node_ctx->table_index;
+
+    return STATUS_SUCCESS;
+}
+
+static StStatus acquire_mcfg_table(
+    struct acpi_table_mcfg_dispatch_context *ctx,
+    uacpi_table *table_ref_out,
+    const struct acpi_mcfg **mcfg_out
+)
+{
+    uacpi_status uacpi_status;
+
+    if (!ctx || !ctx->table || !table_ref_out || !mcfg_out) return STATUS_INVALID_VALUE;
+
+    table_ref_out->index = ctx->table_index;
+    table_ref_out->ptr = ctx->table->ptr;
+
+    uacpi_status = uacpi_table_ref(table_ref_out);
+    if (uacpi_unlikely_error(uacpi_status)) return MAKE_UACPI_STATUS(uacpi_status);
+
+    if (!ctx->table->ptr) {
+        uacpi_table_unref(table_ref_out);
+        return STATUS_CONFLICTING_STATE;
+    }
+
+    *mcfg_out = (const struct acpi_mcfg *)ctx->table->ptr;
+
+    return STATUS_SUCCESS;
+}
+
+static StStatus release_mcfg_table(StStatus status, uacpi_table *table_ref)
+{
+    uacpi_status uacpi_status;
+
+    if (!table_ref) return status;
+
+    uacpi_status = uacpi_table_unref(table_ref);
+    if (CHECK_SUCCESS(status) && uacpi_unlikely_error(uacpi_status)) {
+        status = MAKE_UACPI_STATUS(uacpi_status);
+    }
+
+    return status;
 }
 
 static StStatus get_mcfg_entry_count_from_table(const struct acpi_mcfg *mcfg, uint32_t *count_out)
@@ -47,40 +117,26 @@ static StStatus get_mcfg_entry_count_from_table(const struct acpi_mcfg *mcfg, ui
     return STATUS_SUCCESS;
 }
 
-static StStatus find_mcfg_table(uacpi_table *table_out)
-{
-    uacpi_status uacpi_status;
-
-    if (!table_out) return STATUS_INVALID_VALUE;
-
-    uacpi_status = uacpi_table_find_by_signature(ACPI_MCFG_SIGNATURE, table_out);
-    return MAKE_UACPI_STATUS(uacpi_status);
-}
-
 static StStatus mcfg_get_entry_count(
     void *context __inout, StHandle handle __in, uint32_t *count __out
 )
 {
     StStatus status;
-    uacpi_status uacpi_status;
-    uacpi_table table;
+    uacpi_table table_ref;
+    const struct acpi_mcfg *mcfg;
+    struct acpi_table_mcfg_dispatch_context *ctx =
+        (struct acpi_table_mcfg_dispatch_context *)context;
 
-    (void)context;
     (void)handle;
 
-    if (!count) return STATUS_INVALID_VALUE;
+    if (!ctx || !count) return STATUS_INVALID_VALUE;
 
-    status = find_mcfg_table(&table);
+    status = acquire_mcfg_table(ctx, &table_ref, &mcfg);
     if (!CHECK_SUCCESS(status)) return status;
 
-    status = get_mcfg_entry_count_from_table((const struct acpi_mcfg *)table.ptr, count);
+    status = get_mcfg_entry_count_from_table(mcfg, count);
 
-    uacpi_status = uacpi_table_unref(&table);
-    if (CHECK_SUCCESS(status) && uacpi_unlikely_error(uacpi_status)) {
-        status = MAKE_UACPI_STATUS(uacpi_status);
-    }
-
-    return status;
+    return release_mcfg_table(status, &table_ref);
 }
 
 static StStatus mcfg_get_entry(
@@ -92,22 +148,22 @@ static StStatus mcfg_get_entry(
 {
     StStatus status;
     uint32_t entry_count;
+    uacpi_table table_ref;
     const struct acpi_mcfg *mcfg;
     const struct acpi_mcfg_allocation *allocation;
-    uacpi_status uacpi_status;
-    uacpi_table table;
+    struct acpi_table_mcfg_dispatch_context *ctx =
+        (struct acpi_table_mcfg_dispatch_context *)context;
 
-    (void)context;
     (void)handle;
 
-    if (!entry) return STATUS_INVALID_VALUE;
+    if (!ctx || !entry) return STATUS_INVALID_VALUE;
 
-    status = find_mcfg_table(&table);
+    status = acquire_mcfg_table(ctx, &table_ref, &mcfg);
     if (!CHECK_SUCCESS(status)) return status;
 
-    mcfg = (const struct acpi_mcfg *)table.ptr;
     status = get_mcfg_entry_count_from_table(mcfg, &entry_count);
     if (!CHECK_SUCCESS(status)) goto cleanup;
+
     if (index >= entry_count) {
         status = STATUS_ENTRY_NOT_FOUND;
         goto cleanup;
@@ -122,12 +178,7 @@ static StStatus mcfg_get_entry(
     status = STATUS_SUCCESS;
 
 cleanup:
-    uacpi_status = uacpi_table_unref(&table);
-    if (CHECK_SUCCESS(status) && uacpi_unlikely_error(uacpi_status)) {
-        status = MAKE_UACPI_STATUS(uacpi_status);
-    }
-
-    return status;
+    return release_mcfg_table(status, &table_ref);
 }
 
 static const StIfAcpiTblMcfg_ServerVTable g_mcfg_vtable = {
@@ -135,34 +186,42 @@ static const StIfAcpiTblMcfg_ServerVTable g_mcfg_vtable = {
     .GetEntry = mcfg_get_entry,
 };
 
-static StStatus acpi_table_mcfg_dispatch_call_args(
+StStatus StAcpiTableMcfgIf_DispatchCallArgs(
     struct StGnt_Node *node __in, StHandle_Id handle __in, uint32_t funcid __in, const long args[4]
 )
 {
+    StStatus status;
+    struct acpi_table_mcfg_dispatch_context ctx;
+
     if (!node || !args) return STATUS_INVALID_VALUE;
-    if (!is_mcfg_node(node)) return STATUS_NOT_SUPPORTED;
 
-    return StIfAcpiTblMcfg_ServerDispatchArgs(&g_mcfg_vtable, NULL, handle, funcid, args);
+    status = get_mcfg_context_from_node(node, &ctx);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    return StIfAcpiTblMcfg_ServerDispatchArgs(&g_mcfg_vtable, &ctx, handle, funcid, args);
 }
 
-__constructor static void init_acpi_table_mcfg_if(void)
+StStatus StAcpi_TableMcfgIf_RegisterNode(
+    struct StGnt_Node *table_node,
+    struct uacpi_installed_table *table,
+    unsigned long table_index
+)
 {
     StStatus status;
+    struct acpi_table_mcfg_node_context *node_ctx;
 
-    status = StModule_Create(&g_acpi_table_mcfg_module);
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "Failed to create ACPI MCFG interface module");
+    if (!table_node || !table) return STATUS_INVALID_VALUE;
+    if (!StAcpi_Module) return STATUS_CONFLICTING_STATE;
+    if (!uacpi_signatures_match(table->hdr.signature, ACPI_MCFG_SIGNATURE)) {
+        return STATUS_INVALID_VALUE;
     }
+    if (table_node->private_data) return STATUS_CONFLICTING_STATE;
 
-    g_acpi_table_mcfg_module->dispatch_args = acpi_table_mcfg_dispatch_call_args;
-}
+    status = StPool_AllocateClear(sizeof(*node_ctx), (void **)&node_ctx);
+    if (!CHECK_SUCCESS(status)) return status;
 
-StStatus StAcpi_TableMcfgIf_RegisterNode(struct StGnt_Node *table_node)
-{
-    StStatus status;
-
-    if (!table_node) return STATUS_INVALID_VALUE;
-    if (!g_acpi_table_mcfg_module) return STATUS_CONFLICTING_STATE;
+    node_ctx->table = table;
+    node_ctx->table_index = table_index;
 
     status = StGnt_RegisterInterface(
         table_node,
@@ -170,9 +229,14 @@ StStatus StAcpi_TableMcfgIf_RegisterNode(struct StGnt_Node *table_node)
         0,
         STIFACPITBLMCFG_FUNCID_SPAN
     );
-    if (!CHECK_SUCCESS(status)) return status;
+    if (!CHECK_SUCCESS(status)) {
+        StPool_Free(node_ctx);
+        return status;
+    }
 
-    table_node->handler_module = g_acpi_table_mcfg_module;
+    table_node->type = GNT_NODETYPE_LEAF;
+    table_node->private_data = node_ctx;
+    table_node->handler_module = StAcpi_Module;
 
     return STATUS_SUCCESS;
 }

@@ -69,17 +69,13 @@ StStatus StGnt_Iterate(
     size_t module_entry_count;
     uint64_t module_next_cookie;
 
-    if (!parent || parent->type == GNT_NODETYPE_LINK) return STATUS_NOT_A_DIRECTORY;
+    if (!parent || parent->type != GNT_NODETYPE_DIRECTORY) return STATUS_NOT_A_DIRECTORY;
     if (!buffer && buffer_size != 0) return STATUS_INVALID_VALUE;
     if (!entry_count || !next_cookie) return STATUS_INVALID_VALUE;
 
     handler_module = parent->handler_module;
     *entry_count = 0;
     *next_cookie = cookie;
-
-    if (!parent->children_head && (!handler_module || !handler_module->list)) {
-        return STATUS_NOT_A_DIRECTORY;
-    }
 
     if (is_module_cookie(cookie)) {
         if (!handler_module || !handler_module->list) return STATUS_INVALID_VALUE;
@@ -124,13 +120,7 @@ StStatus StGnt_Iterate(
         entry->cookie = (uint64_t)(uintptr_t)child;
         entry->entry_len = entry_len;
         entry->name_len = child->name_len;
-        if (child->type == GNT_NODETYPE_LINK) {
-            entry->type = GNT_NODETYPE_LINK;
-        } else if (child->children_head || child->handler_module) {
-            entry->type = GNT_NODETYPE_DIRECTORY;
-        } else {
-            entry->type = GNT_NODETYPE_LEAF;
-        }
+        entry->type = child->type;
 
         if (name_size) {
             memcpy(entry->name, child->name, name_size);

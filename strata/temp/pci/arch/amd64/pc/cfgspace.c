@@ -16,12 +16,14 @@
 #define PCI_CONFIG_ADDRESS 0x0CF8
 #define PCI_CONFIG_DATA    0x0CFC
 
-#define PCI_ECAM_MAX_ENTRIES    16
-#define PCI_ECAM_BUS_SIZE       0x100000ULL
-#define PCI_ECAM_DEVICE_SIZE    0x8000ULL
-#define PCI_ECAM_FUNCTION_SIZE  0x1000ULL
-#define PCI_ECAM_FUNCTION_COUNT 8
-#define PCI_ECAM_DEVICE_COUNT   32
+#define PCI_ECAM_MAX_ENTRIES     16
+#define PCI_ECAM_BUS_SIZE        0x100000ULL
+#define PCI_ECAM_DEVICE_SIZE     0x8000ULL
+#define PCI_ECAM_FUNCTION_SIZE   0x1000ULL
+#define PCI_ECAM_FUNCTION_COUNT  8
+#define PCI_ECAM_DEVICE_COUNT    32
+#define PCI_ECAM_CFGSPACE_SIZE   0x1000
+#define PCI_LEGACY_CFGSPACE_SIZE 0x100
 
 struct pci_ecam_entry {
     uintptr_t virt_base;
@@ -36,7 +38,7 @@ static uint32_t ecam_entry_count;
 static int cfgspace_initialized;
 static int ecam_enabled;
 
-static uint32_t read_legacy_cfg32(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
+static uint32_t read_legacy_cfg32(uint8_t bus, uint8_t device, uint8_t function, uint16_t offset)
 {
     uint32_t address =
         0x80000000 | (bus << 16) | (device << 11) | (function << 8) | (offset & 0xFC);
@@ -46,7 +48,7 @@ static uint32_t read_legacy_cfg32(uint8_t bus, uint8_t device, uint8_t function,
 }
 
 static void write_legacy_cfg32(
-    uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value
+    uint8_t bus, uint8_t device, uint8_t function, uint16_t offset, uint32_t value
 )
 {
     uint32_t address =
@@ -54,6 +56,35 @@ static void write_legacy_cfg32(
 
     StIoA_Out32(PCI_CONFIG_ADDRESS, address);
     StIoA_Out32(PCI_CONFIG_DATA, value);
+}
+
+static StStatus validate_cfg_access(
+    uint8_t device, uint8_t function, uint16_t offset, uint16_t width
+)
+{
+    if (device >= PCI_ECAM_DEVICE_COUNT || function >= PCI_ECAM_FUNCTION_COUNT) {
+        return STATUS_INVALID_VALUE;
+    }
+
+    if (!width || width > 4 || offset > PCI_ECAM_CFGSPACE_SIZE - width) {
+        return STATUS_INVALID_VALUE;
+    }
+
+    if ((width == 2 && (offset & 1)) || (width == 4 && (offset & 3))) {
+        return STATUS_INVALID_VALUE;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+static StStatus validate_cfg_backend(
+    const struct pci_ecam_entry *entry, uint16_t offset, uint16_t width
+)
+{
+    if (entry) return STATUS_SUCCESS;
+    if (offset > PCI_LEGACY_CFGSPACE_SIZE - width) return STATUS_NOT_SUPPORTED;
+
+    return STATUS_SUCCESS;
 }
 
 static const struct pci_ecam_entry *find_ecam_entry(uint8_t bus)
@@ -117,24 +148,18 @@ static StStatus init_ecam_from_mcfg(void)
     StStatus status;
     StStatus close_status;
     StHandle mcfg_handle;
-    uint32_t funcid_base;
-    uint32_t result_abiver;
     uint32_t entry_count;
     int handle_opened = 0;
 
-    status =
-        StIfAcpiTblMcfg_Open((const uint8_t *)"/System/Firmware/ACPI/Tables/MCFG", 0, &mcfg_handle);
-    if (status == STATUS_ENTRY_NOT_FOUND || status == STATUS_NOT_A_DIRECTORY) {
+    status = StHandle_Open((const uint8_t *)"/System/Firmware/ACPI/Tables/MCFG", 0, &mcfg_handle);
+    if (status == STATUS_ENTRY_NOT_FOUND) {
         LOG_DEBUG(LM_CAT_PCI, "ACPI MCFG table not found; using legacy config access\n");
         return STATUS_NOT_SUPPORTED;
     }
     if (!CHECK_SUCCESS(status)) return status;
     handle_opened = 1;
 
-    status = StIfAcpiTblMcfg_Query(mcfg_handle, 0, &funcid_base, &result_abiver);
-    if (!CHECK_SUCCESS(status)) goto done;
-
-    status = StIfAcpiTblMcfg_GetEntryCount(mcfg_handle, funcid_base, &entry_count);
+    status = StIfAcpiTblMcfg_GetEntryCount(mcfg_handle, &entry_count);
     if (!CHECK_SUCCESS(status)) goto done;
 
     LOG_DEBUG(LM_CAT_PCI, "ACPI MCFG entry count: %u\n", entry_count);
@@ -142,7 +167,7 @@ static StStatus init_ecam_from_mcfg(void)
     for (uint32_t index = 0; index < entry_count; index++) {
         StIfAcpiTblMcfg_Entry entry;
 
-        status = StIfAcpiTblMcfg_GetEntry(mcfg_handle, funcid_base, index, &entry);
+        status = StIfAcpiTblMcfg_GetEntry(mcfg_handle, index, &entry);
         if (!CHECK_SUCCESS(status)) goto done;
 
         LOG_DEBUG(
@@ -205,75 +230,204 @@ static void ensure_cfgspace_initialized(void)
     LOG_INFO(LM_CAT_PCI, "using PCI ECAM config access\n");
 }
 
-uint32_t StPciP_ReadCfg32(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
-{
-    const struct pci_ecam_entry *entry;
-
-    ensure_cfgspace_initialized();
-
-    if (device >= PCI_ECAM_DEVICE_COUNT || function >= PCI_ECAM_FUNCTION_COUNT) {
-        return UINT32_MAX;
-    }
-
-    entry = ecam_enabled ? find_ecam_entry(bus) : NULL;
-    if (entry) {
-        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset & 0xFC);
-        return *(volatile uint32_t *)addr;
-    }
-
-    return read_legacy_cfg32(bus, device, function, offset);
-}
-
-uint16_t StPciP_ReadCfg16(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
-{
-    uint32_t val = StPciP_ReadCfg32(bus, device, function, offset);
-    return (val >> ((offset & 0x3) << 3)) & 0xFFFF;
-}
-
-uint8_t StPciP_ReadCfg8(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset)
-{
-    uint32_t val = StPciP_ReadCfg32(bus, device, function, offset);
-    return (val >> ((offset & 0x3) << 3)) & 0xFF;
-}
-
-void StPciP_WriteCfg32(
-    uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value
+StStatus StPciP_ReadCfg32(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint32_t *value __out
 )
 {
+    StStatus status;
     const struct pci_ecam_entry *entry;
+
+    if (!value) return STATUS_INVALID_VALUE;
+
+    status = validate_cfg_access(device, function, offset, sizeof(*value));
+    if (!CHECK_SUCCESS(status)) return status;
 
     ensure_cfgspace_initialized();
 
-    if (device >= PCI_ECAM_DEVICE_COUNT || function >= PCI_ECAM_FUNCTION_COUNT) return;
+    entry = ecam_enabled ? find_ecam_entry(bus) : NULL;
+    status = validate_cfg_backend(entry, offset, sizeof(*value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (entry) {
+        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset);
+        *value = *(volatile uint32_t *)addr;
+    } else {
+        *value = read_legacy_cfg32(bus, device, function, offset);
+    }
+
+    return STATUS_SUCCESS;
+}
+
+StStatus StPciP_ReadCfg16(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint16_t *value __out
+)
+{
+    StStatus status;
+    const struct pci_ecam_entry *entry;
+    uint32_t value32;
+
+    if (!value) return STATUS_INVALID_VALUE;
+
+    status = validate_cfg_access(device, function, offset, sizeof(*value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    ensure_cfgspace_initialized();
 
     entry = ecam_enabled ? find_ecam_entry(bus) : NULL;
+    status = validate_cfg_backend(entry, offset, sizeof(*value));
+    if (!CHECK_SUCCESS(status)) return status;
+
     if (entry) {
-        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset & 0xFC);
+        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset);
+        *value = *(volatile uint16_t *)addr;
+        return STATUS_SUCCESS;
+    }
+
+    value32 = read_legacy_cfg32(bus, device, function, offset & 0xFC);
+
+    *value = (value32 >> ((offset & 0x3) << 3)) & 0xFFFF;
+    return STATUS_SUCCESS;
+}
+
+StStatus StPciP_ReadCfg8(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint8_t *value __out
+)
+{
+    StStatus status;
+    const struct pci_ecam_entry *entry;
+    uint32_t value32;
+
+    if (!value) return STATUS_INVALID_VALUE;
+
+    status = validate_cfg_access(device, function, offset, sizeof(*value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    ensure_cfgspace_initialized();
+
+    entry = ecam_enabled ? find_ecam_entry(bus) : NULL;
+    status = validate_cfg_backend(entry, offset, sizeof(*value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (entry) {
+        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset);
+        *value = *(volatile uint8_t *)addr;
+        return STATUS_SUCCESS;
+    }
+
+    value32 = read_legacy_cfg32(bus, device, function, offset & 0xFC);
+
+    *value = (value32 >> ((offset & 0x3) << 3)) & 0xFF;
+    return STATUS_SUCCESS;
+}
+
+StStatus StPciP_WriteCfg32(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint32_t value __in
+)
+{
+    StStatus status;
+    const struct pci_ecam_entry *entry;
+
+    status = validate_cfg_access(device, function, offset, sizeof(value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    ensure_cfgspace_initialized();
+
+    entry = ecam_enabled ? find_ecam_entry(bus) : NULL;
+    status = validate_cfg_backend(entry, offset, sizeof(value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (entry) {
+        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset);
         *(volatile uint32_t *)addr = value;
-        return;
+    } else {
+        write_legacy_cfg32(bus, device, function, offset, value);
     }
 
-    write_legacy_cfg32(bus, device, function, offset, value);
+    return STATUS_SUCCESS;
 }
 
-void StPciP_WriteCfg16(
-    uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint16_t value
+StStatus StPciP_WriteCfg16(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint16_t value __in
 )
 {
-    uint32_t value32 = StPciP_ReadCfg32(bus, device, function, offset & 0xFC);
+    StStatus status;
+    const struct pci_ecam_entry *entry;
+    uint32_t value32;
 
+    status = validate_cfg_access(device, function, offset, sizeof(value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    ensure_cfgspace_initialized();
+
+    entry = ecam_enabled ? find_ecam_entry(bus) : NULL;
+    status = validate_cfg_backend(entry, offset, sizeof(value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (entry) {
+        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset);
+        *(volatile uint16_t *)addr = value;
+        return STATUS_SUCCESS;
+    }
+
+    value32 = read_legacy_cfg32(bus, device, function, offset & 0xFC);
     value32 &= ~(0xFFFF << ((offset & 0x3) << 3));
     value32 |= (value & 0xFFFF) << ((offset & 0x3) << 3);
 
-    StPciP_WriteCfg32(bus, device, function, offset & 0xFC, value32);
+    write_legacy_cfg32(bus, device, function, offset & 0xFC, value32);
+    return STATUS_SUCCESS;
 }
 
-void StPciP_WriteCfg8(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint8_t value)
+StStatus StPciP_WriteCfg8(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint8_t value __in
+)
 {
-    uint32_t value32 = StPciP_ReadCfg32(bus, device, function, offset & 0xFC);
+    StStatus status;
+    const struct pci_ecam_entry *entry;
+    uint32_t value32;
 
+    status = validate_cfg_access(device, function, offset, sizeof(value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    ensure_cfgspace_initialized();
+
+    entry = ecam_enabled ? find_ecam_entry(bus) : NULL;
+    status = validate_cfg_backend(entry, offset, sizeof(value));
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (entry) {
+        uintptr_t addr = ecam_cfg_addr(entry, bus, device, function, offset);
+        *(volatile uint8_t *)addr = value;
+        return STATUS_SUCCESS;
+    }
+
+    value32 = read_legacy_cfg32(bus, device, function, offset & 0xFC);
     value32 &= ~(0xFF << ((offset & 0x3) << 3));
     value32 |= (value & 0xFF) << ((offset & 0x3) << 3);
 
-    StPciP_WriteCfg32(bus, device, function, offset & 0xFC, value32);
+    write_legacy_cfg32(bus, device, function, offset & 0xFC, value32);
+    return STATUS_SUCCESS;
 }

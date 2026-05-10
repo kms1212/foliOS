@@ -240,7 +240,7 @@ static status_t init_nonpnp_devices(int has_acpi)
 {
     status_t status;
     uacpi_status uacpi_status;
-    int skip_legacy = 0, skip_8042 = 0, skip_rtc = 0;
+    int skip_legacy = 0, skip_rtc = 0;
     struct acpi_fadt *fadt;
 
     if (has_acpi) {
@@ -254,10 +254,6 @@ static status_t init_nonpnp_devices(int has_acpi)
         if (fadt->hdr.revision >= 3) {
             if (!(fadt->iapc_boot_arch & ACPI_IA_PC_LEGACY_DEVS)) {
                 skip_legacy = 1;
-            }
-
-            if (!(fadt->iapc_boot_arch & ACPI_IA_PC_8042)) {
-                skip_8042 = 1;
             }
 
             if (fadt->iapc_boot_arch & ACPI_IA_PC_NO_CMOS_RTC) {
@@ -293,44 +289,17 @@ static status_t init_nonpnp_devices(int has_acpi)
 
 #endif
 
-    /* find Non-PnP ISA Components */
-    if (!skip_8042) {
-        LOG_DEBUG("initializing i8042...\n");
+    /* Use BIOS keyboard services while the firmware is still available. */
+    {
+        LOG_DEBUG("initializing BIOS keyboard...\n");
 
         struct device *dev;
         struct device_driver *drv;
 
-        struct resource res[] = {
-            {
-                .type = RT_IOPORT,
-                .base = 0x0060,
-                .limit = 0x0060,
-                .flags = 0,
-            },
-            {
-                .type = RT_IOPORT,
-                .base = 0x0064,
-                .limit = 0x0064,
-                .flags = 0,
-            },
-            {
-                .type = RT_IRQ,
-                .base = 0x21,
-                .limit = 0x21,
-                .flags = 0,
-            },
-            {
-                .type = RT_IRQ,
-                .base = 0x2C,
-                .limit = 0x2C,
-                .flags = 0,
-            },
-        };
-
-        status = VlDev_FindDriver("i8042", &drv);
+        status = VlDev_FindDriver("bioskbd", &drv);
         if (!CHECK_SUCCESS(status)) return status;
 
-        status = drv->probe(&dev, drv, NULL, res, ARRAY_SIZE(res));
+        status = drv->probe(&dev, drv, NULL, NULL, 0);
         if (!CHECK_SUCCESS(status)) return status;
     }
 

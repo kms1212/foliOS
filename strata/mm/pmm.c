@@ -1623,7 +1623,7 @@ StStatus StPmm_LockAndGetAllocMetadata(
 )
 {
     struct pmm_metadata *metadata;
-    uint_fast32_t expected = 0;
+    unsigned int expected = 0;
 
     metadata = get_metadata(pfn);
 
@@ -1647,7 +1647,7 @@ StStatus StPmm_UnlockAllocMetadata(struct StPmm_AllocationMetadata *meta __in)
 {
     struct pmm_metadata *metadata = (struct pmm_metadata *)meta;
 
-    uint_fast32_t expected = 1;
+    unsigned int expected = 1;
     atomic_compare_exchange_strong_explicit(
         &metadata->lock,
         &expected,

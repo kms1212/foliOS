@@ -3,20 +3,55 @@
 
 #include <stdint.h>
 
-uint32_t StPciP_ReadCfg32(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
+#include <strata/compiler.h>
+#include <strata/status.h>
 
-uint16_t StPciP_ReadCfg16(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
-
-uint8_t StPciP_ReadCfg8(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset);
-
-void StPciP_WriteCfg32(
-    uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint32_t value
+StStatus StPciP_ReadCfg32(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint32_t *value __out
 );
 
-void StPciP_WriteCfg16(
-    uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint16_t value
+StStatus StPciP_ReadCfg16(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint16_t *value __out
 );
 
-void StPciP_WriteCfg8(uint8_t bus, uint8_t device, uint8_t function, uint8_t offset, uint8_t value);
+StStatus StPciP_ReadCfg8(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint8_t *value __out
+);
+
+StStatus StPciP_WriteCfg32(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint32_t value __in
+);
+
+StStatus StPciP_WriteCfg16(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint16_t value __in
+);
+
+StStatus StPciP_WriteCfg8(
+    uint8_t bus __in,
+    uint8_t device __in,
+    uint8_t function __in,
+    uint16_t offset __in,
+    uint8_t value __in
+);
 
 #endif  // __PLAT_PCI_CFGSPACE_H__

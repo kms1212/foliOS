@@ -194,6 +194,9 @@ static StStatus register_process_node(struct StProcess *process, struct StGnt_No
 
     node = find_registered_child(g_gnt_system_processes, process_name, process_name_len);
     if (node) {
+        node->type = GNT_NODETYPE_DIRECTORY;
+        node->handler_module = StProcess_Module;
+
         status = register_process_directory_interfaces(node);
         if (!CHECK_SUCCESS(status)) return status;
 
@@ -230,6 +233,9 @@ static StStatus register_directory_child(
 
     node = find_registered_child(parent, name, name_len);
     if (node) {
+        node->type = GNT_NODETYPE_DIRECTORY;
+        node->handler_module = StProcess_Module;
+
         status = register_threads_directory_interfaces(node);
         if (!CHECK_SUCCESS(status)) return status;
 
@@ -263,6 +269,8 @@ static StStatus register_leaf_child(
 
     node = find_registered_child(parent, name, name_len);
     if (node) {
+        node->type = GNT_NODETYPE_LEAF;
+
         if (parent && parent->parent && node_name_equals(parent, U"Threads", 7) &&
             utf32_name_equals(name, name_len, U"Main", 4)) {
             status = register_thread_interfaces(node);

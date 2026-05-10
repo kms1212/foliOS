@@ -20,7 +20,7 @@ SECTIONS
     .text.startup :
     {
         PROVIDE_HIDDEN(___text_startup_start = .);
-        KEEP(*(.text.startup .text.startup.*))
+        KEEP(*(.text.startup))
         PROVIDE_HIDDEN(___text_startup_end = .);
     }
 
@@ -51,13 +51,13 @@ SECTIONS
 
         . = ALIGN(16);
         PROVIDE(__init_array_start = .);
-        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
+        KEEP(*(SORT_BY_INIT_PRIORITY(.init_array.*)))
         KEEP(*(.init_array .ctors))
         PROVIDE(__init_array_end = .);
 
         . = ALIGN(16);
         PROVIDE_HIDDEN(__fini_array_start = .);
-        KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
+        KEEP(*(SORT_BY_INIT_PRIORITY(.fini_array.*)))
         KEEP(*(.fini_array .dtors))
         PROVIDE_HIDDEN(__fini_array_end = .);
 
@@ -68,11 +68,9 @@ SECTIONS
         KEEP(*(SORT_NONE(.fini)))
 
         . = ALIGN(16);
-        KEEP(*(SORT(.ctors.*)))
         KEEP(*(.ctors))
 
         . = ALIGN(16);
-        KEEP(*(SORT(.dtors.*)))
         KEEP(*(.dtors))
     }
 

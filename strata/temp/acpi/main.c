@@ -177,6 +177,7 @@ static StStatus init_uacpi(void)
         return MAKE_UACPI_STATUS(uacpi_status);
     }
 
+    // TODO: loading and initialization of namespace should be late-executed
     uacpi_status = uacpi_namespace_load();
     if (uacpi_unlikely_error(uacpi_status)) {
         LOG_ERROR(
@@ -271,7 +272,7 @@ static uacpi_iteration_decision add_table_node(
     }
 
     if (uacpi_signatures_match(table->hdr.signature, ACPI_MCFG_SIGNATURE)) {
-        status = StAcpi_TableMcfgIf_RegisterNode(table_node);
+        status = StAcpi_TableMcfgIf_RegisterNode(table_node, table, idx);
         if (!CHECK_SUCCESS(status)) {
             iter_data->status = status;
             return UACPI_ITERATION_DECISION_BREAK;
@@ -290,9 +291,11 @@ static StStatus register_gnt_nodes(struct StGnt_Node *parent_node __in)
 
     status = StGnt_AddNode(parent_node, U"ACPI", &gnt_acpi_root_dir);
     if (!CHECK_SUCCESS(status)) return status;
+    gnt_acpi_root_dir->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(gnt_acpi_root_dir, U"Tables", &gnt_tables_dir);
     if (!CHECK_SUCCESS(status)) return status;
+    gnt_tables_dir->type = GNT_NODETYPE_DIRECTORY;
 
     table_iter_data.tables_node = gnt_tables_dir;
     table_iter_data.status = STATUS_SUCCESS;

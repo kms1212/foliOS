@@ -38,5 +38,6 @@ struct bioscall_regs {
 };
 
 extern int VlBiosP_Call(uint8_t irq, struct bioscall_regs *);
+extern int VlBiosP_CallWithInterrupts(uint8_t irq, struct bioscall_regs *);
 
 #endif  // __VELLUM_ASM_BIOS_BIOSCALL_H__

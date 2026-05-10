@@ -36,12 +36,14 @@ StStatus StGnt_Init(void)
 
     status = StGnt_AddNode(NULL, NULL, &g_gnt_root_network);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    g_gnt_root_network->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(g_gnt_root_network, U"Localhost", &localhost_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     status = StGnt_AddNode(NULL, NULL, &g_gnt_root_local);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    g_gnt_root_local->type = GNT_NODETYPE_DIRECTORY;
 
     localhost_node->type = GNT_NODETYPE_LINK;
     localhost_node->link.is_virtual = 1;
@@ -49,9 +51,11 @@ StStatus StGnt_Init(void)
 
     status = StGnt_AddNode(g_gnt_root_local, U"System", &system_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    system_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Kernel", &kernel_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    kernel_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Processes", &processes_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -62,30 +66,39 @@ StStatus StGnt_Init(void)
 
     status = StGnt_AddNode(system_node, U"Threads", &threads_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    threads_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Pipes", &pipes_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    pipes_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Sockets", &sockets_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    sockets_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"SharedMemories", &sharedmemories_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    sharedmemories_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Modules", &modules_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    modules_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Devices", &devices_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    devices_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Hardware", &hardware_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    hardware_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Firmware", &firmware_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    firmware_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = StGnt_AddNode(system_node, U"Volumes", &volumes_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    volumes_node->type = GNT_NODETYPE_DIRECTORY;
 
     status = register_directory_interfaces(g_gnt_root_network);
     if (!CHECK_SUCCESS(status)) goto has_error;

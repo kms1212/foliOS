@@ -227,7 +227,7 @@ struct dump_gnt_context {
 
 static int dump_gnt_node_is_container(const struct StGnt_Node *node)
 {
-    return node && node->type != GNT_NODETYPE_LINK && (node->children_head || node->handler_module);
+    return node && node->type == GNT_NODETYPE_DIRECTORY;
 }
 
 static struct StGnt_Node *dump_gnt_find_registered_child(

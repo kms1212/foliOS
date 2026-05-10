@@ -33,6 +33,7 @@ target_sources(strata_temp_module_acpi PRIVATE ${SIDL_SRCS} ${SIDL_HDRS})
 set_source_files_properties(${SIDL_SRCS} ${SIDL_HDRS} PROPERTIES GENERATED TRUE)
 add_custom_target(temp_module_acpi_sidl_gen DEPENDS ${SIDL_SRCS} ${SIDL_HDRS})
 add_dependencies(strata_temp_module_acpi temp_module_acpi_sidl_gen)
+target_include_directories(strata_temp_module_acpi PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(strata_temp_module_acpi PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/sidl")
 
 # Include Directories
@@ -48,7 +49,7 @@ target_include_directories(strata_temp_module_acpi PRIVATE "${ROOT_SOURCE_DIR}/c
 target_include_directories(strata_temp_module_acpi SYSTEM PRIVATE ${UACPI_INCLUDES})
 
 # Sources
-target_sources(strata_temp_module_acpi PRIVATE main.c ioapic.c acpi_table_mcfg_if.c)
+target_sources(strata_temp_module_acpi PRIVATE main.c ioapic.c gnt.c dispatch.c acpi_table_mcfg_if.c)
 
 # Subdirectories
 add_subdirectory(arch)

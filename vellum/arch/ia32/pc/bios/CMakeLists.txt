@@ -91,7 +91,20 @@ target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(vellum PRIVATE "${CMAKE_BINARY_DIR}")
 
-target_sources(vellum PRIVATE biosdisk.c gdt.c init.c isr.c isr.S panic.c power.c start.S instruction.c)
+target_sources(
+    vellum
+    PRIVATE
+        biosdisk.c
+        bioskbd.c
+        gdt.c
+        init.c
+        isr.c
+        isr.S
+        panic.c
+        power.c
+        start.S
+        instruction.c
+)
 target_link_options(vellum PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript.lds" -Wl,-print-gc-sections)
 set_target_properties(vellum PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript.lds;${CMAKE_CURRENT_BINARY_DIR}/stage1.elf")
 

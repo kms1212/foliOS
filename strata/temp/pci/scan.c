@@ -35,17 +35,20 @@ static StStatus scan_pci_function(
 {
     StStatus status;
     enum StPci_ScanIterationDecision iter_decision = parent_iter_decision;
-    uint16_t vendor_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID);
-    uint16_t device_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_DEVICEID);
-    uint8_t base_class = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_BASE_CLASS);
-    uint8_t sub_class = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_SUB_CLASS);
-    uint8_t interface = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_INTERFACE);
-    uint16_t subsystem_vendor_id =
-        StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_VENDOR_ID);
-    uint16_t subsystem_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_ID);
+    uint8_t base_class;
+    uint8_t sub_class;
+
+    status = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_BASE_CLASS, &base_class);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_SUB_CLASS, &sub_class);
+    if (!CHECK_SUCCESS(status)) return status;
 
     if (base_class == 0x06 && sub_class == 0x04) {
-        uint8_t secondary_bus = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR1_SECONDARY_BUS);
+        uint8_t secondary_bus;
+
+        status = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR1_SECONDARY_BUS, &secondary_bus);
+        if (!CHECK_SUCCESS(status)) return status;
 
         if (secondary_bus) {
             if (iter_decision != ITERATION_BREAK_SIBLINGS && iter_status->bus_callback) {
@@ -63,21 +66,6 @@ static StStatus scan_pci_function(
         }
     }
 
-    LOG_DEBUG(
-        LM_CAT_PCI,
-        "device %02X:%02X.%02X, PCI\\VEN_%04X&DEV_%04X&CC_%02X%02X%02X&SUBSYS_%04X%04X\n",
-        bus,
-        device,
-        function,
-        vendor_id,
-        device_id,
-        base_class,
-        sub_class,
-        interface,
-        subsystem_vendor_id,
-        subsystem_id
-    );
-
     return STATUS_SUCCESS;
 }
 
@@ -91,15 +79,21 @@ static StStatus scan_pci_device(
 {
     StStatus status;
     int mute_siblings = 0;
+    uint8_t header_type;
 
-    uint8_t header_type = StPciP_ReadCfg8(bus, device, 0, PCI_CFGHDR_HEADER_TYPE);
+    status = StPciP_ReadCfg8(bus, device, 0, PCI_CFGHDR_HEADER_TYPE, &header_type);
+    if (!CHECK_SUCCESS(status)) return status;
 
     for (int function = 0; function < ((header_type & PCI_HEADER_TYPE_MULTIFUNC) ? 8 : 1);
          function++) {
         enum StPci_ScanIterationDecision iter_decision = parent_iter_decision;
 
         if (function > 0) {
-            uint16_t vendor_id = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID);
+            uint16_t vendor_id;
+
+            status = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID, &vendor_id);
+            if (!CHECK_SUCCESS(status)) return status;
+
             if (vendor_id == 0xFFFF) continue;
         }
 
@@ -135,8 +129,11 @@ static StStatus scan_pci_bus(
 
     for (int device = 0; device < 32; device++) {
         enum StPci_ScanIterationDecision iter_decision = parent_iter_decision;
+        uint16_t vendor_id;
 
-        uint16_t vendor_id = StPciP_ReadCfg16(bus, device, 0, PCI_CFGHDR_VENDORID);
+        status = StPciP_ReadCfg16(bus, device, 0, PCI_CFGHDR_VENDORID, &vendor_id);
+        if (!CHECK_SUCCESS(status)) return status;
+
         if (vendor_id == 0xFFFF) continue;
 
         if (iter_decision != ITERATION_SKIP_CHILDREN && iter_decision != ITERATION_BREAK_SIBLINGS &&

@@ -9,8 +9,14 @@ include(ExternalProject)
 project("strata" LANGUAGES C ASM)
 
 # SIDLC configurations
-set(SIDLC_EXECUTABLE "${ROOT_BINARY_DIR}/tools/sidlc/sidlc")
-include("${ROOT_SOURCE_DIR}/tools/sidlc/cmake/UseSIDLC.cmake")
+get_filename_component(SIDLC_BASE_DIR "${SIDLC_EXECUTABLE}" DIRECTORY)
+file(GLOB VERSION_DIRS RELATIVE "${SIDLC_BASE_DIR}/../share" "${SIDLC_BASE_DIR}/../share/cmake-*")
+set(DYNAMIC_SUFFIXES)
+foreach(V_DIR ${VERSION_DIRS})
+    list(APPEND DYNAMIC_SUFFIXES "${V_DIR}/Modules")
+endforeach()
+find_path(SIDLC_CMAKE_MODULE_PATH UseSIDLC.cmake HINTS "${SIDLC_BASE_DIR}/../share" PATH_SUFFIXES ${DYNAMIC_SUFFIXES} REQUIRED)
+include("${SIDLC_CMAKE_MODULE_PATH}/UseSIDLC.cmake")
 
 # Project configurations
 option(BUILD_TESTING "Build tests" OFF)
