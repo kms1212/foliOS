@@ -381,22 +381,20 @@ status_t VlIntP_AddTrapHandler(int num, trap_handler_t func, struct isr_handler 
 
 void VlIntP_RemoveHandler(struct isr_handler *handler)
 {
-    struct isr_handler *prev_entry = NULL;
+    struct isr_handler **entry;
 
     LOG_DEBUG("removing intrrupt handler from #%02X...\n", handler->irq_num);
 
-    if (!_pc_isr_table[handler->irq_num]) return;
-    for (struct isr_handler *current = _pc_isr_table[handler->irq_num]; current->next;
-         current = current->next) {
-        if (current->next == handler) {
-            prev_entry = current;
+    entry = &_pc_isr_table[handler->irq_num];
+    while (*entry) {
+        if (*entry == handler) {
+            *entry = handler->next;
+            free(handler);
+            return;
         }
+
+        entry = &(*entry)->next;
     }
-    if (!prev_entry) return;
-
-    prev_entry->next = handler->next;
-
-    free(prev_entry);
 }
 
 status_t VlIntP_Mask(int num)

@@ -4,9 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <uacpi/acpi.h>
-#include <uacpi/kernel_api.h>
-
+#include <vellum/acpi.h>
 #include <vellum/arch/intrinsics/register.h>
 
 #include <vellum/plat/bios/mem.h>
@@ -175,6 +173,8 @@ static status_t load_kernel(
             status = VlElf_GetProgramHeader(elf, i, &phdr32, sizeof(phdr32));
             if (!CHECK_SUCCESS(status)) return status;
 
+            if (phdr32.type != PT_LOAD) continue;
+
             if (!load_paddr || (uintptr_t)load_paddr > phdr32.paddr) {
                 load_paddr = (void *)phdr32.paddr;
             }
@@ -191,18 +191,23 @@ static status_t load_kernel(
             status = VlElf_GetProgramHeader(elf, i, &phdr64, sizeof(phdr64));
             if (!CHECK_SUCCESS(status)) return status;
 
-            if (!load_paddr || (uintptr_t)load_paddr > phdr64.paddr) {
-                load_paddr = (void *)(uintptr_t)phdr64.paddr;
+            if (phdr64.type != PT_LOAD) continue;
+
+            uintptr_t phdr_paddr = (uintptr_t)phdr64.paddr;
+            if (!load_paddr || (uintptr_t)load_paddr > phdr_paddr) {
+                load_paddr = (void *)phdr_paddr;
             }
 
-            if ((uintptr_t)load_paddr + program_size < phdr64.paddr + phdr64.memsz) {
-                program_size = phdr64.paddr + phdr64.memsz - (uintptr_t)load_paddr;
+            if ((uintptr_t)load_paddr + program_size < phdr_paddr + phdr64.memsz) {
+                program_size = phdr_paddr + phdr64.memsz - (uintptr_t)load_paddr;
             }
         }
     } else {
         fprintf(stderr, "%s: unsupported elf class\n", argv0);
         return STATUS_INVALID_VALUE;
     }
+    if (!load_paddr) return STATUS_INVALID_VALUE;
+
     LOG_DEBUG("offset=0x%p, size=%08zX\n", load_paddr, program_size);
 
     status =
@@ -249,7 +254,6 @@ static status_t make_bootinfo_table(
 )
 {
     status_t status;
-    uacpi_status uacpi_status;
     struct device *fbdev;
     const struct video_interface *vidif;
     struct video_hw_mode_info hwmode;
@@ -263,7 +267,7 @@ static status_t make_bootinfo_table(
     uint32_t kernel_frame_count;
     uint32_t kernel_ufent_count;
     struct smap_entry smap_entry;
-    struct acpi_rsdp *rsdp;
+    const struct acpi_rsdp *rsdp;
     struct bootinfo_table_header *btblhdr;
     struct bootinfo_entry_header *benthdr;
     struct bootinfo_entry_command_args *entry_command_args;
@@ -436,8 +440,8 @@ static status_t make_bootinfo_table(
     }
 
     /* fill acpi rsdp entry */
-    uacpi_status = uacpi_kernel_get_rsdp((uacpi_phys_addr *)&rsdp);
-    if (uacpi_unlikely_error(uacpi_status)) return STATUS_UNKNOWN_ERROR;
+    status = VlAcpi_FindRsdp(&rsdp);
+    if (!CHECK_SUCCESS(status)) return status;
 
     benthdr = (void *)((uintptr_t)benthdr + benthdr->size);
     benthdr->type = BET_ACPI_RSDP;
@@ -448,7 +452,7 @@ static status_t make_bootinfo_table(
     entry_acpi_rsdp = (void *)((uintptr_t)benthdr + benthdr->header_size);
     strncpy(entry_acpi_rsdp->oemid, rsdp->oemid, sizeof(entry_acpi_rsdp->oemid));
     entry_acpi_rsdp->revision = rsdp->revision;
-    entry_acpi_rsdp->size = rsdp->length;
+    entry_acpi_rsdp->size = rsdp->revision >= 2 ? rsdp->length : 20;
     entry_acpi_rsdp->rsdt_addr = rsdp->rsdt_addr;
     if (rsdp->revision >= 2) {
         entry_acpi_rsdp->xsdt_addr = rsdp->xsdt_addr;

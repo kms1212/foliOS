@@ -24,6 +24,14 @@ target_compile_options(vellum PUBLIC
         -Wunused-result
         -Wno-unused-function
         -Wno-unused-const-variable
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
+    >
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
     >
 )
 target_link_libraries(vellum gcc)
@@ -70,7 +78,6 @@ add_subdirectory(lib)
 add_subdirectory(arch)
 
 if (NOT "${TARGET_FIRMWARE}" STREQUAL "uefi")
-    add_subdirectory(acpi)
     add_subdirectory(core)
     add_subdirectory(debug)
     add_subdirectory(device)

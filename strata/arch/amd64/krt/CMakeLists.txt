@@ -11,6 +11,14 @@ target_compile_options(krt PUBLIC
         -pedantic
         -pedantic-errors
     >
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
+    >
 )
 target_link_options(krt PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_krt.lds")
 set_target_properties(krt PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_krt.lds")

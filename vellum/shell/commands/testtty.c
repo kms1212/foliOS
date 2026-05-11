@@ -2,27 +2,50 @@
 
 #include <stdio.h>
 
-static float hue2rgb(float p, float q, float t)
+static uint8_t clamp_rgb(int v)
 {
-    if (t < 0.0f) t += 1.0f;
-    if (t > 1.0f) t -= 1.0f;
-    if (t < 1.0f / 6.0f) return p + (q - p) * 6.0f * t;
-    if (t < 1.0f / 2.0f) return q;
-    if (t < 2.0f / 3.0f) return p + (q - p) * (2.0f / 3.0f - t) * 6.0f;
-    return p;
+    if (v < 0) {
+        return 0;
+    }
+    if (v > 255) {
+        return 255;
+    }
+    return v;
 }
 
-static void hsl2rgb(float h, uint8_t s_in, uint8_t l_in, uint8_t rgb[3])
+static uint8_t hue2rgb(int p, int q, int t)
 {
-    if (s_in == 0) {
-        rgb[0] = rgb[1] = rgb[2] = 0;
+    while (t < 0) {
+        t += 1536;
+    }
+    while (t >= 1536) {
+        t -= 1536;
+    }
+
+    if (t < 256) {
+        return clamp_rgb(p + ((q - p) * t + 128) / 256);
+    }
+    if (t < 768) {
+        return clamp_rgb(q);
+    }
+    if (t < 1024) {
+        return clamp_rgb(p + ((q - p) * (1024 - t) + 128) / 256);
+    }
+    return clamp_rgb(p);
+}
+
+static void hsl2rgb(uint32_t h, uint8_t s, uint8_t l, uint8_t rgb[3])
+{
+    if (s == 0) {
+        rgb[0] = rgb[1] = rgb[2] = l;
     } else {
-        float s = (float)s_in / 255.0f, l = (float)l_in / 255.0f;
-        float q = l < 0.5f ? l * (1.0f + s) : l + s - l * s;
-        float p = 2.0f * l - q;
-        rgb[0] = hue2rgb(p, q, h + 1.0f / 3.0f) * 255.0f;
-        rgb[1] = hue2rgb(p, q, h) * 255;
-        rgb[2] = hue2rgb(p, q, h - 1.0f / 3.0f) * 255.0f;
+        int q = l < 128 ? (l * (255 + s) + 127) / 255 : l + s - (l * s + 127) / 255;
+        int p = 2 * l - q;
+        int t = h * 1536 / 63;
+
+        rgb[0] = hue2rgb(p, q, t + 512);
+        rgb[1] = hue2rgb(p, q, t);
+        rgb[2] = hue2rgb(p, q, t - 512);
     }
 }
 
@@ -101,7 +124,7 @@ static int testtty_handler(struct shell_instance *inst, int argc, char **argv)
     for (int l = 7; l >= 0; l--) {
         for (int h = 0; h < 64; h++) {
             uint8_t rgb[3];
-            hsl2rgb((float)h / 63.0f, 255, l * 255 / 7, rgb);
+            hsl2rgb(h, 255, l * 255 / 7, rgb);
             printf("\x1b[48;2;%d;%d;%dm ", rgb[0], rgb[1], rgb[2]);
         }
         fputs("\x1b[0m\n", stdout);

@@ -45,9 +45,11 @@ status_t mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
 {
     status_t status;
 
+    if (limit_paddr < base_paddr) return STATUS_INVALID_VALUE;
+
     pma_bitmap = (void *)ALIGN((uintptr_t)&__end, PAGE_SIZE);
 
-    pma_frame_desc_count = limit_paddr / PAGE_SIZE - base_paddr / PAGE_SIZE;
+    pma_frame_desc_count = limit_paddr / PAGE_SIZE - base_paddr / PAGE_SIZE + 1;
     pma_available_frames = pma_frame_desc_count;
     pma_free_frames = pma_frame_desc_count;
 
@@ -76,8 +78,12 @@ status_t mm_pma_mark_reserved(uintptr_t base_paddr, uintptr_t limit_paddr)
 {
     uintptr_t base_page, limit_page;
 
+    if (limit_paddr < base_paddr) return STATUS_INVALID_VALUE;
+
     base_page = base_paddr / PAGE_SIZE;
     limit_page = limit_paddr / PAGE_SIZE;
+
+    if (base_page > pma_limit_pfn || limit_page < pma_base_pfn) return STATUS_SUCCESS;
 
     if (base_page < pma_base_pfn) {
         base_page = pma_base_pfn;
@@ -86,6 +92,8 @@ status_t mm_pma_mark_reserved(uintptr_t base_paddr, uintptr_t limit_paddr)
     if (limit_page > pma_limit_pfn) {
         limit_page = pma_limit_pfn;
     }
+
+    if (base_page > limit_page) return STATUS_SUCCESS;
 
     for (size_t i = base_page - pma_base_pfn; i <= limit_page - pma_base_pfn; i++) {
         if (PBM_GET(i) == PBM_RESERVED) continue;

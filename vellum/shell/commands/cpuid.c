@@ -6,21 +6,22 @@
 
 static int check_cpuid_available(void)
 {
-    int available;
+    uint32_t available;
+
     __asm__ volatile("pushfl\n\t"
                      "pushfl\n\t"
-                     "xor $0x00200000, (%%esp)\n\t"
+                     "xorl $0x00200000, (%%esp)\n\t"
                      "popfl\n\t"
                      "pushfl\n\t"
-                     "pop %%eax\n\t"
-                     "xor (%%esp), %%eax\n\t"
+                     "popl %%eax\n\t"
+                     "xorl (%%esp), %%eax\n\t"
                      "popfl\n\t"
-                     "and $0x00200000, %%eax\n\t"
-                     : "=r"(available)
+                     "andl $0x00200000, %%eax\n\t"
+                     : "=a"(available)
                      :
-                     : "eax");
+                     : "cc", "memory");
 
-    return !!available;
+    return available != 0;
 }
 
 static int cpuid_handler(struct shell_instance *inst, int argc, char **argv)

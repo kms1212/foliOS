@@ -60,6 +60,14 @@ target_compile_options(stage1 PUBLIC
         -pedantic-errors
         -fno-function-sections
         -fno-data-sections
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
+    >
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
     >
 )
 target_link_libraries(stage1 gcc)
@@ -74,6 +82,7 @@ target_include_directories(stage1 PRIVATE "${CMAKE_BINARY_DIR}")
 target_sources(stage1 PRIVATE stage1.S stage1.c ../../cpu_mode.S pic.c)
 target_link_options(stage1 PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_stage1.lds")
 set_target_properties(stage1 PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_stage1.lds")
+target_compile_options(stage1 PUBLIC -Wno-array-bounds -fno-delete-null-pointer-checks)
 
 add_custom_target(stage1_execbin ALL
     COMMAND ${CMAKE_OBJCOPY} -O binary "$<TARGET_FILE:stage1>" stage1.bin
@@ -86,6 +95,7 @@ set(I686_EXCLUDE_CPU_MODE TRUE PARENT_SCOPE)
 add_dependencies(vellum stage1)
 target_link_options(vellum PUBLIC -Wl,--just-symbols=$<TARGET_FILE:stage1>)
 set_target_properties(vellum PROPERTIES LINK_DEPENDS stage1.elf)
+target_compile_options(vellum PUBLIC -Wno-array-bounds -fno-delete-null-pointer-checks)
 
 target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")

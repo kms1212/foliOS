@@ -2,16 +2,11 @@
 
 #include <stdint.h>
 
-#include <uacpi/sleep.h>
-
 #include <vellum/arch/interrupt.h>
 #include <vellum/arch/intrinsics/idt.h>
 #include <vellum/arch/io.h>
 
 #include <vellum/panic.h>
-
-#define MAKE_ACPI_STATUS(uacpi_status)                                                             \
-    ((uacpi_status) ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
 
 void VlP_Reboot()
 {

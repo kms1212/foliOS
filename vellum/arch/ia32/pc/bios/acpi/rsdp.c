@@ -1,21 +1,41 @@
-#include <uacpi/acpi.h>
-#include <uacpi/kernel_api.h>
-
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
-uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address)
+#include <vellum/acpi.h>
+
+static int has_valid_checksum(const void *ptr, size_t size)
 {
-    static const void *rsdp_addr = NULL;
+    const uint8_t *bytes = ptr;
+    uint8_t sum = 0;
+
+    for (size_t i = 0; i < size; i++) {
+        sum += bytes[i];
+    }
+
+    return sum == 0;
+}
+
+static int is_valid_rsdp(const struct acpi_rsdp *rsdp)
+{
+    if (memcmp(rsdp->signature, "RSD PTR ", 8) != 0) return 0;
+    if (!has_valid_checksum(rsdp, 20)) return 0;
+    if (rsdp->revision >= 2 && !has_valid_checksum(rsdp, rsdp->length)) return 0;
+
+    return 1;
+}
+
+status_t VlAcpi_FindRsdp(const struct acpi_rsdp **out_rsdp)
+{
+    static const struct acpi_rsdp *rsdp_addr = NULL;
     uint16_t rsdp_base_seg;
     const void *ebda_ptr = NULL;
     size_t ebda_size;
-    int match;
 
     if (rsdp_addr) {
-        *out_rsdp_address = (uacpi_phys_addr)rsdp_addr;
+        if (out_rsdp) *out_rsdp = rsdp_addr;
 
-        return UACPI_STATUS_OK;
+        return STATUS_SUCCESS;
     }
 
     uint16_t *rsdp_base_seg_ptr = (uint16_t *)0x40E;
@@ -30,50 +50,32 @@ uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *out_rsdp_address)
     ebda_size = (size_t)*(const uint16_t *)ebda_ptr * 1024;
     if (!ebda_size) goto skip_ebda;
 
-    for (const char *ptr = ebda_ptr; (uintptr_t)ptr < (uintptr_t)ebda_ptr + ebda_size; ptr++) {
-        match = 1;
-
-        for (int i = 0; i < 8; i++) {
-            if (ptr[i] != ACPI_RSDP_SIGNATURE[i]) {
-                match = 0;
-                break;
-            }
-        }
-
-        if (match) {
-            rsdp_addr = (const void *)ptr;
+    for (const char *ptr = ebda_ptr; (uintptr_t)ptr < (uintptr_t)ebda_ptr + ebda_size; ptr += 16) {
+        if (is_valid_rsdp((const struct acpi_rsdp *)ptr)) {
+            rsdp_addr = (const struct acpi_rsdp *)ptr;
             break;
         }
     }
 
     if (rsdp_addr) {
-        *out_rsdp_address = (uacpi_phys_addr)rsdp_addr;
+        if (out_rsdp) *out_rsdp = rsdp_addr;
 
-        return UACPI_STATUS_OK;
+        return STATUS_SUCCESS;
     }
 
 skip_ebda:
-    for (const char *ptr = (const char *)0x000E0000; (uintptr_t)ptr < 0x00100000; ptr++) {
-        match = 1;
-
-        for (int i = 0; i < 8; i++) {
-            if (ptr[i] != ACPI_RSDP_SIGNATURE[i]) {
-                match = 0;
-                break;
-            }
-        }
-
-        if (match) {
-            rsdp_addr = (const void *)ptr;
+    for (const char *ptr = (const char *)0x000E0000; (uintptr_t)ptr < 0x00100000; ptr += 16) {
+        if (is_valid_rsdp((const struct acpi_rsdp *)ptr)) {
+            rsdp_addr = (const struct acpi_rsdp *)ptr;
             break;
         }
     }
 
     if (rsdp_addr) {
-        *out_rsdp_address = (uacpi_phys_addr)rsdp_addr;
+        if (out_rsdp) *out_rsdp = rsdp_addr;
 
-        return UACPI_STATUS_OK;
+        return STATUS_SUCCESS;
     }
 
-    return UACPI_STATUS_NOT_FOUND;
+    return STATUS_ENTRY_NOT_FOUND;
 }

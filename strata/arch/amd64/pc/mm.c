@@ -102,9 +102,9 @@ static StA_PaePageTableEntry mapflags_to_pte_software_bits(StMm_MapFlags mapflag
 {
     StA_PaePageTableEntry bits = 0;
 
-    if (mapflags & MF_SOFTWARE_0) bits |= STA_MMU_PTE_SW0;
-    if (mapflags & MF_SOFTWARE_1) bits |= STA_MMU_PTE_SW1;
-    if (mapflags & MF_SOFTWARE_2) bits |= STA_MMU_PTE_SW2;
+    if (mapflags & MF_SOFTWARE_0) bits |= PTE_SW0;
+    if (mapflags & MF_SOFTWARE_1) bits |= PTE_SW1;
+    if (mapflags & MF_SOFTWARE_2) bits |= PTE_SW2;
 
     return bits;
 }
@@ -113,15 +113,15 @@ static StMm_MapFlags pte_to_mapflags(StA_PaePageTableEntry pte)
 {
     StMm_MapFlags mapflags = 0;
 
-    if (pte & STA_MMU_PTE_RW) mapflags |= MF_WRITABLE;
-    if (pte & STA_MMU_PTE_US) mapflags |= MF_USER;
-    if (pte & STA_MMU_PTE_PCD) mapflags |= MF_NO_CACHE;
-    if (pte & STA_MMU_PTE_PWT) mapflags |= MF_WRITETHRU_CACHE;
-    if (pte & STA_MMU_PTE_G) mapflags |= MF_GLOBAL;
-    if (g_p_cpu_features->has_nx && (pte & STA_MMU_PTE_XD)) mapflags |= MF_NO_EXECUTE;
-    if (pte & STA_MMU_PTE_SW0) mapflags |= MF_SOFTWARE_0;
-    if (pte & STA_MMU_PTE_SW1) mapflags |= MF_SOFTWARE_1;
-    if (pte & STA_MMU_PTE_SW2) mapflags |= MF_SOFTWARE_2;
+    if (pte & PTE_RW) mapflags |= MF_WRITABLE;
+    if (pte & PTE_US) mapflags |= MF_USER;
+    if (pte & PTE_PCD) mapflags |= MF_NO_CACHE;
+    if (pte & PTE_PWT) mapflags |= MF_WRITETHRU_CACHE;
+    if (pte & PTE_G) mapflags |= MF_GLOBAL;
+    if (g_p_cpu_features->has_nx && (pte & PTE_XD)) mapflags |= MF_NO_EXECUTE;
+    if (pte & PTE_SW0) mapflags |= MF_SOFTWARE_0;
+    if (pte & PTE_SW1) mapflags |= MF_SOFTWARE_1;
+    if (pte & PTE_SW2) mapflags |= MF_SOFTWARE_2;
 
     return mapflags;
 }
@@ -240,19 +240,22 @@ StStatus StMmP_CleanupTempMapping(void)
     StA_PageMapLevel4Entry *base_pml4 =
         PHYS_TO_VIRT(FRAME_TO_VPTR(base_asp.platform_data.root_table_pfn));
 
-    StA_PageDirPtrTableEntry *pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(base_pml4[0])));
+    StA_PageDirPtrTableEntry *pdpt =
+        PHYS_TO_VIRT(FRAME_TO_VPTR(((base_pml4[0]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
     base_pml4[0] = 0;
     for (int i = 0; i < 512; i++) {
-        if (!(pdpt[i] & STA_MMU_PTE_P)) continue;
+        if (!(pdpt[i] & PTE_P)) continue;
 
-        StA_PageDirPtrTableEntry *pd = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pdpt[i])));
+        StA_PageDirPtrTableEntry *pd =
+            PHYS_TO_VIRT(FRAME_TO_VPTR(((pdpt[i]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
         for (int j = 0; j < 512; j++) {
-            if (!(pd[j] & STA_MMU_PTE_P)) continue;
+            if (!(pd[j] & PTE_P)) continue;
 
-            StA_PaePageDirectoryEntry *pt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pd[j])));
+            StA_PaePageDirectoryEntry *pt =
+                PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[j]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
             for (int k = 0; k < 512; k++) {
-                if (!(pt[k] & STA_MMU_PTE_P)) continue;
+                if (!(pt[k] & PTE_P)) continue;
 
                 StA_InvalidatePage((i << 18) + (j << 9) + k);
             }
@@ -296,27 +299,27 @@ void StMmP_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
      * The kernel half (256-511) is shared and should not be freed here.
      */
     for (int i = 0; i < 256; i++) {
-        if (!(pml4[i] & STA_MMU_PTE_P)) continue;
+        if (!(pml4[i] & PTE_P)) continue;
 
-        St_PhysFrame pdpt_pfn = (St_PhysFrame)STA_MMU_GET_BASE(pml4[i]);
+        St_PhysFrame pdpt_pfn = (St_PhysFrame)((pml4[i]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT;
         StA_PageDirPtrTableEntry *pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(pdpt_pfn));
 
         for (int j = 0; j < 512; j++) {
-            if (!(pdpt[j] & STA_MMU_PTE_P)) continue;
+            if (!(pdpt[j] & PTE_P)) continue;
 
             /* We don't support 1GB pages in user space yet, but check anyway */
-            if ((pdpt[j] & STA_MMU_PTE_PS)) continue;
+            if ((pdpt[j] & PTE_PS)) continue;
 
-            St_PhysFrame pd_pfn = (St_PhysFrame)STA_MMU_GET_BASE(pdpt[j]);
+            St_PhysFrame pd_pfn = (St_PhysFrame)((pdpt[j]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT;
             StA_PaePageDirectoryEntry *pd = PHYS_TO_VIRT(FRAME_TO_VPTR(pd_pfn));
 
             for (int k = 0; k < 512; k++) {
-                if (!(pd[k] & STA_MMU_PTE_P)) continue;
+                if (!(pd[k] & PTE_P)) continue;
 
                 /* We don't support 2MB pages in user space yet, but check anyway */
-                if ((pd[k] & STA_MMU_PTE_PS)) continue;
+                if ((pd[k] & PTE_PS)) continue;
 
-                St_PhysFrame pt_pfn = (St_PhysFrame)STA_MMU_GET_BASE(pd[k]);
+                St_PhysFrame pt_pfn = (St_PhysFrame)((pd[k]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT;
                 StPmm_FreeContiguousFrame(pt_pfn);
             }
             StPmm_FreeContiguousFrame(pd_pfn);
@@ -355,29 +358,29 @@ static StStatus vpn_to_pfn(
 
     pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
     pml4e_idx = PML4_INDEX(vpn);
-    if (!(pml4[pml4e_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (!(pml4[pml4e_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
 
-    pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
+    pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pdpte_idx = PDPT_INDEX(vpn);
-    if (!(pdpt[pdpte_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-    if ((pdpt[pdpte_idx] & STA_MMU_PTE_PS)) {
-        if (pfn) *pfn = (STA_MMU_GET_BASE(pdpt[pdpte_idx]) << 18) + (vpn & 0x3FFFF);
+    if (!(pdpt[pdpte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if ((pdpt[pdpte_idx] & PTE_PS)) {
+        if (pfn) *pfn = ((pdpt[pdpte_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x3FFFF);
         return STATUS_SUCCESS;
     }
 
-    pd = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pdpt[pdpte_idx])));
+    pd = PHYS_TO_VIRT(FRAME_TO_VPTR(((pdpt[pdpte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pde_idx = PD_INDEX(vpn);
-    if (!(pd[pde_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-    if ((pd[pde_idx] & STA_MMU_PTE_PS)) {
-        if (pfn) *pfn = (STA_MMU_GET_BASE(pd[pde_idx]) << 9) + (vpn & 0x1FF);
+    if (!(pd[pde_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if ((pd[pde_idx] & PTE_PS)) {
+        if (pfn) *pfn = ((pd[pde_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x1FF);
         return STATUS_SUCCESS;
     }
 
-    pt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pd[pde_idx])));
+    pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pte_idx = PT_INDEX(vpn);
-    if (!(pt[pte_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (!(pt[pte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
 
-    if (pfn) *pfn = (St_PhysFrame)STA_MMU_GET_BASE(pt[pte_idx]);
+    if (pfn) *pfn = (St_PhysFrame)((pt[pte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT;
 
     return STATUS_SUCCESS;
 }
@@ -402,27 +405,27 @@ static StStatus vpn_to_page_flags(
 
     pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
     pml4e_idx = PML4_INDEX(vpn);
-    if (!(pml4[pml4e_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (!(pml4[pml4e_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
 
-    pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
+    pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pdpte_idx = PDPT_INDEX(vpn);
-    if (!(pdpt[pdpte_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-    if ((pdpt[pdpte_idx] & STA_MMU_PTE_PS)) {
+    if (!(pdpt[pdpte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if ((pdpt[pdpte_idx] & PTE_PS)) {
         *mapflags_out = pte_to_mapflags(pdpt[pdpte_idx]);
         return STATUS_SUCCESS;
     }
 
-    pd = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pdpt[pdpte_idx])));
+    pd = PHYS_TO_VIRT(FRAME_TO_VPTR(((pdpt[pdpte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pde_idx = PD_INDEX(vpn);
-    if (!(pd[pde_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-    if ((pd[pde_idx] & STA_MMU_PTE_PS)) {
+    if (!(pd[pde_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if ((pd[pde_idx] & PTE_PS)) {
         *mapflags_out = pte_to_mapflags(pd[pde_idx]);
         return STATUS_SUCCESS;
     }
 
-    pt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pd[pde_idx])));
+    pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pte_idx = PT_INDEX(vpn);
-    if (!(pt[pte_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (!(pt[pte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
 
     entry = pt[pte_idx];
     *mapflags_out = pte_to_mapflags(entry);
@@ -463,37 +466,38 @@ static StStatus local_addr_to_directmap_span(
 
     pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(asp->platform_data.root_table_pfn));
     pml4e_idx = PML4_INDEX(vpn);
-    if (!(pml4[pml4e_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (!(pml4[pml4e_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
 
-    pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
+    pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pdpte_idx = PDPT_INDEX(vpn);
-    if (!(pdpt[pdpte_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-    if ((pdpt[pdpte_idx] & STA_MMU_PTE_PS)) {
-        pfn = (STA_MMU_GET_BASE(pdpt[pdpte_idx]) << 18) + (vpn & 0x3FFFF);
+    if (!(pdpt[pdpte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if ((pdpt[pdpte_idx] & PTE_PS)) {
+        pfn = ((pdpt[pdpte_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x3FFFF);
         contiguous_pages = ((St_PageCount)1 << 18) - (vpn & 0x3FFFF);
         goto has_span;
     }
 
-    pd = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pdpt[pdpte_idx])));
+    pd = PHYS_TO_VIRT(FRAME_TO_VPTR(((pdpt[pdpte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pde_idx = PD_INDEX(vpn);
-    if (!(pd[pde_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-    if ((pd[pde_idx] & STA_MMU_PTE_PS)) {
-        pfn = (STA_MMU_GET_BASE(pd[pde_idx]) << 9) + (vpn & 0x1FF);
+    if (!(pd[pde_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if ((pd[pde_idx] & PTE_PS)) {
+        pfn = ((pd[pde_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x1FF);
         contiguous_pages = ((St_PageCount)1 << 9) - (vpn & 0x1FF);
         goto has_span;
     }
 
-    pt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pd[pde_idx])));
+    pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
     pte_idx = PT_INDEX(vpn);
-    if (!(pt[pte_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (!(pt[pte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
 
-    pfn = (St_PhysFrame)STA_MMU_GET_BASE(pt[pte_idx]);
+    pfn = (St_PhysFrame)((pt[pte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT;
     contiguous_pages = 1;
 
     while (pte_idx + contiguous_pages < 512) {
         StA_PaePageTableEntry next_entry = pt[pte_idx + contiguous_pages];
-        if (!(next_entry & STA_MMU_PTE_P)) break;
-        if ((St_PhysFrame)STA_MMU_GET_BASE(next_entry) != pfn + contiguous_pages) break;
+        if (!(next_entry & PTE_P)) break;
+        if ((St_PhysFrame)((next_entry)&PTE_BASE_MASK) >> PTE_BASE_SHIFT != pfn + contiguous_pages)
+            break;
         contiguous_pages++;
     }
 
@@ -584,29 +588,29 @@ static StStatus map_memory(
     // );
 
     pte_template = 0;
-    pte_template |= STA_MMU_PTE_P;
+    pte_template |= PTE_P;
     if (mapflags & MF_WRITABLE)
-        pte_template |= STA_MMU_PTE_RW;
+        pte_template |= PTE_RW;
     else
-        pte_template &= ~STA_MMU_PTE_RW;
+        pte_template &= ~PTE_RW;
     if (mapflags & MF_USER)
-        pte_template |= STA_MMU_PTE_US;
+        pte_template |= PTE_US;
     else
-        pte_template &= ~STA_MMU_PTE_US;
+        pte_template &= ~PTE_US;
     if (mapflags & MF_NO_CACHE)
-        pte_template |= STA_MMU_PTE_PCD;
+        pte_template |= PTE_PCD;
     else
-        pte_template &= ~STA_MMU_PTE_PCD;
+        pte_template &= ~PTE_PCD;
     if (mapflags & MF_WRITETHRU_CACHE)
-        pte_template |= STA_MMU_PTE_PWT;
+        pte_template |= PTE_PWT;
     else
-        pte_template &= ~STA_MMU_PTE_PWT;
+        pte_template &= ~PTE_PWT;
     pte_template |= mapflags_to_pte_software_bits(mapflags);
     if (g_p_cpu_features->has_nx) {
         if (mapflags & MF_NO_EXECUTE)
-            pte_template |= STA_MMU_PTE_XD;
+            pte_template |= PTE_XD;
         else
-            pte_template &= ~STA_MMU_PTE_XD;
+            pte_template &= ~PTE_XD;
     }
 
     if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
@@ -618,13 +622,15 @@ static StStatus map_memory(
     while (count > 0) {
         /* 1. PML4 */
         pml4e_idx = PML4_INDEX(vpn);
-        if (!(pml4[pml4e_idx] & STA_MMU_PTE_P)) {
+        if (!(pml4[pml4e_idx] & PTE_P)) {
 
-            if (vpn >= MEMMAP_GLOBAL_VPN_BASE && !(pml4[pml4e_idx] & STA_MMU_PTE_P) &&
-                (base_pml4[pml4e_idx] & STA_MMU_PTE_P)) {
+            if (vpn >= MEMMAP_GLOBAL_VPN_BASE && !(pml4[pml4e_idx] & PTE_P) &&
+                (base_pml4[pml4e_idx] & PTE_P)) {
                 pml4[pml4e_idx] = base_pml4[pml4e_idx];
 
-                pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
+                pdpt = PHYS_TO_VIRT(
+                    FRAME_TO_VPTR(((pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT)
+                );
             } else {
                 status = allocate_page_table_frame(&alloc_pfn, !(mapflags & MF_USER));
                 if (!CHECK_SUCCESS(status)) goto has_error;
@@ -633,21 +639,23 @@ static StStatus map_memory(
                 StA_PageMapLevel4Entry temp;
 
                 temp = 0;
-                temp = (temp & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
-                temp |= STA_MMU_PTE_P;
-                temp |= STA_MMU_PTE_RW;
+                temp = (temp & ~PTE_BASE_MASK) | ((uint64_t)alloc_pfn << PTE_BASE_SHIFT);
+                temp |= PTE_P;
+                temp |= PTE_RW;
                 if (mapflags & MF_USER)
-                    temp |= STA_MMU_PTE_US;
+                    temp |= PTE_US;
                 else
-                    temp &= ~STA_MMU_PTE_US;
+                    temp &= ~PTE_US;
 
                 if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
-                    if ((base_pml4[pml4e_idx] & STA_MMU_PTE_P)) {
+                    if ((base_pml4[pml4e_idx] & PTE_P)) {
                         free_page_table_frame(alloc_pfn);
 
                         pml4[pml4e_idx] = base_pml4[pml4e_idx];
 
-                        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(base_pml4[pml4e_idx])));
+                        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(
+                            ((base_pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT
+                        ));
                     } else {
                         base_pml4[pml4e_idx] = temp;
                         pml4[pml4e_idx] = temp;
@@ -657,58 +665,58 @@ static StStatus map_memory(
                 }
             }
         } else {
-            if (mapflags & MF_USER) pml4[pml4e_idx] |= STA_MMU_PTE_US;
-            pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
+            if (mapflags & MF_USER) pml4[pml4e_idx] |= PTE_US;
+            pdpt =
+                PHYS_TO_VIRT(FRAME_TO_VPTR(((pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
         }
 
         /* 2. PDPT */
         pdpte_idx = PDPT_INDEX(vpn);
-        if (!(pdpt[pdpte_idx] & STA_MMU_PTE_P)) {
+        if (!(pdpt[pdpte_idx] & PTE_P)) {
             status = allocate_page_table_frame(&alloc_pfn, !(mapflags & MF_USER));
             if (!CHECK_SUCCESS(status)) goto has_error;
             pd = PHYS_TO_VIRT(FRAME_TO_VPTR(alloc_pfn));
 
             pdpt[pdpte_idx] = 0;
             pdpt[pdpte_idx] =
-                (pdpt[pdpte_idx] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
-            pdpt[pdpte_idx] |= STA_MMU_PTE_P;
-            pdpt[pdpte_idx] |= STA_MMU_PTE_RW;
+                (pdpt[pdpte_idx] & ~PTE_BASE_MASK) | ((uint64_t)alloc_pfn << PTE_BASE_SHIFT);
+            pdpt[pdpte_idx] |= PTE_P;
+            pdpt[pdpte_idx] |= PTE_RW;
             if (mapflags & MF_USER)
-                pdpt[pdpte_idx] |= STA_MMU_PTE_US;
+                pdpt[pdpte_idx] |= PTE_US;
             else
-                pdpt[pdpte_idx] &= ~STA_MMU_PTE_US;
+                pdpt[pdpte_idx] &= ~PTE_US;
         } else {
-            if ((pdpt[pdpte_idx] & STA_MMU_PTE_PS)) {
+            if ((pdpt[pdpte_idx] & PTE_PS)) {
                 status = STATUS_CONFLICTING_STATE;
                 goto has_error;
             }
-            if (mapflags & MF_USER) pdpt[pdpte_idx] |= STA_MMU_PTE_US;
-            pd = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pdpt[pdpte_idx])));
+            if (mapflags & MF_USER) pdpt[pdpte_idx] |= PTE_US;
+            pd = PHYS_TO_VIRT(FRAME_TO_VPTR(((pdpt[pdpte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
         }
 
         /* 3. PD */
         pde_idx = PD_INDEX(vpn);
-        if (!(pd[pde_idx] & STA_MMU_PTE_P)) {
+        if (!(pd[pde_idx] & PTE_P)) {
             status = allocate_page_table_frame(&alloc_pfn, !(mapflags & MF_USER));
             if (!CHECK_SUCCESS(status)) goto has_error;
             pt = PHYS_TO_VIRT(FRAME_TO_VPTR(alloc_pfn));
 
             pd[pde_idx] = 0;
-            pd[pde_idx] =
-                (pd[pde_idx] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)alloc_pfn);
-            pd[pde_idx] |= STA_MMU_PTE_P;
-            pd[pde_idx] |= STA_MMU_PTE_RW;
+            pd[pde_idx] = (pd[pde_idx] & ~PTE_BASE_MASK) | ((uint64_t)alloc_pfn << PTE_BASE_SHIFT);
+            pd[pde_idx] |= PTE_P;
+            pd[pde_idx] |= PTE_RW;
             if (mapflags & MF_USER)
-                pd[pde_idx] |= STA_MMU_PTE_US;
+                pd[pde_idx] |= PTE_US;
             else
-                pd[pde_idx] &= ~STA_MMU_PTE_US;
+                pd[pde_idx] &= ~PTE_US;
         } else {
-            if ((pd[pde_idx] & STA_MMU_PTE_PS)) {
+            if ((pd[pde_idx] & PTE_PS)) {
                 status = STATUS_CONFLICTING_STATE;
                 goto has_error;
             }
-            if (mapflags & MF_USER) pd[pde_idx] |= STA_MMU_PTE_US;
-            pt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pd[pde_idx])));
+            if (mapflags & MF_USER) pd[pde_idx] |= PTE_US;
+            pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
         }
 
         /* 4. PT */
@@ -720,17 +728,19 @@ static StStatus map_memory(
         }
 
         for (size_t i = 0; i < chunk_size; i++) {
-            if ((pt[pte_idx + i] & STA_MMU_PTE_P)) {
+            if ((pt[pte_idx + i] & PTE_P)) {
                 status = STATUS_DUPLICATE_ENTRY;
                 goto has_error;
             }
             pt[pte_idx + i] = pte_template;
             pt[pte_idx + i] =
-                (pt[pte_idx + i] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE((uint64_t)pfn + i);
+                (pt[pte_idx + i] & ~PTE_BASE_MASK) | (((uint64_t)pfn + i) << PTE_BASE_SHIFT);
 
             if (mapflags & MF_ZERO_FILL) {
                 memset(
-                    PHYS_TO_VIRT(FRAME_TO_VPTR((St_PhysFrame)STA_MMU_GET_BASE(pt[pte_idx + i]))),
+                    PHYS_TO_VIRT(FRAME_TO_VPTR(
+                        (St_PhysFrame)((pt[pte_idx + i]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT
+                    )),
                     0,
                     PAGE_SIZE
                 );
@@ -814,29 +824,29 @@ static StStatus remap_memory(
     }
 
     pte_template = 0;
-    pte_template |= STA_MMU_PTE_P;
+    pte_template |= PTE_P;
     if (mapflags & MF_WRITABLE)
-        pte_template |= STA_MMU_PTE_RW;
+        pte_template |= PTE_RW;
     else
-        pte_template &= ~STA_MMU_PTE_RW;
+        pte_template &= ~PTE_RW;
     if (mapflags & MF_USER)
-        pte_template |= STA_MMU_PTE_US;
+        pte_template |= PTE_US;
     else
-        pte_template &= ~STA_MMU_PTE_US;
+        pte_template &= ~PTE_US;
     if (mapflags & MF_NO_CACHE)
-        pte_template |= STA_MMU_PTE_PCD;
+        pte_template |= PTE_PCD;
     else
-        pte_template &= ~STA_MMU_PTE_PCD;
+        pte_template &= ~PTE_PCD;
     if (mapflags & MF_WRITETHRU_CACHE)
-        pte_template |= STA_MMU_PTE_PWT;
+        pte_template |= PTE_PWT;
     else
-        pte_template &= ~STA_MMU_PTE_PWT;
+        pte_template &= ~PTE_PWT;
     pte_template |= mapflags_to_pte_software_bits(mapflags);
     if (g_p_cpu_features->has_nx) {
         if (mapflags & MF_NO_EXECUTE)
-            pte_template |= STA_MMU_PTE_XD;
+            pte_template |= PTE_XD;
         else
-            pte_template &= ~STA_MMU_PTE_XD;
+            pte_template &= ~PTE_XD;
     }
 
     if (vpn >= MEMMAP_GLOBAL_VPN_BASE) {
@@ -848,31 +858,31 @@ static StStatus remap_memory(
     while (count > 0) {
         /* 1. PML4 */
         pml4e_idx = PML4_INDEX(vpn);
-        if (!(pml4[pml4e_idx] & STA_MMU_PTE_P)) {
+        if (!(pml4[pml4e_idx] & PTE_P)) {
             return STATUS_PAGE_NOT_PRESENT;
         }
 
-        if (mapflags & MF_USER) pml4[pml4e_idx] |= STA_MMU_PTE_US;
-        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
+        if (mapflags & MF_USER) pml4[pml4e_idx] |= PTE_US;
+        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 2. PDPT */
         pdpte_idx = PDPT_INDEX(vpn);
-        if (!(pdpt[pdpte_idx] & STA_MMU_PTE_P)) {
+        if (!(pdpt[pdpte_idx] & PTE_P)) {
             return STATUS_PAGE_NOT_PRESENT;
         }
 
-        if (mapflags & MF_USER) pdpt[pdpte_idx] |= STA_MMU_PTE_US;
-        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pdpt[pdpte_idx])));
+        if (mapflags & MF_USER) pdpt[pdpte_idx] |= PTE_US;
+        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(((pdpt[pdpte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 3. PD */
         pde_idx = PD_INDEX(vpn);
-        if (!(pd[pde_idx] & STA_MMU_PTE_P)) {
+        if (!(pd[pde_idx] & PTE_P)) {
             return STATUS_PAGE_NOT_PRESENT;
         }
 
-        if ((pd[pde_idx] & STA_MMU_PTE_PS)) return STATUS_CONFLICTING_STATE;
-        if (mapflags & MF_USER) pd[pde_idx] |= STA_MMU_PTE_US;
-        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pd[pde_idx])));
+        if ((pd[pde_idx] & PTE_PS)) return STATUS_CONFLICTING_STATE;
+        if (mapflags & MF_USER) pd[pde_idx] |= PTE_US;
+        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 4. PT */
         pte_idx = vpn & VIRT_PAGE_PT_MASK;
@@ -883,10 +893,11 @@ static StStatus remap_memory(
         }
 
         for (size_t i = 0; i < chunk_size; i++) {
-            if (!(pt[pte_idx + i] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-            pfn = STA_MMU_GET_BASE(pt[pte_idx + i]);
+            if (!(pt[pte_idx + i] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+            pfn = ((pt[pte_idx + i]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT;
             pt[pte_idx + i] = pte_template;
-            pt[pte_idx + i] = (pt[pte_idx + i] & ~STA_MMU_PTE_BASE_MASK) | STA_MMU_SET_BASE(pfn);
+            pt[pte_idx + i] =
+                (pt[pte_idx + i] & ~PTE_BASE_MASK) | ((uint64_t)pfn << PTE_BASE_SHIFT);
 
             if (do_invlpg) {
                 StA_InvalidatePage(vpn + i);
@@ -966,24 +977,24 @@ static void unmap_memory(
     while (count > 0) {
         /* 1. PML4 */
         pml4e_idx = PML4_INDEX(vpn);
-        if (!(pml4[pml4e_idx] & STA_MMU_PTE_P)) {
+        if (!(pml4[pml4e_idx] & PTE_P)) {
             St_Panic(STATUS_PAGE_NOT_PRESENT, "PML4 entry not present");
         }
-        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pml4[pml4e_idx])));
+        pdpt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pml4[pml4e_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 2. PDPT */
         pdpte_idx = PDPT_INDEX(vpn);
-        if (!(pdpt[pdpte_idx] & STA_MMU_PTE_P)) {
+        if (!(pdpt[pdpte_idx] & PTE_P)) {
             St_Panic(STATUS_PAGE_NOT_PRESENT, "PDPT entry not present");
         }
-        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pdpt[pdpte_idx])));
+        pd = PHYS_TO_VIRT(FRAME_TO_VPTR(((pdpt[pdpte_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 3. PD */
         pde_idx = PD_INDEX(vpn);
-        if (!(pd[pde_idx] & STA_MMU_PTE_P)) {
+        if (!(pd[pde_idx] & PTE_P)) {
             St_Panic(STATUS_PAGE_NOT_PRESENT, "PD entry not present");
         }
-        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(STA_MMU_GET_BASE(pd[pde_idx])));
+        pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 4. PT */
         pte_idx = vpn & VIRT_PAGE_PT_MASK;
@@ -994,7 +1005,7 @@ static void unmap_memory(
         }
 
         for (size_t i = 0; i < chunk_size; i++) {
-            if (!(pt[pte_idx + i] & STA_MMU_PTE_P)) {
+            if (!(pt[pte_idx + i] & PTE_P)) {
                 St_Panic(STATUS_PAGE_NOT_PRESENT, "UnmapMemory: PT entry not present");
             }
             pt[pte_idx + i] = 0;

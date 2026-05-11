@@ -30,10 +30,6 @@ __noreturn void VlP_Panic(status_t status, const char *fmt, ...)
 
     VlA_Cli();
 
-    for (;;) {
-        VlA_Hlt();
-    }
-
     /* enable keyboard translation */
     VlA_Out8(0x0064, 0x60);
     VlA_Out8(0x0060, 0x63);
@@ -80,9 +76,9 @@ __noreturn void VlP_Panic(status_t status, const char *fmt, ...)
 #else
     cprintf(print_char, NULL, "Press any key to reboot");
 
-    _pc_bios_keyboard_get_stroke(NULL, NULL);
+    VlBiosP_GetKeyboardStroke(NULL, NULL);
 
-    _pc_reboot();
+    VlP_Reboot();
 
 #endif
 

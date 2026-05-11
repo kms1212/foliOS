@@ -18,22 +18,22 @@ const struct VlA_CpuFeatures *const g_p_cpu_features = &cpu_features;
 
 static int check_cpuid_available(void)
 {
-    int available;
+    uint32_t available;
 
     __asm__ volatile("pushfl\n\t"
                      "pushfl\n\t"
                      "xorl   $0x00200000, (%%esp)\n\t"
                      "popfl\n\t"
                      "pushfl\n\t"
-                     "pop    %%eax\n\t"
-                     "xor    (%%esp), %%eax\n\t"
+                     "popl   %%eax\n\t"
+                     "xorl   (%%esp), %%eax\n\t"
                      "popfl\n\t"
-                     "and    $0x00200000, %%eax\n\t"
-                     : "=r"(available)
+                     "andl   $0x00200000, %%eax\n\t"
+                     : "=a"(available)
                      :
-                     : "eax");
+                     : "cc", "memory");
 
-    return !!available;
+    return available != 0;
 }
 
 status_t VlA_CheckCpuFeatures(void)

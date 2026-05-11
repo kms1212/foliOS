@@ -10,6 +10,7 @@ SECTIONS
     .text :
     {
         PROVIDE_HIDDEN(__text_start = .);
+        KEEP(*(.text.entry .text.entry.*))
         KEEP(*(.text.startup .text.startup.*))
         KEEP(*(.text .text.*))
         PROVIDE_HIDDEN(__text_end = .);

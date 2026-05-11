@@ -36,6 +36,14 @@ target_compile_options(vellum_module_${MODULE_NAME} PUBLIC
         -Wall
         -Wunused-result
         -Wno-unused-function
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
+    >
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
     >
 )
 

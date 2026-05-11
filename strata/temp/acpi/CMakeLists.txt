@@ -15,6 +15,14 @@ target_compile_options(strata_temp_module_acpi PUBLIC
         -pedantic
         -pedantic-errors
     >
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
+    >
 )
 target_link_libraries(strata_temp_module_acpi gcc)
 target_compile_definitions(strata_temp_module_acpi PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_NATIVE_ALLOC_ZEROED=1)

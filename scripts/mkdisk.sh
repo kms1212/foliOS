@@ -2,6 +2,8 @@
 
 set -e
 
+OS_TYPE=$(uname -s)
+
 ARCH=
 BOOTBIN_EXT=
 UEFI_ARCH=
@@ -149,7 +151,9 @@ case $BOOT_TYPE in
     uefi)
         dd if=/dev/zero of="$PART_TABLE_IMAGE" bs=512 count=63
         cat "$PART_TABLE_IMAGE" "${PART_IMAGES[@]}" > "$OUTPUT"
-        cat <<'EOF' | gdisk "$OUTPUT"
+
+        if [ "$OS_TYPE" = "Darwin" ]; then
+            cat <<'EOF' | gdisk "$OUTPUT"
 o
 y
 x
@@ -174,13 +178,25 @@ bce7d2e7-c1d5-573f-a5d8-7a8b40081b81
 w
 y
 EOF
+        elif [ "$OS_TYPE" = "Linux" ]; then
+            sfdisk "$OUTPUT" <<EOF
+label: gpt
+first-lba: 63
+table-length: 128
+
+start=63, size=16443, type=C12A7328-F81F-11D2-BA4B-00A0C93EC93B
+start=16506, size=65520, type=CD7CDB25-EE47-55DC-9989-6DFD81EF7261
+start=82026, size=131040, type=BCE7D2E7-C1D5-573F-A5D8-7A8B40081B81
+EOF
+        fi
         ;;
     bios)
         cp "build/vellum/arch/$ARCH/pc/bios/mbrboot.bin" "$PART_TABLE_IMAGE"
         dd if=/dev/zero bs=512 count=62 >>"$PART_TABLE_IMAGE"
         cat "$PART_TABLE_IMAGE" "${PART_IMAGES[@]}" > "$OUTPUT"
 
-        cat <<'EOF' | fdisk -e "$OUTPUT"
+        if [ "$OS_TYPE" = "Darwin" ]; then
+            cat <<'EOF' | fdisk -e "$OUTPUT"
 e 1
 01
 n
@@ -199,6 +215,16 @@ n
 131040
 q
 EOF
+        elif [ "$OS_TYPE" = "Linux" ]; then
+            sfdisk "$OUTPUT" <<EOF
+label: dos
+unit: sectors
+
+start=63, size=16443, Id=1, bootable
+start=16506, size=65520, Id=78
+start=82026, size=131040, Id=79
+EOF
+        fi
         ;;
     *)  ;;
 esac

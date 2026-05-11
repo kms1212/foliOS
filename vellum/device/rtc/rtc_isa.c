@@ -244,7 +244,7 @@ static status_t probe(
     return STATUS_SUCCESS;
 
 has_error:
-    VlIntP_Unmask((int)rsrc[1].base);
+    VlIntP_Mask((int)rsrc[1].base);
 
     if (data && data->isr) {
         VlIntP_RemoveHandler(data->isr);

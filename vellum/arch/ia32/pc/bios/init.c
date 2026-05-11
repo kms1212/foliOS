@@ -38,10 +38,6 @@
 #include <vellum/panic.h>
 #include <vellum/status.h>
 
-#include <uacpi/event.h>
-#include <uacpi/tables.h>
-#include <uacpi/uacpi.h>
-
 #define MODULE_NAME "init"
 
 extern void main(void);
@@ -84,27 +80,44 @@ static status_t init_pma(void)
     uint32_t smap_cursor;
     struct smap_entry smap_entry;
     uint64_t smap_base, smap_size;
-    uintptr_t base_paddr, limit_paddr;
+    uintptr_t base_paddr, limit_paddr, pma_limit_paddr;
 
     /* calculate available area that covers free memory from 0x100000 to 0xFFFFFFFF */
     smap_cursor = 0;
     base_paddr = 0;
     limit_paddr = 0;
     do {
-        VlBiosP_QueryMemoryMap(&smap_cursor, &smap_entry, sizeof(smap_entry));
+        status = VlBiosP_QueryMemoryMap(&smap_cursor, &smap_entry, sizeof(smap_entry));
+        if (!CHECK_SUCCESS(status)) return status;
+
         smap_base = (uint64_t)smap_entry.base_addr_high << 32 | smap_entry.base_addr_low;
         smap_size = (uint64_t)smap_entry.length_high << 32 | smap_entry.length_low;
+        if (!smap_size) continue;
 
-        if (smap_base < 0x100000) continue;
         if (smap_entry.type != 0x00000001) continue;
+        if (smap_base > UINTPTR_MAX) continue;
 
-        if (!base_paddr) {
+        uint64_t smap_limit = smap_base + smap_size - 1;
+        if (smap_limit > UINTPTR_MAX || smap_limit < smap_base) {
+            smap_limit = UINTPTR_MAX;
+        }
+
+        if (smap_limit < 0x100000) continue;
+        if (smap_base < 0x100000) {
+            smap_base = 0x100000;
+        }
+
+        if (!base_paddr || smap_base < base_paddr) {
             base_paddr = smap_base;
         }
-        if (limit_paddr < smap_base + smap_size - 1) {
-            limit_paddr = smap_base + smap_size - 1;
+        if (limit_paddr < smap_limit) {
+            limit_paddr = smap_limit;
         }
     } while (smap_cursor);
+
+    if (!base_paddr || limit_paddr < base_paddr) return STATUS_INSUFFICIENT_MEMORY;
+
+    pma_limit_paddr = limit_paddr;
 
     status = mm_pma_init(base_paddr, limit_paddr);
     if (!CHECK_SUCCESS(status)) return status;
@@ -112,21 +125,32 @@ static status_t init_pma(void)
     /* mark smaller reserved area inside the previous area */
     smap_cursor = 0;
     do {
-        VlBiosP_QueryMemoryMap(&smap_cursor, &smap_entry, sizeof(smap_entry));
+        status = VlBiosP_QueryMemoryMap(&smap_cursor, &smap_entry, sizeof(smap_entry));
+        if (!CHECK_SUCCESS(status)) return status;
+
         smap_base = (uint64_t)smap_entry.base_addr_high << 32 | smap_entry.base_addr_low;
         smap_size = (uint64_t)smap_entry.length_high << 32 | smap_entry.length_low;
+        if (!smap_size) continue;
 
-        if (smap_base + smap_size <= 0x100000) continue;
-        if (smap_base > limit_paddr) continue;
         if (smap_entry.type == 0x00000001) continue;
+        if (smap_base > UINTPTR_MAX) continue;
 
+        uint64_t smap_limit = smap_base + smap_size - 1;
+        if (smap_limit > UINTPTR_MAX || smap_limit < smap_base) {
+            smap_limit = UINTPTR_MAX;
+        }
+
+        if (smap_limit < 0x100000) continue;
+        if (smap_base > pma_limit_paddr) continue;
         if (smap_base < 0x100000) {
-            smap_size -= 0x100000 - smap_base;
             smap_base = 0x100000;
+        }
+        if (smap_limit > pma_limit_paddr) {
+            smap_limit = pma_limit_paddr;
         }
 
         base_paddr = smap_base;
-        limit_paddr = smap_base + smap_size - 1;
+        limit_paddr = smap_limit;
 
         status = mm_pma_mark_reserved(base_paddr, limit_paddr);
         if (!CHECK_SUCCESS(status)) return status;
@@ -236,31 +260,10 @@ static status_t init_bios_disks(void)
     return STATUS_SUCCESS;
 }
 
-static status_t init_nonpnp_devices(int has_acpi)
+static status_t init_nonpnp_devices(void)
 {
     status_t status;
-    uacpi_status uacpi_status;
     int skip_legacy = 0, skip_rtc = 0;
-    struct acpi_fadt *fadt;
-
-    if (has_acpi) {
-        LOG_DEBUG("retrieving ACPI FADT...\n");
-
-        uacpi_status = uacpi_table_fadt(&fadt);
-        if (uacpi_unlikely_error(uacpi_status)) {
-            VlP_Panic(uacpi_status, "Could not find FADT (has_acpi=%d)", has_acpi);
-        }
-
-        if (fadt->hdr.revision >= 3) {
-            if (!(fadt->iapc_boot_arch & ACPI_IA_PC_LEGACY_DEVS)) {
-                skip_legacy = 1;
-            }
-
-            if (fadt->iapc_boot_arch & ACPI_IA_PC_NO_CMOS_RTC) {
-                skip_rtc = 1;
-            }
-        }
-    }
 
 #ifndef NDEBUG
     {
@@ -431,32 +434,7 @@ static status_t init_nonpnp_devices(int has_acpi)
     return 0;
 }
 
-#define MAKE_ACPI_STATUS(uacpi_status)                                                             \
-    ((uacpi_status) ? (0x80010000 | (uacpi_status)) : STATUS_SUCCESS)
-
 int config_rtc_century_offset;
-
-static status_t acpi_early_init(void)
-{
-    uacpi_status uacpi_status;
-    static uint8_t acpi_buf[PAGE_SIZE];
-
-    uacpi_status = uacpi_setup_early_table_access(acpi_buf, sizeof(acpi_buf));
-    if (uacpi_unlikely_error(uacpi_status)) {
-        LOG_DEBUG("uACPI initialization failed: %s\n", uacpi_status_to_string(uacpi_status));
-        return MAKE_ACPI_STATUS(uacpi_status);
-    }
-
-    struct acpi_fadt *fadt;
-    uacpi_status = uacpi_table_fadt(&fadt);
-    if (uacpi_unlikely_error(uacpi_status)) {
-        return MAKE_ACPI_STATUS(uacpi_status);
-    }
-
-    config_rtc_century_offset = fadt->century;
-
-    return STATUS_SUCCESS;
-}
 
 status_t mount_boot_filesystem(void)
 {
@@ -580,7 +558,6 @@ static status_t reload_boot_sector(void)
 __noreturn void _pc_init(void)
 {
     status_t status;
-    int has_acpi = 0;
 
     freopencookie(NULL, "w", early_stderr_io, stderr);
     freopencookie(NULL, "w", early_stddbg_io, stddbg);
@@ -625,19 +602,15 @@ __noreturn void _pc_init(void)
     }
 
     _pc_pic_remap_int(0x20, 0x28);
+    for (int i = 0x20; i < 0x30; i++) {
+        VlIntP_Mask(i);
+    }
 
     VlIntP_AddTrapHandler(0x03, bkpt_handler, NULL);
     VlIntP_AddInterruptHandler(0x20, NULL, tick_isr, NULL);
 
     LOG_DEBUG("initializing PIT...\n");
     init_timer();
-
-    LOG_DEBUG("early-initializing ACPI...\n");
-    status = acpi_early_init();
-    has_acpi = CHECK_SUCCESS(status);
-    if (!has_acpi) {
-        LOG_DEBUG("ACPI is not available\n");
-    }
 
     LOG_DEBUG("running constructors...\n");
     for (int i = 0; &__init_array_start[i] != __init_array_end; i++) {
@@ -647,7 +620,7 @@ __noreturn void _pc_init(void)
     VlA_EnableInterrupt();
 
     LOG_DEBUG("initializing non-PnP devices...\n");
-    status = init_nonpnp_devices(has_acpi);
+    status = init_nonpnp_devices();
     if (!CHECK_SUCCESS(status)) {
         fprintf(stderr, "init_nonpnp_devices() failed: 0x%08lX\n", status);
         VlP_Panic(status, "failed to initialize essential non-PnP devices");

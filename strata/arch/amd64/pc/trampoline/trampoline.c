@@ -39,17 +39,17 @@ static StStatus virt_to_phys(St_VirtPage vpn __in, St_PhysFrame *pfn __out)
     if (vpn > (St_VirtPage)VIRT_PAGE_MAX) return STATUS_INVALID_VALUE;
 
     pde_idx = (vpn & (St_VirtPage)VIRT_PAGE_PD_INDEX_MASK) >> 10;
-    if (!(pd[pde_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
-    if (pd[pde_idx] & STA_MMU_PTE_PS) {
+    if (!(pd[pde_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (pd[pde_idx] & PTE_PS) {
         *pfn = (((uintptr_t)(pd[pde_idx] >> 22) & 0x3FF) << 10) + (vpn & 0x3FF);
 
         return STATUS_SUCCESS;
     }
 
     pt_idx = PAGE_TO_UINT(vpn) & VIRT_PAGE_PT_INDEX_MASK;
-    if (!(pt[pt_idx] & STA_MMU_PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+    if (!(pt[pt_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
 
-    *pfn = (St_PhysFrame)STA_MMU_GET_BASE(pt[pt_idx]);
+    *pfn = (St_PhysFrame)((pt[pt_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT);
 
     return STATUS_SUCCESS;
 }
@@ -85,10 +85,10 @@ void setup_trampoline_page_tables(void)
     */
 
     /* pml4[0]: 0x00000000_00000000-0x0000007F_FFFFFFFF */
-    st_pml4[0] = STA_MMU_PTE_P | STA_MMU_PTE_RW | STA_MMU_SET_BASE(low_pdpt_pfn);
+    st_pml4[0] = PTE_P | PTE_RW | (low_pdpt_pfn << PTE_BASE_SHIFT);
 
     /* pml4[511]: 0xFFFFFF80_00000000-0xFFFFFFFF_FFFFFFFF */
-    st_pml4[511] = STA_MMU_PTE_P | STA_MMU_PTE_RW | STA_MMU_SET_BASE(kernel_pdpt_pfn);
+    st_pml4[511] = PTE_P | PTE_RW | ((kernel_pdpt_pfn) << PTE_BASE_SHIFT);
 
     status = virt_to_phys(VPTR_TO_PAGE(st_low_pd), &low_pd_pfn);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -98,19 +98,19 @@ void setup_trampoline_page_tables(void)
 
     /* lower direct mapping (temporary) */
     /* pml4[0][0]: 0x00000000_00000000-0x00000000_3FFFFFFF */
-    st_low_pdpt[0] = STA_MMU_PTE_P | STA_MMU_PTE_RW | STA_MMU_SET_BASE(low_pd_pfn);
+    st_low_pdpt[0] = PTE_P | PTE_RW | ((low_pd_pfn) << PTE_BASE_SHIFT);
 
     /* lower kernel mapping (temporary) */
     /* pml4[0][3]: 0x00000000_C0000000-0x00000000_FFFFFFFF */
-    st_low_pdpt[3] = STA_MMU_PTE_P | STA_MMU_PTE_RW | STA_MMU_SET_BASE(kernel_pd_pfn);
+    st_low_pdpt[3] = PTE_P | PTE_RW | ((kernel_pd_pfn) << PTE_BASE_SHIFT);
 
     /* upper kernel mapping */
     /* pml4[511][510]: 0xFFFFFFFF_80000000-0xFFFFFFFF_BFFFFFFF */
-    st_kernel_pdpt[510] = STA_MMU_PTE_P | STA_MMU_PTE_RW | STA_MMU_SET_BASE(kernel_pd_pfn);
+    st_kernel_pdpt[510] = PTE_P | PTE_RW | ((kernel_pd_pfn) << PTE_BASE_SHIFT);
 
     /* identity mapping 0x00000000-0x003FFFFF */
     for (int i = 0; i < 2; i++) {
-        st_low_pd[i] = STA_MMU_PTE_P | STA_MMU_PTE_PS | STA_MMU_PTE_RW | STA_MMU_SET_BASE(i);
+        st_low_pd[i] = PTE_P | PTE_PS | PTE_RW | ((i * 512) << PTE_BASE_SHIFT);
     }
 
     /* migrate mappings from 0xC0000000-0xC1FFFFFF (no need to migrate all the kernel area) */
@@ -118,18 +118,19 @@ void setup_trampoline_page_tables(void)
         St_PhysFrame pt_pfn;
         int old_pd_idx = 768 + (i >> 1);
 
-        if (!(old_pd[old_pd_idx] & STA_MMU_PTE_P)) continue;
+        if (!(old_pd[old_pd_idx] & PTE_P)) continue;
 
         status = virt_to_phys(VPTR_TO_PAGE(st_kernel_pt[i]), &pt_pfn);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        st_kernel_pd[i] = STA_MMU_PTE_P | (old_pd[old_pd_idx] & STA_MMU_PTE_RW) | STA_MMU_SET_BASE(pt_pfn);
+        st_kernel_pd[i] = PTE_P | (old_pd[old_pd_idx] & PTE_RW) | ((pt_pfn) << PTE_BASE_SHIFT);
         for (int j = 0; j < 512; j++) {
             int old_pt_idx = (old_pd_idx * 1024) + ((i & 1) * 512) + j;
 
-            if (!(old_pt[old_pt_idx] & STA_MMU_PTE_P)) continue;
+            if (!(old_pt[old_pt_idx] & PTE_P)) continue;
 
-            st_kernel_pt[i][j] = STA_MMU_PTE_P | (old_pt[old_pt_idx] & STA_MMU_PTE_RW) | STA_MMU_SET_BASE(STA_MMU_GET_BASE(old_pt[old_pt_idx]));
+            st_kernel_pt[i][j] =
+                PTE_P | (old_pt[old_pt_idx] & PTE_RW) | (old_pt[old_pt_idx] & PTE_BASE_MASK);
         }
     }
 
@@ -140,10 +141,11 @@ void setup_trampoline_page_tables(void)
         status = virt_to_phys(VPTR_TO_PAGE(st_direct_mapping_pdpt[i]), &pdpt_pfn);
         if (!CHECK_SUCCESS(status)) goto has_error;
 
-        st_pml4[384 + i] = STA_MMU_PTE_P | STA_MMU_PTE_RW | STA_MMU_SET_BASE(pdpt_pfn);
+        st_pml4[384 + i] = PTE_P | PTE_RW | ((pdpt_pfn) << PTE_BASE_SHIFT);
 
         for (int j = 0; j < ARRAY_SIZE(st_direct_mapping_pdpt[i]); j++) {
-            st_direct_mapping_pdpt[i][j] = STA_MMU_PTE_P | STA_MMU_PTE_RW | STA_MMU_PTE_PS | STA_MMU_SET_BASE(i * 512 + j);
+            st_direct_mapping_pdpt[i][j] =
+                PTE_P | PTE_RW | PTE_PS | (((i * 512 + j) * 512 * 512) << PTE_BASE_SHIFT);
         }
     }
 

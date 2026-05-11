@@ -20,6 +20,16 @@ if (CONFIG_ENABLE_ACPI)
     target_compile_features(uacpi.lib PUBLIC c_std_11)
     target_link_libraries(uacpi.lib gcc)
     target_compile_definitions(uacpi.lib PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_NATIVE_ALLOC_ZEROED=1) # TODO: revert to UACPI_BAREBONES_MODE=1
+    target_compile_options(uacpi.lib PRIVATE
+        $<$<COMPILE_LANGUAGE:C>:
+            -mno-sse
+            -mno-sse2
+            -mno-mmx
+            -mno-80387
+            -mno-avx
+            -mgeneral-regs-only
+        >
+    )
 
     set(UACPI_INCLUDES ${UACPI_INCLUDES} PARENT_SCOPE) # TODO: remove this line
 
@@ -55,6 +65,16 @@ target_include_directories(libzstd_static PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/.
 target_include_directories(libzstd_static PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/liballoc/include")
 set_target_properties(libzstd_static PROPERTIES C_CLANG_TIDY "")
 target_compile_definitions(libzstd_static PRIVATE "ZSTD_NO_TRACE=1")
+target_compile_options(libzstd_static PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
+    >
+)
 
 target_link_libraries(strata libzstd_static)
 target_include_directories(strata SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zstd-src")

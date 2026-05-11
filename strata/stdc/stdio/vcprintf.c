@@ -783,7 +783,7 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
         num = (uintptr_t)va_arg(*args, void *);
         break;
     default:
-        break;
+        return 0;
     }
 
     // get additional args if neded

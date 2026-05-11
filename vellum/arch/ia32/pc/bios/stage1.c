@@ -119,12 +119,16 @@ void s1main(void)
         for (int i = 0; i < 32; i++) {
             entry = &((union fat_dir_entry *)sect_buf)[i];
 
+            if (!entry->file.name[0]) {
+                entry = NULL;
+                goto file_found;
+            }
+
             if (memcmp(
                     entry->file.name_ext,
                     "VELLUM  X86",
                     sizeof(entry->file.name) + sizeof(entry->file.extension)
-                ) == 0 ||
-                !entry->file.name[0]) {
+                ) == 0) {
                 goto file_found;
             }
         }

@@ -36,33 +36,18 @@ set_target_properties(zlib.lib PROPERTIES IMPORTED_LOCATION "${CMAKE_BINARY_DIR}
 
 target_include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_include_directories(zlibstatic PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/liballoc/include")
+target_compile_options(zlibstatic PRIVATE
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
+    >
+)
 set_target_properties(zlibstatic PROPERTIES C_CLANG_TIDY "")
 
 target_link_libraries(vellum zlib.lib)
 target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-src")
 target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_BINARY_DIR}/_deps/zlib-build")
-
-
-FetchContent_Declare(uacpi
-    URL "https://github.com/uACPI/uACPI/archive/refs/tags/3.1.0.tar.gz"
-    URL_HASH MD5=5272fab5df149aed884d86b6f77b616f
-    DOWNLOAD_EXTRACT_TIMESTAMP false
-)
-FetchContent_MakeAvailable(uacpi)
-
-include("${CMAKE_BINARY_DIR}/_deps/uacpi-src/uacpi.cmake")
-target_include_directories(vellum SYSTEM PRIVATE ${UACPI_INCLUDES})
-
-add_library(uacpi.lib STATIC)
-
-target_compile_features(uacpi.lib PUBLIC c_std_11)
-target_link_libraries(uacpi.lib gcc)
-target_compile_definitions(uacpi.lib PRIVATE UACPI_PHYS_ADDR_IS_32BITS=1 UACPI_FORMATTED_LOGGING=1 UACPI_BAREBONES_MODE=1)
-
-target_include_directories(uacpi.lib PRIVATE ${UACPI_INCLUDES})
-target_sources(uacpi.lib PRIVATE ${UACPI_SOURCES})
-
-set_target_properties(uacpi.lib PROPERTIES C_CLANG_TIDY "")
-
-target_compile_definitions(vellum PRIVATE UACPI_PHYS_ADDR_IS_32BITS=1 UACPI_FORMATTED_LOGGING=1 UACPI_BAREBONES_MODE=1)
-target_link_libraries(vellum uacpi.lib)

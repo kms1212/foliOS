@@ -1,6 +1,6 @@
     .org    0
 
-    .section .text.startup
+    .section .text.entry
     .code32
     .globl  _start
 _start:

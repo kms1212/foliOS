@@ -36,11 +36,19 @@ target_compile_options(trampoline PUBLIC
         -pedantic
         -pedantic-errors
         -m32
+        -mno-sse
+        -mno-sse2
+        -mno-mmx
         -Wa,--32
         -fno-asynchronous-unwind-tables
         -fno-unwind-tables
         -nostdinc
         -isystem "${GCC_BUILTIN_INC_PATH}"
+    >
+    $<$<COMPILE_LANGUAGE:C>:
+        -mno-80387
+        -mno-avx
+        -mgeneral-regs-only
     >
 )
 target_link_options(trampoline PUBLIC

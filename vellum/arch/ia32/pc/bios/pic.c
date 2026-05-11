@@ -4,6 +4,9 @@
 
 void _pc_pic_remap_int(uint8_t master, uint8_t slave)
 {
+    uint8_t master_mask = VlA_In8(0x0021);
+    uint8_t slave_mask = VlA_In8(0x00A1);
+
     VlA_Out8(0x0020, 0x11);
     VlA_Out8(0x0080, 0x00);
     VlA_Out8(0x0021, master);
@@ -22,7 +25,9 @@ void _pc_pic_remap_int(uint8_t master, uint8_t slave)
     VlA_Out8(0x0080, 0x00);
     VlA_Out8(0x00A1, 0x01);
     VlA_Out8(0x0080, 0x00);
-    VlA_Out8(0x00A1, 0x00);
+    VlA_Out8(0x00A1, slave_mask);
+
+    VlA_Out8(0x0021, master_mask);
 }
 
 void _pc_pic_mask_int(int num)
