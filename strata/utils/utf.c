@@ -39,9 +39,8 @@ StStatus StUtf_CountUtf8Chars(
         }
 
         if (len == 2) {
-            if (((uint8_t)src[i + 1] & 0xC0) != 0x80) {
-                valid = 0;
-            } else if ((((c & 0x1F) << 6) | ((uint8_t)src[i + 1] & 0x3F)) < 0x80) {
+            if (((uint8_t)src[i + 1] & 0xC0) != 0x80 ||
+                (((c & 0x1F) << 6) | ((uint8_t)src[i + 1] & 0x3F)) < 0x80) {
                 valid = 0;
             }
         } else if (len == 3) {
@@ -197,18 +196,16 @@ StStatus StUtf_Utf32ToUtf8(
         St_Utf32Char wc = src[i++];
         int needed = 0;
 
-        if (wc < 0x80)
+        if (wc < 0x80) {
             needed = 1;
-        else if (wc < 0x800)
+        } else if (wc < 0x800) {
             needed = 2;
-        else if (wc < 0x10000)
+        } else if (wc < 0x10000 || wc > UTF8_MAX_CODEPOINT) {
             needed = 3;
-        else if (wc <= UTF8_MAX_CODEPOINT)
+        } else {
             needed = 4;
-        else
-            needed = 3;
+        }
 
-        /* 출력 버퍼 공간 확인 */
         if (b + needed > dest_size) {
             break;
         }

@@ -236,16 +236,21 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
         St_Panic(STATUS_ENTRY_NOT_FOUND, "required entry not found");
     }
 
-#ifdef NDEBUG
     if (caent) {
         for (uint32_t i = 0; i < caent->arg_count; i++) {
+#ifdef NDEBUG
             if (strcmp(&btblhdr->strtab[caent->arg_offsets[i]], "-v") == 0) {
                 StLog_SetLevel(LL_DEBUG);
             }
-        }
-    }
+
+#else
+            if (strcmp(&btblhdr->strtab[caent->arg_offsets[i]], "-v") == 0) {
+                StLog_SetLevel(LL_TRACE);
+            }
 
 #endif
+        }
+    }
 
     // TODO: parse arguments
 

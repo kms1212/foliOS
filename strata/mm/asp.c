@@ -51,7 +51,7 @@ StStatus StMm_CreateAddressSpace(
 )
 {
     StStatus status;
-    struct StMm_AddressSpace *new_asp;
+    struct StMm_AddressSpace *new_asp = NULL;
     int p_asp_created = 0;
     int domain_initialized = 0;
 

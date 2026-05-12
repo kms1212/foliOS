@@ -514,7 +514,7 @@ static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int align_ord
 
 static inline void allocate_from_bitmap_entry(uint64_t *entry, unsigned index, int order)
 {
-    uint64_t old_entry_value = *entry;
+    // uint64_t old_entry_value = *entry;
 
     switch (order) {
     case 0:
@@ -546,7 +546,7 @@ static inline void allocate_from_bitmap_entry(uint64_t *entry, unsigned index, i
 
 static inline void free_to_bitmap_entry(uint64_t *entry, unsigned index, int order)
 {
-    uint64_t old_entry_value = *entry;
+    // uint64_t old_entry_value = *entry;
 
     switch (order) {
     case 0:
@@ -1566,11 +1566,11 @@ has_error:
 StStatus StPmm_AcquireContiguousFrame(St_PhysFrame pfn __in)
 {
     struct pmm_metadata *metadata;
-    uint32_t prev_refcount;
+    // uint32_t prev_refcount;
 
     metadata = get_metadata(pfn);
 
-    prev_refcount = atomic_fetch_add_explicit(&metadata->refcount, 1, memory_order_relaxed);
+    /* prev_refcount = */ atomic_fetch_add_explicit(&metadata->refcount, 1, memory_order_relaxed);
 
     // LOG_TRACE(
     //     LM_CAT_UNCLASSIFIED,

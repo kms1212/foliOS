@@ -87,6 +87,7 @@ char *VlPath_Normalize(char *dest, size_t len, const char *src)
     int is_absolute = 0;
     int has_filesystem = 0;
     int first_loop = 1;
+    int iter_end;
 
     if (it.element[0] != '\0') {
         has_filesystem = 1;
@@ -100,9 +101,8 @@ char *VlPath_Normalize(char *dest, size_t len, const char *src)
         *write_pos++ = ':';
     }
 
-    int asdf;
     do {
-        asdf = VlPath_AdvanceIter(&it);
+        iter_end = VlPath_AdvanceIter(&it);
 
         if (first_loop) {
             if (it.has_separator) {
@@ -199,7 +199,7 @@ char *VlPath_Normalize(char *dest, size_t len, const char *src)
             write_pos += elem_len;
         }
 
-    } while (!asdf);
+    } while (!iter_end);
 
     if (!has_filesystem && write_pos == dest && dest_end - dest > 0) {
         *dest = '.';

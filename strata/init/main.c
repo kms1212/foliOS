@@ -481,8 +481,8 @@ static void thread1_main(struct StThread *th);
 
 static int setup_user_process(struct StProcess **process_out __out)
 {
-    extern char _userexec_start[];
-    extern char _userexec_end[];
+    extern char _userexec_start[];  // NOLINT(readability-identifier-naming)
+    extern char _userexec_end[];    // NOLINT(readability-identifier-naming)
 
     StStatus status;
     struct StProcess *process;
