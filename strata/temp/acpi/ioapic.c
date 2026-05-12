@@ -2,8 +2,10 @@
 
 #include <stdint.h>
 
+#include <strata/compiler.h>
 #include <strata/mm.h>
 #include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/status.h>
 
 #define IOAPIC_MAX_COUNT 8

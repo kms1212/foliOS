@@ -1,5 +1,7 @@
 #include <strata/mutex.h>
 
+#include <stdint.h>
+
 #include <strata/log.h>
 #include <strata/plat/time.h>
 #include <strata/scheduler.h>

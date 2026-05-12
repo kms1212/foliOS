@@ -3,8 +3,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <strata/arch/intrinsics/io.h>
-
 #include <strata/gnt.h>
 #include <strata/status.h>
 #include <strata/utf.h>
@@ -24,7 +22,6 @@ enum stdio_node_kind {
     STDIO_NODE_STDOUT,
     STDIO_NODE_STDERR,
 };
-
 
 static int node_name_equals(
     const struct StGnt_Node *node, const St_Utf32Char *name, size_t name_len
@@ -58,7 +55,7 @@ extern struct print_state pstate;
 static void stdio_debugcon_write(const uint8_t *buf, uint64_t size)
 {
     for (uint64_t i = 0; i < size; i++) {
-        early_print_char(&pstate, buf[i]);
+        early_print_char(&pstate, (char)buf[i]);
     }
 }
 

@@ -8,7 +8,7 @@
 #include <string.h>
 
 #include <strata/arch/intrinsics/misc.h>
-#include <strata/arch/mmu.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
@@ -247,7 +247,7 @@ static int metadata_available = 0;
 
 static void push_dynamic_alloc_table(struct alloc_table *table)
 {
-    struct alloc_table *next = dynamic_alloctbl_freelist;
+    uintptr_t next = (uintptr_t)dynamic_alloctbl_freelist;
     memcpy(table, &next, sizeof(next));
     dynamic_alloctbl_freelist = table;
     dynamic_alloctbl_free_count++;
@@ -256,11 +256,11 @@ static void push_dynamic_alloc_table(struct alloc_table *table)
 static struct alloc_table *pop_dynamic_alloc_table(void)
 {
     struct alloc_table *table = dynamic_alloctbl_freelist;
-    struct alloc_table *next;
+    uintptr_t next;
     if (!table) return NULL;
 
     memcpy(&next, table, sizeof(next));
-    dynamic_alloctbl_freelist = next;
+    dynamic_alloctbl_freelist = (struct alloc_table *)next;
     dynamic_alloctbl_free_count--;
 
     return table;
@@ -268,7 +268,7 @@ static struct alloc_table *pop_dynamic_alloc_table(void)
 
 static void push_dynamic_extentry(struct extended_entry *entry)
 {
-    struct extended_entry *next = dynamic_extentry_freelist;
+    uintptr_t next = (uintptr_t)dynamic_extentry_freelist;
     memcpy(entry->state_flags, &next, sizeof(next));
     dynamic_extentry_freelist = entry;
     dynamic_extentry_free_count++;
@@ -277,11 +277,11 @@ static void push_dynamic_extentry(struct extended_entry *entry)
 static struct extended_entry *pop_dynamic_extentry(void)
 {
     struct extended_entry *entry = dynamic_extentry_freelist;
-    struct extended_entry *next;
+    uintptr_t next;
     if (!entry) return NULL;
 
     memcpy(&next, entry->state_flags, sizeof(next));
-    dynamic_extentry_freelist = next;
+    dynamic_extentry_freelist = (struct extended_entry *)next;
     dynamic_extentry_free_count--;
 
     return entry;
@@ -665,6 +665,10 @@ static StStatus get_or_create_extentry(
     } else if (dynamic_extentry_free_count > 0) {
         new_entry = pop_dynamic_extentry();
     } else {
+        LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create extended entry");
+        return STATUS_INSUFFICIENT_MEMORY;
+    }
+    if (new_entry == NULL) {
         LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to create extended entry");
         return STATUS_INSUFFICIENT_MEMORY;
     }
@@ -1160,7 +1164,7 @@ StStatus StPmm_AllocateContiguousFrame(
 )
 {
     StStatus status;
-    St_PhysFrame allocated_pfn;
+    St_PhysFrame allocated_pfn = 0;
     int order;
     uint32_t below_value;
     int align_order;

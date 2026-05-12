@@ -1,11 +1,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include <strata/arch/interrupt.h>
-
 #include <strata/gnt.h>
 #include <strata/log.h>
 #include <strata/macros.h>
+#include <strata/status.h>
 #include <strata/utf.h>
 
 #include <plat/pci/cfgspace.h>
@@ -147,7 +146,12 @@ static void pci_scan_bars(struct pci_device_node *node)
 
     StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_HEADER_TYPE, &header_type);
     header_type &= 0x7F;
-    int max_bars = (header_type == 0x00) ? 6 : ((header_type == 0x01) ? 2 : 0);
+    int max_bars;
+    if (header_type == 0x00) {
+        max_bars = 6;
+    } else {
+        max_bars = (header_type == 0x01) ? 2 : 0;
+    }
 
     for (int i = 0; i < max_bars; i++) {
         node->bar_valid[i] = 0;
@@ -228,7 +232,9 @@ enum StPci_ScanIterationDecision iterate_function(
     uint8_t interface;
     uint16_t subsystem_vendor_id;
     uint16_t subsystem_id;
-    struct pci_device_node info;
+    struct pci_device_node info = {
+        0,
+    };
 
     status = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID, &vendor_id);
     if (!CHECK_SUCCESS(status)) goto has_error;

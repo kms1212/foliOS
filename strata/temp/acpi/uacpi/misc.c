@@ -1,13 +1,15 @@
 
 #include <uacpi/kernel_api.h>
 
+#include <stdint.h>
+
+#include <uacpi/platform/arch_helpers.h>
 #include <uacpi/platform/types.h>
 #include <uacpi/status.h>
 #include <uacpi/types.h>
 
 #include <strata/arch/intrinsics/misc.h>
 
-#include <strata/plat/panic.h>
 #include <strata/plat/time.h>
 
 #include <strata/log.h>

@@ -1,11 +1,16 @@
 #include <strata/mm/pool.h>
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
+
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/compiler.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 
@@ -33,7 +38,8 @@ struct subpool_entry {
 
 enum {
     SUBPOOL_SIZE_CLASS_COUNT =
-        ((__builtin_ctz(PAGE_SIZE) - STRATA_MM_POOL_MIN_ALIGN_BITS - STRATA_MM_POOL_MANTISSA_BITS + 2)
+        ((__builtin_ctz(PAGE_SIZE) - STRATA_MM_POOL_MIN_ALIGN_BITS - STRATA_MM_POOL_MANTISSA_BITS +
+          2)
          << (STRATA_MM_POOL_MANTISSA_BITS - 1)),
     SUBPOOL_ALIGNMENT_CLASS_COUNT = (__builtin_ctz(PAGE_SIZE) - STRATA_MM_POOL_MIN_ALIGN_BITS + 1),
 };
@@ -569,25 +575,25 @@ StStatus StPool_Reallocate(void *ptr __in, size_t size __in, void **new_ptr __ou
 
         *new_ptr = allocated_ptr;
         return STATUS_SUCCESS;
-    } else {
-        subpool_header = find_subpool_header_from_ptr(ptr, &object_index);
-        if (!subpool_header) return STATUS_INVALID_VALUE;
+    }
 
-        if (size <= subpool_header->object_size) {
-            *new_ptr = ptr;
-            return STATUS_SUCCESS;
-        }
-        copy_size = subpool_header->object_size;
+    subpool_header = find_subpool_header_from_ptr(ptr, &object_index);
+    if (!subpool_header) return STATUS_INVALID_VALUE;
 
-        status = StPool_AllocateAligned(size, subpool_header->alignment_bits, &allocated_ptr);
-        if (!CHECK_SUCCESS(status)) return status;
-
-        memcpy(allocated_ptr, ptr, copy_size);
-        StPool_Free(ptr);
-
-        *new_ptr = allocated_ptr;
+    if (size <= subpool_header->object_size) {
+        *new_ptr = ptr;
         return STATUS_SUCCESS;
     }
+    copy_size = subpool_header->object_size;
+
+    status = StPool_AllocateAligned(size, subpool_header->alignment_bits, &allocated_ptr);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    memcpy(allocated_ptr, ptr, copy_size);
+    StPool_Free(ptr);
+
+    *new_ptr = allocated_ptr;
+    return STATUS_SUCCESS;
 }
 
 StStatus StPool_Free(void *ptr __in)

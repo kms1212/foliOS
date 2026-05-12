@@ -2,10 +2,12 @@
 
 #include <uacpi/platform/types.h>
 #include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #include <strata/arch/intrinsics/io.h>
 
 #include <strata/mm/pool.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "acpi"
 

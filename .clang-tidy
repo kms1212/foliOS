@@ -26,6 +26,7 @@ Checks: >
   -readability-inconsistent-declaration-parameter-name,
   -misc-use-internal-linkage,
   -clang-analyzer-deadcode.DeadStores,
+  -misc-no-recursion,
 
 WarningsAsErrors: ''
 

@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 #include <uacpi/platform/types.h>
-#include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #include <strata/mm/pool.h>
 #include <strata/plat/time.h>

@@ -2,14 +2,20 @@
 
 #include <stdint.h>
 
+#include <strata/arch/mmu_constants.h>
+
 #include <strata/arch/intrinsics/io.h>
+#include <strata/compiler.h>
 #include <strata/handle.h>
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/status.h>
 
 #include "mcfg.server-client.h"
+#include "mcfg.types.h"
 
 #define MODULE_NAME "pci"
 
@@ -119,7 +125,7 @@ static StStatus map_mcfg_entry(const StIfAcpiTblMcfg_Entry *mcfg_entry)
     uintptr_t phys_page_base = phys_base & ~(uintptr_t)(PAGE_SIZE - 1);
     uintptr_t phys_page_offset = phys_base - phys_page_base;
     uintptr_t bus_count = (uintptr_t)mcfg_entry->end_bus - mcfg_entry->start_bus + 1;
-    uintptr_t map_size = phys_page_offset + bus_count * PCI_ECAM_BUS_SIZE;
+    uintptr_t map_size = phys_page_offset + (bus_count * PCI_ECAM_BUS_SIZE);
     St_PageCount map_page_count = (St_PageCount)ALIGN_DIV(map_size, PAGE_SIZE);
 
     status = StMm_MapGlobal(

@@ -1,11 +1,10 @@
-#include <strata/thread.h>
-
 #include "config.h"
+
+#include <strata/thread.h>
 
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/mm.h>

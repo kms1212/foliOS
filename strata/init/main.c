@@ -9,10 +9,10 @@
 #include <zstd.h>
 
 #include <uacpi/kernel_api.h>
+#include <uacpi/types.h>
 
 #include <strata/arch/interrupt.h>
-#include <strata/arch/intrinsics/misc.h>
-#include <strata/arch/mmu.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/time.h>
@@ -47,10 +47,14 @@ struct print_state {
     uint32_t width, pitch, height;
     uint32_t cursor1_col, cursor1_row;
     uint32_t cursor2_col, cursor2_row;
+    struct StMutex mtx1, mtx2;
 };
+
+struct print_state pstate;
 
 int early_print_char(void *_state, char ch)
 {
+    StStatus status;
     struct print_state *state = _state;
     uint16_t *framebuffer;
     uint32_t width, height, line_diff;
@@ -59,13 +63,13 @@ int early_print_char(void *_state, char ch)
     width = state->width;
     height = state->height;
 
-    if (!width) return 1;
+    if (width <= 22) return 1;
+    if (ch == '\0') return 1;
 
-    StThread_LockPreemption();
+    status = StMutex_Lock(&state->mtx1);
+    if (!CHECK_SUCCESS(status)) return 1;
 
     switch (ch) {
-    case '\0':
-        return 1;
     case '\n':
         state->cursor1_row++;
     case '\r':
@@ -107,13 +111,14 @@ int early_print_char(void *_state, char ch)
         state->cursor1_row = height - 1;
     }
 
-    StThread_UnlockPreemption();
+    StMutex_Unlock(&state->mtx1);
 
     return 0;
 }
 
 int early_print_char2(void *_state, char ch)
 {
+    StStatus status;
     struct print_state *state = _state;
     uint16_t *framebuffer;
     uint32_t width, height, line_diff;
@@ -123,12 +128,12 @@ int early_print_char2(void *_state, char ch)
     height = state->height;
 
     if (!width) return 1;
+    if (ch == '\0') return 1;
 
-    StThread_LockPreemption();
+    status = StMutex_Lock(&state->mtx2);
+    if (!CHECK_SUCCESS(status)) return 1;
 
     switch (ch) {
-    case '\0':
-        return 1;
     case '\n':
         state->cursor2_row++;
     case '\r':
@@ -154,24 +159,24 @@ int early_print_char2(void *_state, char ch)
 
     if (state->cursor2_row >= height) {
         line_diff = state->cursor2_row - height + 1;
-        for (uint32_t i = 0; i < height - line_diff; i++) {
+        for (uint32_t i = 7; i < height - line_diff; i++) {
             memcpy(
-                &framebuffer[((size_t)i * width) + 58],
-                &framebuffer[(((size_t)i + line_diff) * width) + 58],
-                sizeof(*framebuffer) * (width - 58)
+                &framebuffer[((size_t)i * width) + width - 22],
+                &framebuffer[(((size_t)i + line_diff) * width) + width - 22],
+                sizeof(*framebuffer) * 22
             );
         }
         for (uint32_t i = 0; i < line_diff; i++) {
             memset(
-                &framebuffer[(((size_t)height - line_diff + i) * width) + 58],
+                &framebuffer[(((size_t)height - line_diff + i) * width) + width - 22],
                 0,
-                sizeof(*framebuffer) * (width - 58)
+                sizeof(*framebuffer) * 22
             );
         }
         state->cursor2_row = height - 1;
     }
 
-    StThread_UnlockPreemption();
+    StMutex_Unlock(&state->mtx2);
 
     return 0;
 }
@@ -472,17 +477,13 @@ cleanup:
     StPool_Free(ctx);
 }
 
-static int shared_value = 0;
-
-static struct StMutex mtx;
-
 static void thread1_main(struct StThread *th);
-
-extern char _userexec_start[];
-extern char _userexec_end[];
 
 static int setup_user_process(struct StProcess **process_out __out)
 {
+    extern char _userexec_start[];
+    extern char _userexec_end[];
+
     StStatus status;
     struct StProcess *process;
     struct StElf_Object *elf;
@@ -556,6 +557,8 @@ static int setup_user_process(struct StProcess **process_out __out)
         St_Panic(status, "failed to create user thread");
     }
 
+    cprintf(early_print_char2, &pstate, "UPROC#%d\n", main_thread->id);
+
     process->main_thread = main_thread;
 
     *process_out = process;
@@ -569,18 +572,9 @@ static void thread3_main(struct StThread *th)
     uint32_t time = 0;
     struct StProcess *process = NULL;
 
-    do {
-        if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
-            if (shared_value) {
-                St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
-            }
-            shared_value = 1;
-            for (volatile int i = 0; i < 65536; i++) {
-            }
-            shared_value = 0;
-            StMutex_Unlock(&mtx);
-        }
+    cprintf(early_print_char2, &pstate, "KTHR3B#%d\n", th->id);
 
+    do {
         StThread_Sleep(1);
 
         time = StTimeP_GetGlobalTick() - start_tick;
@@ -588,6 +582,8 @@ static void thread3_main(struct StThread *th)
 
     if (setup_user_process(&process)) return;
     StThread_Detach(process->main_thread);
+
+    cprintf(early_print_char2, &pstate, "KTHR3E#%d\n", th->id);
 }
 
 static void thread2_main(struct StThread *th)
@@ -597,18 +593,9 @@ static void thread2_main(struct StThread *th)
     uint32_t time = 0;
     struct StThread *new_thread;
 
-    do {
-        if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
-            if (shared_value) {
-                St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
-            }
-            shared_value = 1;
-            for (volatile int i = 0; i < 65536; i++) {
-            }
-            shared_value = 0;
-            StMutex_Unlock(&mtx);
-        }
+    cprintf(early_print_char2, &pstate, "KTHR2B#%d\n", th->id);
 
+    do {
         StThread_Sleep(1);
 
         time = StTimeP_GetGlobalTick() - start_tick;
@@ -625,6 +612,8 @@ static void thread2_main(struct StThread *th)
     }
 
     StThread_Detach(new_thread);
+
+    cprintf(early_print_char2, &pstate, "KTHR2E#%d\n", th->id);
 }
 
 static void thread1_main(struct StThread *th)
@@ -636,18 +625,9 @@ static void thread1_main(struct StThread *th)
     struct StThread *waitlist[2];
     struct StProcess *process = NULL;
 
-    do {
-        if (CHECK_SUCCESS(StMutex_Lock(&mtx))) {
-            if (shared_value) {
-                St_Panic(STATUS_SYSTEM_CORRUPTED, "asdf");
-            }
-            shared_value = 1;
-            for (volatile int i = 0; i < 65536; i++) {
-            }
-            shared_value = 0;
-            StMutex_Unlock(&mtx);
-        }
+    cprintf(early_print_char2, &pstate, "KTHR1B#%d\n", th->id);
 
+    do {
         time = StTimeP_GetGlobalTick() - start_tick;
         if (time == prev_time) {
             StThread_Yield();
@@ -687,9 +667,9 @@ static void thread1_main(struct StThread *th)
 
     StThread_Remove(new_thread1);
     StThread_Remove(new_thread2);
-}
 
-struct print_state pstate;
+    cprintf(early_print_char2, &pstate, "KTHR1E#%d\n", th->id);
+}
 
 static void fb_print_str(int col, int row, const char *str)
 {
@@ -708,6 +688,8 @@ static void thread4_main(struct StThread *th)
     uint64_t cpu_busy_hundredths = 0;
 
     char buf[512];
+
+    cprintf(early_print_char2, &pstate, "KTHR4B#%d\n", th->id);
 
     for (;;) {
         StPmm_GetTotalFrameCount(&total_frames);
@@ -783,6 +765,8 @@ static void thread4_main(struct StThread *th)
 
         StThread_Sleep(250);
     }
+
+    cprintf(early_print_char2, &pstate, "KTHR4E#%d\n", th->id);
 }
 
 static void thread5_main(struct StThread *th)
@@ -790,12 +774,16 @@ static void thread5_main(struct StThread *th)
     struct StProcess *process = NULL;
     struct StThread *waitlist[1];
 
+    cprintf(early_print_char2, &pstate, "KTHR5B#%d\n", th->id);
+
     for (;; StThread_Sleep(250)) {
         if (setup_user_process(&process)) continue;
         waitlist[0] = process->main_thread;
         StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
         StThread_Remove(process->main_thread);
     }
+
+    cprintf(early_print_char2, &pstate, "KTHR5E#%d\n", th->id);
 }
 
 int do_nothing(void *ctx, char ch)
@@ -895,7 +883,7 @@ __noreturn void main(void)
     pstate.pitch = fbent->pitch;
     pstate.cursor1_col = pstate.cursor1_row = 0;
     pstate.cursor2_col = 58;
-    pstate.cursor2_row = 10;
+    pstate.cursor2_row = 7;
 
     void *fb = pstate.framebuffer;
     memset(fb, 0, (size_t)fbent->pitch * fbent->height);
@@ -1072,7 +1060,8 @@ __noreturn void main(void)
         St_Panic(status, "failed to start timer");
     }
 
-    StMutex_Init(&mtx);
+    StMutex_Init(&pstate.mtx1);
+    StMutex_Init(&pstate.mtx2);
     status = StThread_CreateKernel(thread1_main, &thread1);
     if (CHECK_SUCCESS(status)) {
         StThread_Detach(thread1);
@@ -1094,20 +1083,21 @@ __noreturn void main(void)
 
         if (StScheduler_CheckHasOtherRunnableThread()) {
             StThread_Yield();
-        } else {
-            uint64_t idle_start_ns;
-            uint64_t idle_end_ns;
-            StThread_RunDeferredReap((St_PageCount)64);
+            continue;
+        }
 
-            idle_start_ns = StTimeP_GetUptimeNanoseconds();
-            uint32_t intstatus = StA_SaveInterrupt();
-            StA_EnableInterruptAndHalt();
-            StA_RestoreInterrupt(intstatus);
-            idle_end_ns = StTimeP_GetUptimeNanoseconds();
+        uint64_t idle_start_ns;
+        uint64_t idle_end_ns;
+        StThread_RunDeferredReap((St_PageCount)64);
 
-            if (idle_end_ns > idle_start_ns) {
-                StScheduler_AccountIdleTimeNanoseconds(idle_end_ns - idle_start_ns);
-            }
+        idle_start_ns = StTimeP_GetUptimeNanoseconds();
+        uint32_t intstatus = StA_SaveInterrupt();
+        StA_EnableInterruptAndHalt();
+        StA_RestoreInterrupt(intstatus);
+        idle_end_ns = StTimeP_GetUptimeNanoseconds();
+
+        if (idle_end_ns > idle_start_ns) {
+            StScheduler_AccountIdleTimeNanoseconds(idle_end_ns - idle_start_ns);
         }
     }
 }

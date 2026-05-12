@@ -1,6 +1,7 @@
 #include <strata/process.h>
 
-#include <stdlib.h>
+#include <stdatomic.h>
+#include <stdint.h>
 
 #include <strata/handle.h>
 #include <strata/plat/thread.h>
@@ -11,9 +12,9 @@
 #include <strata/mm.h>
 #include <strata/mm/asp.h>
 #include <strata/mm/pool.h>
+#include <strata/mm/types.h>
 #include <strata/status.h>
 #include <strata/thread.h>
-#include <strata/types.h>
 
 #define MODULE_NAME                               "process"
 #define PROCESS_CREATE_DEFERRED_REAP_BUDGET_PAGES ((St_PageCount)256)

@@ -5,20 +5,22 @@
 
 #if STRATA_ENABLE_ACPI
 #    include <uacpi/acpi.h>
+#    include <uacpi/status.h>
 #    include <uacpi/tables.h>
-#    include <uacpi/types.h>
-#    include <uacpi/uacpi.h>
+
 #endif
 
-#include <strata/arch/io.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/hpet.h>
 
+#include <strata/compiler.h>
 #include <strata/log.h>
-#include <strata/macros.h>
 #include <strata/mm.h>
 #include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/raw_spinlock.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "hpet"
 

@@ -1,6 +1,7 @@
 #include <uacpi/kernel_api.h>
 
 #include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #define MODULE_NAME "acpi"
 

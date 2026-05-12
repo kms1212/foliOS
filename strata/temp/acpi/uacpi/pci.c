@@ -2,6 +2,7 @@
 
 #include <uacpi/platform/types.h>
 #include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #define MODULE_NAME "acpi"
 

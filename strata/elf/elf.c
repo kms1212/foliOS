@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include <strata/arch/elf.h>
-#include <strata/arch/mmu.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/compiler.h>
 #include <strata/macros.h>

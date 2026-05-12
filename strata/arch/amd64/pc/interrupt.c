@@ -3,15 +3,12 @@
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #include <strata/arch/apic.h>
 #include <strata/arch/idt.h>
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/idt.h>
-#include <strata/arch/intrinsics/io.h>
-#include <strata/arch/mmu.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt_constants.h>

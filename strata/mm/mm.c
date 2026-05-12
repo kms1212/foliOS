@@ -27,7 +27,7 @@ static St_PageCount get_sparse_alloc_batch_count(St_PageCount remaining_count)
     if (remaining_count == 0) return 0;
 
     return (St_PageCount)1ULL
-        << (sizeof(unsigned long long) * 8 - 1 - __builtin_clzll(remaining_count));
+        << ((sizeof(unsigned long long) * 8) - 1 - __builtin_clzll(remaining_count));
 }
 
 static StStatus allocate_sparse_frame_batch(
@@ -42,7 +42,8 @@ static StStatus allocate_sparse_frame_batch(
     St_PageCount batch_count = get_sparse_alloc_batch_count(remaining_count);
 
     while (batch_count > 0) {
-        status = StPmm_AllocateContiguousFrame(pfn, batch_count, owner, alloc_flags & ~AF_ALIGN_MASK);
+        status =
+            StPmm_AllocateContiguousFrame(pfn, batch_count, owner, alloc_flags & ~AF_ALIGN_MASK);
         if (CHECK_SUCCESS(status)) {
             if (allocated_count) *allocated_count = batch_count;
             return STATUS_SUCCESS;
@@ -56,7 +57,9 @@ static StStatus allocate_sparse_frame_batch(
     return STATUS_INSUFFICIENT_MEMORY;
 }
 
-static void rollback_global_sparse_allocation(St_VirtPage vpn __in, St_PageCount allocated_count __in)
+static void rollback_global_sparse_allocation(
+    St_VirtPage vpn __in, St_PageCount allocated_count __in
+)
 {
     StStatus status;
     St_PhysFrame pfn;
@@ -245,7 +248,8 @@ StStatus StMm_AllocateGlobalSparse(
     if (!CHECK_SUCCESS(status)) {
         LOG_ERROR(
             LM_CAT_UNCLASSIFIED,
-            "StMm_AllocateGlobalSparse: StVmm_AllocateGlobalPage failed (domain=%d count=%zu status=%08X)\n",
+            "StMm_AllocateGlobalSparse: StVmm_AllocateGlobalPage failed (domain=%d count=%zu "
+            "status=%08X)\n",
             domain,
             count,
             status
@@ -267,7 +271,8 @@ StStatus StMm_AllocateGlobalSparse(
             if (status != STATUS_PAGE_NOT_PRESENT) {
                 LOG_ERROR(
                     LM_CAT_UNCLASSIFIED,
-                    "StMm_AllocateGlobalSparse: expected page-not-present at vpn=%013zX but got %08X\n",
+                    "StMm_AllocateGlobalSparse: expected page-not-present at vpn=%013zX but got "
+                    "%08X\n",
                     (uintptr_t)(allocated_vpn + (St_VirtPage)allocated_count + (St_VirtPage)i),
                     status
                 );
@@ -285,7 +290,8 @@ StStatus StMm_AllocateGlobalSparse(
         if (!CHECK_SUCCESS(status)) {
             LOG_ERROR(
                 LM_CAT_UNCLASSIFIED,
-                "StMm_AllocateGlobalSparse: allocate_sparse_frame_batch failed (status=%08X, i=%zu)\n",
+                "StMm_AllocateGlobalSparse: allocate_sparse_frame_batch failed (status=%08X, "
+                "i=%zu)\n",
                 status,
                 allocated_count
             );
@@ -301,7 +307,8 @@ StStatus StMm_AllocateGlobalSparse(
         if (!CHECK_SUCCESS(status)) {
             LOG_ERROR(
                 LM_CAT_UNCLASSIFIED,
-                "StMm_AllocateGlobalSparse: StMmP_MapGlobalContiguousMemory failed (status=%08X, vpn=%013zX, pfn=%013zX, count=%zu)\n",
+                "StMm_AllocateGlobalSparse: StMmP_MapGlobalContiguousMemory failed (status=%08X, "
+                "vpn=%013zX, pfn=%013zX, count=%zu)\n",
                 status,
                 (uintptr_t)(allocated_vpn + (St_VirtPage)allocated_count),
                 (uintptr_t)allocated_pfn,

@@ -1,7 +1,5 @@
 #include <strata/mm/asp.h>
 
-#include <stdlib.h>
-
 #include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
 

@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include <uacpi/acpi.h>
+#include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #include <strata/plat/bios.h>
 #include <strata/plat/mm.h>

@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 
+#include <strata/arch/intrinsics/io.h>
 #include <strata/arch/io.h>
 
 #include <strata/compiler.h>
@@ -14,7 +15,7 @@
 static uint8_t master_int_base = 0x70;
 static uint8_t slave_int_base = 0x08;
 
-void StPicP_Remap(uint8_t master, uint8_t slave)
+void StPicP_Remap(uint8_t master __in, uint8_t slave __in)
 {
     master_int_base = master;
     slave_int_base = slave;
@@ -40,7 +41,7 @@ void StPicP_Remap(uint8_t master, uint8_t slave)
     StIoA_Out8(SPIC_DATA, 0xFF);
 }
 
-void StPicP_Mask(int num)
+void StPicP_Mask(int num __in)
 {
     if ((master_int_base <= num) && (num < master_int_base + 8)) {
         StIoA_Out8(MPIC_DATA, StIoA_In8(MPIC_DATA) | (1 << (num - master_int_base)));
@@ -49,7 +50,7 @@ void StPicP_Mask(int num)
     }
 }
 
-void StPicP_Unmask(int num)
+void StPicP_Unmask(int num __in)
 {
     if ((master_int_base <= num) && (num < master_int_base + 8)) {
         StIoA_Out8(MPIC_DATA, StIoA_In8(MPIC_DATA) & ~(1 << (num - master_int_base)));
@@ -58,7 +59,7 @@ void StPicP_Unmask(int num)
     }
 }
 
-void StPicP_SendEoi(int num)
+void StPicP_SendEoi(int num __in)
 {
     if ((master_int_base <= num) && (num < master_int_base + 8)) {
         StIoA_Out8(MPIC_CMD, 0x20);

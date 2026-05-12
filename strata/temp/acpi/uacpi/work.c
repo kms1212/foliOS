@@ -1,9 +1,11 @@
 #include <uacpi/kernel_api.h>
 
 #include <stdatomic.h>
+#include <stdint.h>
 
 #include <uacpi/platform/types.h>
 #include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #include <strata/log.h>
 #include <strata/raw_spinlock.h>
@@ -20,7 +22,7 @@ struct acpi_work_item {
     uacpi_handle ctx;
 };
 
-static struct StRawSpinlock work_lock = { .locked = ATOMIC_FLAG_INIT, .irq_state = 0 };
+static struct StRawSpinlock work_lock = {.locked = ATOMIC_FLAG_INIT, .irq_state = 0};
 static struct acpi_work_item work_queue[ACPI_WORK_QUEUE_CAPACITY];
 static unsigned int work_queue_head;
 static unsigned int work_queue_tail;

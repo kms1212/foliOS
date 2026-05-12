@@ -4,13 +4,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <uacpi/types.h>
 
 #if STRATA_ENABLE_ACPI
-#    include <uacpi/acpi.h>
-#    include <uacpi/internal/tables.h>
-#    include <uacpi/kernel_api.h>
-#    include <uacpi/tables.h>
+#    include <uacpi/status.h>
 #    include <uacpi/uacpi.h>
 
 #endif  // STRATA_ENABLE_ACPI
@@ -19,7 +15,7 @@
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/io.h>
-#include <strata/arch/mmu.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt.h>
@@ -459,12 +455,17 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     StTimeP_InitTimer(use_hpet);
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing preemption handler...\n");
-    StInt_CreateHandler(
-        use_apic ? LAPIC_TIMER_IRQ_VECTOR : (use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE),
-        NULL,
-        preempt_isr,
-        NULL
-    );
+    if (use_apic) {
+
+        StInt_CreateHandler(LAPIC_TIMER_IRQ_VECTOR, NULL, preempt_isr, NULL);
+    } else {
+        StInt_CreateHandler(
+            use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE,
+            NULL,
+            preempt_isr,
+            NULL
+        );
+    }
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing syscall handler...\n");
     status = StSyscallA_Init();

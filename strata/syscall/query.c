@@ -4,6 +4,7 @@
 
 #include <strata/compiler.h>
 #include <strata/handle.h>
+#include <strata/status.h>
 #include <strata/uuid.h>
 
 StStatus StSyscall_Query(

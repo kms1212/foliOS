@@ -2,6 +2,7 @@
 
 #include "config.h"
 
+#include <stdatomic.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,7 +10,7 @@
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/fpu_simd.h>
 #include <strata/arch/intrinsics/msr.h>
-#include <strata/arch/mmu.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt_constants.h>
@@ -17,8 +18,8 @@
 #include <strata/plat/mm.h>
 #include <strata/plat/tss.h>
 
-#include <strata/compiler.h>
 #include <strata/arch/cpufeatures.h>
+#include <strata/compiler.h>
 #include <strata/elf.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
@@ -144,7 +145,11 @@ StStatus StThreadP_InitializeFpuSimdState(void)
 
     xsave_context_enabled = g_p_cpu_features->has_xsave;
     avx_context_enabled = xsave_context_enabled && g_p_cpu_features->has_avx;
-    xstate_mask = xsave_context_enabled ? (avx_context_enabled ? 0x7ULL : 0x3ULL) : 0;
+    if (xsave_context_enabled) {
+        xstate_mask = avx_context_enabled ? 0x7ULL : 0x3ULL;
+    } else {
+        xstate_mask = 0;
+    }
 
     memset(&saved_xstate_storage, 0, sizeof(saved_xstate_storage));
     save_fpu_simd_state(&saved_xstate_storage);

@@ -5,7 +5,6 @@
 #include <uacpi/platform/types.h>
 
 #include <strata/log.h>
-#include <strata/mm.h>
 #include <strata/mm/pool.h>
 #include <strata/panic.h>
 #include <strata/status.h>

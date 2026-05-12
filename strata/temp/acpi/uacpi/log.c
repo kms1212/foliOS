@@ -1,8 +1,8 @@
 #include <uacpi/kernel_api.h>
 
 #include <stdarg.h>
-#include <stdio.h>
 
+#include <uacpi/log.h>
 #include <uacpi/platform/types.h>
 
 #include <strata/log.h>

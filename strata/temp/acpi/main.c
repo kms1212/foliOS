@@ -2,9 +2,8 @@
 
 #include <uacpi/acpi.h>
 #include <uacpi/event.h>
-#include <uacpi/internal/namespace.h>
 #include <uacpi/internal/tables.h>
-#include <uacpi/namespace.h>
+#include <uacpi/platform/types.h>
 #include <uacpi/sleep.h>
 #include <uacpi/status.h>
 #include <uacpi/tables.h>
@@ -16,11 +15,14 @@
 #include <strata/compiler.h>
 #include <strata/gnt.h>
 #include <strata/log.h>
+#include <strata/macros.h>
 #include <strata/panic.h>
+#include <strata/status.h>
 #include <strata/utf.h>
 
-#include "acpi_table_mcfg_if.h"
 #include <ioapic.h>
+
+#include "internal.h"
 
 #define MODULE_NAME "acpi"
 
@@ -65,6 +67,13 @@ struct iso_iter_data {
     uint16_t redirected_legacy_irq_bitmap;
 };
 
+enum {
+    MADT_POLARITY_MASK = 0x3,
+    MADT_POLARITY_ACTIVE_LOW = 0x3,
+    MADT_TRIGGERING_MASK = 0xC,
+    MADT_TRIGGERING_LEVEL = 0xC,
+};
+
 static uacpi_iteration_decision iterate_iso_entry(
     uacpi_handle data __in, struct acpi_entry_hdr *entry __in
 )
@@ -80,10 +89,10 @@ static uacpi_iteration_decision iterate_iso_entry(
 
     iso = (struct acpi_madt_interrupt_source_override *)entry;
 
-    if ((iso->flags & ACPI_MADT_POLARITY_MASK) == ACPI_MADT_POLARITY_ACTIVE_LOW) {
+    if ((iso->flags & MADT_POLARITY_MASK) == MADT_POLARITY_ACTIVE_LOW) {
         flags |= RFLAGS_ACTIVE_LOW;
     }
-    if ((iso->flags & ACPI_MADT_TRIGGERING_MASK) == ACPI_MADT_TRIGGERING_LEVEL) {
+    if ((iso->flags & MADT_TRIGGERING_MASK) == MADT_TRIGGERING_LEVEL) {
         flags |= RFLAGS_LEVEL_TRIGGERED;
     }
 
@@ -272,7 +281,7 @@ static uacpi_iteration_decision add_table_node(
     }
 
     if (uacpi_signatures_match(table->hdr.signature, ACPI_MCFG_SIGNATURE)) {
-        status = StAcpi_TableMcfgIf_RegisterNode(table_node, table, idx);
+        status = StAcpiTableMcfgIf_RegisterNode(table_node, table, idx);
         if (!CHECK_SUCCESS(status)) {
             iter_data->status = status;
             return UACPI_ITERATION_DECISION_BREAK;

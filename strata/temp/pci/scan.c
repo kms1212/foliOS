@@ -2,7 +2,6 @@
 
 #include <stdint.h>
 
-#include <strata/log.h>
 #include <strata/status.h>
 
 #include <pci/cfgspace.h>

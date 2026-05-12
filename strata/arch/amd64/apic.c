@@ -1,5 +1,6 @@
-#include "strata/plat/panic.h"
 #include <strata/arch/apic.h>
+
+#include <stdint.h>
 
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/intrinsics/msr.h>
@@ -7,8 +8,10 @@
 #include <strata/plat/interrupt_constants.h>
 #include <strata/plat/time.h>
 
+#include <strata/compiler.h>
 #include <strata/mm.h>
 #include <strata/mm/types.h>
+#include <strata/mm/vmm.h>
 #include <strata/status.h>
 
 #define LAPIC_REG_SVR    0x00F0
@@ -155,9 +158,8 @@ StStatus StApicA_SetLapicTimerOneshot(uint64_t ns __in)
     if (!lapic_is_initialized) return STATUS_NOT_PERMITTED;
     if (!ns) return STATUS_INVALID_VALUE;
 
-    ticks =
-        (uint64_t)(((__uint128_t)lapic_ticks_per_sec * ns + NANOSECONDS_PER_SECOND - 1) /
-                   NANOSECONDS_PER_SECOND);
+    ticks = (uint64_t)((((__uint128_t)lapic_ticks_per_sec * ns) + NANOSECONDS_PER_SECOND - 1) /
+                       NANOSECONDS_PER_SECOND);
     if (ticks == 0 || ticks > UINT32_MAX) return STATUS_INVALID_VALUE;
 
     StApicA_WriteLapicRegister(LAPIC_REG_TIMER_DCR, 0x03);

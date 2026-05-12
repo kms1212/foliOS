@@ -4,9 +4,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include <strata/thread.h>
-
 #include <strata/arch/interrupt.h>
+#include <strata/arch/mmu_constants.h>
+
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/mm.h>
@@ -16,6 +16,7 @@
 #include <strata/mm/types.h>
 #include <strata/plat/memmap.h>
 #include <strata/status.h>
+#include <strata/thread.h>
 #include <strata/types.h>
 
 #include "internal.h"

@@ -1,9 +1,11 @@
 #include <uacpi/kernel_api.h>
 
 #include <stddef.h>
+#include <stdint.h>
 
+#include <uacpi/platform/arch_helpers.h>
 #include <uacpi/platform/types.h>
-#include <uacpi/status.h>
+#include <uacpi/types.h>
 
 #include <strata/mm/pool.h>
 #include <strata/spinlock.h>

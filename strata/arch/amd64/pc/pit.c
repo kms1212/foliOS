@@ -1,9 +1,13 @@
 #include <strata/plat/pit.h>
 
+#include <stdint.h>
+
 #include <strata/arch/intrinsics/io.h>
 #include <strata/arch/io.h>
 
+#include <strata/compiler.h>
 #include <strata/macros.h>
+#include <strata/status.h>
 
 #define PIT_BASE_CLK_HZ 1193182
 

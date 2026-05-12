@@ -7,10 +7,10 @@
 
 #include <strata/compiler.h>
 
-void StPicP_Remap(uint8_t master, uint8_t slave);
-void StPicP_Mask(int num);
-void StPicP_Unmask(int num);
-void StPicP_SendEoi(int num);
+void StPicP_Remap(uint8_t master __in, uint8_t slave __in);
+void StPicP_Mask(int num __in);
+void StPicP_Unmask(int num __in);
+void StPicP_SendEoi(int num __in);
 void StPicP_Disable(void);
 
 #endif  // __STRATA_PLAT_PIC_H__

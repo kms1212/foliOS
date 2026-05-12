@@ -3,22 +3,20 @@
 #include <strata/plat/time.h>
 
 #include <stdatomic.h>
+#include <stddef.h>
 #include <stdint.h>
 
-#include <strata/arch/cpufeatures.h>
 #include <strata/arch/interrupt.h>
-#include <strata/arch/intrinsics/io.h>
-#include <strata/arch/intrinsics/msr.h>
-#include <strata/arch/io.h>
 
 #include <strata/plat/hpet.h>
 #include <strata/plat/interrupt.h>
 #include <strata/plat/interrupt_constants.h>
 #include <strata/plat/pit.h>
 
+#include <strata/compiler.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
-#include <strata/scheduler.h>
+#include <strata/status.h>
 
 #define MODULE_NAME "time"
 

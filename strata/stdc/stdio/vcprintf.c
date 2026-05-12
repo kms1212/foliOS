@@ -805,11 +805,13 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
         }
 
         if (spec.base == 16 || spec.base == 2) {
-            char prefix = spec.base == 16 ? ((spec.flags & SF_LOWER) ? 'x' : 'X') : 'b';
-
-            if (func(farg, prefix)) {
-                return char_cnt;
+            char prefix = 'b';
+            if (spec.base == 16) {
+                prefix = (spec.flags & SF_LOWER) ? (char)'x' : (char)'X';
             }
+
+            if (func(farg, prefix)) return char_cnt;
+
             char_cnt++;
             if (spec.width > 0) {
                 spec.width--;
@@ -849,13 +851,21 @@ static int print_ptr(int (*func)(void *, char), void *farg, struct fmt_spec spec
         return print_uuid(func, farg, va_arg(*args, const void *));
     case PTR_FMT_UTF32_CHAR:
         return print_utf32_char_ptr(func, farg, va_arg(*args, const void *));
-    case PTR_FMT_UTF32_STRING:
+    case PTR_FMT_UTF32_STRING: {
+        int max_chars = -1;
+        if (has_precision) {
+            max_chars = spec.precision;
+        } else if (has_width) {
+            max_chars = spec.width;
+        }
+
         return print_utf32_string(
             func,
             farg,
             va_arg(*args, const void *),
-            has_precision ? spec.precision : (has_width ? spec.width : -1)
+            max_chars
         );
+    }
     case PTR_FMT_HEX_BYTES:
         return print_hex_bytes(
             func,

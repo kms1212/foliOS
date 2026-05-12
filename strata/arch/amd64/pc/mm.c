@@ -7,6 +7,7 @@
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/intrinsics/register.h>
 #include <strata/arch/mmu.h>
+#include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/memmap.h>
@@ -496,13 +497,13 @@ static StStatus local_addr_to_directmap_span(
     while (pte_idx + contiguous_pages < 512) {
         StA_PaePageTableEntry next_entry = pt[pte_idx + contiguous_pages];
         if (!(next_entry & PTE_P)) break;
-        if ((St_PhysFrame)((next_entry)&PTE_BASE_MASK) >> PTE_BASE_SHIFT != pfn + contiguous_pages)
+        if ((St_PhysFrame)(next_entry & PTE_BASE_MASK) >> PTE_BASE_SHIFT != pfn + contiguous_pages)
             break;
         contiguous_pages++;
     }
 
 has_span:
-    available_len = (size_t)contiguous_pages * PAGE_SIZE - page_offset;
+    available_len = ((size_t)contiguous_pages * PAGE_SIZE) - page_offset;
     if (available_len > max_len) {
         available_len = max_len;
     }

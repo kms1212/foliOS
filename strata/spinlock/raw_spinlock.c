@@ -6,7 +6,7 @@
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/misc.h>
 
-#include <strata/status.h>
+#include <strata/compiler.h>
 
 void StRawSpinlock_Init(struct StRawSpinlock *lock __in)
 {

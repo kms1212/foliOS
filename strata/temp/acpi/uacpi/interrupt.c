@@ -4,14 +4,17 @@
 
 #include <uacpi/platform/types.h>
 #include <uacpi/status.h>
+#include <uacpi/types.h>
+
+#include <strata/arch/interrupt.h>
 
 #include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/mm/pool.h>
-#include <strata/status.h>
-#include <strata/thread.h>
 #include <strata/plat/interrupt.h>
 #include <strata/plat/interrupt_constants.h>
+#include <strata/status.h>
+#include <strata/thread.h>
 
 #define MODULE_NAME "acpi"
 
@@ -37,10 +40,7 @@ static int irq_to_vector(uacpi_u32 irq)
 }
 
 static void *interrupt_trampoline(
-    int vector,
-    struct StA_InterruptFrame *frame,
-    struct StIntP_Context *ctx,
-    void *data
+    int vector, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
 )
 {
     struct acpi_irq_handle *irq_handle = data;
@@ -84,7 +84,12 @@ uacpi_status uacpi_kernel_install_interrupt_handler(
     irq_handle->irq = irq;
     irq_handle->vector = vector;
 
-    status = StInt_CreateHandler(vector, irq_handle, interrupt_trampoline, &irq_handle->interrupt_handler);
+    status = StInt_CreateHandler(
+        vector,
+        irq_handle,
+        interrupt_trampoline,
+        &irq_handle->interrupt_handler
+    );
     if (!CHECK_SUCCESS(status)) {
         StPool_Free(irq_handle);
         return UACPI_STATUS_INTERNAL_ERROR;

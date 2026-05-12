@@ -6,6 +6,7 @@
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/misc.h>
 
+#include <strata/compiler.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>

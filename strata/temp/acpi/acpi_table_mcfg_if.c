@@ -18,6 +18,8 @@
 #include "sidl/mcfg.server.h"
 #include "sidl/mcfg.types.h"
 
+#include "internal.h"
+
 #define MAKE_UACPI_STATUS(uacpi_status)                                                            \
     ((uacpi_status)                                                                                \
          ? MAKE_STATUS(MAKE_BASE_STATUS(1, uacpi_status, STATUS_AREA_ACPI), STATUS_ATTR_NONE)      \
@@ -123,7 +125,7 @@ static StStatus mcfg_get_entry_count(
 {
     StStatus status;
     uacpi_table table_ref;
-    const struct acpi_mcfg *mcfg;
+    const struct acpi_mcfg *mcfg = NULL;
     struct acpi_table_mcfg_dispatch_context *ctx =
         (struct acpi_table_mcfg_dispatch_context *)context;
 
@@ -149,7 +151,7 @@ static StStatus mcfg_get_entry(
     StStatus status;
     uint32_t entry_count;
     uacpi_table table_ref;
-    const struct acpi_mcfg *mcfg;
+    const struct acpi_mcfg *mcfg = NULL;
     const struct acpi_mcfg_allocation *allocation;
     struct acpi_table_mcfg_dispatch_context *ctx =
         (struct acpi_table_mcfg_dispatch_context *)context;
@@ -201,10 +203,8 @@ StStatus StAcpiTableMcfgIf_DispatchCallArgs(
     return StIfAcpiTblMcfg_ServerDispatchArgs(&g_mcfg_vtable, &ctx, handle, funcid, args);
 }
 
-StStatus StAcpi_TableMcfgIf_RegisterNode(
-    struct StGnt_Node *table_node,
-    struct uacpi_installed_table *table,
-    unsigned long table_index
+StStatus StAcpiTableMcfgIf_RegisterNode(
+    struct StGnt_Node *table_node, struct uacpi_installed_table *table, unsigned long table_index
 )
 {
     StStatus status;
@@ -223,12 +223,8 @@ StStatus StAcpi_TableMcfgIf_RegisterNode(
     node_ctx->table = table;
     node_ctx->table_index = table_index;
 
-    status = StGnt_RegisterInterface(
-        table_node,
-        &g_mcfg_interface_uuid,
-        0,
-        STIFACPITBLMCFG_FUNCID_SPAN
-    );
+    status =
+        StGnt_RegisterInterface(table_node, &g_mcfg_interface_uuid, 0, STIFACPITBLMCFG_FUNCID_SPAN);
     if (!CHECK_SUCCESS(status)) {
         StPool_Free(node_ctx);
         return status;

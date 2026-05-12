@@ -17,6 +17,7 @@
 #include <strata/syscall.h>
 #include <strata/thread.h>
 #include <strata/utf.h>
+#include <strata/uuid.h>
 
 #define MODULE_NAME "handle"
 
