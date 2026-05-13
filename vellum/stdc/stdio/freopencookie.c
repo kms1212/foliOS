@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "internal.h"
+
 int freopencookie(void *cookie, const char *mode, cookie_io_functions_t io_funcs, FILE *stream)
 {
     stream->type = 3;

@@ -51,8 +51,7 @@ typedef uint16_t elf64_versym_t;
 #define EV_NUM     2
 
 #define ELFOSABI_NONE   0x00
-#define ELFOSABI_VELLUM 0x13
-#define ELFOSABI_EMOS   0x14
+#define ELFOSABI_VELLUM 0x14
 
 struct elf_ident {
     char magic[4];
@@ -516,21 +515,21 @@ struct elf_file {
     size_t symtab_size;
 };
 
-status_t VlElf_Open(const char *path, struct elf_file **elf);
+VlStatus VlElf_Open(const char *path, struct elf_file **elf);
 void VlElf_Close(struct elf_file *elf);
 
-status_t VlElf_GetHeader(struct elf_file *elf, void *buf, size_t len);
+VlStatus VlElf_GetHeader(struct elf_file *elf, void *buf, size_t len);
 
-status_t VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *buf, size_t lne);
-status_t VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr);
+VlStatus VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *buf, size_t lne);
+VlStatus VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr);
 
-status_t VlElf_GetSectionHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len);
-status_t VlElf_GetSectionName(struct elf_file *elf, unsigned int index, const char **name);
-status_t VlElf_FindSection(struct elf_file *elf, const char *name, unsigned int *idx);
-status_t VlElf_LoadSection(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+VlStatus VlElf_GetSectionHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+VlStatus VlElf_GetSectionName(struct elf_file *elf, unsigned int index, const char **name);
+VlStatus VlElf_FindSection(struct elf_file *elf, const char *name, unsigned int *idx);
+VlStatus VlElf_LoadSection(struct elf_file *elf, unsigned int index, void *buf, size_t len);
 
-status_t VlElf_FindSymbol(struct elf_file *elf, const char *name, unsigned int *index);
-status_t VlElf_GetSymbol(struct elf_file *elf, unsigned int index, void *buf, size_t len);
-status_t VlElf_GetSymbolCount(struct elf_file *elf, unsigned int *count);
+VlStatus VlElf_FindSymbol(struct elf_file *elf, const char *name, unsigned int *index);
+VlStatus VlElf_GetSymbol(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+VlStatus VlElf_GetSymbolCount(struct elf_file *elf, unsigned int *count);
 
 #endif  // __VELLUM_ELF_H__

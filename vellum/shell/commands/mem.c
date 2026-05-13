@@ -1,16 +1,18 @@
 #include <vellum/shell.h>
 
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 
 #include <vellum/plat/bios/mem.h>
 
+#include <vellum/arch/mmu.h>
 #include <vellum/mm.h>
 #include <vellum/status.h>
 
 static int mem_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
     size_t total_pages, free_pages;
     uint32_t cursor = 0;
     struct smap_entry entry;

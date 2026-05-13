@@ -3,6 +3,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#include <vellum/status.h>
+
 #define PUSH_CHAR_E(buf, buflen, ch)                                                               \
     do {                                                                                           \
         if (buflen > 0) {                                                                          \
@@ -23,9 +25,9 @@
         }                                                                                          \
     } while (0)
 
-status_t VlShell_Expand(struct shell_instance *inst, const char *line, char *buf, long buflen)
+VlStatus VlShell_Expand(struct shell_instance *inst, const char *line, char *buf, long buflen)
 {
-    status_t status;
+    VlStatus status;
     char var_key[64];
     int var_key_len;
     const char *var_value;

@@ -1,18 +1,28 @@
 #include <vellum/plat/panic.h>
 
 #include <stdio.h>
+#include <stdint.h>
+#include <stdarg.h>
 
-#include <vellum/arch/interrupt.h>
+#include <vellum/arch/intrinsics/io.h>
 #include <vellum/arch/intrinsics/misc.h>
-#include <vellum/arch/io.h>
 
-#include <vellum/plat/bios/keyboard.h>
 #include <vellum/plat/bios/video.h>
 #include <vellum/plat/pic.h>
-#include <vellum/plat/power.h>
 
-static int print_char(void *, char ch)
+#include <vellum/compiler.h>
+#include <vellum/status.h>
+
+#ifdef NDEBUG
+#    include <vellum/plat/bios/keyboard.h>
+#    include <vellum/plat/power.h>
+
+#endif
+
+static int print_char(void *data, char ch)
 {
+    (void)data;
+
     if (ch == '\n') {
         VlBiosP_WriteVideoTty('\r');
     }
@@ -23,7 +33,7 @@ static int print_char(void *, char ch)
     return 0;
 }
 
-__noreturn void VlP_Panic(status_t status, const char *fmt, ...)
+__noreturn void VlP_Panic(VlStatus status, const char *fmt, ...)
 {
     uint16_t *fbuf;
     va_list args;
@@ -34,7 +44,7 @@ __noreturn void VlP_Panic(status_t status, const char *fmt, ...)
     VlA_Out8(0x0064, 0x60);
     VlA_Out8(0x0060, 0x63);
 
-    _pc_pic_remap_int(0x08, 0x70);
+    VlPicP_RemapInterrupt(0x08, 0x70);
 
     VlBiosP_SetVideoMode(0x03);
 

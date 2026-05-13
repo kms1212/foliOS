@@ -18,7 +18,7 @@ VlBiosP_BootFromNextDevice:
 
     pushl   $0x70                   # remap PIC
     pushl   $0x08
-    call    _pc_pic_remap_int
+    call    VlPicP_RemapInterrupt
     add     $8, %esp
 
     mov     8(%ebp), %dl            # get drive number

@@ -5,11 +5,14 @@
 #include <string.h>
 
 #include <vellum/plat/bios/disk.h>
+#include <vellum/plat/panic.h>
 
 #include <vellum/device.h>
 #include <vellum/interface/block.h>
 #include <vellum/log.h>
 #include <vellum/macros.h>
+#include <vellum/disk.h>
+#include <vellum/resource.h>
 #include <vellum/status.h>
 
 #define MODULE_NAME "biosdisk"
@@ -24,7 +27,7 @@ struct biosdisk_data {
     struct chs geometry;
 };
 
-static status_t get_block_size(struct device *dev, size_t *size)
+static VlStatus get_block_size(struct device *dev, size_t *size)
 {
     struct biosdisk_data *data = (struct biosdisk_data *)dev->data;
 
@@ -33,7 +36,7 @@ static status_t get_block_size(struct device *dev, size_t *size)
     return STATUS_SUCCESS;
 }
 
-static status_t read_chunk(struct biosdisk_data *data, lba_t lba, size_t count)
+static VlStatus read_chunk(struct biosdisk_data *data, lba_t lba, size_t count)
 {
     if (data->use_packet) {
         return VlBiosP_ReadDiskExtended(
@@ -50,7 +53,7 @@ static status_t read_chunk(struct biosdisk_data *data, lba_t lba, size_t count)
     return VlBiosP_ReadDisk(data->drive, chs, 1, _pc_bios_disk_transfer_buffer, &result);
 }
 
-static status_t write_chunk(struct biosdisk_data *data, lba_t lba, size_t count)
+static VlStatus write_chunk(struct biosdisk_data *data, lba_t lba, size_t count)
 {
     if (data->use_packet) {
         return VlBiosP_WriteDiskExtended(
@@ -67,9 +70,9 @@ static status_t write_chunk(struct biosdisk_data *data, lba_t lba, size_t count)
     return VlBiosP_WriteDisk(data->drive, chs, 1, _pc_bios_disk_transfer_buffer, &result);
 }
 
-static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, size_t *result)
+static VlStatus read(struct device *dev, lba_t lba, void *buf, size_t count, size_t *result)
 {
-    status_t status;
+    VlStatus status;
     struct biosdisk_data *data = (struct biosdisk_data *)dev->data;
     size_t done = 0;
     uint8_t *out = buf;
@@ -105,7 +108,7 @@ static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, siz
         if (!CHECK_SUCCESS(status)) return status;
 
         byte_count = current_count * data->block_size;
-        memcpy(out + done * data->block_size, _pc_bios_disk_transfer_buffer, byte_count);
+        memcpy(out + (done * data->block_size), _pc_bios_disk_transfer_buffer, byte_count);
 
         done += current_count;
     }
@@ -115,9 +118,9 @@ static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, siz
     return STATUS_SUCCESS;
 }
 
-static status_t write(struct device *dev, lba_t lba, const void *buf, size_t count, size_t *result)
+static VlStatus write(struct device *dev, lba_t lba, const void *buf, size_t count, size_t *result)
 {
-    status_t status;
+    VlStatus status;
     struct biosdisk_data *data = (struct biosdisk_data *)dev->data;
     const uint8_t *in = buf;
     size_t done = 0;
@@ -150,7 +153,7 @@ static status_t write(struct device *dev, lba_t lba, const void *buf, size_t cou
         if (!data->use_packet) current_count = 1;
 
         byte_count = current_count * data->block_size;
-        memcpy(_pc_bios_disk_transfer_buffer, in + done * data->block_size, byte_count);
+        memcpy(_pc_bios_disk_transfer_buffer, in + (done * data->block_size), byte_count);
 
         status = write_chunk(data, lba + (lba_t)done, current_count);
         if (!CHECK_SUCCESS(status)) return status;
@@ -169,19 +172,19 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
     struct resource *rsrc,
     int rsrc_cnt
 );
-static status_t remove(struct device *dev);
-static status_t get_interface(struct device *dev, const char *name, const void **result);
+static VlStatus remove(struct device *dev);
+static VlStatus get_interface(struct device *dev, const char *name, const void **result);
 
 static void biosdisk_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
 
     status = VlDev_CreateDriver(&drv);
@@ -197,7 +200,7 @@ static void biosdisk_init(void)
 
 static void detect_partitions(struct device *dev)
 {
-    status_t status;
+    VlStatus status;
     struct device *ptdev = NULL;
     struct device_driver *ptdrv = NULL;
 
@@ -213,7 +216,7 @@ static void detect_partitions(struct device *dev)
     }
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
@@ -221,7 +224,7 @@ static status_t probe(
     int rsrc_cnt
 )
 {
-    status_t status;
+    VlStatus status;
     uint8_t edd_version;
     uint16_t edd_features;
     struct bios_extended_drive_params edd_params = {0};
@@ -295,7 +298,7 @@ has_error:
     return status;
 }
 
-static status_t remove(struct device *dev)
+static VlStatus remove(struct device *dev)
 {
     struct biosdisk_data *data = (struct biosdisk_data *)dev->data;
 
@@ -305,7 +308,7 @@ static status_t remove(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_interface(struct device *dev, const char *name, const void **result)
+static VlStatus get_interface(struct device *dev, const char *name, const void **result)
 {
     if (strcmp(name, BLOCK_INTERFACE_ID) == 0) {
         if (result) *result = &blkif;

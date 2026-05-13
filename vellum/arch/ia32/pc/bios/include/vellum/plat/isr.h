@@ -43,14 +43,14 @@ struct isr_handler {
 };
 
 void VlIntP_Init(void);
-status_t VlIntP_AddInterruptHandler(
+VlStatus VlIntP_AddInterruptHandler(
     int num, void *data, interrupt_handler_t func, struct isr_handler **handler
 );
-status_t VlIntP_AddTrapHandler(int num, trap_handler_t func, struct isr_handler **handler);
+VlStatus VlIntP_AddTrapHandler(int num, trap_handler_t func, struct isr_handler **handler);
 void VlIntP_RemoveHandler(struct isr_handler *handler);
 
-status_t VlIntP_Mask(int num);
-status_t VlIntP_Unmask(int num);
+VlStatus VlIntP_Mask(int num);
+VlStatus VlIntP_Unmask(int num);
 
 uint64_t VlIntP_GetIrqCount(void);
 

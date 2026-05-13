@@ -104,7 +104,6 @@ strncmp
 strncpy
 strnlen
 strrchr
-strtod
 strtok
 strtol
 strtoll
@@ -200,12 +199,6 @@ VlPath_InitIter
 VlPath_IsAbsolute
 VlPath_Join
 VlPath_Normalize
-VlPciP_ReadCfg8
-VlPciP_ReadCfg16
-VlPciP_ReadCfg32
-VlPciP_WriteCfg8
-VlPciP_WriteCfg16
-VlPciP_WriteCfg32
 VlShell_Execute
 VlShell_Expand
 VlShell_GetVariable

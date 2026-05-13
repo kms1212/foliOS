@@ -52,4 +52,4 @@ target_include_directories(vellum_module_${MODULE_NAME} PRIVATE "${CMAKE_CURRENT
 target_include_directories(vellum_module_${MODULE_NAME} PRIVATE "${CMAKE_BINARY_DIR}")
 
 get_target_property(vellum_INCLUDES vellum INCLUDE_DIRECTORIES)
-target_include_directories(vellum_module_${MODULE_NAME} PRIVATE ${vellum_INCLUDES})
+target_include_directories(vellum_module_${MODULE_NAME} SYSTEM PRIVATE ${vellum_INCLUDES})

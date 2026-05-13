@@ -1,11 +1,14 @@
 #include <stdio.h>
 
 #include <vellum/filesystem.h>
-#include <vellum/interface/char.h>
+#include <vellum/status.h>
+#include <vellum/types.h>
+
+#include "internal.h"
 
 long ftell(FILE *stream)
 {
-    status_t status;
+    VlStatus status;
     off_t offset;
 
     switch (stream->type) {

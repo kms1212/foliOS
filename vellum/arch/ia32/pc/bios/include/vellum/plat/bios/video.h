@@ -223,26 +223,26 @@ struct edid {
 #define DDC_CAP_DDC2       0x02
 #define DDC_CAP_XFER_BLANK 0x04
 
-status_t VlBiosP_GetVbeControllerInfo(struct vbe_controller_info *buf);
+VlStatus VlBiosP_GetVbeControllerInfo(struct vbe_controller_info *buf);
 
-status_t VlBiosP_GetVbeVideoModeInfo(uint16_t mode, struct vbe_video_mode_info *buf);
+VlStatus VlBiosP_GetVbeVideoModeInfo(uint16_t mode, struct vbe_video_mode_info *buf);
 
-status_t VlBiosP_SetVbeVideoMode(uint16_t mode);
+VlStatus VlBiosP_SetVbeVideoMode(uint16_t mode);
 
-status_t VlBiosP_GetVbeVideoMode(uint16_t *mode);
+VlStatus VlBiosP_GetVbeVideoMode(uint16_t *mode);
 
-status_t VlBiosP_SetVbeDisplayStart(uint16_t x, uint16_t y);
+VlStatus VlBiosP_SetVbeDisplayStart(uint16_t x, uint16_t y);
 
-status_t VlBiosP_SetVbeDisplayStartAtVsync(uint16_t x, uint16_t y);
+VlStatus VlBiosP_SetVbeDisplayStartAtVsync(uint16_t x, uint16_t y);
 
-status_t VlBiosP_ScheduleVbeDisplayStart(uint32_t fboffset);
+VlStatus VlBiosP_ScheduleVbeDisplayStart(uint32_t fboffset);
 
-status_t VlBiosP_ScheduleVbeDisplayStartAtVsync(uint32_t fboffset);
+VlStatus VlBiosP_ScheduleVbeDisplayStartAtVsync(uint32_t fboffset);
 
-status_t VlBiosP_GetVbePmiTable(struct VlA_FarPtr16 *pmi_table, uint16_t *size);
+VlStatus VlBiosP_GetVbePmiTable(struct VlA_FarPtr16 *pmi_table, uint16_t *size);
 
-status_t VlBiosP_CheckVbeDdcCapability(uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *flags);
+VlStatus VlBiosP_CheckVbeDdcCapability(uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *flags);
 
-status_t VlBiosP_GetVbeDdcEdid(uint16_t ctrlr_unit, uint16_t edid_block, struct edid *buf);
+VlStatus VlBiosP_GetVbeDdcEdid(uint16_t ctrlr_unit, uint16_t edid_block, struct edid *buf);
 
 #endif  // __VELLUM_ASM_BIOS_VIDEO_H__

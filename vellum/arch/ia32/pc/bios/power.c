@@ -2,11 +2,13 @@
 
 #include <stdint.h>
 
+#include <vellum/arch/idt.h>
 #include <vellum/arch/interrupt.h>
+#include <vellum/arch/intrinsics/io.h>
 #include <vellum/arch/intrinsics/idt.h>
-#include <vellum/arch/io.h>
 
-#include <vellum/panic.h>
+#include <vellum/plat/panic.h>
+#include <vellum/status.h>
 
 void VlP_Reboot()
 {

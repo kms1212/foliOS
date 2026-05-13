@@ -1,16 +1,18 @@
 #include <vellum/shell.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <vellum/debug.h>
 #include <vellum/device.h>
+#include <vellum/disk.h>
 #include <vellum/interface/block.h>
 #include <vellum/status.h>
 
 static int readblk_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
     lba_t lba;
     struct device *blkdev;
     const struct block_interface *blkif;

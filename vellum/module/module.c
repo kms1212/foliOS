@@ -1,28 +1,30 @@
 #include <vellum/module.h>
 
-#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+
+#include <vellum/arch/elf.h>
+#include <vellum/arch/mmu.h>
+
+#include <vellum/plat/panic.h>
 
 #include <vellum/elf.h>
 #include <vellum/log.h>
 #include <vellum/macros.h>
 #include <vellum/mm.h>
-#include <vellum/panic.h>
-#include <vellum/path.h>
-#include <vellum/shell.h>
 #include <vellum/status.h>
 
 #include "symbol.h"
 
 #define MODULE_NAME "module"
 
-static status_t resolve_symbol_addr(
+static VlStatus resolve_symbol_addr(
     struct elf_file *elf, struct elf32_sym *sym, uintptr_t load_vaddr, uintptr_t *addr
 )
 {
-    status_t status;
+    VlStatus status;
     char *sym_name = NULL;
 
     sym_name = elf->strtab + sym->name;
@@ -49,7 +51,7 @@ static status_t resolve_symbol_addr(
 static uint32_t resolve_symbol_value(struct elf_file *elf, unsigned int index)
 {
     struct elf32_sym sym;
-    status_t status;
+    VlStatus status;
 
     status = VlElf_GetSymbol(elf, index, &sym, sizeof(sym));
     if (!CHECK_SUCCESS(status)) return 0;
@@ -57,14 +59,14 @@ static uint32_t resolve_symbol_value(struct elf_file *elf, unsigned int index)
     return sym.value;
 }
 
-static status_t relocate_section(
+static VlStatus relocate_section(
     struct elf_file *elf,
     unsigned int rel_section_idx,
     uintptr_t got_symbol_offset,
     uintptr_t load_vaddr
 )
 {
-    status_t status;
+    VlStatus status;
     struct elf32_shdr shdr;
     struct elf32_rel *rel_section = NULL;
     struct elf32_sym sym;
@@ -197,9 +199,9 @@ struct note_vellum_entry {
 
 static struct module *mod_list_head = NULL;
 
-static status_t run_func_array(struct elf_file *elf, const char *section_name, uintptr_t load_vaddr)
+static VlStatus run_func_array(struct elf_file *elf, const char *section_name, uintptr_t load_vaddr)
 {
-    status_t status;
+    VlStatus status;
     unsigned int section_idx;
     struct elf32_shdr shdr;
     size_t data_len;
@@ -221,9 +223,9 @@ static status_t run_func_array(struct elf_file *elf, const char *section_name, u
     return STATUS_SUCCESS;
 }
 
-status_t VlModule_Load(const char *path, struct module **modout)
+VlStatus VlModule_Load(const char *path, struct module **modout)
 {
-    status_t status;
+    VlStatus status;
     struct elf_file *elf = NULL;
     struct elf32_ehdr ehdr;
     struct elf32_shdr shdr;
@@ -240,7 +242,7 @@ status_t VlModule_Load(const char *path, struct module **modout)
     size_t note_vellum_section_len;
     struct module *mod = NULL;
     char *mod_name = NULL;
-    status_t (*entry)(void) = NULL;
+    VlStatus (*entry)(void) = NULL;
 
     status = VlElf_Open(path, &elf);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -277,7 +279,7 @@ status_t VlModule_Load(const char *path, struct module **modout)
 
         if (phdr.type != PT_LOAD && phdr.type != PT_DYNAMIC) continue;
 
-        status = VlElf_LoadProgram(elf, i, (void *)(load_vpn * PAGE_SIZE + phdr.vaddr));
+        status = VlElf_LoadProgram(elf, i, (void *)((load_vpn * PAGE_SIZE) + phdr.vaddr));
         if (!CHECK_SUCCESS(status)) goto has_error;
     }
 
@@ -372,7 +374,7 @@ status_t VlModule_Load(const char *path, struct module **modout)
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG("executing entry point...\n");
-    entry = (void *)(load_vpn * PAGE_SIZE + ehdr.entry);
+    entry = (void *)((load_vpn * PAGE_SIZE) + ehdr.entry);
     if (ehdr.entry) {
         status = entry();
         if (!CHECK_SUCCESS(status)) goto has_error;
@@ -459,4 +461,4 @@ struct module *VlModule_GetFirst(void)
     return mod_list_head;
 }
 
-status_t VlModule_Find(const char *name, struct module **mod);
+VlStatus VlModule_Find(const char *name, struct module **mod);

@@ -3,6 +3,8 @@
 
 #include <vellum/filesystem.h>
 
+#include "internal.h"
+
 int fclose(FILE *stream)
 {
     switch (stream->type) {

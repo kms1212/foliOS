@@ -118,6 +118,6 @@ struct VlA_CpuFeatures {
 
 extern const struct VlA_CpuFeatures *const g_p_cpu_features;
 
-status_t VlA_CheckCpuFeatures(void);
+VlStatus VlA_CheckCpuFeatures(void);
 
 #endif  // __VELLUM_ARCH_CPUFEATURES_H__

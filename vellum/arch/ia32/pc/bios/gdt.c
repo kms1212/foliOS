@@ -1,6 +1,6 @@
 #include <vellum/plat/gdt.h>
 
-#include <stdio.h>
+#include <stdint.h>
 
 #include <vellum/arch/gdt.h>
 #include <vellum/arch/intrinsics/gdt.h>

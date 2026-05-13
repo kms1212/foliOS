@@ -1,9 +1,12 @@
 #include <vellum/shell.h>
 
 #include <inttypes.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
+#include <vellum/compiler.h>
 #include <vellum/device.h>
 #include <vellum/interface/framebuffer.h>
 #include <vellum/interface/video.h>
@@ -12,7 +15,7 @@
 
 static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s path\n", argv[0]);
@@ -129,7 +132,7 @@ static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
         for (uint32_t x = 0; x < dibheader.width; x++) {
             uint32_t buf;
             fread(&buf, dibheader.bpp / 8, 1, fp);
-            framebuffer[(ystart + dibheader.height - y - 1) * vmode_info.width + xstart + x] = buf;
+            framebuffer[((ystart + dibheader.height - y - 1) * vmode_info.width) + xstart + x] = buf;
         }
     }
     fbif->invalidate(fbdev, 0, 0, vmode_info.width - 1, vmode_info.height - 1);

@@ -6,7 +6,7 @@
 
 #define MAKE_STATUS(code) (code ? (0xA0001500 | (code)) : STATUS_SUCCESS)
 
-status_t VlBiosP_CheckApmInstallation(
+VlStatus VlBiosP_CheckApmInstallation(
     uint16_t device_id, uint8_t *major_ver, uint8_t *minor_ver, uint16_t *flags
 )
 {

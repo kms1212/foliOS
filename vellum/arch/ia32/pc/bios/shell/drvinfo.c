@@ -1,14 +1,18 @@
 #include <vellum/shell.h>
 
 #include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <vellum/plat/bios/disk.h>
 
+#include <vellum/disk.h>
+#include <vellum/status.h>
+
 static int drvinfo_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s drvnum\n", argv[0]);

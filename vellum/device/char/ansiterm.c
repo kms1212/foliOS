@@ -9,6 +9,9 @@
 #include <vellum/interface/char.h>
 #include <vellum/interface/console.h>
 #include <vellum/macros.h>
+#include <vellum/plat/panic.h>
+#include <vellum/resource.h>
+#include <vellum/status.h>
 
 struct ansiterm_data {
     struct device *condev;
@@ -305,10 +308,10 @@ static const uint32_t palette[256] = {
     0xEEEEEE,
 };
 
-static status_t console_backspace(struct device *dev, int *cursor_x_out)
+static VlStatus console_backspace(struct device *dev, int *cursor_x_out)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int width, cursor_x, cursor_y;
     struct console_char_cell *buffer = NULL;
 
@@ -323,13 +326,13 @@ static status_t console_backspace(struct device *dev, int *cursor_x_out)
 
     if (cursor_x < 1) return 1;
 
-    if (buffer[cursor_y * width + cursor_x - 1].codepoint) {
+    if (buffer[(cursor_y * width) + cursor_x - 1].codepoint) {
         *cursor_x_out = cursor_x - 1;
         return STATUS_SUCCESS;
     }
 
     for (int x = cursor_x - 2; x >= ((cursor_x - 1) & ~7); x--) {
-        if (buffer[cursor_y * width + x].codepoint) {
+        if (buffer[(cursor_y * width) + x].codepoint) {
             *cursor_x_out = x + 1;
             return STATUS_SUCCESS;
         }
@@ -339,10 +342,10 @@ static status_t console_backspace(struct device *dev, int *cursor_x_out)
     return STATUS_SUCCESS;
 }
 
-static status_t console_erase(struct device *dev, int x0, int y0, int x1, int y1)
+static VlStatus console_erase(struct device *dev, int x0, int y0, int x1, int y1)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int width;
     struct console_char_cell *buffer = NULL;
 
@@ -354,8 +357,8 @@ static status_t console_erase(struct device *dev, int x0, int y0, int x1, int y1
 
     for (int y = y0; y <= y1; y++) {
         for (int x = x0; x <= x1; x++) {
-            buffer[y * width + x].attr = data->attr_state;
-            buffer[y * width + x].codepoint = 0;
+            buffer[(y * width) + x].attr = data->attr_state;
+            buffer[(y * width) + x].codepoint = 0;
         }
     }
 
@@ -365,10 +368,10 @@ static status_t console_erase(struct device *dev, int x0, int y0, int x1, int y1
     return STATUS_SUCCESS;
 }
 
-static status_t console_scroll(struct device *dev, int amount, int x0, int y0, int x1, int y1)
+static VlStatus console_scroll(struct device *dev, int amount, int x0, int y0, int x1, int y1)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int width;
     struct console_char_cell *buffer = NULL;
 
@@ -383,7 +386,7 @@ static status_t console_scroll(struct device *dev, int amount, int x0, int y0, i
     if (amount > 0) {
         for (int y = y0; y <= y1 - amount; y++) {
             for (int x = x0; x <= x1; x++) {
-                buffer[y * width + x] = buffer[(y + amount) * width + x];
+                buffer[(y * width) + x] = buffer[((y + amount) * width) + x];
             }
         }
 
@@ -393,7 +396,7 @@ static status_t console_scroll(struct device *dev, int amount, int x0, int y0, i
 
         for (int y = y1 - amount; y >= y0; y--) {
             for (int x = x0; x <= x1; x++) {
-                buffer[(y + amount) * width + x] = buffer[y * width + x];
+                buffer[((y + amount) * width) + x] = buffer[(y * width) + x];
             }
         }
 
@@ -406,10 +409,10 @@ static status_t console_scroll(struct device *dev, int amount, int x0, int y0, i
     return STATUS_SUCCESS;
 }
 
-static status_t console_putchar(struct device *dev, wchar_t ch)
+static VlStatus console_putchar(struct device *dev, wchar_t ch)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int x_cursor, y_cursor, width, cwidth = wcwidth(ch) > 1 ? 2 : 1;
     struct console_char_cell *buffer = NULL;
 
@@ -422,15 +425,15 @@ static status_t console_putchar(struct device *dev, wchar_t ch)
     status = data->conif->get_buffer(data->condev, &buffer);
     if (!CHECK_SUCCESS(status)) return status;
 
-    buffer[y_cursor * width + x_cursor].attr = data->attr_state;
-    buffer[y_cursor * width + x_cursor].codepoint = ch;
+    buffer[(y_cursor * width) + x_cursor].attr = data->attr_state;
+    buffer[(y_cursor * width) + x_cursor].codepoint = ch;
 
     status = data->conif->invalidate(data->condev, x_cursor, y_cursor, x_cursor, y_cursor);
     if (!CHECK_SUCCESS(status)) return status;
 
     if (cwidth == 2 && x_cursor + 1 < width) {
-        buffer[y_cursor * width + x_cursor + 1].attr = data->attr_state;
-        buffer[y_cursor * width + x_cursor + 1].codepoint = (wchar_t)0xFFFFFFFF;
+        buffer[(y_cursor * width) + x_cursor + 1].attr = data->attr_state;
+        buffer[(y_cursor * width) + x_cursor + 1].codepoint = (wchar_t)0xFFFFFFFF;
 
         status = data->conif->invalidate(data->condev, x_cursor, y_cursor, x_cursor, y_cursor);
         if (!CHECK_SUCCESS(status)) return status;
@@ -439,7 +442,7 @@ static status_t console_putchar(struct device *dev, wchar_t ch)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_esc(struct device *dev, char ch)
+static VlStatus handle_esc(struct device *dev, char ch)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
 
@@ -484,10 +487,10 @@ static status_t handle_esc(struct device *dev, char ch)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cuu(struct device *dev)
+static VlStatus handle_cuu(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_y;
     int count;
 
@@ -505,10 +508,10 @@ static status_t handle_cuu(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cud(struct device *dev)
+static VlStatus handle_cud(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_y, height;
     int count;
 
@@ -529,10 +532,10 @@ static status_t handle_cud(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cuf(struct device *dev)
+static VlStatus handle_cuf(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, width;
     int count;
 
@@ -553,10 +556,10 @@ static status_t handle_cuf(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cub(struct device *dev)
+static VlStatus handle_cub(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x;
     int count;
 
@@ -574,10 +577,10 @@ static status_t handle_cub(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cnl(struct device *dev)
+static VlStatus handle_cnl(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, cursor_y, height;
     int count;
 
@@ -599,10 +602,10 @@ static status_t handle_cnl(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cpl(struct device *dev)
+static VlStatus handle_cpl(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, cursor_y;
     int count;
 
@@ -621,10 +624,10 @@ static status_t handle_cpl(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cha(struct device *dev)
+static VlStatus handle_cha(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x;
     int pos;
 
@@ -644,10 +647,10 @@ static status_t handle_cha(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_cup_hvp(struct device *dev)
+static VlStatus handle_cup_hvp(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, cursor_y;
     int xpos, ypos;
 
@@ -672,10 +675,10 @@ static status_t handle_cup_hvp(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_ed(struct device *dev)
+static VlStatus handle_ed(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, cursor_y, width, height;
     int option;
 
@@ -719,10 +722,10 @@ static status_t handle_ed(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_el(struct device *dev)
+static VlStatus handle_el(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, cursor_y, width;
     int option;
 
@@ -754,10 +757,10 @@ static status_t handle_el(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_su(struct device *dev)
+static VlStatus handle_su(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int width, height;
     int amount;
 
@@ -774,10 +777,10 @@ static status_t handle_su(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_sd(struct device *dev)
+static VlStatus handle_sd(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int width, height;
     int amount;
 
@@ -794,7 +797,7 @@ static status_t handle_sd(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_sgr(struct device *dev)
+static VlStatus handle_sgr(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
     int option;
@@ -958,7 +961,7 @@ static status_t handle_sgr(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_dsr(struct device *dev)
+static VlStatus handle_dsr(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
 
@@ -967,10 +970,10 @@ static status_t handle_dsr(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_scosc(struct device *dev)
+static VlStatus handle_scosc(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, cursor_y;
 
     status = data->conif->get_cursor_pos(data->condev, &cursor_x, &cursor_y);
@@ -983,10 +986,10 @@ static status_t handle_scosc(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_scorc(struct device *dev)
+static VlStatus handle_scorc(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
 
     status = data->conif->set_cursor_pos(data->condev, data->saved_cursor_x, data->saved_cursor_y);
     if (!CHECK_SUCCESS(status)) return status;
@@ -996,10 +999,10 @@ static status_t handle_scorc(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_dectcem_show(struct device *dev)
+static VlStatus handle_dectcem_show(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
 
     status = data->conif->set_cursor_visibility(data->condev, 1);
     if (!CHECK_SUCCESS(status)) return status;
@@ -1009,10 +1012,10 @@ static status_t handle_dectcem_show(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_dectcem_hide(struct device *dev)
+static VlStatus handle_dectcem_hide(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
 
     status = data->conif->set_cursor_visibility(data->condev, 0);
     if (!CHECK_SUCCESS(status)) return status;
@@ -1022,10 +1025,10 @@ static status_t handle_dectcem_hide(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t handle_csi(struct device *dev, char ch)
+static VlStatus handle_csi(struct device *dev, char ch)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
 
     switch (ch) {
     case 'A':
@@ -1137,10 +1140,10 @@ static status_t handle_csi(struct device *dev, char ch)
     return STATUS_SUCCESS;
 }
 
-static status_t put_char(struct device *dev, wchar_t ch)
+static VlStatus put_char(struct device *dev, wchar_t ch)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int cursor_x, cursor_y, width, height;
 
     if (data->escape_seq_state != STATE_DEFAULT) {
@@ -1266,10 +1269,10 @@ static int get_seq_char(struct device *dev, const char *buf, long len, int idx)
     return -1;
 }
 
-static status_t write(struct device *dev, const char *buf, size_t len, size_t *result)
+static VlStatus write(struct device *dev, const char *buf, size_t len, size_t *result)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     size_t written_len = 0;
     int char_len, seq_char;
     wchar_t wch;
@@ -1337,10 +1340,10 @@ static const struct char_interface charif = {
     .write = write,
 };
 
-static status_t wwrite(struct device *dev, const wchar_t *buf, size_t len, size_t *result)
+static VlStatus wwrite(struct device *dev, const wchar_t *buf, size_t len, size_t *result)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
-    status_t status;
+    VlStatus status;
     size_t written_len = 0;
 
     while (len > 0) {
@@ -1364,19 +1367,19 @@ static const struct wchar_interface wcharif = {
     .write = wwrite,
 };
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
     struct resource *rsrc,
     int rsrc_cnt
 );
-static status_t remove(struct device *dev);
-static status_t get_interface(struct device *dev, const char *name, const void **result);
+static VlStatus remove(struct device *dev);
+static VlStatus get_interface(struct device *dev, const char *name, const void **result);
 
 static void ansiterm_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
 
     status = VlDev_CreateDriver(&drv);
@@ -1390,7 +1393,7 @@ static void ansiterm_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
@@ -1398,7 +1401,7 @@ static status_t probe(
     int rsrc_cnt
 )
 {
-    status_t status;
+    VlStatus status;
     struct device *dev = NULL;
     struct device *condev = NULL;
     const struct console_interface *conif = NULL;
@@ -1461,7 +1464,7 @@ has_error:
     return status;
 }
 
-static status_t remove(struct device *dev)
+static VlStatus remove(struct device *dev)
 {
     struct ansiterm_data *data = (struct ansiterm_data *)dev->data;
 
@@ -1472,7 +1475,7 @@ static status_t remove(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_interface(struct device *dev, const char *name, const void **result)
+static VlStatus get_interface(struct device *dev, const char *name, const void **result)
 {
     if (strcmp(name, "char") == 0) {
         if (result) *result = &charif;

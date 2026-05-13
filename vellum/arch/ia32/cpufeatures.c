@@ -1,15 +1,16 @@
 #include <vellum/arch/cpufeatures.h>
 
 #include <inttypes.h>
-#include <stdio.h>
+#include <stdint.h>
 
 #include <cpuid.h>
 
 #include <vellum/arch/intrinsics/cpuid.h>
-#include <vellum/arch/intrinsics/register.h>
+
+#include <vellum/plat/panic.h>
 
 #include <vellum/log.h>
-#include <vellum/panic.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "cpufeat"
 
@@ -36,7 +37,7 @@ static int check_cpuid_available(void)
     return available != 0;
 }
 
-status_t VlA_CheckCpuFeatures(void)
+VlStatus VlA_CheckCpuFeatures(void)
 {
     uint32_t max_param, max_param_ext, eax, ebx, ecx, edx;
 

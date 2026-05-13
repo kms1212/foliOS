@@ -2,9 +2,11 @@
 
 #include <ctype.h>
 #include <limits.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
+#include <wchar.h>
 
 #include <vellum/macros.h>
 
@@ -23,9 +25,7 @@
 enum fmt_spec_type {
     ST_INVALID = 0,
     ST_PERCENT,
-    ST_WCHAR,
     ST_CHAR,
-    ST_WSTR,
     ST_STR,
     ST_PTR,
     ST_ULONG_LONG,
@@ -42,8 +42,6 @@ enum fmt_spec_type {
     ST_INTMAX_T,
     ST_SIZE_T,
     ST_PTRDIFF_T,
-    ST_DOUBLE,
-    ST_LONG_DOUBLE,
 };
 
 struct fmt_spec {
@@ -148,9 +146,6 @@ end_precision:
     case 't':
         spec.type = ST_PTRDIFF_T;
         break;
-    case 'L':
-        spec.type = ST_LONG_DOUBLE;
-        break;
     default:
         spec.type = ST_INT;
         goto end_length;
@@ -166,9 +161,6 @@ end_length:
         break;
     case 'd':
     case 'i':
-        if (spec.type == ST_LONG_DOUBLE) {
-            spec.type = ST_INVALID;
-        }
         spec.base = 10;
         break;
     case 'u':
@@ -192,9 +184,6 @@ end_length:
         case ST_LONG_LONG:
             spec.type = ST_ULONG_LONG;
             break;
-        case ST_LONG_DOUBLE:
-            spec.type = ST_INVALID;
-            break;
         default:
             break;
         }
@@ -206,47 +195,19 @@ end_length:
             spec.base = 16;
         }
         break;
-    case 'f':
-    case 'F':
-    case 'e':
-    case 'E':
-    case 'g':
-    case 'G':
-    case 'a':
-    case 'A':
-        switch (spec.type) {
-        case ST_INT:
-            spec.type = ST_DOUBLE;
-            break;
-        case ST_LONG_DOUBLE:
-            break;
-        default:
-            spec.type = ST_INVALID;
-        }
-        break;
     case 'c':
-        switch (spec.type) {
-        case ST_INT:
-            spec.type = ST_CHAR;
-            break;
-        case ST_LONG:
-            spec.type = ST_WCHAR;
-            break;
-        default:
+        if (spec.type != ST_INT) {
             spec.type = ST_INVALID;
+            break;
         }
+        spec.type = ST_CHAR;
         break;
     case 's':
-        switch (spec.type) {
-        case ST_INT:
-            spec.type = ST_STR;
-            break;
-        case ST_LONG:
-            spec.type = ST_WSTR;
-            break;
-        default:
+        if (spec.type != ST_INT) {
             spec.type = ST_INVALID;
+            break;
         }
+        spec.type = ST_STR;
         break;
     case 'p':
         if (spec.type == ST_INT) {
@@ -271,21 +232,6 @@ end_specifier:
     spec.next = fmt;
 
     return spec;
-}
-
-static int print_wchar(int (*func)(void *, char), void *farg, struct fmt_spec spec, va_list *args)
-{
-    // we do not print wchar
-    va_arg(*args, wchar_t);
-
-    if (spec.width == WIDTH_ARG) {
-        va_arg(*args, int);
-    }
-
-    if (spec.precision == PREC_ARG) {
-        va_arg(*args, int);
-    }
-    return 0;
 }
 
 static int print_char(int (*func)(void *, char), void *farg, struct fmt_spec spec, va_list *args)
@@ -614,25 +560,6 @@ static int print_int(int (*func)(void *, char), void *farg, struct fmt_spec spec
     return char_cnt;
 }
 
-static int print_float(int (*func)(void *, char), void *farg, struct fmt_spec spec, va_list *args)
-{
-    // we do not print float
-    if (spec.type == ST_DOUBLE) {
-        va_arg(*args, double);
-    } else if (spec.type == ST_LONG_DOUBLE) {
-        va_arg(*args, long double);
-    }
-
-    if (spec.width == WIDTH_ARG) {
-        va_arg(*args, int);
-    }
-
-    if (spec.precision == PREC_ARG) {
-        va_arg(*args, int);
-    }
-    return 0;
-}
-
 int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list args)
 {
     int write_count = 0;
@@ -656,14 +583,8 @@ int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list arg
         case ST_PERCENT:
             fmt_write_len = func(farg, '%') ? 0 : 1;
             break;
-        case ST_WCHAR:
-            fmt_write_len = print_wchar(func, farg, spec, &args);
-            break;
         case ST_CHAR:
             fmt_write_len = print_char(func, farg, spec, &args);
-            break;
-        case ST_WSTR:
-            fmt_write_len = print_wstr(func, farg, spec, &args);
             break;
         case ST_STR:
             fmt_write_len = print_str(func, farg, spec, &args);
@@ -684,10 +605,6 @@ int vcprintf(int (*func)(void *, char), void *farg, const char *fmt, va_list arg
         case ST_SIZE_T:
         case ST_PTRDIFF_T:
             fmt_write_len = print_int(func, farg, spec, &args);
-            break;
-        case ST_DOUBLE:
-        case ST_LONG_DOUBLE:
-            fmt_write_len = print_float(func, farg, spec, &args);
             break;
         default:  // invalid / unrecognized format specifier
             break;

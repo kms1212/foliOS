@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -11,7 +12,7 @@
 
 static int usefont_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     char path[PATH_MAX];
     if (argc > 1) {

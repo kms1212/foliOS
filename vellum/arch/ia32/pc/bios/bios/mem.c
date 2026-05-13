@@ -1,8 +1,11 @@
 #include <vellum/plat/bios/mem.h>
 
-#include <vellum/plat/bios/bioscall.h>
+#include <stdint.h>
 
-status_t VlBiosP_QueryMemoryMap(uint32_t *_cursor, struct smap_entry *buf, long buf_size)
+#include <vellum/plat/bios/bioscall.h>
+#include <vellum/status.h>
+
+VlStatus VlBiosP_QueryMemoryMap(uint32_t *_cursor, struct smap_entry *buf, long buf_size)
 {
     uint32_t cursor = _cursor ? *_cursor : 0;
 

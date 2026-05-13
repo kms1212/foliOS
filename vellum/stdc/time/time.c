@@ -7,7 +7,7 @@
 
 time_t time(time_t *time)
 {
-    status_t status;
+    VlStatus status;
     struct device *rtcdev;
     const struct rtc_interface *rtcif;
     struct rtc_time rtctime;

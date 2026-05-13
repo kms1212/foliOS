@@ -3,9 +3,9 @@
 
 #include <stdint.h>
 
-void _pc_pic_remap_int(uint8_t master, uint8_t slave);
+void VlPicP_RemapInterrupt(uint8_t master, uint8_t slave);
 
-void _pc_pic_mask_int(int num);
-void _pc_pic_unmask_int(int num);
+void VlPicP_Mask(int num);
+void VlPicP_Unmask(int num);
 
 #endif  // __VELLUM_ASM_PIC_H__

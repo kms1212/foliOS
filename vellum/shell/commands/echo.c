@@ -7,6 +7,7 @@
 
 #include <vellum/device.h>
 #include <vellum/interface/char.h>
+#include <vellum/status.h>
 
 static const struct option opts[] = {
     {"device", optional_argument, 0, 'd'},
@@ -15,7 +16,7 @@ static const struct option opts[] = {
 
 static int echo_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc < 2) return 0;
 

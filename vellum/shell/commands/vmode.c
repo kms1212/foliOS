@@ -5,11 +5,7 @@
 
 #include <getopt.h>
 
-#include <vellum/plat/bios/video.h>
-
 #include <vellum/device.h>
-#include <vellum/interface/console.h>
-#include <vellum/interface/framebuffer.h>
 #include <vellum/interface/video.h>
 #include <vellum/status.h>
 
@@ -20,7 +16,7 @@ static const struct option opts[] = {
 
 static int list_modes(char *argv0)
 {
-    status_t status;
+    VlStatus status;
     struct device *fbdev;
     const struct video_interface *vidif;
     int mode;
@@ -53,7 +49,7 @@ static int list_modes(char *argv0)
 
 static int set_mode(char *argv0, int text, int width, int height, int bpp)
 {
-    status_t status;
+    VlStatus status;
     struct device *fbdev;
     const struct video_interface *vidif;
     int mode, new_mode;

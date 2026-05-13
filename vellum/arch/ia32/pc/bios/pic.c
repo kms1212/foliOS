@@ -1,8 +1,10 @@
 #include <vellum/plat/pic.h>
 
-#include <vellum/arch/io.h>
+#include <stdint.h>
 
-void _pc_pic_remap_int(uint8_t master, uint8_t slave)
+#include <vellum/arch/intrinsics/io.h>
+
+void VlPicP_RemapInterrupt(uint8_t master, uint8_t slave)
 {
     uint8_t master_mask = VlA_In8(0x0021);
     uint8_t slave_mask = VlA_In8(0x00A1);
@@ -30,7 +32,7 @@ void _pc_pic_remap_int(uint8_t master, uint8_t slave)
     VlA_Out8(0x0021, master_mask);
 }
 
-void _pc_pic_mask_int(int num)
+void VlPicP_Mask(int num)
 {
     if (num > 0x0F) return;
 
@@ -40,7 +42,7 @@ void _pc_pic_mask_int(int num)
     VlA_Out8(port, VlA_In8(port) | (1 << irqline));
 }
 
-void _pc_pic_unmask_int(int num)
+void VlPicP_Unmask(int num)
 {
     if (num > 0x0F) return;
 

@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 
+#include <vellum/arch/mmu.h>
 #include <vellum/module.h>
 
 static int lsmod_handler(struct shell_instance *inst, int argc, char **argv)

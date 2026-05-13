@@ -1,7 +1,9 @@
 #include <vellum/shell.h>
 
 #include <inttypes.h>
+#include <limits.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 #include <zlib.h>

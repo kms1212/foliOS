@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/panic.h>
+#include <vellum/status.h>
 
 enum token_type {
     TOKEN_ERR = 0,
@@ -22,9 +22,9 @@ struct json_state {
     long len, cursor;
 };
 
-static status_t parse_string_literal(struct json_state *state, char **ptr);
-static status_t parse_string(struct json_state *state, struct json_value **valueout);
-static status_t parse_value(struct json_state *state, struct json_value **valueout);
+static VlStatus parse_string_literal(struct json_state *state, char **ptr);
+static VlStatus parse_string(struct json_state *state, struct json_value **valueout);
+static VlStatus parse_value(struct json_state *state, struct json_value **valueout);
 
 static void skip_whitespace(struct json_state *state)
 {
@@ -32,9 +32,9 @@ static void skip_whitespace(struct json_state *state)
     }
 }
 
-static status_t parse_object(struct json_state *state, struct json_value **valueout)
+static VlStatus parse_object(struct json_state *state, struct json_value **valueout)
 {
-    status_t status;
+    VlStatus status;
 
     if (!valueout) return STATUS_INVALID_VALUE;
 
@@ -118,9 +118,9 @@ has_error:
     return status;
 }
 
-static status_t parse_array(struct json_state *state, struct json_value **valueout)
+static VlStatus parse_array(struct json_state *state, struct json_value **valueout)
 {
-    status_t status;
+    VlStatus status;
     struct json_value *value = NULL;
 
     if (!valueout) return STATUS_INVALID_VALUE;
@@ -218,9 +218,9 @@ end:
     return len;
 }
 
-static status_t parse_string_literal(struct json_state *state, char **ptr)
+static VlStatus parse_string_literal(struct json_state *state, char **ptr)
 {
-    status_t status;
+    VlStatus status;
     char *str = NULL;
 
     if (!ptr) return STATUS_INVALID_VALUE;
@@ -277,9 +277,9 @@ has_error:
     return status;
 }
 
-static status_t parse_string(struct json_state *state, struct json_value **valueout)
+static VlStatus parse_string(struct json_state *state, struct json_value **valueout)
 {
-    status_t status;
+    VlStatus status;
     struct json_value *value = NULL;
 
     if (!valueout) return STATUS_INVALID_VALUE;
@@ -312,9 +312,9 @@ has_error:
     return status;
 }
 
-static status_t parse_number(struct json_state *state, struct json_value **valueout)
+static VlStatus parse_number(struct json_state *state, struct json_value **valueout)
 {
-    status_t status;
+    VlStatus status;
 
     if (!valueout) return STATUS_INVALID_VALUE;
 
@@ -339,7 +339,7 @@ static status_t parse_number(struct json_state *state, struct json_value **value
 
     value->num = 0;
     for (; isdigit(state->str[state->cursor]); state->cursor++) {
-        value->num = value->num * 10 + state->str[state->cursor] - '0';
+        value->num = (value->num * 10) + state->str[state->cursor] - '0';
     }
 
     if (negate) {
@@ -356,9 +356,9 @@ has_error:
     return status;
 }
 
-static status_t parse_other(struct json_state *state, struct json_value **valueout)
+static VlStatus parse_other(struct json_state *state, struct json_value **valueout)
 {
-    status_t status;
+    VlStatus status;
 
     if (!valueout) return STATUS_INVALID_VALUE;
 
@@ -427,7 +427,7 @@ has_error:
     return status;
 }
 
-static status_t parse_value(struct json_state *state, struct json_value **value)
+static VlStatus parse_value(struct json_state *state, struct json_value **value)
 {
     skip_whitespace(state);
 
@@ -459,7 +459,7 @@ static status_t parse_value(struct json_state *state, struct json_value **value)
     }
 }
 
-status_t VlJson_Parse(const char *str, long len, struct json_value **valueout)
+VlStatus VlJson_Parse(const char *str, long len, struct json_value **valueout)
 {
     struct json_state state;
 
@@ -471,7 +471,7 @@ status_t VlJson_Parse(const char *str, long len, struct json_value **valueout)
 
     struct json_value *value;
 
-    status_t status = parse_value(&state, &value);
+    VlStatus status = parse_value(&state, &value);
     if (!CHECK_SUCCESS(status)) return status;
 
     *valueout = value;
@@ -484,7 +484,7 @@ void VlJson_Destruct(struct json_value *json)
     free(json);
 }
 
-status_t VlJson_GetObjectElementValue(
+VlStatus VlJson_GetObjectElementValue(
     struct json_object *obj, const char *str, struct json_value **valueout
 )
 {
@@ -498,7 +498,7 @@ status_t VlJson_GetObjectElementValue(
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t VlJson_GetArrayElementValue(
+VlStatus VlJson_GetArrayElementValue(
     struct json_array *arr, unsigned int idx, struct json_value **valueout
 )
 {
@@ -512,7 +512,7 @@ status_t VlJson_GetArrayElementValue(
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t VlJson_GetArrayElementCount(struct json_array *arr, unsigned int *countout)
+VlStatus VlJson_GetArrayElementCount(struct json_array *arr, unsigned int *countout)
 {
     unsigned int count = 0;
 

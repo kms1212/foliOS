@@ -1,10 +1,13 @@
 #include <stdio.h>
 
 #include <vellum/device.h>
+#include <vellum/status.h>
+
+#include "internal.h"
 
 int freopendevice(const char *__restrict device_name, FILE *__restrict stream)
 {
-    status_t status;
+    VlStatus status;
     struct device *dev;
 
     status = VlDev_Find(device_name, &dev);

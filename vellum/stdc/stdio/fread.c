@@ -1,11 +1,17 @@
 #include <stdio.h>
 
+#include <stdint.h>
+
 #include <vellum/filesystem.h>
 #include <vellum/interface/char.h>
+#include <vellum/status.h>
+#include <vellum/types.h>
+
+#include "internal.h"
 
 size_t fread(void *__restrict ptr, size_t size, size_t count, FILE *__restrict stream)
 {
-    status_t status;
+    VlStatus status;
     size_t read_count = 0;
     ssize_t cookie_result;
 

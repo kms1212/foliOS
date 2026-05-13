@@ -1,21 +1,19 @@
 #include <vellum/shell.h>
 
-#include <ctype.h>
-#include <getopt.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/filesystem.h>
 #include <vellum/macros.h>
+#include <vellum/status.h>
 
 static struct command *command_list_head = NULL;
 
 static int set_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc != 3) {
         fprintf(stderr, "usage: %s key value\n", argv[0]);
@@ -60,7 +58,7 @@ static struct shell_instance global_inst = {
 
 int VlShell_Execute(struct shell_instance *inst, const char *line)
 {
-    status_t status;
+    VlStatus status;
     char line_buf[4096];
     char elem_buf[512], *newargv[32];
 
@@ -138,7 +136,7 @@ int shell_handler(struct shell_instance *inst, int argc, char **argv)
     return 0;
 }
 
-status_t VlShell_RegisterCommand(struct command *cmd)
+VlStatus VlShell_RegisterCommand(struct command *cmd)
 {
     if (!command_list_head) {
         command_list_head = cmd;

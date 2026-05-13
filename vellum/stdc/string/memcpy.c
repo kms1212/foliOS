@@ -1,7 +1,5 @@
 #include <string.h>
 
-#include <vellum/panic.h>
-
 void *memcpy(void *__restrict dest, const void *__restrict src, size_t len)
 {
     char *dest_c = dest;

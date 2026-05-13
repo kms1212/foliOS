@@ -1,5 +1,5 @@
-#ifndef __EMOS_INTERFACE_VIDEO_H__
-#define __EMOS_INTERFACE_VIDEO_H__
+#ifndef __VELLUM_INTERFACE_VIDEO_H__
+#define __VELLUM_INTERFACE_VIDEO_H__
 
 #include <vellum/device.h>
 #include <vellum/status.h>
@@ -37,12 +37,12 @@ struct video_mode_info {
 typedef void (*video_mode_callback_t)(void *, struct device *, int);
 
 struct video_interface {
-    status_t (*set_mode)(struct device *, int);
-    status_t (*get_mode)(struct device *, int *);
-    status_t (*add_mode_callback)(struct device *, void *, video_mode_callback_t, int *);
+    VlStatus (*set_mode)(struct device *, int);
+    VlStatus (*get_mode)(struct device *, int *);
+    VlStatus (*add_mode_callback)(struct device *, void *, video_mode_callback_t, int *);
     void (*remove_mode_callback)(struct device *, int);
-    status_t (*get_mode_info)(struct device *, int, struct video_mode_info *);
-    status_t (*get_hw_mode_info)(struct device *, int, struct video_hw_mode_info *);
+    VlStatus (*get_mode_info)(struct device *, int, struct video_mode_info *);
+    VlStatus (*get_hw_mode_info)(struct device *, int, struct video_hw_mode_info *);
 };
 
-#endif  // __EMOS_INTERFACE_VIDEO_H__
+#endif  // __VELLUM_INTERFACE_VIDEO_H__

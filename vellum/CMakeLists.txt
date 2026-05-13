@@ -37,7 +37,7 @@ target_compile_options(vellum PUBLIC
 target_link_libraries(vellum gcc)
 
 target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(vellum PRIVATE "${CMAKE_BINARY_DIR}")
 
 target_compile_definitions(vellum PRIVATE CRC32_FAST=1)
@@ -88,7 +88,6 @@ if (NOT "${TARGET_FIRMWARE}" STREQUAL "uefi")
     add_subdirectory(json)
     add_subdirectory(mm)
     add_subdirectory(module)
-    add_subdirectory(pci)
     add_subdirectory(stdc)
     add_subdirectory(shell)
     add_subdirectory(modules)

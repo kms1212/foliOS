@@ -6,9 +6,9 @@
 #include <vellum/compiler.h>
 #include <vellum/status.h>
 
-status_t VlBiosP_CheckApmVersion(uint16_t *version);
+VlStatus VlBiosP_CheckApmVersion(uint16_t *version);
 
-status_t VlBiosP_ConnectApmInterface(
+VlStatus VlBiosP_ConnectApmInterface(
     uint16_t device,
     void (*entry_point)(void),
     uint16_t code32_seg,
@@ -19,13 +19,13 @@ status_t VlBiosP_ConnectApmInterface(
     uint16_t data_seg_len
 );
 
-status_t VlBiosP_DisconnectApmInterface(uint16_t device);
+VlStatus VlBiosP_DisconnectApmInterface(uint16_t device);
 
-status_t VlBiosP_SetApmDriverVersion(uint16_t device, uint16_t version);
+VlStatus VlBiosP_SetApmDriverVersion(uint16_t device, uint16_t version);
 
-status_t VlBiosP_EnableApmPowerManagement(uint16_t device);
+VlStatus VlBiosP_EnableApmPowerManagement(uint16_t device);
 
-status_t VlBiosP_SetApmPowerState(uint16_t device, uint8_t state);
+VlStatus VlBiosP_SetApmPowerState(uint16_t device, uint8_t state);
 
 __noreturn void VlBiosP_BootFromNextDevice(void);
 

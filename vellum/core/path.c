@@ -1,5 +1,6 @@
 #include <vellum/path.h>
 
+#include <stdio.h>
 #include <string.h>
 
 void VlPath_InitIter(struct path_iterator *it, const char *path)

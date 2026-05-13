@@ -5,9 +5,9 @@
 #include <vellum/status.h>
 
 struct framebuffer_interface {
-    status_t (*get_framebuffer)(struct device *, void **);
-    status_t (*invalidate)(struct device *, int, int, int, int);
-    status_t (*flush)(struct device *);
+    VlStatus (*get_framebuffer)(struct device *, void **);
+    VlStatus (*invalidate)(struct device *, int, int, int, int);
+    VlStatus (*flush)(struct device *);
 };
 
 #endif  // __VELLUM_INTERFACE_FRAMEBUFFER_H__

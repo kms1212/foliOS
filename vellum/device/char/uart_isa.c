@@ -1,11 +1,15 @@
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/arch/io.h>
+#include <vellum/arch/intrinsics/io.h>
 
 #include <vellum/device.h>
 #include <vellum/interface/char.h>
 #include <vellum/log.h>
+#include <vellum/plat/panic.h>
+#include <vellum/resource.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "uart_isa"
 
@@ -13,7 +17,7 @@ struct uart_isa_data {
     uint16_t ioport;
 };
 
-static status_t write(struct device *dev, const char *buf, size_t len, size_t *result)
+static VlStatus write(struct device *dev, const char *buf, size_t len, size_t *result)
 {
     struct uart_isa_data *data = (struct uart_isa_data *)dev->data;
 
@@ -30,19 +34,19 @@ static const struct char_interface charif = {
     .write = write,
 };
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
     struct resource *rsrc,
     int rsrc_cnt
 );
-static status_t remove(struct device *dev);
-static status_t get_interface(struct device *dev, const char *name, const void **result);
+static VlStatus remove(struct device *dev);
+static VlStatus get_interface(struct device *dev, const char *name, const void **result);
 
 static void uart_isa_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
 
     status = VlDev_CreateDriver(&drv);
@@ -56,7 +60,7 @@ static void uart_isa_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
@@ -64,7 +68,7 @@ static status_t probe(
     int rsrc_cnt
 )
 {
-    status_t status;
+    VlStatus status;
     struct device *dev = NULL;
     struct uart_isa_data *data = NULL;
 
@@ -106,7 +110,7 @@ has_error:
     return status;
 }
 
-static status_t remove(struct device *dev)
+static VlStatus remove(struct device *dev)
 {
     struct uart_isa_data *data = (struct uart_isa_data *)dev->data;
 
@@ -117,7 +121,7 @@ static status_t remove(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_interface(struct device *dev, const char *name, const void **result)
+static VlStatus get_interface(struct device *dev, const char *name, const void **result)
 {
     if (strcmp(name, "char") == 0) {
         if (result) *result = &charif;

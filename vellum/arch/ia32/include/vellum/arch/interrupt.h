@@ -15,8 +15,15 @@ struct VlA_InterruptFrame {
     uint32_t eflags;
 };
 
-#define VlA_EnableInterrupt  VlA_Sti
-#define VlA_DisableInterrupt VlA_Cli
+__always_inline void VlA_EnableInterrupt(void)
+{
+    VlA_Sti();
+}
+
+__always_inline void VlA_DisableInterrupt(void)
+{
+    VlA_Cli();
+}
 
 __always_inline uint32_t VlA_SaveInterrupt(void)
 {

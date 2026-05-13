@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <vellum/compiler.h>
 #include <vellum/plat/power.h>
 
 __noreturn static int reboot_handler(struct shell_instance *inst, int argc, char **argv)

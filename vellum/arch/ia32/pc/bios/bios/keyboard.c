@@ -1,7 +1,9 @@
 #include <vellum/plat/bios/keyboard.h>
 
+#include <stdint.h>
+
+#include <vellum/arch/intrinsics/io.h>
 #include <vellum/arch/intrinsics/misc.h>
-#include <vellum/arch/io.h>
 
 #include <vellum/plat/bios/bioscall.h>
 #include <vellum/plat/pic.h>
@@ -60,13 +62,13 @@ static int call_keyboard_bios(struct bioscall_regs *regs)
 
     VlA_Cli();
 
-    _pc_pic_remap_int(0x08, 0x70);
+    VlPicP_RemapInterrupt(0x08, 0x70);
     VlA_Out8(PIC_MASTER_DATA, master_mask & ~(uint8_t)(1 << 1));
     VlA_Out8(PIC_SLAVE_DATA, slave_mask);
 
     result = VlBiosP_CallWithInterrupts(0x16, regs);
 
-    _pc_pic_remap_int(0x20, 0x28);
+    VlPicP_RemapInterrupt(0x20, 0x28);
     VlA_Out8(PIC_MASTER_DATA, master_mask);
     VlA_Out8(PIC_SLAVE_DATA, slave_mask);
     restore_interrupt_state(interrupt_state);

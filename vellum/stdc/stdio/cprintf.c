@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdarg.h>
 
 int cprintf(int (*func)(void *, char), void *farg, const char *fmt, ...)
 {

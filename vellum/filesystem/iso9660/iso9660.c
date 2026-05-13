@@ -1,11 +1,17 @@
+#include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 
-#include <vellum/compiler.h>
+#include <vellum/plat/panic.h>
+
 #include <vellum/device.h>
+#include <vellum/disk.h>
 #include <vellum/filesystem.h>
 #include <vellum/interface/block.h>
+#include <vellum/types.h>
+#include <vellum/status.h>
 
 #include "iso9660.h"
 
@@ -39,10 +45,10 @@ struct iso9660_data {
     uint16_t sector_size;
 };
 
-static status_t read_sector(struct filesystem *fs, lba_t lba)
+static VlStatus read_sector(struct filesystem *fs, lba_t lba)
 {
     struct iso9660_data *data = (struct iso9660_data *)fs->data;
-    status_t status;
+    VlStatus status;
 
     if (data->databuf_lba == lba) return STATUS_SUCCESS;
 
@@ -54,11 +60,11 @@ static status_t read_sector(struct filesystem *fs, lba_t lba)
     return STATUS_SUCCESS;
 }
 
-static status_t match_name(
+static VlStatus match_name(
     struct fs_directory *dir, const char *name, struct fs_directory_entry *direntry
 )
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = dir->fs;
 
     status = fs->driver->rewind_directory(dir);
@@ -73,29 +79,29 @@ static status_t match_name(
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-static status_t probe(struct device *dev, struct fs_driver *drv);
-static status_t mount(
+static VlStatus probe(struct device *dev, struct fs_driver *drv);
+static VlStatus mount(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 );
-static status_t unmount(struct filesystem *fs);
+static VlStatus unmount(struct filesystem *fs);
 
-static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
-static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result);
-static status_t seek(struct fs_file *file, off_t offset, int origin);
-static status_t tell(struct fs_file *file, off_t *result);
+static VlStatus open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
+static VlStatus read(struct fs_file *file, void *buf, size_t len, size_t *result);
+static VlStatus seek(struct fs_file *file, off_t offset, int origin);
+static VlStatus tell(struct fs_file *file, off_t *result);
 static void close(struct fs_file *file);
 
-static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
-static status_t open_directory(
+static VlStatus open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
+static VlStatus open_directory(
     struct fs_directory *dir, const char *name, struct fs_directory **dirout
 );
-static status_t rewind_directory(struct fs_directory *dir);
-static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
+static VlStatus rewind_directory(struct fs_directory *dir);
+static VlStatus iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
 static void close_directory(struct fs_directory *dir);
 
 static void iso9660_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct fs_driver *drv;
 
     status = VlFs_CreateDriver(&drv);
@@ -119,9 +125,9 @@ static void iso9660_init(void)
     drv->close_directory = close_directory;
 }
 
-static status_t probe(struct device *dev, struct fs_driver *drv)
+static VlStatus probe(struct device *dev, struct fs_driver *drv)
 {
-    status_t status;
+    VlStatus status;
     struct device *blkdev = NULL;
     const struct block_interface *blkif = NULL;
     size_t block_size;
@@ -161,11 +167,11 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     return STATUS_SUCCESS;
 }
 
-static status_t mount(
+static VlStatus mount(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 )
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = NULL;
     struct device *blkdev = NULL;
     const struct block_interface *blkif = NULL;
@@ -267,7 +273,7 @@ has_error:
     return status;
 }
 
-static status_t unmount(struct filesystem *fs)
+static VlStatus unmount(struct filesystem *fs)
 {
     struct iso9660_data *data = (struct iso9660_data *)fs->data;
 
@@ -278,9 +284,9 @@ static status_t unmount(struct filesystem *fs)
     return STATUS_SUCCESS;
 }
 
-static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout)
+static VlStatus open(struct fs_directory *dir, const char *name, struct fs_file **fileout)
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = dir->fs;
     struct iso9660_dir_data *dir_data = (struct iso9660_dir_data *)dir->data;
     struct fs_file *file = NULL;
@@ -330,9 +336,9 @@ has_error:
     return status;
 }
 
-static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result)
+static VlStatus read(struct fs_file *file, void *buf, size_t len, size_t *result)
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = file->fs;
     struct iso9660_data *data = (struct iso9660_data *)fs->data;
     struct iso9660_file_data *file_data = (struct iso9660_file_data *)file->data;
@@ -354,7 +360,7 @@ static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result
             read_len = len;
         }
 
-        status = read_sector(fs, file_data->data_start_lba + file_data->cursor / data->sector_size);
+        status = read_sector(fs, file_data->data_start_lba + (file_data->cursor / data->sector_size));
         if (!CHECK_SUCCESS(status)) return status;
 
         memcpy(buf, data->databuf + sector_offset, read_len);
@@ -369,7 +375,7 @@ static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result
     return STATUS_SUCCESS;
 }
 
-static status_t seek(struct fs_file *file, off_t offset, int origin)
+static VlStatus seek(struct fs_file *file, off_t offset, int origin)
 {
     struct iso9660_file_data *file_data = (struct iso9660_file_data *)file->data;
     int64_t new_cursor;
@@ -398,7 +404,7 @@ static status_t seek(struct fs_file *file, off_t offset, int origin)
     return STATUS_SUCCESS;
 }
 
-static status_t tell(struct fs_file *file, off_t *result)
+static VlStatus tell(struct fs_file *file, off_t *result)
 {
     struct iso9660_file_data *file_data = (struct iso9660_file_data *)file->data;
 
@@ -416,9 +422,9 @@ static void close(struct fs_file *file)
     free(file);
 }
 
-static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout)
+static VlStatus open_root_directory(struct filesystem *fs, struct fs_directory **dirout)
 {
-    status_t status;
+    VlStatus status;
     struct iso9660_data *data = (struct iso9660_data *)fs->data;
     struct fs_directory *dir = NULL;
     struct iso9660_dir_data *dir_data = NULL;
@@ -462,11 +468,11 @@ has_error:
     return status;
 }
 
-static status_t open_directory(
+static VlStatus open_directory(
     struct fs_directory *dir, const char *name, struct fs_directory **dirout
 )
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = dir->fs;
     struct iso9660_data *data = (struct iso9660_data *)fs->data;
     struct iso9660_dir_data *dir_data = (struct iso9660_dir_data *)dir->data;
@@ -524,7 +530,7 @@ has_error:
     return status;
 }
 
-static status_t rewind_directory(struct fs_directory *dir)
+static VlStatus rewind_directory(struct fs_directory *dir)
 {
     struct iso9660_dir_data *dir_data = (struct iso9660_dir_data *)dir->data;
 
@@ -535,9 +541,9 @@ static status_t rewind_directory(struct fs_directory *dir)
     return STATUS_SUCCESS;
 }
 
-static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry)
+static VlStatus iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry)
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = dir->fs;
     struct iso9660_data *data = (struct iso9660_data *)fs->data;
     struct iso9660_dir_data *dir_data = (struct iso9660_dir_data *)dir->data;

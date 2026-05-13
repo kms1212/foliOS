@@ -4,6 +4,6 @@
 #include <vellum/compiler.h>
 #include <vellum/status.h>
 
-__noreturn void VlP_Panic(status_t status, const char *fmt, ...);
+__noreturn void VlP_Panic(VlStatus status, const char *fmt, ...);
 
 #endif  // __VELLUM_ASM_PANIC_H__

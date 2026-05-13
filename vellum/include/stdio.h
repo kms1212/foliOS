@@ -1,7 +1,6 @@
 #ifndef __STDIO_H__
 #define __STDIO_H__
 
-#include <limits.h>
 #include <stdarg.h>
 #include <stddef.h>
 
@@ -12,7 +11,7 @@
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-#define EOF -1
+#define EOF (-1)
 
 typedef ssize_t (*cookie_read_function_t)(void *cookie, char *buf, size_t count);
 typedef ssize_t (*cookie_write_function_t)(void *cookie, const char *buf, size_t count);
@@ -28,29 +27,7 @@ struct cookie_io_functions {
 
 typedef struct cookie_io_functions cookie_io_functions_t;
 
-struct _iobuf {
-    int error;
-    int type;
-
-    union {
-        struct {
-            struct filesystem *fs;
-            struct fs_file *file;
-        } file;
-
-        struct {
-            struct device *dev;
-            const struct char_interface *charif;
-        } dev;
-
-        struct {
-            void *cookie;
-            cookie_io_functions_t io_funcs;
-        } cookie;
-    };
-};
-
-typedef struct _iobuf FILE;
+typedef struct file_internal FILE;  // NOLINT(readability-identifier-naming)
 
 extern FILE *stdin, *stdout, *stderr, *stddbg;
 
@@ -76,7 +53,6 @@ int fputs(const char *__restrict str, FILE *__restrict stream);
 int fgetc(FILE *stream);
 int ungetc(int ch, FILE *stream);
 char *fgets(char *__restrict str, int num, FILE *__restrict stream);
-char *gets(char *str);
 int fclose(FILE *stream);
 __malloc_like(fclose) FILE *fopen(const char *__restrict path, const char *__restrict mode);
 __malloc_like(fclose) FILE *fopendevice(const char *device_name);

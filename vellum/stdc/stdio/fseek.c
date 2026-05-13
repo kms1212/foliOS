@@ -1,7 +1,8 @@
 #include <stdio.h>
 
 #include <vellum/filesystem.h>
-#include <vellum/interface/char.h>
+
+#include "internal.h"
 
 int fseek(FILE *stream, long offset, int origin)
 {

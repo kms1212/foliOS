@@ -1,13 +1,17 @@
 #include "mbr.h"
 
 #include <endian.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <vellum/device.h>
+#include <vellum/disk.h>
 #include <vellum/interface/block.h>
 #include <vellum/macros.h>
+#include <vellum/plat/panic.h>
+#include <vellum/resource.h>
 #include <vellum/status.h>
 
 struct mbr_data {
@@ -15,21 +19,21 @@ struct mbr_data {
     const struct block_interface *blkif;
 };
 
-static status_t get_block_size(struct device *dev, size_t *size)
+static VlStatus get_block_size(struct device *dev, size_t *size)
 {
     struct mbr_data *data = (struct mbr_data *)dev->data;
 
     return data->blkif->get_block_size(data->blkdev, size);
 }
 
-static status_t read(struct device *dev, lba_t lba, void *buf, size_t count, size_t *result)
+static VlStatus read(struct device *dev, lba_t lba, void *buf, size_t count, size_t *result)
 {
     struct mbr_data *data = (struct mbr_data *)dev->data;
 
     return data->blkif->read(data->blkdev, lba, buf, count, result);
 }
 
-static status_t write(struct device *dev, lba_t lba, const void *buf, size_t count, size_t *result)
+static VlStatus write(struct device *dev, lba_t lba, const void *buf, size_t count, size_t *result)
 {
     struct mbr_data *data = (struct mbr_data *)dev->data;
 
@@ -42,19 +46,19 @@ static const struct block_interface blkif = {
     .write = write,
 };
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
     struct resource *rsrc,
     int rsrc_cnt
 );
-static status_t remove(struct device *dev);
-static status_t get_interface(struct device *dev, const char *name, const void **result);
+static VlStatus remove(struct device *dev);
+static VlStatus get_interface(struct device *dev, const char *name, const void **result);
 
 static void mbr_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
 
     status = VlDev_CreateDriver(&drv);
@@ -68,9 +72,9 @@ static void mbr_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t register_partitions(struct device *dev, struct device_driver *partdrv, lba_t base)
+static VlStatus register_partitions(struct device *dev, struct device_driver *partdrv, lba_t base)
 {
-    status_t status;
+    VlStatus status;
     struct mbr_data *data = (struct mbr_data *)dev->data;
     uint8_t buf[512];
     struct mbr *mbr_sect = NULL;
@@ -122,7 +126,7 @@ has_error:
     return status;
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
@@ -130,7 +134,7 @@ static status_t probe(
     int rsrc_cnt
 )
 {
-    status_t status;
+    VlStatus status;
     struct device *dev = NULL;
     struct device *blkdev = NULL;
     const struct block_interface *blkif = NULL;
@@ -193,7 +197,7 @@ has_error:
     return status;
 }
 
-static status_t remove(struct device *dev)
+static VlStatus remove(struct device *dev)
 {
     struct mbr_data *data = (struct mbr_data *)dev->data;
 
@@ -208,7 +212,7 @@ static status_t remove(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_interface(struct device *dev, const char *name, const void **result)
+static VlStatus get_interface(struct device *dev, const char *name, const void **result)
 {
     if (strcmp(name, "block") == 0) {
         if (result) *result = &blkif;

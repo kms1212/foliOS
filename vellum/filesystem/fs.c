@@ -1,9 +1,11 @@
 #include <vellum/filesystem.h>
 
-#include <ctype.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <vellum/status.h>
+#include <vellum/device.h>
 
 static struct filesystem *fs_list_head = NULL;
 
@@ -12,11 +14,11 @@ struct filesystem *VlFs_GetFirst(void)
     return fs_list_head;
 }
 
-status_t VlFs_Create(
+VlStatus VlFs_Create(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 )
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs;
     struct filesystem *conflicting_fs;
 
@@ -65,7 +67,7 @@ void VlFs_Remove(struct filesystem *fs)
     free(fs);
 }
 
-status_t VlFs_Find(const char *name, struct filesystem **fsout)
+VlStatus VlFs_Find(const char *name, struct filesystem **fsout)
 {
     for (struct filesystem *current = fs_list_head; current; current = current->next) {
         if (strncmp(current->name, name, sizeof(current->name)) == 0) {
@@ -79,7 +81,7 @@ status_t VlFs_Find(const char *name, struct filesystem **fsout)
 
 static struct fs_driver *driver_list_head = NULL;
 
-status_t VlFs_CreateDriver(struct fs_driver **drvout)
+VlStatus VlFs_CreateDriver(struct fs_driver **drvout)
 {
     struct fs_driver *drv;
 
@@ -101,7 +103,7 @@ status_t VlFs_CreateDriver(struct fs_driver **drvout)
     return STATUS_SUCCESS;
 }
 
-status_t VlFs_FindDriver(const char *name, struct fs_driver **drv)
+VlStatus VlFs_FindDriver(const char *name, struct fs_driver **drv)
 {
     for (struct fs_driver *current = driver_list_head; current; current = current->next) {
         if (strcmp(name, current->name) == 0) {
@@ -113,9 +115,9 @@ status_t VlFs_FindDriver(const char *name, struct fs_driver **drv)
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t VlFs_MountAuto(struct device *__restrict dev, const char *__restrict name)
+VlStatus VlFs_MountAuto(struct device *__restrict dev, const char *__restrict name)
 {
-    status_t status;
+    VlStatus status;
 
     for (struct fs_driver *current = driver_list_head; current; current = current->next) {
         status = current->probe(dev, current);

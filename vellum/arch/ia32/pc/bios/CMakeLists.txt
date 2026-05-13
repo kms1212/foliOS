@@ -73,10 +73,10 @@ target_compile_options(stage1 PUBLIC
 target_link_libraries(stage1 gcc)
 
 target_include_directories(stage1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(stage1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(stage1 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(stage1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../..")
-target_include_directories(stage1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
-target_include_directories(stage1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../include")
+target_include_directories(stage1 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")
+target_include_directories(stage1 SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../include")
 target_include_directories(stage1 PRIVATE "${CMAKE_BINARY_DIR}")
 
 target_sources(stage1 PRIVATE stage1.S stage1.c ../../cpu_mode.S pic.c)
@@ -98,7 +98,7 @@ set_target_properties(vellum PROPERTIES LINK_DEPENDS stage1.elf)
 target_compile_options(vellum PUBLIC -Wno-array-bounds -fno-delete-null-pointer-checks)
 
 target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
-target_include_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_include_directories(vellum SYSTEM PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(vellum PRIVATE "${CMAKE_BINARY_DIR}")
 
 target_sources(
@@ -119,11 +119,8 @@ target_link_options(vellum PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript.lds" 
 set_target_properties(vellum PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript.lds;${CMAKE_CURRENT_BINARY_DIR}/stage1.elf")
 
 add_subdirectory(acpi)
-add_subdirectory(apm)
 add_subdirectory(bios)
-add_subdirectory(pci)
 add_subdirectory(shell)
-add_subdirectory(vbe)
 
 add_custom_target(vellum_execbin ALL
     COMMAND ${CMAKE_OBJCOPY} -O binary "$<TARGET_FILE:vellum>" vellum.bin

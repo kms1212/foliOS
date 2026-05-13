@@ -4,6 +4,9 @@
 
 #include <vellum/plat/bios/bioscall.h>
 
+#include <vellum/disk.h>
+#include <vellum/status.h>
+
 struct dap {
     uint8_t dap_size;
     uint8_t unused;
@@ -16,7 +19,7 @@ struct dap {
 
 #define MAKE_STATUS(code) ((code) ? (0xA0001300 | (code)) : STATUS_SUCCESS)
 
-status_t VlBiosP_ResetDisk(uint8_t drive)
+VlStatus VlBiosP_ResetDisk(uint8_t drive)
 {
     struct bioscall_regs regs = {.a.b.h = 0x00, .d.b.l = drive};
 
@@ -27,7 +30,7 @@ status_t VlBiosP_ResetDisk(uint8_t drive)
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_ReadDisk(uint8_t drive, struct chs chs, uint8_t count, void *buf, uint8_t *result)
+VlStatus VlBiosP_ReadDisk(uint8_t drive, struct chs chs, uint8_t count, void *buf, uint8_t *result)
 {
     struct bioscall_regs regs = {
         .a.b.h = 0x02,
@@ -51,7 +54,7 @@ status_t VlBiosP_ReadDisk(uint8_t drive, struct chs chs, uint8_t count, void *bu
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_WriteDisk(
+VlStatus VlBiosP_WriteDisk(
     uint8_t drive, struct chs chs, uint8_t count, const void *buf, uint8_t *result
 )
 {
@@ -77,7 +80,7 @@ status_t VlBiosP_WriteDisk(
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_GetDiskParams(
+VlStatus VlBiosP_GetDiskParams(
     uint8_t drive,
     uint8_t *hdd_count,
     uint8_t *type,
@@ -114,7 +117,7 @@ status_t VlBiosP_GetDiskParams(
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_CheckDiskExtension(
+VlStatus VlBiosP_CheckDiskExtension(
     uint8_t drive, uint8_t *edd_version, uint16_t *subset_support_flags
 )
 {
@@ -142,7 +145,7 @@ status_t VlBiosP_CheckDiskExtension(
     return 0;
 }
 
-status_t VlBiosP_ReadDiskExtended(uint8_t drive, lba_t lba, uint16_t count, void *buf)
+VlStatus VlBiosP_ReadDiskExtended(uint8_t drive, lba_t lba, uint16_t count, void *buf)
 {
     struct dap dap = {
         .dap_size = sizeof(struct dap),
@@ -167,7 +170,7 @@ status_t VlBiosP_ReadDiskExtended(uint8_t drive, lba_t lba, uint16_t count, void
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_WriteDiskExtended(uint8_t drive, lba_t lba, uint16_t count, const void *buf)
+VlStatus VlBiosP_WriteDiskExtended(uint8_t drive, lba_t lba, uint16_t count, const void *buf)
 {
     struct dap dap = {
         .dap_size = sizeof(struct dap),
@@ -192,7 +195,7 @@ status_t VlBiosP_WriteDiskExtended(uint8_t drive, lba_t lba, uint16_t count, con
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_GetDiskParamsExtended(uint8_t drive, struct bios_extended_drive_params *params)
+VlStatus VlBiosP_GetDiskParamsExtended(uint8_t drive, struct bios_extended_drive_params *params)
 {
     if (params) {
         params->table_size = sizeof(*params);

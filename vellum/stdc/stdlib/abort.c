@@ -1,8 +1,5 @@
-#include <stdlib.h>
-
+#include <vellum/plat/panic.h>
 #include <vellum/status.h>
-
-#include <vellum/panic.h>
 
 void abort(void)
 {

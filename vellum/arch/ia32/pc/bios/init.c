@@ -6,36 +6,29 @@
 #include <string.h>
 
 #include <vellum/arch/cpufeatures.h>
-#include <vellum/arch/idt.h>
-#include <vellum/arch/intrinsics/rdtsc.h>
-#include <vellum/arch/io.h>
+#include <vellum/arch/interrupt.h>
+#include <vellum/arch/intrinsics/io.h>
 
-#include <vellum/plat/apm.h>
 #include <vellum/plat/bios/bootinfo.h>
 #include <vellum/plat/bios/disk.h>
-#include <vellum/plat/bios/keyboard.h>
 #include <vellum/plat/bios/mem.h>
-#include <vellum/plat/bios/misc.h>
 #include <vellum/plat/bios/video.h>
 #include <vellum/plat/gdt.h>
-#include <vellum/plat/instruction.h>
 #include <vellum/plat/isr.h>
-#include <vellum/plat/pci/cfgspace.h>
+#include <vellum/plat/panic.h>
 #include <vellum/plat/pic.h>
 
 #include <vellum/compiler.h>
-#include <vellum/debug.h>
 #include <vellum/device.h>
+#include <vellum/types.h>
+#include <vellum/disk.h>
 #include <vellum/filesystem.h>
 #include <vellum/global_configs.h>
 #include <vellum/interface/block.h>
-#include <vellum/interface/char.h>
-#include <vellum/interface/console.h>
-#include <vellum/interface/framebuffer.h>
 #include <vellum/log.h>
 #include <vellum/macros.h>
 #include <vellum/mm.h>
-#include <vellum/panic.h>
+#include <vellum/resource.h>
 #include <vellum/status.h>
 
 #define MODULE_NAME "init"
@@ -74,9 +67,9 @@ static const struct cookie_io_functions early_stddbg_io = {
     .write = early_stddbg_write,
 };
 
-static status_t init_pma(void)
+static VlStatus init_pma(void)
 {
-    status_t status;
+    VlStatus status;
     uint32_t smap_cursor;
     struct smap_entry smap_entry;
     uint64_t smap_base, smap_size;
@@ -164,7 +157,7 @@ static uint8_t get_bios_fixed_disk_count(void)
     const volatile uint8_t *bda_count = (const volatile uint8_t *)0x475;
     uint8_t int13_count = 0;
     uint8_t count = *bda_count;
-    status_t status;
+    VlStatus status;
 
     status = VlBiosP_GetDiskParams(0x80, &int13_count, NULL, NULL, NULL);
     if (CHECK_SUCCESS(status) && count < int13_count) {
@@ -191,11 +184,11 @@ static uint8_t get_bios_removable_disk_count(void)
     return count;
 }
 
-static status_t probe_bios_disk(
+static VlStatus probe_bios_disk(
     struct device_driver *drv, uint8_t drive, int required, int skip_partitions
 )
 {
-    status_t status;
+    VlStatus status;
     struct device *dev = NULL;
 
     struct resource res[] = {
@@ -217,9 +210,9 @@ static status_t probe_bios_disk(
     return STATUS_SUCCESS;
 }
 
-static status_t init_bios_disks(void)
+static VlStatus init_bios_disks(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
     uint8_t fixed_count;
     uint8_t removable_count;
@@ -260,9 +253,9 @@ static status_t init_bios_disks(void)
     return STATUS_SUCCESS;
 }
 
-static status_t init_nonpnp_devices(void)
+static VlStatus init_nonpnp_devices(void)
 {
-    status_t status;
+    VlStatus status;
     int skip_legacy = 0, skip_rtc = 0;
 
 #ifndef NDEBUG
@@ -436,9 +429,9 @@ static status_t init_nonpnp_devices(void)
 
 int config_rtc_century_offset;
 
-status_t mount_boot_filesystem(void)
+VlStatus mount_boot_filesystem(void)
 {
-    status_t status;
+    VlStatus status;
     struct device *bootdisk;
     const struct block_interface *blki;
     uint8_t sect0[512];
@@ -537,9 +530,9 @@ static void init_timer(void)
     VlIntP_Unmask(0x20);
 }
 
-static status_t reload_boot_sector(void)
+static VlStatus reload_boot_sector(void)
 {
-    status_t status;
+    VlStatus status;
     uint16_t edd_features;
 
     status = VlBiosP_CheckDiskExtension(_pc_boot_drive, NULL, &edd_features);
@@ -557,7 +550,7 @@ static status_t reload_boot_sector(void)
 
 __noreturn void _pc_init(void)
 {
-    status_t status;
+    VlStatus status;
 
     freopencookie(NULL, "w", early_stderr_io, stderr);
     freopencookie(NULL, "w", early_stddbg_io, stddbg);
@@ -601,7 +594,7 @@ __noreturn void _pc_init(void)
         );
     }
 
-    _pc_pic_remap_int(0x20, 0x28);
+    VlPicP_RemapInterrupt(0x20, 0x28);
     for (int i = 0x20; i < 0x30; i++) {
         VlIntP_Mask(i);
     }
@@ -640,5 +633,5 @@ __noreturn void _pc_init(void)
 
 void _pc_cleanup(void)
 {
-    _pc_pic_remap_int(0x08, 0x70);
+    VlPicP_RemapInterrupt(0x08, 0x70);
 }

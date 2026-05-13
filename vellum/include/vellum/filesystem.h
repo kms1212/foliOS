@@ -1,6 +1,7 @@
 #ifndef __VELLUM_FS_H__
 #define __VELLUM_FS_H__
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -12,25 +13,26 @@
 struct fs_directory;
 struct fs_directory_entry;
 struct fs_file;
+struct filesystem;
 
 struct fs_driver {
     struct fs_driver *next;
 
     const char *name;
-    status_t (*probe)(struct device *, struct fs_driver *);
-    status_t (*mount)(struct filesystem **, struct fs_driver *, struct device *, const char *);
-    status_t (*unmount)(struct filesystem *);
+    VlStatus (*probe)(struct device *, struct fs_driver *);
+    VlStatus (*mount)(struct filesystem **, struct fs_driver *, struct device *, const char *);
+    VlStatus (*unmount)(struct filesystem *);
 
-    status_t (*open)(struct fs_directory *, const char *, struct fs_file **);
-    status_t (*read)(struct fs_file *, void *, size_t, size_t *);
-    status_t (*seek)(struct fs_file *, off_t, int);
-    status_t (*tell)(struct fs_file *, off_t *);
+    VlStatus (*open)(struct fs_directory *, const char *, struct fs_file **);
+    VlStatus (*read)(struct fs_file *, void *, size_t, size_t *);
+    VlStatus (*seek)(struct fs_file *, off_t, int);
+    VlStatus (*tell)(struct fs_file *, off_t *);
     void (*close)(struct fs_file *);
 
-    status_t (*open_root_directory)(struct filesystem *, struct fs_directory **);
-    status_t (*open_directory)(struct fs_directory *, const char *, struct fs_directory **);
-    status_t (*rewind_directory)(struct fs_directory *);
-    status_t (*iter_directory)(struct fs_directory *, struct fs_directory_entry *);
+    VlStatus (*open_root_directory)(struct filesystem *, struct fs_directory **);
+    VlStatus (*open_directory)(struct fs_directory *, const char *, struct fs_directory **);
+    VlStatus (*rewind_directory)(struct fs_directory *);
+    VlStatus (*iter_directory)(struct fs_directory *, struct fs_directory_entry *);
     void (*close_directory)(struct fs_directory *);
 };
 
@@ -61,20 +63,20 @@ struct fs_directory_entry {
     uint64_t size;
 };
 
-status_t VlFs_Create(
+VlStatus VlFs_Create(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 );
 void VlFs_Remove(struct filesystem *fs);
 
 struct filesystem *VlFs_GetFirst(void);
-status_t VlFs_Find(const char *name, struct filesystem **fs);
+VlStatus VlFs_Find(const char *name, struct filesystem **fs);
 
-status_t VlFs_CreateDriver(struct fs_driver **drv);
+VlStatus VlFs_CreateDriver(struct fs_driver **drv);
 
-status_t VlFs_FindDriver(const char *name, struct fs_driver **drv);
+VlStatus VlFs_FindDriver(const char *name, struct fs_driver **drv);
 
-status_t VlFs_MountAuto(struct device *__restrict dev, const char *__restrict name);
-status_t VlFs_Mount(
+VlStatus VlFs_MountAuto(struct device *__restrict dev, const char *__restrict name);
+VlStatus VlFs_Mount(
     struct device *__restrict dev, const char *__restrict fsname, const char *__restrict name
 );
 

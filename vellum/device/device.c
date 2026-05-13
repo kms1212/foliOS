@@ -1,6 +1,5 @@
 #include <vellum/device.h>
 
-#include <ctype.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +14,7 @@ struct device *VlDev_GetFirst(void)
     return device_list_head;
 }
 
-status_t VlDev_Create(struct device **devout, struct device_driver *drv, struct device *parent)
+VlStatus VlDev_Create(struct device **devout, struct device_driver *drv, struct device *parent)
 {
     struct device *dev;
 
@@ -84,7 +83,7 @@ void VlDev_Remove(struct device *dev)
     free(dev);
 }
 
-status_t VlDev_Find(const char *id, struct device **dev)
+VlStatus VlDev_Find(const char *id, struct device **dev)
 {
     for (struct device *current = device_list_head; current; current = current->next) {
         if (strncmp(current->name, id, sizeof(current->name)) == 0) {
@@ -96,7 +95,7 @@ status_t VlDev_Find(const char *id, struct device **dev)
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t VlDev_GenerateName(const char *basename, char *buf, size_t len)
+VlStatus VlDev_GenerateName(const char *basename, char *buf, size_t len)
 {
     int id_max = -1;
     size_t basename_len = strlen(basename);
@@ -125,7 +124,7 @@ status_t VlDev_GenerateName(const char *basename, char *buf, size_t len)
 
 static struct device_driver *driver_list_head = NULL;
 
-status_t VlDev_CreateDriver(struct device_driver **drvout)
+VlStatus VlDev_CreateDriver(struct device_driver **drvout)
 {
     struct device_driver *drv;
 
@@ -147,7 +146,7 @@ status_t VlDev_CreateDriver(struct device_driver **drvout)
     return STATUS_SUCCESS;
 }
 
-status_t VlDev_FindDriver(const char *name, struct device_driver **drv)
+VlStatus VlDev_FindDriver(const char *name, struct device_driver **drv)
 {
     for (struct device_driver *current = driver_list_head; current; current = current->next) {
         if (strcmp(name, current->name) == 0) {

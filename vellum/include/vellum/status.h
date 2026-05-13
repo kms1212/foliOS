@@ -5,7 +5,7 @@
 
 #include <vellum/types.h>
 
-typedef uint32_t status_t;
+typedef uint32_t VlStatus;
 
 #define STATUS_FAILURE_MASK  0x80000000
 #define STATUS_SEVERITY_MASK 0x40000000

@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <limits.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -9,7 +10,7 @@
 
 static int chdir_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s dir_name\n", argv[0]);

@@ -1,9 +1,10 @@
 #include <vellum/shell.h>
 
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 
-#include <vellum/arch/io.h>
+#include <vellum/arch/intrinsics/io.h>
 
 static int out_handler(struct shell_instance *inst, int argc, char **argv)
 {

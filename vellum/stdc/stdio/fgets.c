@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-#include <string.h>
-
 char *fgets(char *__restrict str, int num, FILE *__restrict stream)
 {
     int cur = 0;

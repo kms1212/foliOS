@@ -1,34 +1,32 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <time.h>
 
-#include <vellum/plat/bios/bootinfo.h>
-#include <vellum/plat/bios/misc.h>
-#include <vellum/plat/power.h>
+#include <x86gprintrin.h>
+
+#include <vellum/arch/mmu.h>
+
+#include <vellum/plat/panic.h>
 
 #include <vellum/device.h>
-#include <vellum/filesystem.h>
+#include <vellum/compiler.h>
+#include <vellum/resource.h>
 #include <vellum/global_configs.h>
 #include <vellum/hid.h>
-#include <vellum/interface/block.h>
-#include <vellum/interface/char.h>
 #include <vellum/interface/console.h>
 #include <vellum/interface/framebuffer.h>
 #include <vellum/interface/hid.h>
 #include <vellum/json.h>
 #include <vellum/log.h>
-#include <vellum/macros.h>
-#include <vellum/panic.h>
 #include <vellum/shell.h>
 #include <vellum/status.h>
-
-#include <x86gprintrin.h>
 
 #define MODULE_NAME "main"
 
 static void setup_tty(void)
 {
-    status_t status;
+    VlStatus status;
     struct device *fbdev;
     const struct framebuffer_interface *fbi;
     struct device *condev;
@@ -97,7 +95,7 @@ int config_rtc_utc;
 
 static void read_config(void)
 {
-    status_t status;
+    VlStatus status;
     FILE *cfg_fp = NULL;
     long cfg_len;
     char *cfg_str = NULL;
@@ -194,7 +192,7 @@ static void read_config(void)
 
 static int show_menu(struct json_value *menu, int root_menu)
 {
-    status_t status;
+    VlStatus status;
     struct device *kbd;
     const struct hid_interface *hidi;
     struct json_value *title = NULL;
@@ -402,7 +400,7 @@ reselect:
 
 __noreturn void main(void)
 {
-    status_t status;
+    VlStatus status;
     struct json_value *menu = NULL;
 
     setup_tty();

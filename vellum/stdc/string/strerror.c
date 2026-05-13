@@ -1,7 +1,5 @@
 #include <string.h>
 
-#include <errno.h>
-
 static const char *error_string[] = {
     "Success"
     "Operation not permitted",

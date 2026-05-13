@@ -1,15 +1,18 @@
 #include <inttypes.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/acpi.h>
 #include <vellum/arch/intrinsics/register.h>
+#include <vellum/arch/mmu.h>
 
 #include <vellum/plat/bios/mem.h>
 #include <vellum/plat/page.h>
 
+#include <vellum/acpi.h>
+#include <vellum/compiler.h>
 #include <vellum/device.h>
 #include <vellum/elf.h>
 #include <vellum/interface/video.h>
@@ -34,9 +37,9 @@ __noreturn static void jump_kernel(void *entry, struct bootinfo_table_header *bt
     }
 }
 
-static status_t count_smap_entry(int *result)
+static VlStatus count_smap_entry(int *result)
 {
-    status_t status;
+    VlStatus status;
     struct smap_entry smap_entry;
     uint32_t cursor = 0;
     int count = 0;
@@ -91,7 +94,7 @@ static void fill_pagetable_frame_entries(
 
 static int count_kernel_ufent(void *load_vaddr, uint32_t max_count)
 {
-    status_t status;
+    VlStatus status;
     pfn_t prev_pfn = 0, pfn;
     uint32_t count = 0;
 
@@ -111,11 +114,11 @@ static int count_kernel_ufent(void *load_vaddr, uint32_t max_count)
     return count;
 }
 
-static status_t fill_kernel_frame_entries(
+static VlStatus fill_kernel_frame_entries(
     struct bootinfo_unavailable_frame_entry *entries, uint32_t max_count, void *load_vaddr
 )
 {
-    status_t status;
+    VlStatus status;
     pfn_t pfn;
     uint32_t filled_entries = 0;
 
@@ -140,7 +143,7 @@ static status_t fill_kernel_frame_entries(
     return STATUS_SUCCESS;
 }
 
-static status_t load_kernel(
+static VlStatus load_kernel(
     const char *path,
     const char *argv0,
     struct elf_file **elf_out,
@@ -148,7 +151,7 @@ static status_t load_kernel(
     size_t *program_size_out
 )
 {
-    status_t status;
+    VlStatus status;
     struct elf_file *elf = NULL;
     struct elf_ident ident;
     struct elf32_phdr phdr32;
@@ -244,7 +247,7 @@ static status_t load_kernel(
     return STATUS_SUCCESS;
 }
 
-static status_t make_bootinfo_table(
+static VlStatus make_bootinfo_table(
     struct elf_file *elf,
     size_t program_size,
     int argc,
@@ -253,7 +256,7 @@ static status_t make_bootinfo_table(
     struct bootinfo_table_header **btblhdr_out
 )
 {
-    status_t status;
+    VlStatus status;
     struct device *fbdev;
     const struct video_interface *vidif;
     struct video_hw_mode_info hwmode;
@@ -313,7 +316,7 @@ static status_t make_bootinfo_table(
     }
     btblentsize += ALIGN(sizeof(*benthdr), 16);
     btblentsize += ALIGN(
-        sizeof(*entry_command_args) + (argc - 2) * sizeof(*entry_command_args->arg_offsets),
+        sizeof(*entry_command_args) + ((argc - 2) * sizeof(*entry_command_args->arg_offsets)),
         16
     );
     btblentcount++;
@@ -332,7 +335,7 @@ static status_t make_bootinfo_table(
 
     btblentsize += ALIGN(sizeof(*benthdr), 16);
     btblentsize += ALIGN(
-        sizeof(*entry_memory_map) + mmap_entry_count * sizeof(*entry_memory_map->entries),
+        sizeof(*entry_memory_map) + (mmap_entry_count * sizeof(*entry_memory_map->entries)),
         16
     );
     btblentcount++;
@@ -357,8 +360,8 @@ static status_t make_bootinfo_table(
     btblentsize += ALIGN(sizeof(*benthdr), 16);
     btblentsize += ALIGN(
         sizeof(*entry_unavailable_frames) +
-            (pagetable_frame_count + kernel_ufent_count) *
-                sizeof(*entry_unavailable_frames->entries),
+            ((pagetable_frame_count + kernel_ufent_count) *
+                sizeof(*entry_unavailable_frames->entries)),
         16
     );
     btblentcount++;
@@ -387,7 +390,7 @@ static status_t make_bootinfo_table(
     benthdr->type = BET_COMMAND_ARGS;
     benthdr->header_size = ALIGN(sizeof(*benthdr), 16);
     benthdr->size = benthdr->header_size +
-        ALIGN(sizeof(*entry_command_args) + (argc - 2) * sizeof(*entry_command_args->arg_offsets),
+        ALIGN(sizeof(*entry_command_args) + ((argc - 2) * sizeof(*entry_command_args->arg_offsets)),
               16);
     benthdr->flags = BEF_REQUIRED;
 
@@ -423,7 +426,7 @@ static status_t make_bootinfo_table(
     benthdr->type = BET_MEMORY_MAP;
     benthdr->header_size = ALIGN(sizeof(*benthdr), 16);
     benthdr->size = benthdr->header_size +
-        ALIGN(sizeof(*entry_memory_map) + mmap_entry_count * sizeof(*entry_memory_map->entries),
+        ALIGN(sizeof(*entry_memory_map) + (mmap_entry_count * sizeof(*entry_memory_map->entries)),
               16);
     benthdr->flags = BEF_REQUIRED;
 
@@ -492,8 +495,8 @@ static status_t make_bootinfo_table(
     benthdr->header_size = ALIGN(sizeof(*benthdr), 16);
     benthdr->size = benthdr->header_size +
         ALIGN(sizeof(*entry_unavailable_frames) +
-                  (pagetable_frame_count + kernel_ufent_count) *
-                      sizeof(*entry_unavailable_frames->entries),
+                  ((pagetable_frame_count + kernel_ufent_count) *
+                      sizeof(*entry_unavailable_frames->entries)),
               16);
     benthdr->flags = BEF_REQUIRED;
 
@@ -525,7 +528,7 @@ static status_t make_bootinfo_table(
 
 static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
     struct elf_file *elf = NULL;
     void *load_paddr;
     size_t program_size;
@@ -575,7 +578,7 @@ __constructor static void init()
     VlShell_RegisterCommand(&loadst_command);
 }
 
-status_t _start(int argc, char **argv)
+VlStatus _start(int argc, char **argv)
 {
     return STATUS_SUCCESS;
 }

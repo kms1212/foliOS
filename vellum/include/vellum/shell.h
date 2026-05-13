@@ -30,15 +30,15 @@ struct command {
 
 void VlShell_Start(void);
 long VlShell_Readline(const char *prompt, char *buf, long len);
-status_t VlShell_Expand(struct shell_instance *inst, const char *line, char *buf, long buflen);
+VlStatus VlShell_Expand(struct shell_instance *inst, const char *line, char *buf, long buflen);
 const char *VlShell_Parse(const char *line, char *buf, long buflen);
 int VlShell_Execute(struct shell_instance *inst, const char *line);
 
-status_t VlShell_GetVariable(struct shell_instance *inst, const char *key, const char **value);
-status_t VlShell_SetVariable(struct shell_instance *inst, const char *key, const char *value);
-status_t VlShell_RemoveVariable(struct shell_instance *inst, const char *key);
+VlStatus VlShell_GetVariable(struct shell_instance *inst, const char *key, const char **value);
+VlStatus VlShell_SetVariable(struct shell_instance *inst, const char *key, const char *value);
+VlStatus VlShell_RemoveVariable(struct shell_instance *inst, const char *key);
 
-status_t VlShell_RegisterCommand(struct command *cmd);
+VlStatus VlShell_RegisterCommand(struct command *cmd);
 void VlShell_UnregisterCommand(struct command *cmd);
 
 #define REGISTER_SHELL_COMMAND(name, init_func)                                                    \

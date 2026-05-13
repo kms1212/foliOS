@@ -26,12 +26,6 @@ long atol(const char *str);
 
 long long atoll(const char *str);
 
-float strtof(const char *__restrict str, char **__restrict endptr);
-
-double strtod(const char *__restrict str, char **__restrict endptr);
-
-long double strtold(const char *__restrict str, char **__restrict endptr);
-
 long strtol(const char *__restrict str, char **__restrict endptr, int base);
 
 long long strtoll(const char *__restrict str, char **__restrict endptr, int base);

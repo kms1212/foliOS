@@ -1,12 +1,14 @@
-#include <vellum/plat/bios/bootinfo.h>
-#include <vellum/plat/bios/disk.h>
-#include <vellum/plat/bios/video.h>
 
 #include <stdint.h>
 #include <string.h>
 
+#include <vellum/plat/bios/bootinfo.h>
+#include <vellum/plat/bios/disk.h>
+#include <vellum/plat/bios/video.h>
+
 #include <vellum/compiler.h>
 #include <vellum/disk.h>
+#include <vellum/status.h>
 
 #include "../../filesystem/fat/fat.h"
 
@@ -60,9 +62,9 @@ static void print_hex(uint32_t val)
     print_str(hex_str);
 }
 
-static status_t read_disk(lba_t lba, uint8_t count, void *buf)
+static VlStatus read_disk(lba_t lba, uint8_t count, void *buf)
 {
-    status_t status;
+    VlStatus status;
     struct chs chs;
     uint8_t result;
 
@@ -84,7 +86,7 @@ static status_t read_disk(lba_t lba, uint8_t count, void *buf)
 
 void s1main(void)
 {
-    status_t status;
+    VlStatus status;
     uint16_t edd_features = 0;
 
     PRINT_STR("[stage1] checking disk extensions...\r\n");

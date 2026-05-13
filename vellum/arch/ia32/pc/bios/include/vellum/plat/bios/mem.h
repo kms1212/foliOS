@@ -13,6 +13,6 @@ struct smap_entry {
     uint32_t type;
 };
 
-status_t VlBiosP_QueryMemoryMap(uint32_t *cursor, struct smap_entry *buf, long buf_size);
+VlStatus VlBiosP_QueryMemoryMap(uint32_t *cursor, struct smap_entry *buf, long buf_size);
 
 #endif  // __VELLUM_ASM_BIOS_MEM_H__

@@ -5,10 +5,11 @@
 
 #include <vellum/filesystem.h>
 #include <vellum/path.h>
+#include <vellum/status.h>
 
 static int list_directory(struct fs_directory *dir)
 {
-    status_t status;
+    VlStatus status;
     struct fs_directory_entry direntry;
 
     status = dir->fs->driver->rewind_directory(dir);
@@ -33,7 +34,7 @@ static int list_directory(struct fs_directory *dir)
 
 static int lsfile_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc < 2) {
         if (!inst->working_dir) {

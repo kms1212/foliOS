@@ -1,10 +1,15 @@
 #include <stdio.h>
 
+#include <stdint.h>
+
 #include <vellum/interface/char.h>
+#include <vellum/status.h>
+
+#include "internal.h"
 
 size_t fwrite(const void *__restrict ptr, size_t size, size_t count, FILE *__restrict stream)
 {
-    status_t status;
+    VlStatus status;
     size_t write_count = 0;
 
     while (write_count < count) {

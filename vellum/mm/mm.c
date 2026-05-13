@@ -8,13 +8,14 @@
 #include <vellum/arch/cpufeatures.h>
 #include <vellum/arch/intrinsics/invlpg.h>
 #include <vellum/arch/intrinsics/register.h>
+#include <vellum/arch/mmu.h>
 
-#include <vellum/plat/instruction.h>
 #include <vellum/plat/page.h>
 
+#include <vellum/compiler.h>
 #include <vellum/log.h>
 #include <vellum/macros.h>
-#include <vellum/panic.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "mm"
 
@@ -41,15 +42,15 @@ struct page_dir_recursive page_dir_recursive __aligned(PAGE_SIZE);
 
 struct page_dir_recursive *_pc_page_dir;
 
-status_t mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
+VlStatus mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
 {
-    status_t status;
+    VlStatus status;
 
     if (limit_paddr < base_paddr) return STATUS_INVALID_VALUE;
 
     pma_bitmap = (void *)ALIGN((uintptr_t)&__end, PAGE_SIZE);
 
-    pma_frame_desc_count = limit_paddr / PAGE_SIZE - base_paddr / PAGE_SIZE + 1;
+    pma_frame_desc_count = (limit_paddr / PAGE_SIZE) - (base_paddr / PAGE_SIZE) + 1;
     pma_available_frames = pma_frame_desc_count;
     pma_free_frames = pma_frame_desc_count;
 
@@ -74,7 +75,7 @@ status_t mm_pma_init(uintptr_t base_paddr, uintptr_t limit_paddr)
     return STATUS_SUCCESS;
 }
 
-status_t mm_pma_mark_reserved(uintptr_t base_paddr, uintptr_t limit_paddr)
+VlStatus mm_pma_mark_reserved(uintptr_t base_paddr, uintptr_t limit_paddr)
 {
     uintptr_t base_page, limit_page;
 
@@ -112,21 +113,21 @@ status_t mm_pma_mark_reserved(uintptr_t base_paddr, uintptr_t limit_paddr)
     return STATUS_SUCCESS;
 }
 
-status_t mm_pma_get_available_frame_count(size_t *frame_count)
+VlStatus mm_pma_get_available_frame_count(size_t *frame_count)
 {
     if (frame_count) *frame_count = pma_available_frames;
 
     return STATUS_SUCCESS;
 }
 
-status_t mm_pma_get_free_frame_count(size_t *frame_count)
+VlStatus mm_pma_get_free_frame_count(size_t *frame_count)
 {
     if (frame_count) *frame_count = pma_free_frames;
 
     return STATUS_SUCCESS;
 }
 
-status_t mm_pma_allocate_frame(size_t count, pfn_t *pfn)
+VlStatus mm_pma_allocate_frame(size_t count, pfn_t *pfn)
 {
     size_t free_count = 0;
     uintptr_t alloc_start_idx = 0;
@@ -202,9 +203,9 @@ static vpn_t alloc_virt_page(size_t page_count)
     return new_vpn;
 }
 
-static status_t init_page_directory(void)
+static VlStatus init_page_directory(void)
 {
-    status_t status;
+    VlStatus status;
     pfn_t new_pt_pfn;
     union VlA_PageTableEntry *pt;
 
@@ -229,9 +230,9 @@ static status_t init_page_directory(void)
     return STATUS_SUCCESS;
 }
 
-status_t mm_init(void)
+VlStatus mm_init(void)
 {
-    status_t status;
+    VlStatus status;
     uint32_t cr0;
 
     LOG_DEBUG("initializing page directory...\n");
@@ -247,7 +248,7 @@ status_t mm_init(void)
     return STATUS_SUCCESS;
 }
 
-status_t mm_vpn_to_pfn(vpn_t vpn, pfn_t *pfn)
+VlStatus mm_vpn_to_pfn(vpn_t vpn, pfn_t *pfn)
 {
     union VlA_PageTableEntry *pt =
         (void *)0xFFC00000;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
@@ -262,15 +263,15 @@ status_t mm_vpn_to_pfn(vpn_t vpn, pfn_t *pfn)
     return STATUS_SUCCESS;
 }
 
-status_t mm_vaddr_to_paddr(void *vaddr, uintptr_t *paddr)
+VlStatus mm_vaddr_to_paddr(void *vaddr, uintptr_t *paddr)
 {
-    status_t status;
+    VlStatus status;
     pfn_t pfn;
 
     status = mm_vpn_to_pfn((uintptr_t)vaddr >> 12, &pfn);
     if (!CHECK_SUCCESS(status)) return status;
 
-    if (paddr) *paddr = pfn * PAGE_SIZE + (((uintptr_t)vaddr) & (PAGE_SIZE - 1));
+    if (paddr) *paddr = (pfn * PAGE_SIZE) + (((uintptr_t)vaddr) & (PAGE_SIZE - 1));
 
     return STATUS_SUCCESS;
 }
@@ -284,9 +285,9 @@ static void invalidate_page(vpn_t vpn)
     }
 }
 
-static status_t map(pfn_t pfn, vpn_t vpn, uint32_t flags)
+static VlStatus map(pfn_t pfn, vpn_t vpn, uint32_t flags)
 {
-    status_t status;
+    VlStatus status;
     union VlA_PageTableEntry *pt = (void *)0xFFC00000;
     pfn_t new_pt_pfn;
 
@@ -354,9 +355,9 @@ static status_t map(pfn_t pfn, vpn_t vpn, uint32_t flags)
     return STATUS_SUCCESS;
 }
 
-status_t mm_map(pfn_t pfn, vpn_t vpn, size_t page_count, uint32_t flags)
+VlStatus mm_map(pfn_t pfn, vpn_t vpn, size_t page_count, uint32_t flags)
 {
-    status_t status;
+    VlStatus status;
 
     for (size_t i = 0; i < page_count; i++) {
         status = map(pfn + i, vpn + i, flags);
@@ -391,7 +392,7 @@ static void unmap(vpn_t vpn)
     invalidate_page(vpn);
 }
 
-status_t mm_unmap(vpn_t vpn, size_t page_count)
+VlStatus mm_unmap(vpn_t vpn, size_t page_count)
 {
     LOG_TRACE("unmapping page %zu-%zu\n", vpn, vpn + page_count - 1);
 
@@ -402,9 +403,9 @@ status_t mm_unmap(vpn_t vpn, size_t page_count)
     return STATUS_SUCCESS;
 }
 
-status_t mm_allocate_pages(size_t page_count, vpn_t *vpn)
+VlStatus mm_allocate_pages(size_t page_count, vpn_t *vpn)
 {
-    status_t status;
+    VlStatus status;
     pfn_t allocated_pfn;
     vpn_t allocated_vpn;
 
@@ -428,9 +429,9 @@ status_t mm_allocate_pages(size_t page_count, vpn_t *vpn)
     return STATUS_SUCCESS;
 }
 
-status_t mm_allocate_pages_to(vpn_t vpn, size_t page_count)
+VlStatus mm_allocate_pages_to(vpn_t vpn, size_t page_count)
 {
-    status_t status;
+    VlStatus status;
     pfn_t allocated_pfn;
 
     for (size_t i = 0; i < page_count; i++) {
@@ -451,7 +452,7 @@ status_t mm_allocate_pages_to(vpn_t vpn, size_t page_count)
 
 void mm_free_pages(vpn_t vpn, size_t page_count)
 {
-    status_t status;
+    VlStatus status;
     pfn_t pfn;
 
     for (size_t i = 0; i < page_count; i++) {

@@ -18,6 +18,6 @@ struct acpi_rsdp {
     uint8_t reserved[3];
 } __packed;
 
-status_t VlAcpi_FindRsdp(const struct acpi_rsdp **rsdp);
+VlStatus VlAcpi_FindRsdp(const struct acpi_rsdp **rsdp);
 
 #endif  // __VELLUM_ACPI_H__

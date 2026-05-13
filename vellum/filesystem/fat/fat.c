@@ -1,13 +1,16 @@
 #include <ctype.h>
 #include <endian.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 
-#include <vellum/compiler.h>
+#include <vellum/plat/panic.h>
+
 #include <vellum/device.h>
 #include <vellum/disk.h>
+#include <vellum/types.h>
 #include <vellum/filesystem.h>
 #include <vellum/interface/block.h>
 #include <vellum/status.h>
@@ -56,7 +59,7 @@ struct fat_data {
 
     fatcluster_t (*sector_to_cluster)(struct filesystem *, lba_t);
     lba_t (*cluster_to_sector)(struct filesystem *, fatcluster_t);
-    status_t (*get_next_cluster)(struct filesystem *, fatcluster_t *, unsigned int);
+    VlStatus (*get_next_cluster)(struct filesystem *, fatcluster_t *, unsigned int);
 };
 
 static size_t remove_right_padding(char *dest, const char *orig, size_t dest_len, size_t orig_len)
@@ -269,10 +272,10 @@ static uint8_t get_sfn_checksum(char buf[static FAT_SFN_BUFLEN])
     return chksum;
 }
 
-static status_t read_fat(struct filesystem *fs, uint32_t fat_sector)
+static VlStatus read_fat(struct filesystem *fs, uint32_t fat_sector)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
-    status_t status;
+    VlStatus status;
     lba_t lba;
 
     lba = data->reserved_sectors + fat_sector;
@@ -290,14 +293,14 @@ static fatcluster_t sector_to_cluster12_16(struct filesystem *fs, lba_t lba)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
 
-    return (lba - data->data_area_begin - data->root_sector_count) / data->sectors_per_cluster + 2;
+    return ((lba - data->data_area_begin - data->root_sector_count) / data->sectors_per_cluster) + 2;
 }
 
 static fatcluster_t sector_to_cluster32(struct filesystem *fs, lba_t lba)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
 
-    return (lba - data->data_area_begin) / data->sectors_per_cluster + 2;
+    return ((lba - data->data_area_begin) / data->sectors_per_cluster) + 2;
 }
 
 static fatcluster_t sector_to_cluster(struct filesystem *fs, lba_t lba)
@@ -329,10 +332,10 @@ static lba_t fatcluster_to_sector(struct filesystem *fs, fatcluster_t cluster)
     return data->cluster_to_sector(fs, cluster);
 }
 
-static status_t read_sector(struct filesystem *fs, lba_t lba)
+static VlStatus read_sector(struct filesystem *fs, lba_t lba)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
-    status_t status;
+    VlStatus status;
 
     if (data->databuf_lba_start == lba) return STATUS_SUCCESS;
 
@@ -344,12 +347,12 @@ static status_t read_sector(struct filesystem *fs, lba_t lba)
     return STATUS_SUCCESS;
 }
 
-static status_t get_next_cluster(struct filesystem *fs, fatcluster_t *cluster, unsigned int count);
+static VlStatus get_next_cluster(struct filesystem *fs, fatcluster_t *cluster, unsigned int count);
 
-static status_t read_cluster(struct filesystem *fs, fatcluster_t cluster)
+static VlStatus read_cluster(struct filesystem *fs, fatcluster_t cluster)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
-    status_t status;
+    VlStatus status;
     lba_t lba;
 
     lba = fatcluster_to_sector(fs, cluster);
@@ -363,7 +366,7 @@ static status_t read_cluster(struct filesystem *fs, fatcluster_t cluster)
     return STATUS_SUCCESS;
 }
 
-static status_t read_contiguous_clusters(
+static VlStatus read_contiguous_clusters(
     struct filesystem *fs,
     fatcluster_t start_cluster,
     void *buf,
@@ -374,7 +377,7 @@ static status_t read_contiguous_clusters(
 )
 {
     struct fat_data *data = (struct fat_data *)fs->data;
-    status_t status;
+    VlStatus status;
     fatcluster_t current_cluster = start_cluster;
     size_t cluster_count = 1;
 
@@ -420,9 +423,9 @@ static status_t read_contiguous_clusters(
     return STATUS_SUCCESS;
 }
 
-static status_t get_next_cluster12(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
+static VlStatus get_next_cluster12(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
 {
-    status_t status;
+    VlStatus status;
     struct fat_data *data = (struct fat_data *)fs->data;
     uint16_t byte_idx;
     uint16_t sector_idx;
@@ -459,9 +462,9 @@ static status_t get_next_cluster12(struct filesystem *fs, fatcluster_t *cluster,
     return STATUS_SUCCESS;
 }
 
-static status_t get_next_cluster16(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
+static VlStatus get_next_cluster16(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
 {
-    status_t status;
+    VlStatus status;
     struct fat_data *data = (struct fat_data *)fs->data;
     uint32_t fatentry_idx;
     uint32_t sector_idx;
@@ -484,9 +487,9 @@ static status_t get_next_cluster16(struct filesystem *fs, fatcluster_t *cluster,
     return STATUS_SUCCESS;
 }
 
-static status_t get_next_cluster32(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
+static VlStatus get_next_cluster32(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
 {
-    status_t status;
+    VlStatus status;
     struct fat_data *data = (struct fat_data *)fs->data;
     uint32_t fatentry_idx;
     uint32_t sector_idx;
@@ -508,18 +511,18 @@ static status_t get_next_cluster32(struct filesystem *fs, fatcluster_t *cluster,
     return STATUS_SUCCESS;
 }
 
-static status_t get_next_cluster(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
+static VlStatus get_next_cluster(struct filesystem *fs, fatcluster_t *cluster, unsigned int count)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
 
     return data->get_next_cluster(fs, cluster, count);
 }
 
-static status_t match_name(
+static VlStatus match_name(
     struct fs_directory *dir, const char *name, struct fs_directory_entry *direntry
 )
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = dir->fs;
 
     status = fs->driver->rewind_directory(dir);
@@ -534,29 +537,29 @@ static status_t match_name(
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-static status_t probe(struct device *dev, struct fs_driver *drv);
-static status_t mount(
+static VlStatus probe(struct device *dev, struct fs_driver *drv);
+static VlStatus mount(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 );
-static status_t unmount(struct filesystem *fs);
+static VlStatus unmount(struct filesystem *fs);
 
-static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
-static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result);
-static status_t seek(struct fs_file *file, off_t offset, int origin);
-static status_t tell(struct fs_file *file, off_t *result);
+static VlStatus open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
+static VlStatus read(struct fs_file *file, void *buf, size_t len, size_t *result);
+static VlStatus seek(struct fs_file *file, off_t offset, int origin);
+static VlStatus tell(struct fs_file *file, off_t *result);
 static void close(struct fs_file *file);
 
-static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
-static status_t open_directory(
+static VlStatus open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
+static VlStatus open_directory(
     struct fs_directory *dir, const char *name, struct fs_directory **dirout
 );
-static status_t rewind_directory(struct fs_directory *dir);
-static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
+static VlStatus rewind_directory(struct fs_directory *dir);
+static VlStatus iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
 static void close_directory(struct fs_directory *dir);
 
 static void fat_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct fs_driver *drv;
 
     status = VlFs_CreateDriver(&drv);
@@ -580,9 +583,9 @@ static void fat_init(void)
     drv->close_directory = close_directory;
 }
 
-static status_t probe(struct device *dev, struct fs_driver *drv)
+static VlStatus probe(struct device *dev, struct fs_driver *drv)
 {
-    status_t status;
+    VlStatus status;
     struct device *blkdev = NULL;
     const struct block_interface *blkif = NULL;
     size_t block_size;
@@ -642,11 +645,11 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     return STATUS_SUCCESS;
 }
 
-static status_t mount(
+static VlStatus mount(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 )
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = NULL;
     struct device *blkdev = NULL;
     const struct block_interface *blkif = NULL;
@@ -769,7 +772,7 @@ has_error:
     return status;
 }
 
-static status_t unmount(struct filesystem *fs)
+static VlStatus unmount(struct filesystem *fs)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
 
@@ -782,11 +785,11 @@ static status_t unmount(struct filesystem *fs)
     return STATUS_SUCCESS;
 }
 
-static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout)
+static VlStatus open(struct fs_directory *dir, const char *name, struct fs_file **fileout)
 {
     struct filesystem *fs = dir->fs;
     struct fat_dir_data *dir_data = (struct fat_dir_data *)dir->data;
-    status_t status;
+    VlStatus status;
     struct fs_directory_entry dirent;
     struct fat_file_data *file_data = NULL;
     struct fs_file *file = NULL;
@@ -840,12 +843,12 @@ has_error:
     return status;
 }
 
-static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result)
+static VlStatus read(struct fs_file *file, void *buf, size_t len, size_t *result)
 {
     struct filesystem *fs = file->fs;
     struct fat_data *data = (struct fat_data *)fs->data;
     struct fat_file_data *file_data = (struct fat_file_data *)file->data;
-    status_t status;
+    VlStatus status;
     size_t total_read_len = 0;
 
     if (file_data->cursor >= file_data->direntry.size) {
@@ -911,12 +914,12 @@ static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result
     return STATUS_SUCCESS;
 }
 
-static status_t seek(struct fs_file *file, off_t offset, int origin)
+static VlStatus seek(struct fs_file *file, off_t offset, int origin)
 {
     struct filesystem *fs = file->fs;
     struct fat_data *data = (struct fat_data *)fs->data;
     struct fat_file_data *file_data = (struct fat_file_data *)file->data;
-    status_t status;
+    VlStatus status;
     int64_t new_cursor;
     fatcluster_t cluster;
 
@@ -948,7 +951,7 @@ static status_t seek(struct fs_file *file, off_t offset, int origin)
     return STATUS_SUCCESS;
 }
 
-static status_t tell(struct fs_file *file, off_t *result)
+static VlStatus tell(struct fs_file *file, off_t *result)
 {
     struct fat_file_data *file_data = (struct fat_file_data *)file->data;
 
@@ -966,10 +969,10 @@ static void close(struct fs_file *file)
     free(file);
 }
 
-static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout)
+static VlStatus open_root_directory(struct filesystem *fs, struct fs_directory **dirout)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
-    status_t status;
+    VlStatus status;
     struct fat_dir_data *dir_data = NULL;
     struct fs_directory *dir = NULL;
 
@@ -1011,14 +1014,14 @@ has_error:
     return status;
 }
 
-static status_t open_directory(
+static VlStatus open_directory(
     struct fs_directory *dir, const char *name, struct fs_directory **dirout
 )
 {
     struct filesystem *fs = dir->fs;
     struct fat_data *data = (struct fat_data *)fs->data;
     struct fat_dir_data *dir_data = (struct fat_dir_data *)dir->data;
-    status_t status;
+    VlStatus status;
     struct fs_directory *new_dir = NULL;
     struct fat_dir_data *new_dir_data = NULL;
     struct fs_directory_entry dirent;
@@ -1078,7 +1081,7 @@ has_error:
     return status;
 }
 
-static status_t rewind_directory(struct fs_directory *dir)
+static VlStatus rewind_directory(struct fs_directory *dir)
 {
     struct fat_dir_data *dir_data = (struct fat_dir_data *)dir->data;
 
@@ -1089,13 +1092,13 @@ static status_t rewind_directory(struct fs_directory *dir)
     return STATUS_SUCCESS;
 }
 
-static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry)
+static VlStatus iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry)
 {
     struct filesystem *fs = dir->fs;
     struct fat_data *data = (struct fat_data *)fs->data;
     struct fat_dir_data *dir_data = (struct fat_dir_data *)dir->data;
 
-    status_t status;
+    VlStatus status;
     int is_rootdir = data->fat_type != FT_FAT32 && dir_data->head_cluster == 0;
     const uint16_t block_size = is_rootdir ? data->sector_size : data->cluster_size;
     uint16_t entries_per_block = block_size / sizeof(union fat_dir_entry);
@@ -1113,7 +1116,7 @@ static status_t iter_directory(struct fs_directory *dir, struct fs_directory_ent
             }
             status = read_sector(
                 fs,
-                data->data_area_begin + dir_data->current_entry_index / entries_per_block
+                data->data_area_begin + (dir_data->current_entry_index / entries_per_block)
             );
             if (!CHECK_SUCCESS(status)) return status;
         } else {

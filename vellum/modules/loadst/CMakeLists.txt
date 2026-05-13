@@ -50,7 +50,7 @@ target_compile_options(vellum_module_${MODULE_NAME} PUBLIC
 target_include_directories(vellum_module_${MODULE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_include_directories(vellum_module_${MODULE_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(vellum_module_${MODULE_NAME} PRIVATE "${CMAKE_BINARY_DIR}")
-target_include_directories(vellum_module_${MODULE_NAME} PRIVATE "${ROOT_SOURCE_DIR}/common/include")
+target_include_directories(vellum_module_${MODULE_NAME} SYSTEM PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 
 get_target_property(vellum_INCLUDES vellum INCLUDE_DIRECTORIES)
-target_include_directories(vellum_module_${MODULE_NAME} PRIVATE ${vellum_INCLUDES})
+target_include_directories(vellum_module_${MODULE_NAME} SYSTEM PRIVATE ${vellum_INCLUDES})

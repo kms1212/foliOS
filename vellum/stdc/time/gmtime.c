@@ -14,15 +14,15 @@ void gmtime_r(const time_t *_time, struct tm *result)
     days += 719468;
 
     time_t era = (days >= 0 ? days : days - 146096) / 146097;
-    unsigned doe = (unsigned)(days - era * 146097);
+    unsigned doe = (unsigned)(days - (era * 146097));
 
-    unsigned yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
-    time_t y = (time_t)yoe + era * 400;
+    unsigned yoe = (doe - (doe / 1460) + (doe / 36524) - (doe / 146096)) / 365;
+    time_t y = (time_t)yoe + (era * 400);
 
-    unsigned doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    unsigned doy = doe - ((365 * yoe) + (yoe / 4) - (yoe / 100));
 
-    unsigned mp = (5 * doy + 2) / 153;
-    unsigned d = doy - (153 * mp + 2) / 5 + 1;
+    unsigned mp = ((5 * doy) + 2) / 153;
+    unsigned d = doy -(((153 * mp) + 2) / 5) + 1;
     unsigned m = mp < 10 ? mp + 3 : mp - 9;
 
     result->tm_year = (int)(y + (m <= 2)) - 1900;

@@ -1,15 +1,18 @@
 #include <vellum/shell.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <vellum/plat/bios/video.h>
 
+#include <vellum/status.h>
+
 static int dispinfo_handler(struct shell_instance *inst, int argc, char **argv)
 {
     struct edid buf;
     int unit, block;
-    status_t status;
+    VlStatus status;
 
     if (argc < 3) {
         printf("usage: %s unit block\n", argv[0]);

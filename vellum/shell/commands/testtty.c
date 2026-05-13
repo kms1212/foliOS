@@ -1,6 +1,7 @@
 #include <vellum/shell.h>
 
 #include <stdio.h>
+#include <stdint.h>
 
 static uint8_t clamp_rgb(int v)
 {
@@ -23,13 +24,13 @@ static uint8_t hue2rgb(int p, int q, int t)
     }
 
     if (t < 256) {
-        return clamp_rgb(p + ((q - p) * t + 128) / 256);
+        return clamp_rgb(p + ((((q - p) * t) + 128) / 256));
     }
     if (t < 768) {
         return clamp_rgb(q);
     }
     if (t < 1024) {
-        return clamp_rgb(p + ((q - p) * (1024 - t) + 128) / 256);
+        return clamp_rgb(p + ((((q - p) * (1024 - t)) + 128) / 256));
     }
     return clamp_rgb(p);
 }
@@ -39,8 +40,8 @@ static void hsl2rgb(uint32_t h, uint8_t s, uint8_t l, uint8_t rgb[3])
     if (s == 0) {
         rgb[0] = rgb[1] = rgb[2] = l;
     } else {
-        int q = l < 128 ? (l * (255 + s) + 127) / 255 : l + s - (l * s + 127) / 255;
-        int p = 2 * l - q;
+        int q = l < 128 ? ((l * (255 + s)) + 127) / 255 : l + s - (((l * s) + 127) / 255);
+        int p = (2 * l) - q;
         int t = h * 1536 / 63;
 
         rgb[0] = hue2rgb(p, q, t + 512);

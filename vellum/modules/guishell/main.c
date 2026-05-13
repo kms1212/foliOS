@@ -1,10 +1,10 @@
 #include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <time.h>
 #include <wchar.h>
 
+#include <vellum/compiler.h>
 #include <vellum/device.h>
 #include <vellum/font.h>
 #include <vellum/hid.h>
@@ -13,6 +13,7 @@
 #include <vellum/interface/video.h>
 #include <vellum/macros.h>
 #include <vellum/shell.h>
+#include <vellum/status.h>
 
 static struct device *fbdev;
 static const struct video_interface *vidif;
@@ -53,7 +54,7 @@ static void draw_line(int x0, int y0, int x1, int y1, uint32_t color)
             y1 = temp;
         }
         for (int y = y0; y <= y1; y++) {
-            framebuffer[y * vmode_info.width + x0] = color;
+            framebuffer[(y * vmode_info.width) + x0] = color;
         }
     } else if (y0 == y1) {
         if (x0 > x1) {
@@ -62,7 +63,7 @@ static void draw_line(int x0, int y0, int x1, int y1, uint32_t color)
             x1 = temp;
         }
         for (int x = x0; x <= x1; x++) {
-            framebuffer[y0 * vmode_info.width + x] = color;
+            framebuffer[(y0 * vmode_info.width) + x] = color;
         }
     } else {
         int dx = abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
@@ -70,7 +71,7 @@ static void draw_line(int x0, int y0, int x1, int y1, uint32_t color)
         int err = dx + dy, e2;
 
         for (;;) {
-            framebuffer[y0 * vmode_info.width + x0] = color;
+            framebuffer[(y0 * vmode_info.width) + x0] = color;
             if (x0 == x1 && y0 == y1) break;
             e2 = 2 * err;
             if (e2 >= dy) {
@@ -103,9 +104,9 @@ static inline uint32_t blend_color(uint32_t upper, uint32_t lower)
         int lower_g = (lower >> 8) & 0xFF;
         int lower_b = lower & 0xFF;
 
-        new_color = ((lower_r * (255 - alpha) / 255 + upper_r * alpha / 255) << 16) |
-            ((lower_g * (255 - alpha) / 255 + upper_g * alpha / 255) << 8) |
-            (lower_b * (255 - alpha) / 255 + upper_b * alpha / 255);
+        new_color = (((lower_r * (255 - alpha) / 255) + (upper_r * alpha / 255)) << 16) |
+            (((lower_g * (255 - alpha) / 255) + (upper_g * alpha / 255)) << 8) |
+            ((lower_b * (255 - alpha) / 255) + (upper_b * alpha / 255));
     }
 
     return new_color;
@@ -114,22 +115,22 @@ static inline uint32_t blend_color(uint32_t upper, uint32_t lower)
 static void draw_rect(int xpos, int ypos, int width, int height, uint32_t color, int fill)
 {
     for (int x = xpos; x < xpos + width; x++) {
-        framebuffer[ypos * vmode_info.width + x] = color;
+        framebuffer[(ypos * vmode_info.width) + x] = color;
     }
 
     for (int y = ypos + 1; y < ypos + height - 1; y++) {
         if (fill) {
             for (int x = xpos; x < xpos + width; x++) {
-                framebuffer[y * vmode_info.width + x] = color;
+                framebuffer[(y * vmode_info.width) + x] = color;
             }
         } else {
-            framebuffer[y * vmode_info.width + xpos] = color;
-            framebuffer[y * vmode_info.width + xpos + width - 1] = color;
+            framebuffer[(y * vmode_info.width) + xpos] = color;
+            framebuffer[(y * vmode_info.width) + xpos + width - 1] = color;
         }
     }
 
     for (int x = xpos; x < xpos + width; x++) {
-        framebuffer[(ypos + height - 1) * vmode_info.width + x] = color;
+        framebuffer[((ypos + height - 1) * vmode_info.width) + x] = color;
     }
 }
 
@@ -144,11 +145,11 @@ void draw_circle(int x0, int y0, int radius, uint32_t color, int fill)
     if (fill) {
         draw_line(x0 + radius, y0, x0 - radius, y0, color);
     } else {
-        framebuffer[y0 * vmode_info.width + x0 + radius] = color;
-        framebuffer[y0 * vmode_info.width + x0 - radius] = color;
+        framebuffer[(y0 * vmode_info.width) + x0 + radius] = color;
+        framebuffer[(y0 * vmode_info.width) + x0 - radius] = color;
     }
-    framebuffer[(y0 + radius) * vmode_info.width + x0] = color;
-    framebuffer[(y0 - radius) * vmode_info.width + x0] = color;
+    framebuffer[((y0 + radius) * vmode_info.width) + x0] = color;
+    framebuffer[((y0 - radius) * vmode_info.width) + x0] = color;
 
     while (x < y) {
         // ddF_x == 2 * x + 1;
@@ -168,14 +169,14 @@ void draw_circle(int x0, int y0, int radius, uint32_t color, int fill)
             draw_line(x0 + y, y0 + x, x0 - y, y0 + x, color);
             draw_line(x0 + y, y0 - x, x0 - y, y0 - x, color);
         } else {
-            framebuffer[(y0 + y) * vmode_info.width + x0 + x] = color;
-            framebuffer[(y0 + y) * vmode_info.width + x0 - x] = color;
-            framebuffer[(y0 - y) * vmode_info.width + x0 + x] = color;
-            framebuffer[(y0 - y) * vmode_info.width + x0 - x] = color;
-            framebuffer[(y0 + x) * vmode_info.width + x0 + y] = color;
-            framebuffer[(y0 + x) * vmode_info.width + x0 - y] = color;
-            framebuffer[(y0 - x) * vmode_info.width + x0 + y] = color;
-            framebuffer[(y0 - x) * vmode_info.width + x0 - y] = color;
+            framebuffer[((y0 + y) * vmode_info.width) + x0 + x] = color;
+            framebuffer[((y0 + y) * vmode_info.width) + x0 - x] = color;
+            framebuffer[((y0 - y) * vmode_info.width) + x0 + x] = color;
+            framebuffer[((y0 - y) * vmode_info.width) + x0 - x] = color;
+            framebuffer[((y0 + x) * vmode_info.width) + x0 + y] = color;
+            framebuffer[((y0 + x) * vmode_info.width) + x0 - y] = color;
+            framebuffer[((y0 - x) * vmode_info.width) + x0 + y] = color;
+            framebuffer[((y0 - x) * vmode_info.width) + x0 - y] = color;
         }
     }
 }
@@ -184,7 +185,7 @@ void draw_ellipse_rect(int x0, int y0, int x1, int y1, uint32_t color, int fill)
 {
     int a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;       /* values of diameter */
     long dx = 4 * (1 - a) * b * b, dy = 4 * (b1 + 1) * a * a; /* error increment */
-    long err = dx + dy + b1 * a * a, e2;                      /* error of 1.step */
+    long err = dx + dy + (b1 * a * a), e2;                      /* error of 1.step */
 
     if (x0 > x1) {
         x0 = x1;
@@ -202,10 +203,10 @@ void draw_ellipse_rect(int x0, int y0, int x1, int y1, uint32_t color, int fill)
             draw_line(x0, y0, x1, y0, color);
             draw_line(x0, y1, x1, y1, color);
         } else {
-            framebuffer[y0 * vmode_info.width + x1] = color;
-            framebuffer[y0 * vmode_info.width + x0] = color;
-            framebuffer[y1 * vmode_info.width + x0] = color;
-            framebuffer[y1 * vmode_info.width + x1] = color;
+            framebuffer[(y0 * vmode_info.width) + x1] = color;
+            framebuffer[(y0 * vmode_info.width) + x0] = color;
+            framebuffer[(y1 * vmode_info.width) + x0] = color;
+            framebuffer[(y1 * vmode_info.width) + x1] = color;
         }
         e2 = 2 * err;
         if (e2 >= dx) {
@@ -227,10 +228,10 @@ void draw_ellipse_rect(int x0, int y0, int x1, int y1, uint32_t color, int fill)
             draw_line(x0 - 1, y1, x1 + 1, y1, color);
             y1--;
         } else {
-            framebuffer[y0 * vmode_info.width + x0 - 1] = color;
-            framebuffer[y0++ * vmode_info.width + x1 + 1] = color;
-            framebuffer[y1 * vmode_info.width + x0 - 1] = color;
-            framebuffer[y1-- * vmode_info.width + x1 + 1] = color;
+            framebuffer[(y0 * vmode_info.width) + x0 - 1] = color;
+            framebuffer[(y0++ * vmode_info.width) + x1 + 1] = color;
+            framebuffer[(y1 * vmode_info.width) + x0 - 1] = color;
+            framebuffer[(y1-- * vmode_info.width) + x1 + 1] = color;
         }
     }
 }
@@ -239,14 +240,14 @@ static void draw_bezier2_part(int x0, int y0, int x1, int y1, int x2, int y2, ui
 {
     int sx = x0 < x2 ? 1 : -1;
     int sy = y0 < y2 ? 1 : -1;                                           /* step direction */
-    int cur = sx * sy * ((x0 - x1) * (y2 - y1) - (x2 - x1) * (y0 - y1)); /* curvature */
-    int x = x0 - 2 * x1 + x2, y = y0 - 2 * y1 + y2, xy = 2 * x * y * sx * sy;
+    int cur = sx * sy * (((x0 - x1) * (y2 - y1)) - ((x2 - x1) * (y0 - y1))); /* curvature */
+    int x = x0 - (2 * x1) + x2, y = y0 - (2 * y1) + y2, xy = 2 * x * y * sx * sy;
     /* compute error increments of P0 */
-    long dx = (1 - 2 * abs(x0 - x1)) * y * y + abs(y0 - y1) * xy - 2 * cur * abs(y0 - y2);
-    long dy = (1 - 2 * abs(y0 - y1)) * x * x + abs(x0 - x1) * xy + 2 * cur * abs(x0 - x2);
+    long dx = (((1 - (2 * abs(x0 - x1))) * y * y) + (abs(y0 - y1) * xy)) - (2 * cur * abs(y0 - y2));
+    long dy = (((1 - (2 * abs(y0 - y1))) * x * x) + (abs(x0 - x1) * xy)) + (2 * cur * abs(x0 - x2));
     /* compute error increments of P2 */
-    long ex = (1 - 2 * abs(x2 - x1)) * y * y + abs(y2 - y1) * xy + 2 * cur * abs(y0 - y2);
-    long ey = (1 - 2 * abs(y2 - y1)) * x * x + abs(x2 - x1) * xy - 2 * cur * abs(x0 - x2);
+    long ex = (((1 - (2 * abs(x2 - x1))) * y * y) + (abs(y2 - y1) * xy)) + (2 * cur * abs(y0 - y2));
+    long ey = (((1 - (2 * abs(y2 - y1))) * x * x) + (abs(x2 - x1) * xy)) - (2 * cur * abs(x0 - x2));
     /* sign of gradient must not change */
     assert((x0 - x1) * (x2 - x1) <= 0 && (y0 - y1) * (y2 - y1) <= 0);
     if (cur == 0) { /* straight line */
@@ -274,8 +275,8 @@ static void draw_bezier2_part(int x0, int y0, int x1, int y1, int x2, int y2, ui
     ex = dx + dy;
     dy -= xy;  /* error of 1.step */
     for (;;) { /* plot curve */
-        framebuffer[y0 * vmode_info.width + x0] = color;
-        ey = 2 * ex - dy;   /* save value for test of y step */
+        framebuffer[(y0 * vmode_info.width) + x0] = color;
+        ey = (2 * ex) - dy;   /* save value for test of y step */
         if (2 * ex >= dx) { /* x step */
             if (x0 == x2) break;
             x0 += sx;
@@ -328,7 +329,7 @@ static inline int mid(int a, int b)
 
 static inline long cross(long ax, long ay, long bx, long by)
 {
-    return ax * by - ay * bx;
+    return (ax * by) - (ay * bx);
 }
 
 static void split_bezier3(
@@ -416,8 +417,8 @@ void draw_bezier3(int x0, int y0, int x1, int y1, int x2, int y2, int x3, int y3
         /* 충분히 평평 → 2차로 근사 */
         if (bezier3_flat_enough(c.x0, c.y0, c.x1, c.y1, c.x2, c.y2, c.x3, c.y3)) {
             /* 3차 → 2차 근사 */
-            int qx1 = (c.x1 * 3 + c.x2 * 3 - c.x0 - c.x3) >> 2;
-            int qy1 = (c.y1 * 3 + c.y2 * 3 - c.y0 - c.y3) >> 2;
+            int qx1 = ((c.x1 * 3) + (c.x2 * 3) - c.x0 - c.x3) >> 2;
+            int qy1 = ((c.y1 * 3) + (c.y2 * 3) - c.y0 - c.y3) >> 2;
 
             draw_bezier2(c.x0, c.y0, qx1, qy1, c.x3, c.y3, color);
             continue;
@@ -517,7 +518,7 @@ void draw_polygon(int pts[][2], int count, uint32_t color, int fill)
             if ((p1[1] < y && p2[1] >= y) || (p2[1] < y && p1[1] >= y)) {
                 // 정수 연산만 사용 (나눗셈 1회 발생)
                 // 선형 보간: x = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
-                int x = p1[0] + (y - p1[1]) * (p2[0] - p1[0]) / (p2[1] - p1[1]);
+                int x = p1[0] + ((y - p1[1]) * (p2[0] - p1[0]) / (p2[1] - p1[1]));
                 nodes[node_count++] = x;
             }
         }
@@ -544,7 +545,7 @@ void draw_polygon(int pts[][2], int count, uint32_t color, int fill)
             if (x_end >= vmode_info.width) x_end = vmode_info.width - 1;
 
             for (int x = x_start; x <= x_end; x++) {
-                framebuffer[y * vmode_info.width + x] = color;
+                framebuffer[(y * vmode_info.width) + x] = color;
             }
         }
     }
@@ -554,9 +555,9 @@ static void draw_image(int xpos, int ypos, int width, int height, const uint32_t
 {
     for (int y = ypos; y < ypos + height; y++) {
         for (int x = xpos; x < xpos + width; x++) {
-            framebuffer[y * vmode_info.width + x] = blend_color(
-                img[(y - ypos) * width + x - xpos],
-                framebuffer[y * vmode_info.width + x]
+            framebuffer[(y * vmode_info.width) + x] = blend_color(
+                img[((y - ypos) * width) + x - xpos],
+                framebuffer[(y * vmode_info.width) + x]
             );
         }
     }
@@ -564,12 +565,12 @@ static void draw_image(int xpos, int ypos, int width, int height, const uint32_t
 
 inline static int get_glyph_bit(const uint8_t *glyph_data, int cwidth, int x, int y)
 {
-    return glyph_data[(y * cwidth + x) / 8] & (0x80 >> ((y * cwidth + x) % 8));
+    return glyph_data[((y * cwidth) + x) / 8] & (0x80 >> (((y * cwidth) + x) % 8));
 }
 
 static void draw_char(int xpos, int ypos, uint32_t color, wchar_t ch)
 {
-    status_t status;
+    VlStatus status;
     int use_fallback;
     int cwidth, cheight;
     const uint8_t *glyph;
@@ -623,7 +624,7 @@ static void draw_char(int xpos, int ypos, uint32_t color, wchar_t ch)
             }
 
             if (draw) {
-                framebuffer[(ypos + y) * vmode_info.width + xpos + x] = color;
+                framebuffer[((ypos + y) * vmode_info.width) + xpos + x] = color;
             }
         }
     }
@@ -731,7 +732,7 @@ static void draw_window(int xpos, int ypos, int width, int height)
     draw_image(xpos + 28, ypos + 8, 12, 12, minimize_icon);
     draw_button_frame(xpos + 44, ypos + 4, 20, 20);
     draw_image(xpos + 48, ypos + 8, 12, 12, maximize_icon);
-    draw_text(xpos + (width - 104) / 2, ypos + 6, color_palette[15], L"Hello, World!");
+    draw_text(xpos + (((width - 104) / 2)), ypos + 6, color_palette[15], L"Hello, World!");
 }
 
 static void draw_frame(int xpos, int ypos, int width, int height)
@@ -1044,14 +1045,14 @@ static int has_drawn_before = 0;
 static int prev_xpos, prev_ypos;
 static uint32_t prev_cursor_area_data[21][12];
 
-static status_t mouse_move_to(int xpos, int ypos)
+static VlStatus mouse_move_to(int xpos, int ypos)
 {
-    status_t status;
+    VlStatus status;
 
     if (has_drawn_before) {
         for (int y = prev_ypos; y < MIN(prev_ypos + 21, vmode_info.height); y++) {
             for (int x = prev_xpos; x < MIN(prev_xpos + 12, vmode_info.width); x++) {
-                framebuffer[y * vmode_info.width + x] =
+                framebuffer[(y * vmode_info.width) + x] =
                     prev_cursor_area_data[y - prev_ypos][x - prev_xpos];
             }
         }
@@ -1065,11 +1066,11 @@ static status_t mouse_move_to(int xpos, int ypos)
     for (int y = ypos; y < MIN(ypos + 21, vmode_info.height); y++) {
         for (int x = xpos; x < MIN(xpos + 12, vmode_info.width); x++) {
             uint32_t cursor_pixel = cursor_data[y - ypos][x - xpos];
-            uint32_t fb_pixel = framebuffer[y * vmode_info.width + x];
+            uint32_t fb_pixel = framebuffer[(y * vmode_info.width) + x];
 
             prev_cursor_area_data[y - ypos][x - xpos] = fb_pixel;
 
-            framebuffer[y * vmode_info.width + x] = blend_color(cursor_pixel, fb_pixel);
+            framebuffer[(y * vmode_info.width) + x] = blend_color(cursor_pixel, fb_pixel);
         }
     }
 
@@ -1086,7 +1087,7 @@ static status_t mouse_move_to(int xpos, int ypos)
 
 static int guishell_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
     uint16_t key, flags;
     int mouse_xpos = 0, mouse_ypos = 0, should_exit;
 
@@ -1267,7 +1268,7 @@ __constructor static void init()
     VlShell_RegisterCommand(&guishell_command);
 }
 
-status_t _start(int argc, char **argv)
+VlStatus _start(int argc, char **argv)
 {
     return STATUS_SUCCESS;
 }

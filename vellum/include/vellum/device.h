@@ -35,11 +35,11 @@ struct device_driver {
     struct device_driver *next;
 
     const char *name;
-    status_t (*probe)(
+    VlStatus (*probe)(
         struct device **, struct device_driver *, struct device *, struct resource *, int
     );
-    status_t (*remove)(struct device *);
-    status_t (*get_interface)(struct device *, const char *, const void **);
+    VlStatus (*remove)(struct device *);
+    VlStatus (*get_interface)(struct device *, const char *, const void **);
 };
 
 struct device {
@@ -55,17 +55,17 @@ struct device {
     void *data;
 };
 
-status_t VlDev_Create(struct device **devout, struct device_driver *drv, struct device *parent);
+VlStatus VlDev_Create(struct device **devout, struct device_driver *drv, struct device *parent);
 void VlDev_Remove(struct device *dev);
 
 struct device *VlDev_GetFirst(void);
-status_t VlDev_Find(const char *name, struct device **dev);
+VlStatus VlDev_Find(const char *name, struct device **dev);
 
-status_t VlDev_GenerateName(const char *basename, char *buf, size_t len);
+VlStatus VlDev_GenerateName(const char *basename, char *buf, size_t len);
 
-status_t VlDev_CreateDriver(struct device_driver **drv);
+VlStatus VlDev_CreateDriver(struct device_driver **drv);
 
-status_t VlDev_FindDriver(const char *name, struct device_driver **drv);
+VlStatus VlDev_FindDriver(const char *name, struct device_driver **drv);
 
 #define REGISTER_DEVICE_DRIVER(name, init_func)                                                    \
     __constructor static void _register_driver_##name(void)                                        \

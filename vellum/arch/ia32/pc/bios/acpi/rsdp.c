@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <vellum/acpi.h>
+#include <vellum/status.h>
 
 static int has_valid_checksum(const void *ptr, size_t size)
 {
@@ -25,7 +26,7 @@ static int is_valid_rsdp(const struct acpi_rsdp *rsdp)
     return 1;
 }
 
-status_t VlAcpi_FindRsdp(const struct acpi_rsdp **out_rsdp)
+VlStatus VlAcpi_FindRsdp(const struct acpi_rsdp **out_rsdp)
 {
     static const struct acpi_rsdp *rsdp_addr = NULL;
     uint16_t rsdp_base_seg;

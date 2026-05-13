@@ -2,19 +2,15 @@
 
 #include <limits.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
-#include <vellum/elf.h>
-#include <vellum/mm.h>
 #include <vellum/module.h>
-#include <vellum/panic.h>
 #include <vellum/path.h>
 #include <vellum/status.h>
 
 static int loadmodule_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s path\n", argv[0]);

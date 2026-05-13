@@ -1,16 +1,17 @@
-#include <ctype.h>
 #include <endian.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 
-#include <vellum/compiler.h>
+#include <vellum/plat/panic.h>
+
 #include <vellum/device.h>
 #include <vellum/disk.h>
 #include <vellum/filesystem.h>
 #include <vellum/interface/block.h>
 #include <vellum/status.h>
+#include <vellum/types.h>
 
 #include "folifs.h"
 
@@ -41,13 +42,13 @@ static lba_t block_to_sector(struct filesystem *fs, uint64_t block)
 {
     struct folifs_data *data = (struct folifs_data *)fs->data;
 
-    return (lba_t)((uint64_t)data->reserved_sectors + block * data->sectors_per_block);
+    return (lba_t)((uint64_t)data->reserved_sectors + (block * data->sectors_per_block));
 }
 
-static status_t read_block(struct filesystem *fs, uint64_t block)
+static VlStatus read_block(struct filesystem *fs, uint64_t block)
 {
     struct folifs_data *data = (struct folifs_data *)fs->data;
-    status_t status;
+    VlStatus status;
     lba_t lba;
 
     lba = block_to_sector(fs, block);
@@ -61,29 +62,29 @@ static status_t read_block(struct filesystem *fs, uint64_t block)
     return STATUS_SUCCESS;
 }
 
-static status_t probe(struct device *dev, struct fs_driver *drv);
-static status_t mount(
+static VlStatus probe(struct device *dev, struct fs_driver *drv);
+static VlStatus mount(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 );
-static status_t unmount(struct filesystem *fs);
+static VlStatus unmount(struct filesystem *fs);
 
-static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
-static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result);
-static status_t seek(struct fs_file *file, off_t offset, int origin);
-static status_t tell(struct fs_file *file, off_t *result);
+static VlStatus open(struct fs_directory *dir, const char *name, struct fs_file **fileout);
+static VlStatus read(struct fs_file *file, void *buf, size_t len, size_t *result);
+static VlStatus seek(struct fs_file *file, off_t offset, int origin);
+static VlStatus tell(struct fs_file *file, off_t *result);
 static void close(struct fs_file *file);
 
-static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
-static status_t open_directory(
+static VlStatus open_root_directory(struct filesystem *fs, struct fs_directory **dirout);
+static VlStatus open_directory(
     struct fs_directory *dir, const char *name, struct fs_directory **dirout
 );
-static status_t rewind_directory(struct fs_directory *dir);
-static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
+static VlStatus rewind_directory(struct fs_directory *dir);
+static VlStatus iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry);
 static void close_directory(struct fs_directory *dir);
 
 static void folifs_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct fs_driver *drv;
 
     status = VlFs_CreateDriver(&drv);
@@ -107,9 +108,9 @@ static void folifs_init(void)
     drv->close_directory = close_directory;
 }
 
-static status_t probe(struct device *dev, struct fs_driver *drv)
+static VlStatus probe(struct device *dev, struct fs_driver *drv)
 {
-    status_t status;
+    VlStatus status;
     struct device *blkdev = NULL;
     const struct block_interface *blkif = NULL;
     size_t block_size;
@@ -145,11 +146,11 @@ static status_t probe(struct device *dev, struct fs_driver *drv)
     return STATUS_SUCCESS;
 }
 
-static status_t mount(
+static VlStatus mount(
     struct filesystem **fsout, struct fs_driver *drv, struct device *dev, const char *name
 )
 {
-    status_t status;
+    VlStatus status;
     struct filesystem *fs = NULL;
     struct device *blkdev = NULL;
     const struct block_interface *blkif = NULL;
@@ -247,7 +248,7 @@ has_error:
     return status;
 }
 
-static status_t unmount(struct filesystem *fs)
+static VlStatus unmount(struct filesystem *fs)
 {
     struct folifs_data *data = (struct folifs_data *)fs->data;
 
@@ -260,29 +261,29 @@ static status_t unmount(struct filesystem *fs)
     return STATUS_SUCCESS;
 }
 
-static status_t open(struct fs_directory *dir, const char *name, struct fs_file **fileout)
+static VlStatus open(struct fs_directory *dir, const char *name, struct fs_file **fileout)
 {
     return STATUS_NOT_IMPLEMENTED;
 }
 
-static status_t read(struct fs_file *file, void *buf, size_t len, size_t *result)
+static VlStatus read(struct fs_file *file, void *buf, size_t len, size_t *result)
 {
     return STATUS_NOT_IMPLEMENTED;
 }
 
-static status_t seek(struct fs_file *file, off_t offset, int origin)
+static VlStatus seek(struct fs_file *file, off_t offset, int origin)
 {
     return STATUS_NOT_IMPLEMENTED;
 }
 
-static status_t tell(struct fs_file *file, off_t *result)
+static VlStatus tell(struct fs_file *file, off_t *result)
 {
     return STATUS_NOT_IMPLEMENTED;
 }
 
 static void close(struct fs_file *file) {}
 
-static status_t open_root_directory(struct filesystem *fs, struct fs_directory **dirout)
+static VlStatus open_root_directory(struct filesystem *fs, struct fs_directory **dirout)
 {
     // struct folifs_data *data = (struct folifs_data *)fs->data;
     //
@@ -297,19 +298,19 @@ static status_t open_root_directory(struct filesystem *fs, struct fs_directory *
     return STATUS_NOT_IMPLEMENTED;
 }
 
-static status_t open_directory(
+static VlStatus open_directory(
     struct fs_directory *dir, const char *name, struct fs_directory **dirout
 )
 {
     return STATUS_NOT_IMPLEMENTED;
 }
 
-static status_t rewind_directory(struct fs_directory *dir)
+static VlStatus rewind_directory(struct fs_directory *dir)
 {
     return STATUS_NOT_IMPLEMENTED;
 }
 
-static status_t iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry)
+static VlStatus iter_directory(struct fs_directory *dir, struct fs_directory_entry *entry)
 {
     return STATUS_NOT_IMPLEMENTED;
 }

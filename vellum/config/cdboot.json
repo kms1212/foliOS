@@ -4,7 +4,7 @@
         "usefont boot:/unifont.bfn"
     ],
     "menu": {
-        "title": "EMOS Installer CD-ROM Startup Menu",
+        "title": "foliOS Installer CD-ROM Startup Menu",
         "timeout": 5,
         "default": 0,
         "options": [

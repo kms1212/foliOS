@@ -1,7 +1,8 @@
 #include <stdio.h>
-#include <string.h>
 
+#include <vellum/compiler.h>
 #include <vellum/shell.h>
+#include <vellum/status.h>
 
 static int helloworld_handler(struct shell_instance *inst, int argc, char **argv)
 {
@@ -21,7 +22,7 @@ __constructor static void init()
     VlShell_RegisterCommand(&helloworld_command);
 }
 
-status_t _start(int argc, char **argv)
+VlStatus _start(int argc, char **argv)
 {
     return STATUS_SUCCESS;
 }

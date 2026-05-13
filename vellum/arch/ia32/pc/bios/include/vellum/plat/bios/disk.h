@@ -31,10 +31,10 @@ struct bios_disk_base_table {
 
 #define EDD_INFO_REMOVABLE (1U << 2)
 
-#define BIOS_DISK_MAX_PACKET_SECTORS      127
-#define BIOS_DISK_TRANSFER_BUFFER_BASE    0x00080000UL
-#define BIOS_DISK_TRANSFER_BUFFER_SIZE    (BIOS_DISK_MAX_PACKET_SECTORS * 512)
-#define _pc_bios_disk_transfer_buffer     ((uint8_t *)(uintptr_t)BIOS_DISK_TRANSFER_BUFFER_BASE)
+#define BIOS_DISK_MAX_PACKET_SECTORS   127
+#define BIOS_DISK_TRANSFER_BUFFER_BASE 0x00080000UL
+#define BIOS_DISK_TRANSFER_BUFFER_SIZE (BIOS_DISK_MAX_PACKET_SECTORS * 512)
+#define _pc_bios_disk_transfer_buffer  ((uint8_t *)(uintptr_t)BIOS_DISK_TRANSFER_BUFFER_BASE)
 
 #define BIOS_DISK_RESOURCE_SKIP_PARTITIONS (1UL << 0)
 
@@ -60,15 +60,15 @@ struct bios_extended_drive_params {
     uint8_t device_path_checksum;
 };
 
-status_t VlBiosP_ResetDisk(uint8_t drive);
+VlStatus VlBiosP_ResetDisk(uint8_t drive);
 
-status_t VlBiosP_ReadDisk(uint8_t drive, struct chs chs, uint8_t count, void *buf, uint8_t *result);
+VlStatus VlBiosP_ReadDisk(uint8_t drive, struct chs chs, uint8_t count, void *buf, uint8_t *result);
 
-status_t VlBiosP_WriteDisk(
+VlStatus VlBiosP_WriteDisk(
     uint8_t drive, struct chs chs, uint8_t count, const void *buf, uint8_t *result
 );
 
-status_t VlBiosP_GetDiskParams(
+VlStatus VlBiosP_GetDiskParams(
     uint8_t drive,
     uint8_t *hdd_count,
     uint8_t *type,
@@ -76,14 +76,14 @@ status_t VlBiosP_GetDiskParams(
     struct bios_disk_base_table **dbt
 );
 
-status_t VlBiosP_CheckDiskExtension(
+VlStatus VlBiosP_CheckDiskExtension(
     uint8_t drive, uint8_t *edd_version, uint16_t *subset_support_flags
 );
 
-status_t VlBiosP_ReadDiskExtended(uint8_t drive, lba_t lba, uint16_t count, void *buf);
+VlStatus VlBiosP_ReadDiskExtended(uint8_t drive, lba_t lba, uint16_t count, void *buf);
 
-status_t VlBiosP_WriteDiskExtended(uint8_t drive, lba_t lba, uint16_t count, const void *buf);
+VlStatus VlBiosP_WriteDiskExtended(uint8_t drive, lba_t lba, uint16_t count, const void *buf);
 
-status_t VlBiosP_GetDiskParamsExtended(uint8_t drive, struct bios_extended_drive_params *params);
+VlStatus VlBiosP_GetDiskParamsExtended(uint8_t drive, struct bios_extended_drive_params *params);
 
 #endif  // __VELLUM_ASM_BIOS_DISK_H__

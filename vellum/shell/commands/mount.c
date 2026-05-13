@@ -2,11 +2,13 @@
 
 #include <stdio.h>
 
+#include <vellum/device.h>
 #include <vellum/filesystem.h>
+#include <vellum/status.h>
 
 static int mount_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
 
     if (argc < 3) {
         fprintf(stderr, "usage: %s device fs_name\n", argv[0]);

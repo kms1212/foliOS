@@ -1,7 +1,6 @@
 #include <stdlib.h>
 
 #include <errno.h>
-#include <limits.h>
 
 unsigned long strtoul(const char *__restrict str, char **__restrict endptr, int base)
 {

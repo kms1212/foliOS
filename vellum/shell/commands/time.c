@@ -1,12 +1,7 @@
 #include <vellum/shell.h>
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <time.h>
-
-#include <vellum/device.h>
-#include <vellum/interface/rtc.h>
-#include <vellum/status.h>
 
 static int time_handler(struct shell_instance *inst, int argc, char **argv)
 {

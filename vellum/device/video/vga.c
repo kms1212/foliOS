@@ -1,17 +1,19 @@
-#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/arch/io.h>
+#include <vellum/arch/farptr.h>
+#include <vellum/arch/mmu.h>
+#include <vellum/arch/intrinsics/io.h>
 
-#include <vellum/plat/bios/vbe_pmi.h>
 #include <vellum/plat/bios/video.h>
 #include <vellum/plat/isr.h>
+#include <vellum/plat/panic.h>
 
 #include <vellum/device.h>
+#include <vellum/resource.h>
 #include <vellum/encoding/cp437.h>
 #include <vellum/interface/console.h>
 #include <vellum/interface/framebuffer.h>
@@ -19,7 +21,6 @@
 #include <vellum/log.h>
 #include <vellum/macros.h>
 #include <vellum/mm.h>
-#include <vellum/panic.h>
 #include <vellum/status.h>
 
 #define MODULE_NAME "vga"
@@ -122,28 +123,28 @@ inline static uint32_t get_pixel(struct device *dev, int x, int y)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
-    return data->frame_buffer[y * data->vbe_mode_info.width + x];
+    return data->frame_buffer[(y * data->vbe_mode_info.width) + x];
 }
 
 inline static void set_region_diff(struct device *dev, int xregion, int yregion)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
-    data->diff_buffer[yregion * data->vbe_mode_info.width / DIFF_REGION_SIZE + xregion] = 1;
+    data->diff_buffer[(yregion * data->vbe_mode_info.width / DIFF_REGION_SIZE) + xregion] = 1;
 }
 
 inline static void reset_region_diff(struct device *dev, int xregion, int yregion)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
-    data->diff_buffer[yregion * data->vbe_mode_info.width / DIFF_REGION_SIZE + xregion] = 0;
+    data->diff_buffer[(yregion * data->vbe_mode_info.width / DIFF_REGION_SIZE) + xregion] = 0;
 }
 
 inline static int get_region_diff(struct device *dev, int xregion, int yregion)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
-    return data->diff_buffer[yregion * data->vbe_mode_info.width / DIFF_REGION_SIZE + xregion];
+    return data->diff_buffer[(yregion * data->vbe_mode_info.width / DIFF_REGION_SIZE) + xregion];
 }
 
 static uint8_t rgb_to_irgb(uint32_t color)
@@ -259,10 +260,10 @@ __attribute__((hot)) static void convert_color_generic(
     }
 }
 
-static status_t setup_bitmap_buffer(struct device *dev, int width, int height, int bpp)
+static VlStatus setup_bitmap_buffer(struct device *dev, int width, int height, int bpp)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
     void *new_frame_buffer, *new_diff_buffer;
 
     if (data->char_buffer) {
@@ -296,10 +297,10 @@ has_error:
     VlP_Panic(status, "failed to initialize buffers for video");
 }
 
-static status_t setup_text_buffer(struct device *dev, int width, int height)
+static VlStatus setup_text_buffer(struct device *dev, int width, int height)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
     void *new_char_buffer, *new_diff_buffer;
 
     if (data->frame_buffer) {
@@ -332,12 +333,12 @@ has_error:
     VlP_Panic(status, "failed to initialize buffers for video");
 }
 
-static status_t set_cursor_pos(struct device *dev, int col, int row);
+static VlStatus set_cursor_pos(struct device *dev, int col, int row);
 
-static status_t set_mode_vga(struct device *dev, int mode)
+static VlStatus set_mode_vga(struct device *dev, int mode)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
 
     switch (mode) {
     case 0x00:
@@ -372,10 +373,10 @@ static status_t set_mode_vga(struct device *dev, int mode)
     return STATUS_SUCCESS;
 }
 
-static status_t set_mode_vbe(struct device *dev, int mode)
+static VlStatus set_mode_vbe(struct device *dev, int mode)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
     struct vbe_video_mode_info vbe_mode_info;
     size_t hw_frame_size;
 
@@ -425,8 +426,8 @@ static status_t set_mode_vbe(struct device *dev, int mode)
             vbe_mode_info.framebuffer / PAGE_SIZE,
             vbe_mode_info.framebuffer / PAGE_SIZE,
             ALIGN_DIV(
-                vbe_mode_info.framebuffer % PAGE_SIZE +
-                    (vbe_mode_info.lin_num_image_pages + 1) * hw_frame_size,
+                (vbe_mode_info.framebuffer % PAGE_SIZE) +
+                    ((vbe_mode_info.lin_num_image_pages + 1) * hw_frame_size),
                 PAGE_SIZE
             ),
             PF_WTCACHE
@@ -455,10 +456,10 @@ has_error:
     VlP_Panic(status, "failed to change video mode");
 }
 
-static status_t set_mode(struct device *dev, int mode)
+static VlStatus set_mode(struct device *dev, int mode)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
 
     status = data->vbe_available ? set_mode_vbe(dev, mode) : set_mode_vga(dev, mode);
 
@@ -473,7 +474,7 @@ static status_t set_mode(struct device *dev, int mode)
     return status;
 }
 
-static status_t get_mode(struct device *dev, int *mode)
+static VlStatus get_mode(struct device *dev, int *mode)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -482,7 +483,7 @@ static status_t get_mode(struct device *dev, int *mode)
     return STATUS_SUCCESS;
 }
 
-static status_t add_mode_callback(
+static VlStatus add_mode_callback(
     struct device *dev, void *cb_data, video_mode_callback_t callback, int *
 )
 {
@@ -542,7 +543,7 @@ static void remove_mode_callback(struct device *dev, int id)
     LOG_DEBUG("video mode callback removed\n");
 }
 
-static status_t get_mode_info_vga(struct device *dev, int mode, struct video_mode_info *mode_info)
+static VlStatus get_mode_info_vga(struct device *dev, int mode, struct video_mode_info *mode_info)
 {
     if (mode < 0) mode = 0x00;
 
@@ -568,9 +569,9 @@ static status_t get_mode_info_vga(struct device *dev, int mode, struct video_mod
     return STATUS_SUCCESS;
 }
 
-static status_t get_mode_info_vbe(struct device *dev, int mode, struct video_mode_info *mode_info)
+static VlStatus get_mode_info_vbe(struct device *dev, int mode, struct video_mode_info *mode_info)
 {
-    status_t status;
+    VlStatus status;
     struct vga_data *data = (struct vga_data *)dev->data;
     struct vbe_controller_info vbe_info;
     uint16_t *mode_list;
@@ -629,7 +630,7 @@ static status_t get_mode_info_vbe(struct device *dev, int mode, struct video_mod
     return get_mode_info_vga(dev, mode, mode_info);
 }
 
-static status_t get_mode_info(struct device *dev, int mode, struct video_mode_info *mode_info)
+static VlStatus get_mode_info(struct device *dev, int mode, struct video_mode_info *mode_info)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -637,12 +638,12 @@ static status_t get_mode_info(struct device *dev, int mode, struct video_mode_in
                                : get_mode_info_vga(dev, mode, mode_info);
 }
 
-static status_t get_hw_mode_info_vbe(
+static VlStatus get_hw_mode_info_vbe(
     struct device *dev, int mode, struct video_hw_mode_info *hwmode
 )
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
     struct vbe_video_mode_info vbe_mode_info;
 
     if (!data->vbe_offers_nonvbe_mode_info && mode < 0x100) return STATUS_CONFLICTING_STATE;
@@ -677,7 +678,7 @@ static status_t get_hw_mode_info_vbe(
     return STATUS_SUCCESS;
 }
 
-static status_t get_hw_mode_info_vga(
+static VlStatus get_hw_mode_info_vga(
     struct device *dev, int mode, struct video_hw_mode_info *hwmode
 )
 {
@@ -705,7 +706,7 @@ static status_t get_hw_mode_info_vga(
     return STATUS_SUCCESS;
 }
 
-static status_t get_hw_mode_info(struct device *dev, int mode, struct video_hw_mode_info *hwmode)
+static VlStatus get_hw_mode_info(struct device *dev, int mode, struct video_hw_mode_info *hwmode)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -727,7 +728,7 @@ static const struct video_interface vidif = {
     .get_hw_mode_info = get_hw_mode_info,
 };
 
-static status_t get_framebuffer_vbe(struct device *dev, void **framebuffer)
+static VlStatus get_framebuffer_vbe(struct device *dev, void **framebuffer)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -736,7 +737,7 @@ static status_t get_framebuffer_vbe(struct device *dev, void **framebuffer)
     return STATUS_SUCCESS;
 }
 
-static status_t get_framebuffer(struct device *dev, void **framebuffer)
+static VlStatus get_framebuffer(struct device *dev, void **framebuffer)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -745,7 +746,7 @@ static status_t get_framebuffer(struct device *dev, void **framebuffer)
     return get_framebuffer_vbe(dev, framebuffer);
 }
 
-static status_t fb_invalidate_vbe(struct device *dev, int x0, int y0, int x1, int y1)
+static VlStatus fb_invalidate_vbe(struct device *dev, int x0, int y0, int x1, int y1)
 {
     for (int yr = y0 / DIFF_REGION_SIZE; yr < (y1 + DIFF_REGION_SIZE - 1) / DIFF_REGION_SIZE;
          yr++) {
@@ -758,7 +759,7 @@ static status_t fb_invalidate_vbe(struct device *dev, int x0, int y0, int x1, in
     return STATUS_SUCCESS;
 }
 
-static status_t fb_invalidate(struct device *dev, int x0, int y0, int x1, int y1)
+static VlStatus fb_invalidate(struct device *dev, int x0, int y0, int x1, int y1)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -793,7 +794,7 @@ static int get_diff_chunk(struct device *dev, int xr, int yr)
     return get_diff_chunk_vbe(dev, xr, yr);
 }
 
-static status_t fb_flush_vbe(struct device *dev)
+static VlStatus fb_flush_vbe(struct device *dev)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -811,12 +812,12 @@ static status_t fb_flush_vbe(struct device *dev)
             }
 
             for (int y = yr * DIFF_REGION_SIZE; y < (yr + 1) * DIFF_REGION_SIZE; y++) {
-                long fb_offs = (y)*data->vbe_mode_info.pitch +
-                    xr * DIFF_REGION_SIZE * data->vbe_mode_info.bpp / 8;
+                long fb_offs = (y * data->vbe_mode_info.pitch) +
+                    (xr * DIFF_REGION_SIZE * data->vbe_mode_info.bpp / 8);
 
                 data->convert_color(
                     &data->vbe_mode_info,
-                    &data->frame_buffer[y * data->vbe_mode_info.width + xr * DIFF_REGION_SIZE],
+                    &data->frame_buffer[(y * data->vbe_mode_info.width) + (xr * DIFF_REGION_SIZE)],
                     (void *)(data->vbe_mode_info.framebuffer + fb_offs),
                     chunk_size * DIFF_REGION_SIZE
                 );
@@ -829,7 +830,7 @@ static status_t fb_flush_vbe(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t fb_flush(struct device *dev)
+static VlStatus fb_flush(struct device *dev)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -846,7 +847,7 @@ static const struct framebuffer_interface fbif = {
     .flush = fb_flush,
 };
 
-static status_t get_dimension_vbe(struct device *dev, int *width, int *height)
+static VlStatus get_dimension_vbe(struct device *dev, int *width, int *height)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -860,7 +861,7 @@ static status_t get_dimension_vbe(struct device *dev, int *width, int *height)
     return STATUS_SUCCESS;
 }
 
-static status_t get_dimension_vga(struct device *dev, int *width, int *height)
+static VlStatus get_dimension_vga(struct device *dev, int *width, int *height)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -872,7 +873,7 @@ static status_t get_dimension_vga(struct device *dev, int *width, int *height)
     return STATUS_SUCCESS;
 }
 
-static status_t get_dimension(struct device *dev, int *width, int *height)
+static VlStatus get_dimension(struct device *dev, int *width, int *height)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -880,7 +881,7 @@ static status_t get_dimension(struct device *dev, int *width, int *height)
                                  : get_dimension_vga(dev, width, height);
 }
 
-static status_t get_buffer(struct device *dev, struct console_char_cell **buf)
+static VlStatus get_buffer(struct device *dev, struct console_char_cell **buf)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -889,10 +890,10 @@ static status_t get_buffer(struct device *dev, struct console_char_cell **buf)
     return STATUS_SUCCESS;
 }
 
-static status_t con_invalidate(struct device *dev, int x0, int y0, int x1, int y1)
+static VlStatus con_invalidate(struct device *dev, int x0, int y0, int x1, int y1)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int width;
 
     if (data->is_switching_mode) return STATUS_CONFLICTING_STATE;
@@ -902,17 +903,17 @@ static status_t con_invalidate(struct device *dev, int x0, int y0, int x1, int y
 
     for (int y = y0; y <= y1; y++) {
         for (int x = x0; x <= x1; x++) {
-            data->diff_buffer[(y * width + x) / 8] |= 1 << ((y * width + x) % 8);
+            data->diff_buffer[((y * width) + x) / 8] |= 1 << (((y * width) + x) % 8);
         }
     }
 
     return STATUS_SUCCESS;
 }
 
-static status_t con_flush(struct device *dev)
+static VlStatus con_flush(struct device *dev)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
-    status_t status;
+    VlStatus status;
     int width, height;
     const struct console_char_cell *src;
     uint8_t cp437_char;
@@ -925,11 +926,11 @@ static status_t con_flush(struct device *dev)
 
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            if (!(data->diff_buffer[(y * width + x) / 8] & (1 << ((y * width + x) % 8)))) {
+            if (!(data->diff_buffer[((y * width) + x) / 8] & (1 << (((y * width) + x) % 8)))) {
                 continue;
             }
 
-            src = &data->char_buffer[y * width + x];
+            src = &data->char_buffer[(y * width) + x];
             status = VlEnc_Utf32ToCp437(src->codepoint, &cp437_char);
             if (!CHECK_SUCCESS(status)) {
                 cp437_char = '?';
@@ -946,18 +947,18 @@ static status_t con_flush(struct device *dev)
             if (src->attr.text_dim) {
                 cell &= 0x77FF;
             }
-            ((uint16_t *)0xB8000)[y * width + x] =
+            ((uint16_t *)0xB8000)[(y * width) + x] =
                 cell;  // NOLINT(clang-analyzer-core.FixedAddressDereference)
-            data->diff_buffer[(y * width + x) / 8] &= ~(1 << ((y * width + x) % 8));
+            data->diff_buffer[((y * width) + x) / 8] &= ~(1 << (((y * width) + x) % 8));
         }
     }
 
     return STATUS_SUCCESS;
 }
 
-static status_t set_cursor_pos(struct device *dev, int col, int row)
+static VlStatus set_cursor_pos(struct device *dev, int col, int row)
 {
-    status_t status;
+    VlStatus status;
     struct vga_data *data = (struct vga_data *)dev->data;
     int width, pos;
 
@@ -971,7 +972,7 @@ static status_t set_cursor_pos(struct device *dev, int col, int row)
         row = data->cursor_row;
     }
 
-    pos = row * width + col;
+    pos = (row * width) + col;
 
     VlA_Out8(0x03D4, 0x0F);
     VlA_Out8(0x03D5, pos & 0xFF);
@@ -984,7 +985,7 @@ static status_t set_cursor_pos(struct device *dev, int col, int row)
     return STATUS_SUCCESS;
 }
 
-static status_t get_cursor_pos(struct device *dev, int *col, int *row)
+static VlStatus get_cursor_pos(struct device *dev, int *col, int *row)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -994,7 +995,7 @@ static status_t get_cursor_pos(struct device *dev, int *col, int *row)
     return STATUS_SUCCESS;
 }
 
-static status_t set_cursor_visibility(struct device *dev, int visibility)
+static VlStatus set_cursor_visibility(struct device *dev, int visibility)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -1010,7 +1011,7 @@ static status_t set_cursor_visibility(struct device *dev, int visibility)
     return STATUS_SUCCESS;
 }
 
-static status_t get_cursor_visibility(struct device *dev, int *visibility)
+static VlStatus get_cursor_visibility(struct device *dev, int *visibility)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -1032,19 +1033,19 @@ static const struct console_interface conif = {
     .get_cursor_visibility = get_cursor_visibility,
 };
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
     struct resource *rsrc,
     int rsrc_cnt
 );
-static status_t remove(struct device *dev);
-static status_t get_interface(struct device *dev, const char *name, const void **result);
+static VlStatus remove(struct device *dev);
+static VlStatus get_interface(struct device *dev, const char *name, const void **result);
 
 static void vga_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
 
     status = VlDev_CreateDriver(&drv);
@@ -1058,7 +1059,7 @@ static void vga_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
@@ -1066,7 +1067,7 @@ static status_t probe(
     int rsrc_cnt
 )
 {
-    status_t status;
+    VlStatus status;
     struct vbe_controller_info vbe_info;
     struct device *dev = NULL;
     struct vga_data *data = NULL;
@@ -1176,7 +1177,7 @@ has_error:
     return status;
 }
 
-static status_t remove(struct device *dev)
+static VlStatus remove(struct device *dev)
 {
     struct vga_data *data = (struct vga_data *)dev->data;
 
@@ -1199,7 +1200,7 @@ static status_t remove(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_interface(struct device *dev, const char *name, const void **result)
+static VlStatus get_interface(struct device *dev, const char *name, const void **result)
 {
     if (strcmp(name, "framebuffer") == 0) {
         if (result) *result = &fbif;

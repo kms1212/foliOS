@@ -1,5 +1,7 @@
 #include <stdio.h>
 
+#include "internal.h"  // NOLINT(misc-include-cleaner)
+
 static FILE _stdout = {
     .type = 0,
 };

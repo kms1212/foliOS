@@ -1,5 +1,6 @@
 #include <vellum/shell.h>
 
+#include <stdint.h>
 #include <stdio.h>
 
 #include <vellum/device.h>
@@ -11,7 +12,7 @@
 
 static int testmouse_handler(struct shell_instance *inst, int argc, char **argv)
 {
-    status_t status;
+    VlStatus status;
     struct device *msdev;
     status = VlDev_Find("mouse0", &msdev);
     if (!CHECK_SUCCESS(status)) {
@@ -98,7 +99,7 @@ static int testmouse_handler(struct shell_instance *inst, int argc, char **argv)
                 }
             }
 
-            framebuffer[ypos * vmode_info.width + xpos] = 0xFFFFFF;
+            framebuffer[(ypos * vmode_info.width) + xpos] = 0xFFFFFF;
             fbif->invalidate(fbdev, xpos, ypos, xpos, ypos);
             fbif->flush(fbdev);
             break;

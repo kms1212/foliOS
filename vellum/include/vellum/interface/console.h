@@ -28,16 +28,16 @@ struct console_char_cell {
 };
 
 struct console_interface {
-    status_t (*get_dimension)(struct device *, int *, int *);
-    status_t (*get_buffer)(struct device *, struct console_char_cell **);
-    status_t (*invalidate)(struct device *, int, int, int, int);
-    status_t (*flush)(struct device *);
-    status_t (*set_cursor_pos)(struct device *, int, int);
-    status_t (*get_cursor_pos)(struct device *, int *, int *);
-    status_t (*set_cursor_visibility)(struct device *, int);
-    status_t (*get_cursor_visibility)(struct device *, int *);
-    status_t (*set_cursor_attr)(struct device *, const void *);
-    status_t (*get_cursor_attr)(struct device *, void *);
+    VlStatus (*get_dimension)(struct device *, int *, int *);
+    VlStatus (*get_buffer)(struct device *, struct console_char_cell **);
+    VlStatus (*invalidate)(struct device *, int, int, int, int);
+    VlStatus (*flush)(struct device *);
+    VlStatus (*set_cursor_pos)(struct device *, int, int);
+    VlStatus (*get_cursor_pos)(struct device *, int *, int *);
+    VlStatus (*set_cursor_visibility)(struct device *, int);
+    VlStatus (*get_cursor_visibility)(struct device *, int *);
+    VlStatus (*set_cursor_attr)(struct device *, const void *);
+    VlStatus (*get_cursor_attr)(struct device *, void *);
 };
 
 #endif  // __VELLUM_INTERFACE_CONSOLE_H__

@@ -1,18 +1,22 @@
 #include <vellum/elf.h>
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/log.h>
+#include <vellum/arch/elf.h>
+#include <vellum/arch/mmu.h>
+
 #include <vellum/macros.h>
 #include <vellum/mm.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "elf"
 
-status_t VlElf_Open(const char *path, struct elf_file **elfout)
+VlStatus VlElf_Open(const char *path, struct elf_file **elfout)
 {
-    status_t status;
+    VlStatus status;
     struct elf_file *elf = NULL;
     struct elf32_shdr shdr32;
     struct elf64_shdr shdr64;
@@ -156,7 +160,7 @@ void VlElf_Close(struct elf_file *elf)
     free(elf);
 }
 
-status_t VlElf_GetHeader(struct elf_file *elf, void *buf, size_t len)
+VlStatus VlElf_GetHeader(struct elf_file *elf, void *buf, size_t len)
 {
     if (elf->ident.class == ELFCLASS32) {
         memcpy(buf, &elf->ehdr32, MIN(len, sizeof(elf->ehdr32)));
@@ -169,7 +173,7 @@ status_t VlElf_GetHeader(struct elf_file *elf, void *buf, size_t len)
     return STATUS_SUCCESS;
 }
 
-status_t VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len)
+VlStatus VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len)
 {
     uint64_t phent_offset;
     size_t phent_size;
@@ -177,7 +181,7 @@ status_t VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *
     if (elf->ident.class == ELFCLASS32) {
         if (index >= elf->ehdr32.phnum) return STATUS_INVALID_VALUE;
 
-        phent_offset = elf->ehdr32.phoff + index * elf->ehdr32.phentsize;
+        phent_offset = elf->ehdr32.phoff + (index * elf->ehdr32.phentsize);
         phent_size = MIN(len, elf->ehdr32.phentsize);
     } else if (elf->ident.class == ELFCLASS64) {
         if (index >= elf->ehdr64.phnum) return STATUS_INVALID_VALUE;
@@ -194,9 +198,9 @@ status_t VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *
     return STATUS_SUCCESS;
 }
 
-status_t VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr)
+VlStatus VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr)
 {
-    status_t status;
+    VlStatus status;
     struct elf32_phdr phdr32;
     struct elf64_phdr phdr64;
     uintptr_t program_load_addr;
@@ -210,7 +214,7 @@ status_t VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr
         if (!CHECK_SUCCESS(status)) return status;
 
         program_load_addr = paddr ? (uintptr_t)paddr : phdr32.paddr;
-        program_size_page = ALIGN_DIV(program_load_addr % PAGE_SIZE + phdr32.memsz, PAGE_SIZE);
+        program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr32.memsz, PAGE_SIZE);
         program_data_offset = (long)phdr32.offset;
         program_memsz = phdr32.memsz;
         program_filesz = phdr32.filesz;
@@ -219,7 +223,7 @@ status_t VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr
         if (!CHECK_SUCCESS(status)) return status;
 
         program_load_addr = paddr ? (uintptr_t)paddr : phdr64.paddr;
-        program_size_page = ALIGN_DIV(program_load_addr % PAGE_SIZE + phdr64.memsz, PAGE_SIZE);
+        program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr64.memsz, PAGE_SIZE);
         program_data_offset = (long)phdr64.offset;
         program_memsz = phdr64.memsz;
         program_filesz = phdr64.filesz;
@@ -240,12 +244,12 @@ status_t VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr
     return STATUS_SUCCESS;
 }
 
-status_t VlElf_GetSectionHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len)
+VlStatus VlElf_GetSectionHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len)
 {
     if (elf->ident.class == ELFCLASS32) {
         if (index >= elf->ehdr32.shnum) return STATUS_INVALID_VALUE;
 
-        fseek(elf->fp, (int)(elf->ehdr32.shoff + index * elf->ehdr32.shentsize), SEEK_SET);
+        fseek(elf->fp, (int)(elf->ehdr32.shoff + (index * elf->ehdr32.shentsize)), SEEK_SET);
         fread(buf, MIN(len, elf->ehdr32.shentsize), 1, elf->fp);
     } else if (elf->ident.class == ELFCLASS64) {
         if (index >= elf->ehdr64.shnum) return STATUS_INVALID_VALUE;
@@ -263,9 +267,9 @@ status_t VlElf_GetSectionHeader(struct elf_file *elf, unsigned int index, void *
     return STATUS_SUCCESS;
 }
 
-status_t VlElf_GetSectionName(struct elf_file *elf, unsigned int index, const char **name)
+VlStatus VlElf_GetSectionName(struct elf_file *elf, unsigned int index, const char **name)
 {
-    status_t status;
+    VlStatus status;
     struct elf32_shdr shdr32;
     struct elf32_shdr shdr64;
 
@@ -286,10 +290,10 @@ status_t VlElf_GetSectionName(struct elf_file *elf, unsigned int index, const ch
     return STATUS_SUCCESS;
 }
 
-status_t VlElf_FindSection(struct elf_file *elf, const char *name, unsigned int *idx)
+VlStatus VlElf_FindSection(struct elf_file *elf, const char *name, unsigned int *idx)
 {
     const char *section_name;
-    status_t status;
+    VlStatus status;
 
     if (elf->ident.class == ELFCLASS32) {
         for (int i = 0; i < elf->ehdr32.shnum; i++) {
@@ -318,9 +322,9 @@ status_t VlElf_FindSection(struct elf_file *elf, const char *name, unsigned int 
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t VlElf_LoadSection(struct elf_file *elf, unsigned int index, void *buf, size_t len)
+VlStatus VlElf_LoadSection(struct elf_file *elf, unsigned int index, void *buf, size_t len)
 {
-    status_t status;
+    VlStatus status;
     struct elf32_shdr shdr32;
     struct elf64_shdr shdr64;
 
@@ -343,7 +347,7 @@ status_t VlElf_LoadSection(struct elf_file *elf, unsigned int index, void *buf, 
     return STATUS_SUCCESS;
 }
 
-status_t VlElf_FindSymbol(struct elf_file *elf, const char *name, unsigned int *index)
+VlStatus VlElf_FindSymbol(struct elf_file *elf, const char *name, unsigned int *index)
 {
     const char *sym_name;
 
@@ -372,7 +376,7 @@ status_t VlElf_FindSymbol(struct elf_file *elf, const char *name, unsigned int *
     return STATUS_ENTRY_NOT_FOUND;
 }
 
-status_t VlElf_GetSymbol(struct elf_file *elf, unsigned int index, void *buf, size_t len)
+VlStatus VlElf_GetSymbol(struct elf_file *elf, unsigned int index, void *buf, size_t len)
 {
     if (elf->ident.class != ELFCLASS32) return STATUS_NOT_SUPPORTED;
 
@@ -395,7 +399,7 @@ status_t VlElf_GetSymbol(struct elf_file *elf, unsigned int index, void *buf, si
     return STATUS_SUCCESS;
 }
 
-status_t VlElf_GetSymbolCount(struct elf_file *elf, unsigned int *count)
+VlStatus VlElf_GetSymbolCount(struct elf_file *elf, unsigned int *count)
 {
     if (elf->ident.class != ELFCLASS32) return STATUS_NOT_SUPPORTED;
 

@@ -2,30 +2,58 @@
 
 #include <inttypes.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include <vellum/arch/idt.h>
+#include <vellum/arch/interrupt.h>
 #include <vellum/arch/intrinsics/idt.h>
-#include <vellum/arch/io.h>
+#include <vellum/arch/intrinsics/io.h>
 
 #include <vellum/plat/pic.h>
+#include <vellum/plat/panic.h>
 
-#include <vellum/debug.h>
 #include <vellum/log.h>
+#include <vellum/status.h>
 #include <vellum/macros.h>
-#include <vellum/panic.h>
 
 #define MODULE_NAME "isr"
 
-#define DECLARE_ISRxy(x, y) extern void _pc_isr_##x##y(void);
+#define DECLARE_ISRxy(x, y) extern void _pc_isr_##x##y(void)
+// NOLINTNEXTLINE(readability-identifier-naming)
 #define DECLARE_ISRx(x)                                                                            \
-    DECLARE_ISRxy(x, 0) DECLARE_ISRxy(x, 1) DECLARE_ISRxy(x, 2) DECLARE_ISRxy(x, 3)                \
-        DECLARE_ISRxy(x, 4) DECLARE_ISRxy(x, 5) DECLARE_ISRxy(x, 6) DECLARE_ISRxy(x, 7)            \
-            DECLARE_ISRxy(x, 8) DECLARE_ISRxy(x, 9) DECLARE_ISRxy(x, a) DECLARE_ISRxy(x, b)        \
-                DECLARE_ISRxy(x, c) DECLARE_ISRxy(x, d) DECLARE_ISRxy(x, e) DECLARE_ISRxy(x, f)
+    DECLARE_ISRxy(x, 0);                                                                           \
+    DECLARE_ISRxy(x, 1);                                                                           \
+    DECLARE_ISRxy(x, 2);                                                                           \
+    DECLARE_ISRxy(x, 3);                                                                           \
+    DECLARE_ISRxy(x, 4);                                                                           \
+    DECLARE_ISRxy(x, 5);                                                                           \
+    DECLARE_ISRxy(x, 6);                                                                           \
+    DECLARE_ISRxy(x, 7);                                                                           \
+    DECLARE_ISRxy(x, 8);                                                                           \
+    DECLARE_ISRxy(x, 9);                                                                           \
+    DECLARE_ISRxy(x, a);                                                                           \
+    DECLARE_ISRxy(x, b);                                                                           \
+    DECLARE_ISRxy(x, c);                                                                           \
+    DECLARE_ISRxy(x, d);                                                                           \
+    DECLARE_ISRxy(x, e);                                                                           \
+    DECLARE_ISRxy(x, f)
 
-DECLARE_ISRx(0) DECLARE_ISRx(1) DECLARE_ISRx(2) DECLARE_ISRx(3) DECLARE_ISRx(4) DECLARE_ISRx(5) DECLARE_ISRx(6) DECLARE_ISRx(
-    7
-) DECLARE_ISRx(8) DECLARE_ISRx(9) DECLARE_ISRx(a) DECLARE_ISRx(b) DECLARE_ISRx(c) DECLARE_ISRx(d) DECLARE_ISRx(e) DECLARE_ISRx(f)
+DECLARE_ISRx(0);
+DECLARE_ISRx(1);
+DECLARE_ISRx(2);
+DECLARE_ISRx(3);
+DECLARE_ISRx(4);
+DECLARE_ISRx(5);
+DECLARE_ISRx(6);
+DECLARE_ISRx(7);
+DECLARE_ISRx(8);
+DECLARE_ISRx(9);
+DECLARE_ISRx(a);
+DECLARE_ISRx(b);
+DECLARE_ISRx(c);
+DECLARE_ISRx(d);
+DECLARE_ISRx(e);
+DECLARE_ISRx(f);
 
 #define SET_INT_ENTRY(num)                                                                         \
     _pc_idt[0x##num] = (struct VlA_IdtEntry)                                                       \
@@ -41,7 +69,7 @@ DECLARE_ISRx(0) DECLARE_ISRx(1) DECLARE_ISRx(2) DECLARE_ISRx(3) DECLARE_ISRx(4) 
         .attributes = 0x8F, .offset_high = ((uint32_t)_pc_isr_##num >> 16) & 0xFFFF,               \
     }
 
-    struct VlA_IdtEntry _pc_idt[256];
+struct VlA_IdtEntry _pc_idt[256];
 struct isr_handler *_pc_isr_table[256];
 
 void VlIntP_Init(void)
@@ -319,7 +347,7 @@ void VlIntP_Init(void)
     SET_TRAP_ENTRY(ff);
 }
 
-status_t VlIntP_AddInterruptHandler(
+VlStatus VlIntP_AddInterruptHandler(
     int num, void *data, interrupt_handler_t func, struct isr_handler **handler
 )
 {
@@ -350,7 +378,7 @@ status_t VlIntP_AddInterruptHandler(
     return STATUS_SUCCESS;
 }
 
-status_t VlIntP_AddTrapHandler(int num, trap_handler_t func, struct isr_handler **handler)
+VlStatus VlIntP_AddTrapHandler(int num, trap_handler_t func, struct isr_handler **handler)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
@@ -397,7 +425,7 @@ void VlIntP_RemoveHandler(struct isr_handler *handler)
     }
 }
 
-status_t VlIntP_Mask(int num)
+VlStatus VlIntP_Mask(int num)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
@@ -405,7 +433,7 @@ status_t VlIntP_Mask(int num)
 
     if (0x20 <= num && num < 0x30) {
         /* mask PIC first */
-        _pc_pic_mask_int(num - 0x20);
+        VlPicP_Mask(num - 0x20);
     }
 
     _pc_idt[num].attributes &= ~0x80000000;
@@ -413,7 +441,7 @@ status_t VlIntP_Mask(int num)
     return STATUS_SUCCESS;
 }
 
-status_t VlIntP_Unmask(int num)
+VlStatus VlIntP_Unmask(int num)
 {
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
@@ -423,7 +451,7 @@ status_t VlIntP_Unmask(int num)
 
     if (0x20 <= num && num < 0x30) {
         /* unmask PIC too */
-        _pc_pic_unmask_int(num - 0x20);
+        VlPicP_Unmask(num - 0x20);
     }
 
     return STATUS_SUCCESS;

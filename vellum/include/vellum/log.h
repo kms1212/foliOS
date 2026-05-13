@@ -5,7 +5,7 @@
 
 #include <vellum/compiler.h>
 
-#define LL_NONE  -1
+#define LL_NONE  (-1)
 #define LL_FATAL 0
 #define LL_ERROR 1
 #define LL_WARN  2

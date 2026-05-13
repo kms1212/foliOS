@@ -1,22 +1,18 @@
-#include <errno.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <wchar.h>
 
-#include <vellum/arch/io.h>
+#include <vellum/plat/panic.h>
 
-#include <vellum/compiler.h>
 #include <vellum/device.h>
 #include <vellum/font.h>
-#include <vellum/interface/char.h>
 #include <vellum/interface/console.h>
 #include <vellum/interface/framebuffer.h>
 #include <vellum/interface/video.h>
 #include <vellum/log.h>
-#include <vellum/macros.h>
 #include <vellum/status.h>
+#include <vellum/resource.h>
 
 #define MODULE_NAME "vconsole"
 
@@ -42,13 +38,13 @@ struct vconsole_data {
 
 inline static int get_glyph_bit(const uint8_t *glyph_data, int cwidth, int x, int y)
 {
-    return glyph_data[(y * cwidth + x) / 8] & (0x80 >> ((y * cwidth + x) % 8));
+    return glyph_data[((y * cwidth) + x) / 8] & (0x80 >> (((y * cwidth) + x) % 8));
 }
 
-static status_t draw_char(struct device *dev, int col, int row)
+static VlStatus draw_char(struct device *dev, int col, int row)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
-    status_t status;
+    VlStatus status;
     uint32_t *framebuffer;
     struct console_char_cell *cell;
     int cwidth, cheight;
@@ -78,7 +74,7 @@ static status_t draw_char(struct device *dev, int col, int row)
     status = data->fbif->get_framebuffer(data->fbdev, (void **)&framebuffer);
     if (!CHECK_SUCCESS(status)) return status;
 
-    cell = &data->char_buffer[row * data->cols + col];
+    cell = &data->char_buffer[(row * data->cols) + col];
     if (cell->codepoint == 0xFFFFFFFF) {
         return STATUS_SUCCESS;
     }
@@ -124,10 +120,10 @@ static status_t draw_char(struct device *dev, int col, int row)
             }
 
             if (cell->attr.text_reversed) {
-                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] =
+                framebuffer[((y_offset + y) * data->current_vmode_info.width) + x_offset + x] =
                     fg ? bg_color : fg_color;
             } else {
-                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] =
+                framebuffer[((y_offset + y) * data->current_vmode_info.width) + x_offset + x] =
                     fg ? fg_color : bg_color;
             }
         }
@@ -135,7 +131,7 @@ static status_t draw_char(struct device *dev, int col, int row)
         if ((cell->attr.text_overlined && y == 1) || (cell->attr.text_strike && y == 8) ||
             (cell->attr.text_underline && y == 15)) {
             for (int x = 0; x < cwidth; x++) {
-                framebuffer[(y_offset + y) * data->current_vmode_info.width + x_offset + x] =
+                framebuffer[((y_offset + y) * data->current_vmode_info.width) + x_offset + x] =
                     cell->attr.text_reversed ? cell->attr.bg_color : cell->attr.fg_color;
             }
         }
@@ -149,10 +145,10 @@ static status_t draw_char(struct device *dev, int col, int row)
     return STATUS_SUCCESS;
 }
 
-static status_t draw_cursor(struct device *dev)
+static VlStatus draw_cursor(struct device *dev)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
-    status_t status;
+    VlStatus status;
     uint32_t *framebuffer;
     int x_offset, y_offset;
 
@@ -164,7 +160,7 @@ static status_t draw_cursor(struct device *dev)
 
     for (int y = y_offset + 14; y < y_offset + 16; y++) {
         for (int x = x_offset; x < x_offset + 8; x++) {
-            framebuffer[y * data->current_vmode_info.width + x] = 0xFFFFFF;
+            framebuffer[(y * data->current_vmode_info.width) + x] = 0xFFFFFF;
         }
     }
 
@@ -175,7 +171,7 @@ static status_t draw_cursor(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_dimension(struct device *dev, int *width, int *height)
+static VlStatus get_dimension(struct device *dev, int *width, int *height)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -189,7 +185,7 @@ static status_t get_dimension(struct device *dev, int *width, int *height)
     return STATUS_SUCCESS;
 }
 
-static status_t get_buffer(struct device *dev, struct console_char_cell **buf)
+static VlStatus get_buffer(struct device *dev, struct console_char_cell **buf)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -202,7 +198,7 @@ static status_t get_buffer(struct device *dev, struct console_char_cell **buf)
     return STATUS_SUCCESS;
 }
 
-static status_t invalidate(struct device *dev, int x0, int y0, int x1, int y1)
+static VlStatus invalidate(struct device *dev, int x0, int y0, int x1, int y1)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -214,17 +210,17 @@ static status_t invalidate(struct device *dev, int x0, int y0, int x1, int y1)
 
     for (int row = y0; row <= y1; row++) {
         for (int col = x0; col <= x1; col++) {
-            data->diff_buffer[(row * data->cols + col) / 8] |= 1 << ((row * data->cols + col) % 8);
+            data->diff_buffer[((row * data->cols) + col) / 8] |= 1 << (((row * data->cols) + col) % 8);
         }
     }
 
     return STATUS_SUCCESS;
 }
 
-static status_t flush(struct device *dev)
+static VlStatus flush(struct device *dev)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
-    status_t status;
+    VlStatus status;
 
     if (data->current_vmode_info.text) {
         return data->conif->flush(data->fbdev);
@@ -234,16 +230,16 @@ static status_t flush(struct device *dev)
 
     for (int row = 0; row < data->rows; row++) {
         for (int col = 0; col < data->cols; col++) {
-            if (data->diff_buffer[(row * data->cols + col) / 8] &
-                    (1 << ((row * data->cols + col) % 8)) ||
+            if (data->diff_buffer[((row * data->cols) + col) / 8] &
+                    (1 << (((row * data->cols) + col) % 8)) ||
                 ((data->cursor_prev_col != data->cursor_col ||
                   data->cursor_prev_row != data->cursor_row) &&
                  (data->cursor_prev_col == col && data->cursor_prev_row == row))) {
                 /* status = */ draw_char(dev, col, row);
                 // ignore status
 
-                data->diff_buffer[(row * data->cols + col) / 8] &=
-                    ~(1 << ((row * data->cols + col) % 8));
+                data->diff_buffer[((row * data->cols) + col) / 8] &=
+                    ~(1 << (((row * data->cols) + col) % 8));
             }
         }
     }
@@ -264,7 +260,7 @@ static status_t flush(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t set_cursor_pos(struct device *dev, int col, int row)
+static VlStatus set_cursor_pos(struct device *dev, int col, int row)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -278,7 +274,7 @@ static status_t set_cursor_pos(struct device *dev, int col, int row)
     return STATUS_SUCCESS;
 }
 
-static status_t get_cursor_pos(struct device *dev, int *col, int *row)
+static VlStatus get_cursor_pos(struct device *dev, int *col, int *row)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -292,7 +288,7 @@ static status_t get_cursor_pos(struct device *dev, int *col, int *row)
     return STATUS_SUCCESS;
 }
 
-static status_t set_cursor_visibility(struct device *dev, int visibility)
+static VlStatus set_cursor_visibility(struct device *dev, int visibility)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -307,7 +303,7 @@ static status_t set_cursor_visibility(struct device *dev, int visibility)
     return STATUS_SUCCESS;
 }
 
-static status_t get_cursor_visibility(struct device *dev, int *visibility)
+static VlStatus get_cursor_visibility(struct device *dev, int *visibility)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -333,19 +329,19 @@ static const struct console_interface conif = {
     .get_cursor_attr = NULL,
 };
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
     struct resource *rsrc,
     int rsrc_cnt
 );
-static status_t remove(struct device *dev);
-static status_t get_interface(struct device *dev, const char *name, const void **result);
+static VlStatus remove(struct device *dev);
+static VlStatus get_interface(struct device *dev, const char *name, const void **result);
 
 static void vconsole_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
 
     status = VlDev_CreateDriver(&drv);
@@ -365,7 +361,7 @@ static void video_mode_callback(void *_dev, struct device *fbdev, int mode)
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
     struct console_char_cell *new_char_buffer;
     uint8_t *new_diff_buffer;
-    status_t status;
+    VlStatus status;
 
     data->is_switching_mode = 1;
 
@@ -417,7 +413,7 @@ has_error:
     VlP_Panic(STATUS_UNKNOWN_ERROR, "I think there's no way to recover this");
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
@@ -425,7 +421,7 @@ static status_t probe(
     int rsrc_cnt
 )
 {
-    status_t status;
+    VlStatus status;
     struct device *dev = NULL;
     struct device *fbdev = NULL;
     const struct video_interface *vidif = NULL;
@@ -506,7 +502,7 @@ has_error:
     return status;
 }
 
-static status_t remove(struct device *dev)
+static VlStatus remove(struct device *dev)
 {
     struct vconsole_data *data = (struct vconsole_data *)dev->data;
 
@@ -527,7 +523,7 @@ static status_t remove(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_interface(struct device *dev, const char *name, const void **result)
+static VlStatus get_interface(struct device *dev, const char *name, const void **result)
 {
     if (strcmp(name, "console") == 0) {
         if (result) *result = &conif;

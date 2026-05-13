@@ -1,6 +1,12 @@
 #include <vellum/plat/bios/video.h>
 
+#include <stdint.h>
+
+#include <vellum/arch/farptr.h>
+
 #include <vellum/plat/bios/bioscall.h>
+
+#include <vellum/status.h>
 
 void VlBiosP_SetVideoMode(uint8_t mode)
 {
@@ -99,7 +105,7 @@ void VlBiosP_GetVideoFontData(uint8_t font_type, const void **data, uint16_t *le
     }
 }
 
-status_t VlBiosP_GetVbeControllerInfo(struct vbe_controller_info *buf)
+VlStatus VlBiosP_GetVbeControllerInfo(struct vbe_controller_info *buf)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F00,
@@ -114,7 +120,7 @@ status_t VlBiosP_GetVbeControllerInfo(struct vbe_controller_info *buf)
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t VlBiosP_GetVbeVideoModeInfo(uint16_t mode, struct vbe_video_mode_info *buf)
+VlStatus VlBiosP_GetVbeVideoModeInfo(uint16_t mode, struct vbe_video_mode_info *buf)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F01,
@@ -130,7 +136,7 @@ status_t VlBiosP_GetVbeVideoModeInfo(uint16_t mode, struct vbe_video_mode_info *
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t VlBiosP_SetVbeVideoMode(uint16_t mode)
+VlStatus VlBiosP_SetVbeVideoMode(uint16_t mode)
 {
     struct bioscall_regs regs = {.a.w = 0x4F02, .b.w = mode};
 
@@ -141,7 +147,7 @@ status_t VlBiosP_SetVbeVideoMode(uint16_t mode)
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t VlBiosP_GetVbeVideoMode(uint16_t *mode)
+VlStatus VlBiosP_GetVbeVideoMode(uint16_t *mode)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F03,
@@ -157,7 +163,7 @@ status_t VlBiosP_GetVbeVideoMode(uint16_t *mode)
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_SetVbeDisplayStart(uint16_t x, uint16_t y)
+VlStatus VlBiosP_SetVbeDisplayStart(uint16_t x, uint16_t y)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -172,7 +178,7 @@ status_t VlBiosP_SetVbeDisplayStart(uint16_t x, uint16_t y)
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t VlBiosP_SetVbeDisplayStartAtVsync(uint16_t x, uint16_t y)
+VlStatus VlBiosP_SetVbeDisplayStartAtVsync(uint16_t x, uint16_t y)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -187,7 +193,7 @@ status_t VlBiosP_SetVbeDisplayStartAtVsync(uint16_t x, uint16_t y)
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t VlBiosP_ScheduleVbeDisplayStart(uint32_t fboffset)
+VlStatus VlBiosP_ScheduleVbeDisplayStart(uint32_t fboffset)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -201,7 +207,7 @@ status_t VlBiosP_ScheduleVbeDisplayStart(uint32_t fboffset)
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t VlBiosP_ScheduleVbeDisplayStartAtVsync(uint32_t fboffset)
+VlStatus VlBiosP_ScheduleVbeDisplayStartAtVsync(uint32_t fboffset)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F07,
@@ -215,7 +221,7 @@ status_t VlBiosP_ScheduleVbeDisplayStartAtVsync(uint32_t fboffset)
     return regs.a.b.h ? STATUS_UNKNOWN_ERROR : STATUS_SUCCESS;
 }
 
-status_t VlBiosP_GetVbePmiTable(struct VlA_FarPtr16 *pmi_table, uint16_t *size)
+VlStatus VlBiosP_GetVbePmiTable(struct VlA_FarPtr16 *pmi_table, uint16_t *size)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F0A,
@@ -238,7 +244,7 @@ status_t VlBiosP_GetVbePmiTable(struct VlA_FarPtr16 *pmi_table, uint16_t *size)
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_CheckVbeDdcCapability(uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *ddc_level)
+VlStatus VlBiosP_CheckVbeDdcCapability(uint16_t ctrlr_unit, uint8_t *xfer_time, uint8_t *ddc_level)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F15,
@@ -264,7 +270,7 @@ status_t VlBiosP_CheckVbeDdcCapability(uint16_t ctrlr_unit, uint8_t *xfer_time, 
     return STATUS_SUCCESS;
 }
 
-status_t VlBiosP_GetVbeDdcEdid(uint16_t ctrlr_unit, uint16_t edid_block, struct edid *buf)
+VlStatus VlBiosP_GetVbeDdcEdid(uint16_t ctrlr_unit, uint16_t edid_block, struct edid *buf)
 {
     struct bioscall_regs regs = {
         .a.w = 0x4F15,

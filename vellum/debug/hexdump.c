@@ -1,6 +1,5 @@
-#include <vellum/panic.h>
-
 #include <stdio.h>
+#include <stdint.h>
 #include <string.h>
 
 void VlDbg_Hexdump(FILE *stream, const void *data, long len, uint32_t offset)

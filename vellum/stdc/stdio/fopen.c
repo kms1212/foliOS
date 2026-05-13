@@ -4,10 +4,13 @@
 
 #include <vellum/filesystem.h>
 #include <vellum/path.h>
+#include <vellum/status.h>
+
+#include "internal.h"
 
 FILE *fopen(const char *__restrict path, const char *__restrict mode)
 {
-    status_t status;
+    VlStatus status;
     struct path_iterator pathit;
 
     VlPath_InitIter(&pathit, path);

@@ -166,7 +166,7 @@ int wcwidth(wchar_t ucs)
     if (ucs < 32 || (ucs >= 0x7f && ucs < 0xa0)) return -1;
 
     /* binary search in table of non-spacing characters */
-    if (bisearch(ucs, combining, sizeof(combining) / sizeof(struct interval) - 1)) return 0;
+    if (bisearch(ucs, combining, (sizeof(combining) / sizeof(struct interval)) - 1)) return 0;
 
     /* if we arrive here, ucs is not a combining or C0/C1 control character */
 
@@ -253,7 +253,7 @@ int wcwidth_cjk(wchar_t ucs)
     };
 
     /* binary search in table of non-spacing characters */
-    if (bisearch(ucs, ambiguous, sizeof(ambiguous) / sizeof(struct interval) - 1)) return 2;
+    if (bisearch(ucs, ambiguous, (sizeof(ambiguous) / sizeof(struct interval)) - 1)) return 2;
 
     return wcwidth(ucs);
 }

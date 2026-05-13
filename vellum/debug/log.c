@@ -1,5 +1,6 @@
 #include <vellum/log.h>
 
+#include <stdarg.h>
 #include <stdio.h>
 
 #include <vellum/device.h>
@@ -53,7 +54,7 @@ void VlLog_PrintValist(int level, const char *module_name, const char *fmt, va_l
 {
     if (log_level < level) return;
 
-    status_t status;
+    VlStatus status;
     int time_available = 1;
     struct device *rtcdev;
     const struct rtc_interface *rtcif;
@@ -102,7 +103,7 @@ void VlLog_IntSafePrintValist(int level, const char *module_name, const char *fm
 {
     if (log_level < level) return;
 
-    status_t status;
+    VlStatus status;
     int time_available = 1;
     struct device *rtcdev;
     const struct rtc_interface *rtcif;

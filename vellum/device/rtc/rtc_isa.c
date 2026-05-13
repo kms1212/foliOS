@@ -1,21 +1,23 @@
-#include "vellum/arch/cpufeatures.h"
-#include <errno.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <vellum/arch/cpufeatures.h>
+#include <vellum/arch/interrupt.h>
+#include <vellum/arch/intrinsics/io.h>
 #include <vellum/arch/intrinsics/rdtsc.h>
-#include <vellum/arch/io.h>
 
-#include <vellum/plat/instruction.h>
 #include <vellum/plat/isr.h>
+#include <vellum/plat/panic.h>
 
 #include <vellum/device.h>
 #include <vellum/global_configs.h>
 #include <vellum/interface/nvram.h>
 #include <vellum/interface/rtc.h>
+#include <vellum/resource.h>
+#include <vellum/status.h>
 
 #define RTC_NMI_DISABLE 0x80
 
@@ -46,7 +48,7 @@
 #define RTC_B_DSE  0x01
 
 struct rtc_data {
-    int VlA_Index, io_data;
+    int io_index, io_data;
     int irq_num;
     uint32_t tsc_diff_per_second;
     uint64_t prev_tsc_value;
@@ -55,43 +57,43 @@ struct rtc_data {
 
 static uint8_t bcd2int(uint8_t bcd)
 {
-    return ((bcd >> 4) & 0xF) * 10 + (bcd & 0xF);
+    return (((bcd >> 4) & 0xF) * 10) + (bcd & 0xF);
 }
 
-status_t get_time(struct device *dev, struct rtc_time *tm)
+VlStatus get_time(struct device *dev, struct rtc_time *tm)
 {
     struct rtc_data *data = (struct rtc_data *)dev->data;
     int century = 20;
 
     do {
-        VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_A);
+        VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_A);
     } while (VlA_In8(data->io_data) & RTC_A_UIP);
 
 retry:
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
     tm->second = bcd2int(VlA_In8(data->io_data));
 
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_MINUTES);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_MINUTES);
     tm->minute = bcd2int(VlA_In8(data->io_data));
 
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_HOURS);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_HOURS);
     tm->hour = bcd2int(VlA_In8(data->io_data));
 
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_MONTHDAY);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_MONTHDAY);
     tm->mday = bcd2int(VlA_In8(data->io_data));
 
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_MONTH);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_MONTH);
     tm->month = bcd2int(VlA_In8(data->io_data));
 
     if (config_rtc_century_offset) {
-        VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | config_rtc_century_offset);
+        VlA_Out8(data->io_index, RTC_NMI_DISABLE | config_rtc_century_offset);
         century = bcd2int(VlA_In8(data->io_data));
     }
 
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_YEAR);
-    tm->year = century * 100 + bcd2int(VlA_In8(data->io_data));
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_YEAR);
+    tm->year = (century * 100) + bcd2int(VlA_In8(data->io_data));
 
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_SECONDS);
     if (tm->second != bcd2int(VlA_In8(data->io_data))) goto retry;
 
     if (!g_p_cpu_features->has_tsc && data->tsc_diff_per_second) {
@@ -107,17 +109,17 @@ retry:
     return STATUS_SUCCESS;
 }
 
-status_t set_time(struct device *dev, const struct rtc_time *tm)
+VlStatus set_time(struct device *dev, const struct rtc_time *tm)
 {
     return STATUS_NOT_SUPPORTED;
 }
 
-status_t get_alarm(struct device *dev, struct rtc_time *tm)
+VlStatus get_alarm(struct device *dev, struct rtc_time *tm)
 {
     return STATUS_NOT_SUPPORTED;
 }
 
-status_t set_alarm(struct device *dev, const struct rtc_time *tm)
+VlStatus set_alarm(struct device *dev, const struct rtc_time *tm)
 {
     return STATUS_NOT_SUPPORTED;
 }
@@ -129,12 +131,12 @@ static const struct rtc_interface rtcif = {
     .set_alarm = set_alarm,
 };
 
-status_t read_nvram(struct device *dev, int offset, uint8_t *val)
+VlStatus read_nvram(struct device *dev, int offset, uint8_t *val)
 {
     return STATUS_NOT_SUPPORTED;
 }
 
-status_t write_nvram(struct device *dev, int offset, uint8_t val)
+VlStatus write_nvram(struct device *dev, int offset, uint8_t val)
 {
     return STATUS_NOT_SUPPORTED;
 }
@@ -150,7 +152,7 @@ static void rtc_isr(void *_dev, struct VlA_InterruptFrame *frame, struct trap_re
     struct rtc_data *data = dev->data;
     uint8_t regc;
 
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_C);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_C);
     regc = VlA_In8(data->io_data);
 
     if (!g_p_cpu_features->has_tsc && (regc & 0x10)) {
@@ -162,19 +164,19 @@ static void rtc_isr(void *_dev, struct VlA_InterruptFrame *frame, struct trap_re
     }
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
     struct resource *rsrc,
     int rsrc_cnt
 );
-static status_t remove(struct device *dev);
-static status_t get_interface(struct device *dev, const char *name, const void **result);
+static VlStatus remove(struct device *dev);
+static VlStatus get_interface(struct device *dev, const char *name, const void **result);
 
 static void rtc_isa_init(void)
 {
-    status_t status;
+    VlStatus status;
     struct device_driver *drv;
 
     status = VlDev_CreateDriver(&drv);
@@ -188,7 +190,7 @@ static void rtc_isa_init(void)
     drv->get_interface = get_interface;
 }
 
-static status_t probe(
+static VlStatus probe(
     struct device **devout,
     struct device_driver *drv,
     struct device *parent,
@@ -196,7 +198,7 @@ static status_t probe(
     int rsrc_cnt
 )
 {
-    status_t status;
+    VlStatus status;
     struct device *dev = NULL;
     struct rtc_data *data = NULL;
 
@@ -217,7 +219,7 @@ static status_t probe(
         goto has_error;
     }
 
-    data->VlA_Index = (int)rsrc[0].base;
+    data->io_index = (int)rsrc[0].base;
     data->io_data = (int)rsrc[0].limit;
     data->irq_num = (int)rsrc[1].base;
     data->prev_tsc_value = 0;
@@ -231,9 +233,9 @@ static status_t probe(
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     // enable update interrupt
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
     uint8_t temp = VlA_In8(data->io_data);
-    VlA_Out8(data->VlA_Index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
+    VlA_Out8(data->io_index, RTC_NMI_DISABLE | RTC_REG_STATUS_B);
     VlA_Out8(data->io_data, temp | RTC_B_UIE | RTC_B_24HR);
 
     status = VlIntP_Unmask(data->irq_num);
@@ -261,7 +263,7 @@ has_error:
     return status;
 }
 
-static status_t remove(struct device *dev)
+static VlStatus remove(struct device *dev)
 {
     struct rtc_data *data = (struct rtc_data *)dev->data;
 
@@ -274,7 +276,7 @@ static status_t remove(struct device *dev)
     return STATUS_SUCCESS;
 }
 
-static status_t get_interface(struct device *dev, const char *name, const void **result)
+static VlStatus get_interface(struct device *dev, const char *name, const void **result)
 {
     if (strcmp(name, "rtc") == 0) {
         if (result) *result = &rtcif;

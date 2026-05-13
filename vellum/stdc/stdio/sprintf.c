@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include <limits.h>
+#include <stdarg.h>
 
 int sprintf(char *__restrict buf, const char *__restrict fmt, ...)
 {
