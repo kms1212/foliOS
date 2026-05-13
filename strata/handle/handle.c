@@ -1,5 +1,6 @@
 #include <strata/handle.h>
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdint.h>
 #include <string.h>
@@ -75,7 +76,7 @@ void StHandle_TableReleaseObject(enum StHandle_Type type, void *object)
 
 void StHandle_TableInit(struct StHandle_Table *table)
 {
-    if (!table) return;
+    assert(table);
 
     table->head = NULL;
     table->tail = NULL;
@@ -86,12 +87,15 @@ StStatus StHandle_TableCreate(
     struct StHandle_Table *table, enum StHandle_Type type, void *object, StHandle_Id *handle_out
 )
 {
+    assert(table);
+    assert(handle_out);
+
     StStatus status;
     struct StHandle_Entry *new_entry = NULL;
     StHandle_Id start_handle, handle_id;
     int object_retained = 0;
 
-    if (!table || !object) return STATUS_INVALID_VALUE;
+    if (!object) return STATUS_INVALID_VALUE;
 
     status = StPool_AllocateClear(sizeof(*new_entry), (void **)&new_entry);
     if (!CHECK_SUCCESS(status)) return status;
@@ -132,7 +136,7 @@ StStatus StHandle_TableCreate(
 
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "created handle %" PRIu32 " (type=%d)\n", handle_id, type);
 
-    if (handle_out) *handle_out = handle_id;
+    *handle_out = handle_id;
 
     return STATUS_SUCCESS;
 
@@ -209,13 +213,13 @@ StStatus StHandle_TableGetRetained(
 
 StStatus StHandle_TableClose(struct StHandle_Table *table, StHandle_Id handle)
 {
+    assert(table);
+
     StStatus status;
     struct StHandle_Entry *prev_entry = NULL;
     struct StHandle_Entry *entry = NULL;
     enum StHandle_Type type;
     void *object;
-
-    if (!table) return STATUS_INVALID_VALUE;
 
     StThread_LockPreemption();
 
@@ -252,9 +256,9 @@ StStatus StHandle_TableClose(struct StHandle_Table *table, StHandle_Id handle)
 
 void StHandle_TableClear(struct StHandle_Table *table)
 {
-    struct StHandle_Entry *current;
+    assert(table);
 
-    if (!table) return;
+    struct StHandle_Entry *current;
 
     StThread_LockPreemption();
 
@@ -289,10 +293,10 @@ static struct StHandle_Table *get_kernel_handle_table(void)
 
 static StStatus get_current_handle_table(struct StHandle_Table **table_out)
 {
-    StStatus status;
-    struct StThread *thread = NULL;
+    assert(table_out);
 
-    if (!table_out) return STATUS_INVALID_VALUE;
+    StStatus status;
+    StThread_InternalRef thread = NULL;
 
     status = StScheduler_GetCurrentThread(&thread);
     if (CHECK_SUCCESS(status) && thread && thread->process) {
@@ -305,11 +309,13 @@ static StStatus get_current_handle_table(struct StHandle_Table **table_out)
     return STATUS_SUCCESS;
 }
 
-static StStatus get_node_from_handle(StHandle handle, struct StGnt_Node **node_out)
+static StStatus get_node_from_handle(StHandle handle, StGnt_Node_StrongRef *node_out)
 {
+    assert(node_out);
+
     StStatus status;
     struct StHandle_Table *table;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
     enum StHandle_Type type;
 
     status = get_current_handle_table(&table);
@@ -322,18 +328,20 @@ static StStatus get_node_from_handle(StHandle handle, struct StGnt_Node **node_o
         return STATUS_INVALID_HANDLE;
     }
 
-    if (node_out) *node_out = node;
+    *node_out = node;
 
     return STATUS_SUCCESS;
 }
 
 StStatus StHandle_Open(const uint8_t *path, uint32_t flags, StHandle *handle)
 {
+    assert(handle);
+
     size_t path_len;
     St_Utf32Char path_buf[PATH_MAX];
     StStatus status;
     struct StHandle_Table *table;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
     StHandle_Id new_handle;
 
     if (!path) return STATUS_INVALID_VALUE;
@@ -359,7 +367,7 @@ StStatus StHandle_Open(const uint8_t *path, uint32_t flags, StHandle *handle)
         new_handle
     );
 
-    if (handle) *handle = (StHandle)new_handle;
+    *handle = (StHandle)new_handle;
 
     return STATUS_SUCCESS;
 }
@@ -383,8 +391,11 @@ StStatus StHandle_Query(
     uint32_t *result_abiver
 )
 {
+    assert(funcid_base);
+    assert(result_abiver);
+
     StStatus status;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
 
     status = get_node_from_handle(handle, &node);
     if (!CHECK_SUCCESS(status)) return status;
@@ -457,7 +468,7 @@ StStatus StHandle_CallReg(
 )
 {
     StStatus status;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
     struct StModule *handler_module;
     int handled = 0;
     long args[4];
@@ -510,7 +521,7 @@ StStatus StHandle_CallPtr(
 )
 {
     StStatus status;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
     struct StModule *handler_module;
     int handled = 0;
     long dispatch_args[4];

@@ -39,7 +39,7 @@ typedef uint64_t StA_PageMapLevel5Entry;
 #define PTE_BASE_MASK  0x000FFFFFFFFFF000ULL
 #define PTE_BASE_SHIFT 12
 
-__always_inline void StA_InvalidatePage(St_VirtPage vpn)
+__always_inline void StA_InvalidatePage(St_VirtPage vpn __in)
 {
     if (!g_p_cpu_features->has_invlpg) {
         StA_Invlpg(PAGE_TO_VPTR(vpn));

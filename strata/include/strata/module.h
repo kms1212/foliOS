@@ -11,7 +11,7 @@
 typedef int StModule_Id __nocast;
 
 typedef StStatus (*StModule_DispatchArgsFunc)(
-    struct StGnt_Node *node __in,
+    StGnt_Node_StrongRef node __in,
     StHandle_Id handle __in,
     uint32_t funcid __in,
     const long args[4]
@@ -22,7 +22,7 @@ struct StModule {
 
     StModule_Id id;
 
-    struct StProcess *process;
+    StProcess_StrongRef process;
 
     StGnt_ResolveFunc resolve;
     StGnt_IterateFunc list;

@@ -1,5 +1,6 @@
 #include <strata/spinlock.h>
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
 
@@ -20,7 +21,7 @@ void StSpinlock_Init(struct StSpinlock *lock __in)
 StStatus StSpinlock_Lock(struct StSpinlock *lock __in)
 {
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
@@ -39,8 +40,10 @@ StStatus StSpinlock_Lock(struct StSpinlock *lock __in)
 
 StStatus StSpinlock_TryLock(struct StSpinlock *lock __in, int *locked __out)
 {
+    assert(locked);
+
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
@@ -50,41 +53,41 @@ StStatus StSpinlock_TryLock(struct StSpinlock *lock __in, int *locked __out)
     if (atomic_flag_test_and_set_explicit(&lock->locked, memory_order_acquire)) {
         StThread_UnlockPreemption();
 
-        if (locked) *locked = 0;
+        *locked = 0;
         return STATUS_SUCCESS;
     }
 
     lock->owner = th;
 
-    if (locked) *locked = 1;
+    *locked = 1;
     return STATUS_SUCCESS;
 }
 
-StStatus StSpinlock_Unlock(struct StSpinlock *lock __in)
+void StSpinlock_Unlock(struct StSpinlock *lock __in)
 {
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     status = StScheduler_GetCurrentThread(&th);
-    if (!CHECK_SUCCESS(status)) return status;
+    assert(CHECK_SUCCESS(status));
+    assert(th);
+    (void)status;
 
-    if (lock->owner != th) {
-        return STATUS_INVALID_THREAD;
-    }
+    assert(lock->owner == th);
 
     lock->owner = NULL;
 
     atomic_flag_clear_explicit(&lock->locked, memory_order_release);
 
     StThread_UnlockPreemption();
-
-    return STATUS_SUCCESS;
 }
 
 StStatus StSpinlock_LockAndSaveIrq(struct StSpinlock *lock __in, uint32_t *irqstate __out)
 {
+    assert(irqstate);
+
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     *irqstate = StA_SaveInterrupt();
     StA_DisableInterrupt();
@@ -108,8 +111,11 @@ StStatus StSpinlock_TryLockAndSaveIrq(
     struct StSpinlock *lock __in, uint32_t *irqstate __out, int *locked __out
 )
 {
+    assert(irqstate);
+    assert(locked);
+
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     *irqstate = StA_SaveInterrupt();
     StA_DisableInterrupt();
@@ -122,33 +128,31 @@ StStatus StSpinlock_TryLockAndSaveIrq(
 
     if (atomic_flag_test_and_set_explicit(&lock->locked, memory_order_acquire)) {
         StA_RestoreInterrupt(*irqstate);
-        if (locked) *locked = 0;
+        *locked = 0;
         return STATUS_SUCCESS;
     }
 
     lock->owner = th;
 
-    if (locked) *locked = 1;
+    *locked = 1;
     return STATUS_SUCCESS;
 }
 
-StStatus StSpinlock_UnlockAndRestoreIrq(struct StSpinlock *lock __in, uint32_t irqstate __in)
+void StSpinlock_UnlockAndRestoreIrq(struct StSpinlock *lock __in, uint32_t irqstate __in)
 {
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     status = StScheduler_GetCurrentThread(&th);
-    if (!CHECK_SUCCESS(status)) return status;
+    assert(CHECK_SUCCESS(status));
+    assert(th);
+    (void)status;
 
-    if (lock->owner != th) {
-        return STATUS_INVALID_THREAD;
-    }
+    assert(lock->owner == th);
 
     lock->owner = NULL;
 
     atomic_flag_clear_explicit(&lock->locked, memory_order_release);
 
     StA_RestoreInterrupt(irqstate);
-
-    return STATUS_SUCCESS;
 }

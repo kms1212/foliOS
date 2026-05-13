@@ -1,7 +1,8 @@
-#include <strata/plat/thread.h>
-
 #include "config.h"
 
+#include <strata/plat/thread.h>
+
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -174,7 +175,7 @@ StStatus StThreadP_InitializeFpuSimdState(void)
 
 void StThreadP_InitializePlatformData(struct StThread *th)
 {
-    if (!th) return;
+    assert(th);
 
     if (!clean_fx_state_initialized) {
         St_Panic(
@@ -188,7 +189,9 @@ void StThreadP_InitializePlatformData(struct StThread *th)
 
 void StThreadP_FreePlatformData(struct StThread *th)
 {
-    if (!th || !th->platform_data.xstate_buffer) return;
+    assert(th);
+
+    if (!th->platform_data.xstate_buffer) return;
 
     StPool_Free(th->platform_data.xstate_buffer);
     th->platform_data.xstate_buffer = NULL;
@@ -317,12 +320,11 @@ StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in)
 
 void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
 {
-    StStatus status;
     St_PageCount free_frames = 0;
 
     if (should_use_kernel_stack_cache(th)) {
-        status = StPmm_GetFreeFrameCount(&free_frames);
-        if (CHECK_SUCCESS(status) && free_frames > THREAD_KERNEL_STACK_CACHE_LOW_FREE_WATERMARK) {
+        StPmm_GetFreeFrameCount(&free_frames);
+        if (free_frames > THREAD_KERNEL_STACK_CACHE_LOW_FREE_WATERMARK) {
             StThread_LockPreemption();
 
             if (kernel_stack_cache_pages + th->kmode_stack_page_count <=
@@ -372,9 +374,14 @@ static inline void push_u64(
     struct StMm_AddressSpace *asp __in, uintptr_t *sp __inout, uint64_t val __in
 )
 {
+    StStatus status;
+
+    assert(sp);
+
     *sp -= sizeof(uint64_t);
 
-    StMm_WriteLocal(asp, *sp, &val, sizeof(val));
+    status = StMm_WriteLocal(asp, *sp, &val, sizeof(val));
+    assert(CHECK_SUCCESS(status));
 }
 
 StStatus StThreadP_SetupThreadUserStack(
@@ -500,7 +507,7 @@ void StThreadP_FreeThreadUserStack(struct StThread *th __in)
 StStatus StThreadP_SetFsBase(struct StThread *th __in, uintptr_t fs_base __in)
 {
     StStatus status;
-    struct StThread *current;
+    StThread_InternalRef current;
 
     th->platform_data.fs_base = fs_base;
 
@@ -517,7 +524,7 @@ StStatus StThreadP_SetFsBase(struct StThread *th __in, uintptr_t fs_base __in)
 StStatus StThreadP_SetGsBase(struct StThread *th __in, uintptr_t gs_base __in)
 {
     StStatus status;
-    struct StThread *current;
+    StThread_InternalRef current;
 
     th->platform_data.gs_base = gs_base;
 
@@ -535,8 +542,10 @@ StStatus StThreadP_Switch(
     struct StThread *next __in, struct StIntP_Context *ctx __in, void **next_stack_ptr __out
 )
 {
+    assert(next_stack_ptr);
+
     StStatus status;
-    struct StThread *current;
+    StThread_InternalRef current;
     struct StMm_AddressSpace *current_asp = StCpuLocalP_GetData()->current_asp;
     uintptr_t kstack_top;
 
@@ -608,8 +617,8 @@ __attribute__((noinline)) __externally_visible void *_StThreadP_DoYield(
 )
 {
     StStatus status;
-    struct StThread *current_thread;
-    struct StThread *next_thread;
+    StThread_InternalRef current_thread;
+    StThread_InternalRef next_thread;
     void *volatile next_stack_ptr;
 
     if (StThread_IsPreemptionEnabled()) {

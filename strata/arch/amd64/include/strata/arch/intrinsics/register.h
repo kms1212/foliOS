@@ -24,7 +24,7 @@ __always_inline uint64_t StA_ReadCr0(void)
     return value;
 }
 
-__always_inline void StA_WriteCr0(uint64_t value)
+__always_inline void StA_WriteCr0(uint64_t value __in)
 {
     __asm__ volatile("mov %q0, %%cr0" : : "r"(value) : "memory");
 }
@@ -36,7 +36,7 @@ __always_inline uint32_t StA_ReadCr2(void)
     return value;
 }
 
-__always_inline void StA_WriteCr2(uint32_t value)
+__always_inline void StA_WriteCr2(uint32_t value __in)
 {
     __asm__ volatile("mov %d0, %%cr2" : : "r"(value));
 }
@@ -52,7 +52,7 @@ __always_inline uint64_t StA_ReadCr3(void)
     return value;
 }
 
-__always_inline void StA_WriteCr3(uint64_t value)
+__always_inline void StA_WriteCr3(uint64_t value __in)
 {
     __asm__ volatile("mov %q0, %%cr3" : : "r"(value) : "memory");
 }
@@ -88,7 +88,7 @@ __always_inline uint64_t StA_ReadCr4(void)
     return value;
 }
 
-__always_inline void StA_WriteCr4(uint64_t value)
+__always_inline void StA_WriteCr4(uint64_t value __in)
 {
     __asm__ volatile("mov %q0, %%cr4" : : "r"(value) : "memory");
 }
@@ -100,7 +100,7 @@ __always_inline uint32_t StA_ReadCr8(void)
     return value;
 }
 
-__always_inline void StA_WriteCr8(uint32_t value)
+__always_inline void StA_WriteCr8(uint32_t value __in)
 {
     __asm__ volatile("mov %d0, %%cr8" : : "r"(value) : "memory");
 }
@@ -112,7 +112,7 @@ __always_inline uint64_t StA_ReadXcr0(void)
     return ((uint64_t)high << 32) | low;
 }
 
-__always_inline void StA_WriteXcr0(uint64_t value)
+__always_inline void StA_WriteXcr0(uint64_t value __in)
 {
     uint32_t low = value & 0xFFFFFFFF;
     uint32_t high = value >> 32;

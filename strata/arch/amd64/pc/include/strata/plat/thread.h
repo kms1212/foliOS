@@ -28,10 +28,10 @@ St_PageCount StThreadP_ReclaimCachedKernelStacks(St_PageCount page_budget __in);
 StStatus StThreadP_AllocateThreadUserStack(struct StThread *th __in);
 StStatus StThreadP_SetupThreadUserStack(
     struct StThread *th __in,
-    int arg_count,
-    const char *const *args,
-    int env_count,
-    const char *const *envs
+    int arg_count __in,
+    const char *const *args __in,
+    int env_count __in,
+    const char *const *envs __in
 );
 void StThreadP_FreeThreadUserStack(struct StThread *th __in);
 

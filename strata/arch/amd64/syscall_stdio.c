@@ -1,5 +1,6 @@
 #include <strata/syscall.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -60,7 +61,7 @@ static void stdio_debugcon_write(const uint8_t *buf, uint64_t size)
 }
 
 StStatus StSyscallA_DispatchCallReg(
-    struct StGnt_Node *node,
+    StGnt_Node_StrongRef node,
     uint32_t funcid,
     unsigned long arg0,
     unsigned long arg1,
@@ -69,6 +70,8 @@ StStatus StSyscallA_DispatchCallReg(
     int *handled_out
 )
 {
+    assert(handled_out);
+
     enum stdio_node_kind kind;
 
     (void)arg0;
@@ -78,11 +81,11 @@ StStatus StSyscallA_DispatchCallReg(
 
     kind = get_stdio_node_kind(node);
     if (kind == STDIO_NODE_NONE) {
-        if (handled_out) *handled_out = 0;
+        *handled_out = 0;
         return STATUS_NOT_SUPPORTED;
     }
 
-    if (handled_out) *handled_out = 1;
+    *handled_out = 1;
 
     switch (funcid) {
     case BS_FUNCID_SYNC:
@@ -93,7 +96,7 @@ StStatus StSyscallA_DispatchCallReg(
 }
 
 StStatus StSyscallA_DispatchCallPtr(
-    struct StGnt_Node *node,
+    StGnt_Node_StrongRef node,
     uint32_t funcid,
     const void *args,
     void *result,
@@ -102,6 +105,8 @@ StStatus StSyscallA_DispatchCallPtr(
     int *handled_out
 )
 {
+    assert(handled_out);
+
     enum stdio_node_kind kind;
     uint64_t size;
 
@@ -109,11 +114,11 @@ StStatus StSyscallA_DispatchCallPtr(
 
     kind = get_stdio_node_kind(node);
     if (kind == STDIO_NODE_NONE) {
-        if (handled_out) *handled_out = 0;
+        *handled_out = 0;
         return STATUS_NOT_SUPPORTED;
     }
 
-    if (handled_out) *handled_out = 1;
+    *handled_out = 1;
 
     switch (funcid) {
     case BS_FUNCID_SEEK:

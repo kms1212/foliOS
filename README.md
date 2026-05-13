@@ -155,6 +155,25 @@ foliOS abandons the cluttered `/bin` and `/lib` hierarchy in favor of a strictly
 
 ## 🛠 Build & Run
 
+## 🧭 Development Contracts
+
+Strata uses source-level annotations to make kernel API contracts visible to
+both reviewers and local clang-tidy checks.
+
+* Public API parameters should carry direction annotations such as `__in`,
+  `__out`, `__inout`, `__out_optional`, or `__buf`.
+* `StStatus` return values must be checked, returned, or intentionally discarded
+  with an explicit `(void)` cast.
+* Distinct integer and pointer domains use `__bitwise`, `__nocast`, and
+  reference annotations to catch accidental conversions.
+* Ref-counted kernel objects declare their own `StrongRef`, `WeakRef`,
+  `BorrowedRef`, and `InternalRef` typedefs in the owning header. Intrusive
+  links and scheduler-private references use `InternalRef`; APIs that transfer or
+  require ownership use `StrongRef`.
+* Ref-counted objects embed `struct StRefControlBlock ref_control` as their first
+  field and should go through the object-specific acquire/release API rather than
+  manipulating the control block from unrelated code.
+
 ### Prerequisites
 
 * CMake 3.13+

@@ -6,7 +6,6 @@
 
 #include <strata/log.h>
 #include <strata/mm/pool.h>
-#include <strata/panic.h>
 #include <strata/status.h>
 
 #define MODULE_NAME "acpi"
@@ -41,10 +40,5 @@ void *uacpi_kernel_alloc_zeroed(uacpi_size size)
 
 void uacpi_kernel_free(void *ptr)
 {
-    StStatus status;
-
-    status = StPool_Free(ptr);
-    if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "StPool_Free(%p) failed", ptr);
-    }
+    StPool_Free(ptr);
 }

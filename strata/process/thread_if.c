@@ -20,7 +20,7 @@
 #define MODULE_NAME "thread"
 
 struct thread_dispatch_context {
-    struct StThread *thread;
+    StThread_InternalRef thread;
 };
 
 static int node_name_equals(
@@ -62,12 +62,12 @@ static int is_thread_node(const struct StGnt_Node *node)
 }
 
 static StStatus get_process_from_process_node(
-    struct StGnt_Node *process_node, struct StProcess **process_out
+    StGnt_Node_StrongRef process_node, StProcess_BorrowedRef *process_out
 )
 {
     StStatus status;
     int process_id;
-    struct StProcess *process;
+    StProcess_BorrowedRef process;
 
     if (!is_process_node(process_node)) return STATUS_INVALID_HANDLE;
 
@@ -83,20 +83,21 @@ static StStatus get_process_from_process_node(
 }
 
 static StStatus get_thread_from_thread_node(
-    struct StGnt_Node *thread_node, struct StThread **thread_out
+    StGnt_Node_StrongRef thread_node, StThread_InternalRef *thread_out
 )
 {
     StStatus status;
-    struct StProcess *process;
-    struct StThread *thread;
+    StProcess_BorrowedRef process;
+    StThread_InternalRef thread;
 
     if (!is_thread_node(thread_node)) return STATUS_INVALID_HANDLE;
 
-    status = get_process_from_process_node(thread_node->parent->parent, &process);
+    status =
+        get_process_from_process_node((StGnt_Node_StrongRef)thread_node->parent->parent, &process);
     if (!CHECK_SUCCESS(status)) return status;
 
     thread = process->main_thread;
-    if (!thread || thread->is_dying) return STATUS_ENTRY_NOT_FOUND;
+    if (!thread || StRefControlBlock_IsDying(&thread->ref_control)) return STATUS_ENTRY_NOT_FOUND;
 
     if (thread_out) *thread_out = thread;
 
@@ -159,12 +160,12 @@ static StStatus thr_terminate(void *context, StHandle handle, StStatus exit_code
     return STATUS_NOT_SUPPORTED;
 }
 
-static StStatus initialize_static_tls(struct StThread *thread, uintptr_t fs_base)
+static StStatus initialize_static_tls(StThread_InternalRef thread, uintptr_t fs_base)
 {
     static const size_t k_copy_chunk_size = 256;
 
     StStatus status;
-    struct StProcess *process;
+    StProcess_StrongRef process;
     uintptr_t tls_start;
     uint8_t buf[k_copy_chunk_size];
     size_t remaining;
@@ -283,7 +284,10 @@ static const StIfThr_ServerVTable g_thr_vtable = {
 };
 
 StStatus StThreadIf_DispatchCallArgs(
-    struct StGnt_Node *node __in, StHandle_Id handle __in, uint32_t funcid __in, const long args[4]
+    StGnt_Node_StrongRef node __in,
+    StHandle_Id handle __in,
+    uint32_t funcid __in,
+    const long args[4]
 )
 {
     StStatus status;
@@ -295,5 +299,5 @@ StStatus StThreadIf_DispatchCallArgs(
     status = get_thread_from_thread_node(node, &ctx.thread);
     if (!CHECK_SUCCESS(status)) return status;
 
-    return StIfThr_ServerDispatchArgs(&g_thr_vtable, &ctx, handle, funcid, args);
+    return StIfThr_ServerDispatchArgs(&g_thr_vtable, &ctx, (StHandle)handle, funcid, args);
 }

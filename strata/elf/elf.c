@@ -1,5 +1,6 @@
 #include <strata/elf.h>
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +46,8 @@ StStatus StElf_Open(
     const void *img_base __in, size_t img_size __in, struct StElf_Object **elfout __out
 )
 {
+    assert(elfout);
+
     StStatus status;
     struct StElf_Object *elf = NULL;
 
@@ -97,7 +100,7 @@ StStatus StElf_Open(
         goto has_error;
     }
 
-    if (elfout) *elfout = elf;
+    *elfout = elf;
 
     return STATUS_SUCCESS;
 
@@ -129,6 +132,8 @@ StStatus StElf_GetHeader(struct StElf_Object *elf __in, void *buf __buf, size_t 
 
 StStatus StElf_GetEntryPoint(struct StElf_Object *elf __in, uintptr_t *entry_point __out)
 {
+    assert(entry_point);
+
     if (elf->ident.class == ELFCLASS32) {
         *entry_point = (uintptr_t)elf->ehdr32.entry;
     } else if (elf->ident.class == ELFCLASS64) {
@@ -142,6 +147,8 @@ StStatus StElf_GetEntryPoint(struct StElf_Object *elf __in, uintptr_t *entry_poi
 
 StStatus StElf_GetProgramHeaderCount(struct StElf_Object *elf __in, unsigned int *count __out)
 {
+    assert(count);
+
     if (elf->ident.class == ELFCLASS32) {
         *count = elf->ehdr32.phnum;
     } else if (elf->ident.class == ELFCLASS64) {

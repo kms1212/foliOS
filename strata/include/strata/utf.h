@@ -32,7 +32,7 @@ StStatus StUtf_Utf8ToUtf32(
     size_t src_size __in,
     St_Utf32Char *dest __buf,
     size_t dest_size __in,
-    size_t *count __out
+    size_t *count __out_optional
 );
 
 StStatus StUtf_Utf32ToUtf8(
@@ -40,7 +40,7 @@ StStatus StUtf_Utf32ToUtf8(
     size_t src_size __in,
     St_Utf8Char *dest __buf,
     size_t dest_size __in,
-    size_t *count __out
+    size_t *count __out_optional
 );
 
 #endif  // __STRATA_UTF_H__

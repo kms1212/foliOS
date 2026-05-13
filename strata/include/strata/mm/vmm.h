@@ -25,7 +25,7 @@ StStatus StVmm_InitGlobalDomain(
 StStatus StVmm_InitLocalDomain(
     struct StMm_AddressSpace *asp __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
 );
-StStatus StVmm_RemoveLocalDomain(struct StMm_AddressSpace *asp __in);
+void StVmm_RemoveLocalDomain(struct StMm_AddressSpace *asp __in);
 
 StStatus StVmm_GetTotalGlobalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out);
 StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain, St_PageCount *count __out);

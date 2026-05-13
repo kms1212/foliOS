@@ -8,7 +8,10 @@
 #include <strata/status.h>
 
 StStatus StAcpiGnt_DispatchCallArgs(
-    struct StGnt_Node *node __in, StHandle_Id handle __in, uint32_t funcid __in, const long args[4]
+    StGnt_Node_StrongRef node __in,
+    StHandle_Id handle __in,
+    uint32_t funcid __in,
+    const long args[4]
 )
 {
     StStatus status;

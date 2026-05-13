@@ -1,5 +1,7 @@
 #include <strata/module.h>
 
+#include <assert.h>
+
 #include <strata/mm/pool.h>
 
 #include <strata/compiler.h>
@@ -10,6 +12,8 @@ static struct StModule *module_list_tail = NULL;
 
 StStatus StModule_Create(struct StModule **module __out)
 {
+    assert(module);
+
     static StModule_Id new_module_id = (StModule_Id)1;
 
     StStatus status;
@@ -27,7 +31,7 @@ StStatus StModule_Create(struct StModule **module __out)
         module_list_tail = new_module;
     }
 
-    if (module) *module = new_module;
+    *module = new_module;
 
     return STATUS_SUCCESS;
 

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -263,7 +264,9 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
     } else if (node == g_gnt_root_network) {
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- //\n", depth, "");
     } else if (node->type == GNT_NODETYPE_LINK) {
-        StUtf_Utf32ToUtf8(node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL);
+        (void)StUtf_Utf32ToUtf8(
+            node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL
+        );
         LOG_DEBUG(
             LM_CAT_UNCLASSIFIED,
             "%*s- %s%s\n",
@@ -281,7 +284,7 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
             } else if (node == g_gnt_root_network) {
                 LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s-> //\n", depth, "");
             } else {
-                StUtf_Utf32ToUtf8(
+                (void)StUtf_Utf32ToUtf8(
                     node->name,
                     node->name_len,
                     ctx->name_buf,
@@ -300,7 +303,9 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
         }
         return;
     } else {
-        StUtf_Utf32ToUtf8(node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL);
+        (void)StUtf_Utf32ToUtf8(
+            node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL
+        );
         LOG_DEBUG(
             LM_CAT_UNCLASSIFIED,
             "%*s- %s%c\n",
@@ -477,21 +482,26 @@ cleanup:
     StPool_Free(ctx);
 }
 
-static void thread1_main(struct StThread *th);
+static void thread1_main(StThread_BorrowedRef th);
 
-static int setup_user_process(struct StProcess **process_out __out)
+static int setup_user_process(
+    StProcess_StrongRef *process_out __out, StThread_StrongRef *main_thread_out __out
+)
 {
+    assert(process_out);
+    assert(main_thread_out);
+
     extern char _userexec_start[];  // NOLINT(readability-identifier-naming)
     extern char _userexec_end[];    // NOLINT(readability-identifier-naming)
 
     StStatus status;
-    struct StProcess *process;
+    StProcess_StrongRef process;
     struct StElf_Object *elf;
     struct StElf64_Phdr ph;
     unsigned int ph_count;
     size_t userexec_size = (uintptr_t)_userexec_end - (uintptr_t)_userexec_start;
     uintptr_t entry_point;
-    struct StThread *main_thread;
+    StThread_StrongRef main_thread;
     uint32_t process_count;
 
     StProcess_GetCount(&process_count);
@@ -559,49 +569,64 @@ static int setup_user_process(struct StProcess **process_out __out)
 
     cprintf(early_print_char2, &pstate, "UPROC#%d\n", main_thread->id);
 
-    process->main_thread = main_thread;
+    process->main_thread = (StThread_InternalRef)main_thread;
 
     *process_out = process;
+    *main_thread_out = main_thread;
 
     return 0;
 }
 
-static void thread3_main(struct StThread *th)
+static void thread3_main(StThread_BorrowedRef th)
 {
-    uint64_t start_tick = StTimeP_GetGlobalTick();
+    uint64_t start_tick;
     uint32_t time = 0;
-    struct StProcess *process = NULL;
+    StProcess_StrongRef process = NULL;
+    StThread_StrongRef main_thread = NULL;
+
+    StTimeP_GetGlobalTick(&start_tick);
 
     cprintf(early_print_char2, &pstate, "KTHR3B#%d\n", th->id);
 
     do {
+        uint64_t current_tick;
+
         StThread_Sleep(1);
 
-        time = StTimeP_GetGlobalTick() - start_tick;
+        StTimeP_GetGlobalTick(&current_tick);
+        time = current_tick - start_tick;
     } while (time < 2);
 
-    if (setup_user_process(&process)) return;
-    StThread_Detach(process->main_thread);
+    if (setup_user_process(&process, &main_thread)) return;
+
+    StStatus status = StThread_Detach(main_thread);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to detach user process main thread");
+    }
 
     cprintf(early_print_char2, &pstate, "KTHR3E#%d\n", th->id);
 }
 
-static void thread2_main(struct StThread *th)
+static void thread2_main(StThread_BorrowedRef th)
 {
     StStatus status;
-    uint64_t start_tick = StTimeP_GetGlobalTick();
+    uint64_t start_tick;
     uint32_t time = 0;
-    struct StThread *new_thread;
+
+    StTimeP_GetGlobalTick(&start_tick);
 
     cprintf(early_print_char2, &pstate, "KTHR2B#%d\n", th->id);
 
     do {
+        uint64_t current_tick;
+
         StThread_Sleep(1);
 
-        time = StTimeP_GetGlobalTick() - start_tick;
+        StTimeP_GetGlobalTick(&current_tick);
+        time = current_tick - start_tick;
     } while (time < 5);
 
-    status = StThread_CreateKernel(thread1_main, &new_thread);
+    status = StThread_CreateKernel(thread1_main, TCF_DETACHED, NULL);
     if (!CHECK_SUCCESS(status)) {
         LOG_WARN(
             LM_CAT_UNCLASSIFIED,
@@ -611,24 +636,28 @@ static void thread2_main(struct StThread *th)
         return;
     }
 
-    StThread_Detach(new_thread);
-
     cprintf(early_print_char2, &pstate, "KTHR2E#%d\n", th->id);
 }
 
-static void thread1_main(struct StThread *th)
+static void thread1_main(StThread_BorrowedRef th)
 {
     StStatus status;
-    uint64_t start_tick = StTimeP_GetGlobalTick();
+    uint64_t start_tick;
     uint32_t time = 0, prev_time = 0;
-    struct StThread *new_thread1, *new_thread2;
-    struct StThread *waitlist[2];
-    struct StProcess *process = NULL;
+    StThread_StrongRef new_thread1, new_thread2;
+    StThread_StrongRef waitlist[2];
+    StProcess_StrongRef process = NULL;
+    StThread_StrongRef main_thread = NULL;
+
+    StTimeP_GetGlobalTick(&start_tick);
 
     cprintf(early_print_char2, &pstate, "KTHR1B#%d\n", th->id);
 
     do {
-        time = StTimeP_GetGlobalTick() - start_tick;
+        uint64_t current_tick;
+
+        StTimeP_GetGlobalTick(&current_tick);
+        time = current_tick - start_tick;
         if (time == prev_time) {
             StThread_Yield();
             continue;
@@ -636,7 +665,7 @@ static void thread1_main(struct StThread *th)
         prev_time = time;
     } while (time < 5);
 
-    status = StThread_CreateKernel(thread2_main, &new_thread1);
+    status = StThread_CreateKernel(thread2_main, TCF_DEFAULT, &new_thread1);
     if (!CHECK_SUCCESS(status)) {
         LOG_WARN(
             LM_CAT_UNCLASSIFIED,
@@ -646,27 +675,43 @@ static void thread1_main(struct StThread *th)
         return;
     }
 
-    status = StThread_CreateKernel(thread3_main, &new_thread2);
+    status = StThread_CreateKernel(thread3_main, TCF_DEFAULT, &new_thread2);
     if (!CHECK_SUCCESS(status)) {
         LOG_WARN(
             LM_CAT_UNCLASSIFIED,
             "thread1_main: failed to create thread3 (status=%08X)\n",
             status
         );
-        StThread_Detach(new_thread1);
+        status = StThread_Detach(new_thread1);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to detach thread2 after thread3 creation failure");
+        }
         return;
     }
 
-    if (!setup_user_process(&process)) {
-        StThread_Detach(process->main_thread);
+    if (!setup_user_process(&process, &main_thread)) {
+        status = StThread_Detach(main_thread);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to detach user process main thread");
+        }
     }
 
     waitlist[0] = new_thread1;
     waitlist[1] = new_thread2;
-    StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
+    status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to wait for kernel test threads");
+    }
 
-    StThread_Remove(new_thread1);
-    StThread_Remove(new_thread2);
+    status = StThread_Remove(new_thread1);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to remove thread2");
+    }
+
+    status = StThread_Remove(new_thread2);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to remove thread3");
+    }
 
     cprintf(early_print_char2, &pstate, "KTHR1E#%d\n", th->id);
 }
@@ -678,7 +723,7 @@ static void fb_print_str(int col, int row, const char *str)
     }
 }
 
-static void thread4_main(struct StThread *th)
+static void thread4_main(StThread_BorrowedRef th)
 {
     St_PageCount total_frames, free_frames;
     uint32_t thread_count, process_count;
@@ -696,7 +741,7 @@ static void thread4_main(struct StThread *th)
         StPmm_GetFreeFrameCount(&free_frames);
         StThread_GetCount(&thread_count);
         StProcess_GetCount(&process_count);
-        uptime_ns = StTimeP_GetUptimeNanoseconds();
+        StTimeP_GetUptimeNanoseconds(&uptime_ns);
         syscall_count = atomic_load(&StCpuLocalP_GetData()->syscall_count);
         irq_count = atomic_load(&StCpuLocalP_GetData()->irq_count);
         ctxswitch_count = atomic_load(&StCpuLocalP_GetData()->ctxswitch_count);
@@ -769,18 +814,27 @@ static void thread4_main(struct StThread *th)
     cprintf(early_print_char2, &pstate, "KTHR4E#%d\n", th->id);
 }
 
-static void thread5_main(struct StThread *th)
+static void thread5_main(StThread_BorrowedRef th)
 {
-    struct StProcess *process = NULL;
-    struct StThread *waitlist[1];
+    StStatus status;
+    StProcess_StrongRef process = NULL;
+    StThread_StrongRef main_thread = NULL;
+    StThread_StrongRef waitlist[1];
 
     cprintf(early_print_char2, &pstate, "KTHR5B#%d\n", th->id);
 
     for (;; StThread_Sleep(250)) {
-        if (setup_user_process(&process)) continue;
-        waitlist[0] = process->main_thread;
-        StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
-        StThread_Remove(process->main_thread);
+        if (setup_user_process(&process, &main_thread)) continue;
+        waitlist[0] = main_thread;
+        status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to wait for user process main thread");
+        }
+
+        status = StThread_Remove(main_thread);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to remove user process main thread");
+        }
     }
 
     cprintf(early_print_char2, &pstate, "KTHR5E#%d\n", th->id);
@@ -811,9 +865,7 @@ __noreturn void main(void)
     struct bootinfo_entry_ramdisk *rdent = NULL;
     St_VirtPage earlyfb_vpn;
     St_PageCount total_frames, free_frames;
-    struct StThread *main_thread;
-    struct StThread *thread1;
-    struct StThread *thread4;
+    StThread_StrongRef main_thread;
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "starting main...\n");
 
@@ -1062,23 +1114,22 @@ __noreturn void main(void)
 
     StMutex_Init(&pstate.mtx1);
     StMutex_Init(&pstate.mtx2);
-    status = StThread_CreateKernel(thread1_main, &thread1);
-    if (CHECK_SUCCESS(status)) {
-        StThread_Detach(thread1);
-    } else {
+    status = StThread_CreateKernel(thread1_main, TCF_DETACHED, NULL);
+    if (!CHECK_SUCCESS(status)) {
         LOG_WARN(LM_CAT_UNCLASSIFIED, "main: failed to create thread1 (status=%08X)\n", status);
     }
 
-    status = StThread_CreateKernel(thread4_main, &thread4);
-    if (CHECK_SUCCESS(status)) {
-        StThread_Detach(thread4);
-    } else {
+    status = StThread_CreateKernel(thread4_main, TCF_DETACHED, NULL);
+    if (!CHECK_SUCCESS(status)) {
         LOG_WARN(LM_CAT_UNCLASSIFIED, "main: failed to create thread4 (status=%08X)\n", status);
     }
 
     for (;;) {
         if (StScheduler_ShouldMaintain()) {
-            StScheduler_Maintain();
+            status = StScheduler_Maintain();
+            if (!CHECK_SUCCESS(status)) {
+                St_Panic(status, "failed to maintain scheduler");
+            }
         }
 
         if (StScheduler_CheckHasOtherRunnableThread()) {
@@ -1090,11 +1141,11 @@ __noreturn void main(void)
         uint64_t idle_end_ns;
         StThread_RunDeferredReap((St_PageCount)64);
 
-        idle_start_ns = StTimeP_GetUptimeNanoseconds();
+        StTimeP_GetUptimeNanoseconds(&idle_start_ns);
         uint32_t intstatus = StA_SaveInterrupt();
         StA_EnableInterruptAndHalt();
         StA_RestoreInterrupt(intstatus);
-        idle_end_ns = StTimeP_GetUptimeNanoseconds();
+        StTimeP_GetUptimeNanoseconds(&idle_end_ns);
 
         if (idle_end_ns > idle_start_ns) {
             StScheduler_AccountIdleTimeNanoseconds(idle_end_ns - idle_start_ns);

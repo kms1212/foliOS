@@ -1,6 +1,7 @@
 #ifndef __STRATA_ARCH_INTRINSICS_FPU_SIMD_H__
 #define __STRATA_ARCH_INTRINSICS_FPU_SIMD_H__
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <strata/compiler.h>
@@ -137,25 +138,29 @@ union StA_XStateBuffer {
     struct StA_XSaveBuffer xs;
 } __aligned(64);
 
-__always_inline void StA_FXSave(union StA_FXSaveBuffer *buf)
+__always_inline void StA_FXSave(union StA_FXSaveBuffer *buf __out)
 {
+    assert(buf);
+
     __asm__ volatile("fxsave64 %0" : : "m"(*buf));
 }
 
-__always_inline void StA_FXRestore(union StA_FXSaveBuffer *buf)
+__always_inline void StA_FXRestore(union StA_FXSaveBuffer *buf __in)
 {
     __asm__ volatile("fxrstor64 %0" : : "m"(*buf));
 }
 
-__always_inline void StA_XSave(union StA_XStateBuffer *buf, uint64_t mask)
+__always_inline void StA_XSave(union StA_XStateBuffer *buf __out, uint64_t mask __in)
 {
+    assert(buf);
+
     uint32_t eax = (uint32_t)mask;
     uint32_t edx = (uint32_t)(mask >> 32);
 
     __asm__ volatile("xsave64 %0" : "=m"(*buf) : "a"(eax), "d"(edx) : "memory");
 }
 
-__always_inline void StA_XRestore(const union StA_XStateBuffer *buf, uint64_t mask)
+__always_inline void StA_XRestore(const union StA_XStateBuffer *buf __in, uint64_t mask __in)
 {
     uint32_t eax = (uint32_t)mask;
     uint32_t edx = (uint32_t)(mask >> 32);
@@ -163,7 +168,7 @@ __always_inline void StA_XRestore(const union StA_XStateBuffer *buf, uint64_t ma
     __asm__ volatile("xrstor64 %0" : : "m"(*buf), "a"(eax), "d"(edx) : "memory");
 }
 
-__always_inline void StA_LdMxcsr(uint32_t value)
+__always_inline void StA_LdMxcsr(uint32_t value __in)
 {
     __asm__ volatile("ldmxcsr %0" : : "m"(value));
 }

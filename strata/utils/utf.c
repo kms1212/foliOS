@@ -1,5 +1,6 @@
 #include <strata/utf.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -19,6 +20,8 @@ StStatus StUtf_CountUtf8Chars(
     const St_Utf8Char *src __in, size_t src_size __in, size_t *countout __out
 )
 {
+    assert(countout);
+
     size_t i = 0;
     size_t count = 0;
 
@@ -74,6 +77,8 @@ StStatus StUtf_CountUtf32Chars(
     const St_Utf32Char *str __in, size_t bufsize __in, size_t *countout __out
 )
 {
+    assert(countout);
+
     size_t s = 0;
     for (; *str++ && s <= bufsize / sizeof(*str); s++)
         ;
@@ -117,7 +122,7 @@ StStatus StUtf_Utf8ToUtf32(
     size_t src_size __in,
     St_Utf32Char *dest __in,
     size_t dest_size __in,
-    size_t *countout __out
+    size_t *countout __out_optional
 )
 {
     size_t i = 0;
@@ -186,7 +191,7 @@ StStatus StUtf_Utf32ToUtf8(
     size_t src_size __in,
     St_Utf8Char *dest __in,
     size_t dest_size __in,
-    size_t *countout __out
+    size_t *countout __out_optional
 )
 {
     size_t i = 0;

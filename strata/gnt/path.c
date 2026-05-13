@@ -1,5 +1,6 @@
 #include <strata/gnt/path.h>
 
+#include <assert.h>
 #include <string.h>
 
 #include <strata/compiler.h>
@@ -7,6 +8,8 @@
 
 void StGntPath_Begin(struct StGnt_PathCursor *cursor __out, const St_Utf32Char *path __in)
 {
+    assert(cursor);
+
     cursor->path = path;
     cursor->token = NULL;
     cursor->token_len = 0;
@@ -14,6 +17,8 @@ void StGntPath_Begin(struct StGnt_PathCursor *cursor __out, const St_Utf32Char *
 
 int StGntPath_Next(struct StGnt_PathCursor *cursor __inout)
 {
+    assert(cursor);
+
     const St_Utf32Char *path;
 
     path = cursor->path;

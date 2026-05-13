@@ -1,5 +1,6 @@
 #include <strata/gnt.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -11,28 +12,30 @@
 
 #define MODULE_COOKIE_FLAG ((uint64_t)1)
 
-static struct StGnt_Node *find_next_child(
-    struct StGnt_Node *parent __in, uint64_t cookie __in, StStatus *status __out
+static StGnt_Node_InternalRef find_next_child(
+    StGnt_Node_StrongRef parent __in, uint64_t cookie __in, StStatus *status __out
 )
 {
-    struct StGnt_Node *child;
+    assert(status);
+
+    StGnt_Node_InternalRef child;
 
     if (cookie == 0) {
-        if (status) *status = STATUS_SUCCESS;
+        *status = STATUS_SUCCESS;
         return parent->children_head;
     }
 
     child = parent->children_head;
     while (child) {
         if ((uint64_t)(uintptr_t)child == cookie) {
-            if (status) *status = STATUS_SUCCESS;
+            *status = STATUS_SUCCESS;
             return child->sibling;
         }
 
         child = child->sibling;
     }
 
-    if (status) *status = STATUS_ENTRY_NOT_FOUND;
+    *status = STATUS_ENTRY_NOT_FOUND;
     return NULL;
 }
 
@@ -52,7 +55,7 @@ static uint64_t decode_module_cookie(uint64_t cookie)
 }
 
 StStatus StGnt_Iterate(
-    struct StGnt_Node *parent __in,
+    StGnt_Node_StrongRef parent __in,
     uint64_t cookie __in,
     void *buffer __in,
     size_t buffer_size __in,
@@ -60,8 +63,11 @@ StStatus StGnt_Iterate(
     uint64_t *next_cookie __out
 )
 {
+    assert(entry_count);
+    assert(next_cookie);
+
     struct StModule *handler_module;
-    struct StGnt_Node *child;
+    StGnt_Node_InternalRef child;
     uint8_t *write_ptr = buffer;
     size_t remaining = buffer_size;
     size_t written_count = 0;
@@ -71,8 +77,6 @@ StStatus StGnt_Iterate(
 
     if (!parent || parent->type != GNT_NODETYPE_DIRECTORY) return STATUS_NOT_A_DIRECTORY;
     if (!buffer && buffer_size != 0) return STATUS_INVALID_VALUE;
-    if (!entry_count || !next_cookie) return STATUS_INVALID_VALUE;
-
     handler_module = parent->handler_module;
     *entry_count = 0;
     *next_cookie = cookie;

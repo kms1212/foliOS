@@ -5,7 +5,7 @@
 
 #include <strata/compiler.h>
 
-__always_inline void StA_Ltr(uint16_t sel)
+__always_inline void StA_Ltr(uint16_t sel __in)
 {
     __asm__ volatile("ltr %%ax" : : "a"(sel));
 }

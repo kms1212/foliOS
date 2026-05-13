@@ -3,7 +3,7 @@
 
 #include <strata/compiler.h>
 
-__always_inline void StA_Invlpg(void *addr)
+__always_inline void StA_Invlpg(void *addr __in)
 {
     __asm__ volatile("invlpg (%0)" : : "r"(addr) : "memory");
 }

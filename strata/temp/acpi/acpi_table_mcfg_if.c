@@ -1,5 +1,6 @@
 #include "acpi_table_mcfg_if.h"
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <uacpi/acpi.h>
@@ -123,6 +124,9 @@ static StStatus mcfg_get_entry_count(
     void *context __inout, StHandle handle __in, uint32_t *count __out
 )
 {
+    assert(context);
+    assert(count);
+
     StStatus status;
     uacpi_table table_ref;
     const struct acpi_mcfg *mcfg = NULL;
@@ -130,8 +134,6 @@ static StStatus mcfg_get_entry_count(
         (struct acpi_table_mcfg_dispatch_context *)context;
 
     (void)handle;
-
-    if (!ctx || !count) return STATUS_INVALID_VALUE;
 
     status = acquire_mcfg_table(ctx, &table_ref, &mcfg);
     if (!CHECK_SUCCESS(status)) return status;
@@ -148,6 +150,9 @@ static StStatus mcfg_get_entry(
     StIfAcpiTblMcfg_Entry *entry __out
 )
 {
+    assert(context);
+    assert(entry);
+
     StStatus status;
     uint32_t entry_count;
     uacpi_table table_ref;
@@ -157,8 +162,6 @@ static StStatus mcfg_get_entry(
         (struct acpi_table_mcfg_dispatch_context *)context;
 
     (void)handle;
-
-    if (!ctx || !entry) return STATUS_INVALID_VALUE;
 
     status = acquire_mcfg_table(ctx, &table_ref, &mcfg);
     if (!CHECK_SUCCESS(status)) return status;
@@ -189,7 +192,10 @@ static const StIfAcpiTblMcfg_ServerVTable g_mcfg_vtable = {
 };
 
 StStatus StAcpiTableMcfgIf_DispatchCallArgs(
-    struct StGnt_Node *node __in, StHandle_Id handle __in, uint32_t funcid __in, const long args[4]
+    StGnt_Node_StrongRef node __in,
+    StHandle_Id handle __in,
+    uint32_t funcid __in,
+    const long args[4]
 )
 {
     StStatus status;
@@ -200,17 +206,19 @@ StStatus StAcpiTableMcfgIf_DispatchCallArgs(
     status = get_mcfg_context_from_node(node, &ctx);
     if (!CHECK_SUCCESS(status)) return status;
 
-    return StIfAcpiTblMcfg_ServerDispatchArgs(&g_mcfg_vtable, &ctx, handle, funcid, args);
+    return StIfAcpiTblMcfg_ServerDispatchArgs(&g_mcfg_vtable, &ctx, (StHandle)handle, funcid, args);
 }
 
 StStatus StAcpiTableMcfgIf_RegisterNode(
-    struct StGnt_Node *table_node, struct uacpi_installed_table *table, unsigned long table_index
+    StGnt_Node_StrongRef table_node, struct uacpi_installed_table *table, unsigned long table_index
 )
 {
+    assert(table_node);
+
     StStatus status;
     struct acpi_table_mcfg_node_context *node_ctx;
 
-    if (!table_node || !table) return STATUS_INVALID_VALUE;
+    if (!table) return STATUS_INVALID_VALUE;
     if (!StAcpi_Module) return STATUS_CONFLICTING_STATE;
     if (!uacpi_signatures_match(table->hdr.signature, ACPI_MCFG_SIGNATURE)) {
         return STATUS_INVALID_VALUE;

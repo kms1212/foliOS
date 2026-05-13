@@ -1,18 +1,19 @@
 #include <strata/gnt.h>
 
+#include <assert.h>
+
 #include <strata/compiler.h>
-#include <strata/status.h>
 
-StStatus StGnt_RemoveNode(struct StGnt_Node *node __in)
+void StGnt_RemoveNode(StGnt_Node_StrongRef node __in)
 {
-    struct StGnt_Node *parent;
-    struct StGnt_Node *prev;
+    assert(node);
 
-    if (!node) return STATUS_INVALID_VALUE;
+    StGnt_Node_InternalRef parent;
+    StGnt_Node_InternalRef prev;
 
     parent = node->parent;
-    if (!parent) return STATUS_SUCCESS;
-    if (parent->type == GNT_NODETYPE_LINK) return STATUS_CONFLICTING_STATE;
+    if (!parent) return;
+    assert(parent->type != GNT_NODETYPE_LINK);
 
     prev = NULL;
     if (parent->children_head == node) {
@@ -22,7 +23,8 @@ StStatus StGnt_RemoveNode(struct StGnt_Node *node __in)
         while (prev && prev->sibling != node) {
             prev = prev->sibling;
         }
-        if (!prev) return STATUS_ENTRY_NOT_FOUND;
+        assert(prev);
+        if (!prev) return;
 
         prev->sibling = node->sibling;
     }
@@ -34,6 +36,4 @@ StStatus StGnt_RemoveNode(struct StGnt_Node *node __in)
     node->parent = NULL;
     node->sibling = NULL;
     StGnt_ReleaseNode(node);
-
-    return STATUS_SUCCESS;
 }

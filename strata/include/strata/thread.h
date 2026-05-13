@@ -4,15 +4,32 @@
 #include <strata/plat/thread.h>
 
 #include <strata/compiler.h>
+#include <strata/ref_control.h>
 #include <strata/mm/owner.h>
 #include <strata/mm/types.h>
 #include <strata/status.h>
 
-struct StThread;
 struct StProcess;
 struct StScheduler;
+struct StThread;
 
-typedef void (*StThread_EntryFunction)(struct StThread *);
+#ifndef __STRATA_PROCESS_REFS_DEFINED__
+#    define __STRATA_PROCESS_REFS_DEFINED__
+typedef struct StProcess *StProcess_StrongRef __ref_strong;
+typedef struct StProcess *StProcess_WeakRef __ref_weak;
+typedef struct StProcess *StProcess_BorrowedRef __ref_borrowed;
+typedef struct StProcess *StProcess_InternalRef __ref_internal;
+#endif
+
+#ifndef __STRATA_THREAD_REFS_DEFINED__
+#    define __STRATA_THREAD_REFS_DEFINED__
+typedef struct StThread *StThread_StrongRef __ref_strong;
+typedef struct StThread *StThread_WeakRef __ref_weak;
+typedef struct StThread *StThread_BorrowedRef __ref_borrowed;
+typedef struct StThread *StThread_InternalRef __ref_internal;
+#endif
+
+typedef void (*StThread_EntryFunction)(StThread_BorrowedRef);
 
 enum StThread_State {
     THREAD_STATE_PENDING = 0,
@@ -31,20 +48,24 @@ enum StThread_Type {
 };
 
 typedef int StThread_Id __nocast;
+typedef uint32_t StThread_CreateFlags __nocast;
+
+#define TCF_DEFAULT  ((StThread_CreateFlags)0x00000000)
+#define TCF_DETACHED ((StThread_CreateFlags)0x00000001)
 
 struct StThread {
-    struct StThread *next;
-    struct StThread *mutex_blocking_next;
-    struct StThread *process_next;
+    struct StRefControlBlock ref_control;
+
+    StThread_InternalRef next;
+    StThread_InternalRef mutex_blocking_next;
+    StThread_InternalRef process_next;
 
     StThread_Id id;
-    struct StProcess *process;
+    StProcess_StrongRef process;
     enum StThread_State state;
     enum StThread_Type type;
     int is_detached;
     int is_main;
-    int is_dying;
-    int is_reap_queued;
 
     struct StThreadP_PlatformData platform_data;
 
@@ -58,7 +79,7 @@ struct StThread {
     uintptr_t umode_stack_ptr;
     uintptr_t umode_entry;
 
-    struct StThread **wait_list;
+    StThread_StrongRef *wait_list;
     uint64_t wait_timeout_ms;
     StStatus wait_status;
     int wait_count;
@@ -76,10 +97,9 @@ struct StThread {
     uint64_t last_scheduled_in_ns;
 
     struct StMm_AllocationOwner alloc_owner;
-    St_PageCount deferred_reap_page_count;
 };
 
-StStatus StThread_Init(struct StThread **main_thread __out);
+StStatus StThread_Init(StThread_StrongRef *main_thread __out);
 
 void StThread_LockPreemption(void);
 void StThread_UnlockPreemption(void);
@@ -87,30 +107,37 @@ void StThread_UnlockPreemption(void);
 int StThread_IsPreemptionEnabled(void);
 
 StStatus StThread_CreateKernel(
-    StThread_EntryFunction entry __in, struct StThread **threadout __out
+    StThread_EntryFunction entry __in,
+    StThread_CreateFlags flags __in,
+    StThread_StrongRef *threadout __out_optional
 );
 StStatus StThread_CreateUserMain(
-    struct StProcess *process __in,
+    StProcess_StrongRef process __in,
     uintptr_t entry __in,
     int arg_count __in,
     const char *const *args __in,
     int env_count __in,
     const char *const *envs __in,
-    struct StThread **threadout __out
+    StThread_StrongRef *threadout __out
 );
 StStatus StThread_CreateUser(
-    struct StProcess *process __in, uintptr_t entry __in, struct StThread **threadout __out
+    StProcess_StrongRef process __in, uintptr_t entry __in, StThread_StrongRef *threadout __out
 );
-StStatus StThread_Remove(struct StThread *thread __in);
+StStatus StThread_Acquire(StThread_WeakRef thread __in, StThread_StrongRef *threadout __out);
+StStatus StThread_AcquireInternal(
+    StThread_InternalRef thread __in, StThread_StrongRef *threadout __out
+);
+void StThread_Release(StThread_StrongRef thread __inout);
+StStatus StThread_Remove(StThread_StrongRef thread __in);
 
-StStatus StThread_GetCount(uint32_t *count __out);
-StStatus StThread_GetRuntime(struct StThread *thread __in, uint64_t *runtime_ns __out);
+void StThread_GetCount(uint32_t *count __out);
+StStatus StThread_GetRuntime(StThread_StrongRef thread __in, uint64_t *runtime_ns __out);
 void StThread_RunDeferredReap(St_PageCount page_budget __in);
 
-StStatus StThread_Detach(struct StThread *thread __in);
-StStatus StThread_Wait(struct StThread **list __in, int count __in, uint64_t timeout_ms __in);
+StStatus StThread_Detach(StThread_StrongRef thread __in);
+StStatus StThread_Wait(StThread_StrongRef *list __in, int count __in, uint64_t timeout_ms __in);
 
-StStatus StThread_Sleep(uint64_t timeout_ms __in);
+void StThread_Sleep(uint64_t timeout_ms __in);
 
 void StThread_Yield(void);
 

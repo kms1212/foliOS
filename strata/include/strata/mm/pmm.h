@@ -19,8 +19,8 @@ struct StPmm_AllocationMetadata {
 StStatus StPmm_Init(void);
 StStatus StPmm_LateInit(void);
 
-StStatus StPmm_GetTotalFrameCount(St_PageCount *frame_count __out);
-StStatus StPmm_GetFreeFrameCount(St_PageCount *count __out);
+void StPmm_GetTotalFrameCount(St_PageCount *frame_count __out);
+void StPmm_GetFreeFrameCount(St_PageCount *count __out);
 
 StStatus StPmm_AllocateContiguousFrame(
     St_PhysFrame *pfn __out,

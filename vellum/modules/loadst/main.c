@@ -552,6 +552,8 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
         }
     }
 
+    printf("Loading kernel...\n");
+
     status = load_kernel(path, argv[0], &elf, &load_paddr, &program_size);
     if (!CHECK_SUCCESS(status)) return 1;
 

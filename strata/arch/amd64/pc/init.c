@@ -133,8 +133,8 @@ static void *preempt_isr(
 )
 {
     StStatus status;
-    struct StThread *current_thread;
-    struct StThread *next_thread;
+    StThread_InternalRef current_thread;
+    StThread_InternalRef next_thread;
     void *next_stack_ptr;
 
     if (StThread_IsPreemptionEnabled()) {
@@ -461,15 +461,20 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing preemption handler...\n");
     if (use_apic) {
-
-        StInt_CreateHandler(LAPIC_TIMER_IRQ_VECTOR, NULL, preempt_isr, NULL);
+        status = StInt_CreateHandler(LAPIC_TIMER_IRQ_VECTOR, NULL, preempt_isr, NULL);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to create preemption interrupt handler");
+        }
     } else {
-        StInt_CreateHandler(
-            use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE,
+        status = StInt_CreateHandler(
+            TIMER_IRQ_VECTOR(use_hpet),
             NULL,
             preempt_isr,
             NULL
         );
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to create preemption interrupt handler");
+        }
     }
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing syscall handler...\n");

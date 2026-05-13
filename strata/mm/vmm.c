@@ -1,5 +1,6 @@
 #include <strata/mm/vmm.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 #include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
 #include <strata/plat/memmap.h>
+#include <strata/process.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/types.h>
@@ -243,6 +245,8 @@ static StStatus make_limit_exclusive(
     St_VirtPage base_vpn __in, St_PageCount count __in, St_VirtPage *limit_out __out
 )
 {
+    assert(limit_out);
+
     St_VirtPage limit;
 
     if (count == 0) return STATUS_INVALID_VALUE;
@@ -250,7 +254,7 @@ static StStatus make_limit_exclusive(
     limit = base_vpn + (St_VirtPage)count;
     if (limit < base_vpn) return STATUS_INVALID_VALUE;
 
-    if (limit_out) *limit_out = limit;
+    *limit_out = limit;
 
     return STATUS_SUCCESS;
 }
@@ -259,9 +263,11 @@ static StStatus make_domain_limit_exclusive(
     St_VirtPage limit_inclusive __in, St_VirtPage *limit_out __out
 )
 {
+    assert(limit_out);
+
     if (limit_inclusive == (St_VirtPage)-1) return STATUS_CONFLICTING_STATE;
 
-    if (limit_out) *limit_out = limit_inclusive + 1;
+    *limit_out = limit_inclusive + 1;
 
     return STATUS_SUCCESS;
 }
@@ -375,6 +381,8 @@ static StStatus insert_domain_node_sorted(
     struct vmm_alloc_node **head_slot __inout, struct vmm_alloc_node *node __in
 )
 {
+    assert(head_slot);
+
     struct vmm_alloc_node *prev = NULL;
     struct vmm_alloc_node *curr = *head_slot;
 
@@ -405,6 +413,8 @@ static void remove_domain_node(
     struct vmm_alloc_node **head_slot __inout, struct vmm_alloc_node *node __in
 )
 {
+    assert(head_slot);
+
     if (node->domain_prev) {
         node->domain_prev->domain_next = node->domain_next;
     } else if (*head_slot == node) {
@@ -467,6 +477,8 @@ static StStatus find_first_fit_from(
     St_VirtPage *result_vpn __out
 )
 {
+    assert(result_vpn);
+
     struct vmm_alloc_node *curr = head;
     St_VirtPage candidate_start = domain_base_vpn;
     St_VirtPage domain_limit_exclusive;
@@ -487,9 +499,9 @@ static StStatus find_first_fit_from(
         }
 
         if (curr->base_vpn > candidate_start) {
-            St_PageCount gap = curr->base_vpn - candidate_start;
+            St_PageCount gap = (St_PageCount)(curr->base_vpn - candidate_start);
             if (gap >= count) {
-                if (result_vpn) *result_vpn = candidate_start;
+                *result_vpn = candidate_start;
                 return STATUS_SUCCESS;
             }
         }
@@ -501,9 +513,9 @@ static StStatus find_first_fit_from(
     }
 
     if (domain_limit_exclusive > candidate_start) {
-        St_PageCount gap = domain_limit_exclusive - candidate_start;
+        St_PageCount gap = (St_PageCount)(domain_limit_exclusive - candidate_start);
         if (gap >= count) {
-            if (result_vpn) *result_vpn = candidate_start;
+            *result_vpn = candidate_start;
             return STATUS_SUCCESS;
         }
     }
@@ -552,7 +564,7 @@ StStatus StVmm_InitGlobalDomain(
     alloc_domain->head = NULL;
     alloc_domain->base_vpn = base_vpn;
     alloc_domain->limit_vpn = limit_vpn;
-    alloc_domain->free_count = limit_vpn - base_vpn + 1;
+    alloc_domain->free_count = (St_PageCount)(limit_vpn - base_vpn + 1);
     alloc_domain->initialized = 1;
 
     return STATUS_SUCCESS;
@@ -568,18 +580,18 @@ StStatus StVmm_InitLocalDomain(
     asp->user_alloc_head = NULL;
     asp->user_base_vpn = base_vpn;
     asp->user_limit_vpn = limit_vpn;
-    asp->user_free_count = limit_vpn - base_vpn + 1;
+    asp->user_free_count = (St_PageCount)(limit_vpn - base_vpn + 1);
 
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_RemoveLocalDomain(struct StMm_AddressSpace *asp __in)
+void StVmm_RemoveLocalDomain(struct StMm_AddressSpace *asp __in)
 {
+    assert(asp);
+
     struct vmm_alloc_node *curr;
     struct vmm_alloc_node *next;
     uint32_t irq_state;
-
-    if (!asp) return STATUS_INVALID_VALUE;
 
     irq_state = StA_SaveInterrupt();
     StA_DisableInterrupt();
@@ -596,35 +608,35 @@ StStatus StVmm_RemoveLocalDomain(struct StMm_AddressSpace *asp __in)
     }
 
     asp->user_alloc_head = NULL;
-    asp->user_free_count = asp->user_limit_vpn - asp->user_base_vpn + 1;
+    asp->user_free_count = (St_PageCount)(asp->user_limit_vpn - asp->user_base_vpn + 1);
 
     StThread_UnlockPreemption();
     StA_RestoreInterrupt(irq_state);
-
-    return STATUS_SUCCESS;
 }
 
 StStatus StVmm_GetTotalGlobalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out)
 {
+    assert(count);
+
     struct vmm_alloc_domain *alloc_domain;
 
     if (domain >= VMM_DOMAIN_MAX) return STATUS_INVALID_VALUE;
-    if (!count) return STATUS_INVALID_VALUE;
 
     alloc_domain = &alloc_domain_list[domain];
     if (!alloc_domain->initialized) return STATUS_INVALID_VALUE;
 
-    *count = alloc_domain->limit_vpn - alloc_domain->base_vpn + 1;
+    *count = (St_PageCount)(alloc_domain->limit_vpn - alloc_domain->base_vpn + 1);
 
     return STATUS_SUCCESS;
 }
 
 StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain, St_PageCount *count __out)
 {
+    assert(count);
+
     struct vmm_alloc_domain *alloc_domain;
 
     if (domain >= VMM_DOMAIN_MAX) return STATUS_INVALID_VALUE;
-    if (!count) return STATUS_INVALID_VALUE;
 
     alloc_domain = &alloc_domain_list[domain];
     if (!alloc_domain->initialized) return STATUS_INVALID_VALUE;
@@ -636,16 +648,20 @@ StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain, St_PageCount *co
 
 StStatus StVmm_GetTotalLocalPageCount(struct StMm_AddressSpace *asp __in, St_PageCount *count __out)
 {
-    if (!asp || !count) return STATUS_INVALID_VALUE;
+    assert(count);
 
-    *count = asp->user_limit_vpn - asp->user_base_vpn + 1;
+    if (!asp) return STATUS_INVALID_VALUE;
+
+    *count = (St_PageCount)(asp->user_limit_vpn - asp->user_base_vpn + 1);
 
     return STATUS_SUCCESS;
 }
 
 StStatus StVmm_GetFreeLocalPageCount(struct StMm_AddressSpace *asp __in, St_PageCount *count __out)
 {
-    if (!asp || !count) return STATUS_INVALID_VALUE;
+    assert(count);
+
+    if (!asp) return STATUS_INVALID_VALUE;
 
     *count = asp->user_free_count;
 
@@ -660,6 +676,8 @@ StStatus StVmm_AllocateGlobalPage(
     StMm_AllocFlags alloc_flags __in
 )
 {
+    assert(vpn);
+
     StStatus status;
     struct vmm_alloc_node *new_node;
     struct vmm_alloc_domain *ad;
@@ -667,7 +685,6 @@ StStatus StVmm_AllocateGlobalPage(
     St_VirtPage search_start;
     uint32_t irq_state;
 
-    if (!vpn) return STATUS_INVALID_VALUE;
     if (domain >= VMM_DOMAIN_MAX) return STATUS_INVALID_VALUE;
     if (count == 0) return STATUS_INVALID_VALUE;
 
@@ -751,6 +768,8 @@ StStatus StVmm_AllocateLocalPage(
     StMm_AllocFlags alloc_flags __in
 )
 {
+    assert(vpn);
+
     StStatus status;
     struct vmm_alloc_node *new_node;
     struct StMm_AllocationOwner *owner;
@@ -759,7 +778,7 @@ StStatus StVmm_AllocateLocalPage(
     St_VirtPage search_start;
     uint32_t irq_state;
 
-    if (!asp || !vpn) return STATUS_INVALID_VALUE;
+    if (!asp) return STATUS_INVALID_VALUE;
     if (count == 0) return STATUS_INVALID_VALUE;
 
     owner = &asp->process->alloc_owner;

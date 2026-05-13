@@ -8,7 +8,7 @@ void __assert_fail(const char *assertion, const char *file, unsigned int line, c
 {
     St_Panic(
         STATUS_ASSERTION_FAILED,
-        "assertion failed: %s: %d: (%s): %s\n",
+        "assertion failed: %s:%d(%s): %s\n",
         file,
         line,
         func,

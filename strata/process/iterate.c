@@ -1,5 +1,6 @@
 #include "internal.h"
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -30,11 +31,11 @@ static StStatus format_id_name(
     );
 }
 
-static struct StGnt_Node *find_registered_child(
-    struct StGnt_Node *parent, const St_Utf32Char *name, size_t name_len
+static StGnt_Node_InternalRef find_registered_child(
+    StGnt_Node_StrongRef parent, const St_Utf32Char *name, size_t name_len
 )
 {
-    struct StGnt_Node *child;
+    StGnt_Node_InternalRef child;
 
     if (!parent || parent->type == GNT_NODETYPE_LINK) return NULL;
 
@@ -117,16 +118,17 @@ static StStatus iterate_process_root(
 )
 {
     StStatus status = STATUS_END_OF_LIST;
-    struct StProcess *process;
+    StProcess_InternalRef process;
     size_t count = 0;
     uint64_t last_cookie = cookie;
 
-    process = StProcess_GetListHead();
+    process = (StProcess_InternalRef)StProcess_GetListHead();
     while (process) {
         St_Utf32Char name[NODENAME_MAX];
         size_t name_len;
 
-        if (!process->is_dying && !process->gnt_node && (uint64_t)process->id > cookie) {
+        if (!StRefControlBlock_IsDying(&process->ref_control) && !process->gnt_node &&
+            (uint64_t)process->id > cookie) {
             status = format_id_name(process->id, name, sizeof(name), &name_len);
             if (!CHECK_SUCCESS(status)) return status;
 
@@ -162,8 +164,8 @@ static StStatus iterate_process_root(
 }
 
 static StStatus iterate_process_directory(
-    struct StGnt_Node *parent,
-    struct StProcess *process,
+    StGnt_Node_StrongRef parent,
+    StProcess_BorrowedRef process,
     uint64_t cookie,
     uint8_t *buffer,
     size_t buffer_size,
@@ -227,8 +229,8 @@ static StStatus iterate_process_directory(
 }
 
 static StStatus iterate_threads_directory(
-    struct StGnt_Node *parent,
-    struct StProcess *process,
+    StGnt_Node_StrongRef parent,
+    StProcess_BorrowedRef process,
     uint64_t cookie,
     uint8_t *buffer,
     size_t buffer_size,
@@ -238,7 +240,8 @@ static StStatus iterate_threads_directory(
 {
     size_t count = 0;
 
-    if (!process || !process->main_thread || process->main_thread->is_dying || cookie >= 1) {
+    if (!process || !process->main_thread ||
+        StRefControlBlock_IsDying(&process->main_thread->ref_control) || cookie >= 1) {
         *entry_count = 0;
         *next_cookie = cookie;
         return STATUS_END_OF_LIST;
@@ -263,7 +266,7 @@ static StStatus iterate_threads_directory(
 }
 
 StStatus StProcessGnt_Iterate(
-    struct StGnt_Node *parent __in,
+    StGnt_Node_StrongRef parent __in,
     uint64_t cookie __in,
     void *buffer __in,
     size_t buffer_size __in,
@@ -271,10 +274,13 @@ StStatus StProcessGnt_Iterate(
     uint64_t *next_cookie __out
 )
 {
-    StStatus status;
-    struct StProcess *process;
+    assert(entry_count);
+    assert(next_cookie);
 
-    if (!parent || !entry_count || !next_cookie) return STATUS_INVALID_VALUE;
+    StStatus status;
+    StProcess_BorrowedRef process;
+
+    if (!parent) return STATUS_INVALID_VALUE;
     if (!buffer && buffer_size != 0) return STATUS_INVALID_VALUE;
 
     if (parent == g_gnt_system_processes) {

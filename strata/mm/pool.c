@@ -1,5 +1,8 @@
+#include "config.h"
+
 #include <strata/mm/pool.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -13,8 +16,6 @@
 #include <strata/mm/vmm.h>
 #include <strata/status.h>
 #include <strata/thread.h>
-
-#include "config.h"
 
 struct subpool_header {
     struct subpool_header *prev, *next, *prev_free, *next_free;
@@ -266,7 +267,7 @@ static int find_large_allocation_range_from_ptr(
     if (end_vpn <= begin_vpn) return 0;
 
     if (begin_vpn_out) *begin_vpn_out = begin_vpn;
-    if (page_count_out) *page_count_out = end_vpn - begin_vpn;
+    if (page_count_out) *page_count_out = (St_PageCount)(end_vpn - begin_vpn);
 
     return 1;
 }
@@ -277,6 +278,8 @@ static StStatus allocate_subpool(
     struct subpool_header **header_out __out
 )
 {
+    assert(header_out);
+
     StStatus status;
     St_VirtPage start_vpn;
     struct subpool_header *header;
@@ -354,7 +357,7 @@ static StStatus allocate_subpool(
 
     StThread_UnlockPreemption();
 
-    if (header_out) *header_out = header;
+    *header_out = header;
 
     return STATUS_SUCCESS;
 }
@@ -407,6 +410,8 @@ static St_VirtPage unlink_subpool_locked(struct subpool_header *header __in)
 
 static StStatus allocate_large(size_t size __in, uint8_t alignment_bits __in, void **ptr __out)
 {
+    assert(ptr);
+
     StStatus status;
     St_VirtPage vpn;
     St_PageCount page_count;
@@ -434,6 +439,8 @@ static StStatus allocate_large(size_t size __in, uint8_t alignment_bits __in, vo
 
 static StStatus allocate_internal(size_t size __in, int alignment_bits __in, void **ptr __out)
 {
+    assert(ptr);
+
     StStatus status;
     uint8_t normalized_alignment_bits;
     uint16_t normalized_size;
@@ -442,7 +449,6 @@ static StStatus allocate_internal(size_t size __in, int alignment_bits __in, voi
     size_t bitmap_word_count;
     uint16_t object_index;
 
-    if (!ptr) return STATUS_INVALID_VALUE;
     *ptr = NULL;
     if (size == 0) size = 1;
     if (alignment_bits < 0 || alignment_bits >= (int)(sizeof(size_t) * 8)) {
@@ -503,16 +509,22 @@ static StStatus allocate_internal(size_t size __in, int alignment_bits __in, voi
 
 StStatus StPool_Allocate(size_t size __in, void **ptr __out)
 {
+    assert(ptr);
+
     return allocate_internal(size, STRATA_MM_POOL_MIN_ALIGN_BITS, ptr);
 }
 
 StStatus StPool_AllocateAligned(size_t size __in, int alignment __in, void **ptr __out)
 {
+    assert(ptr);
+
     return allocate_internal(size, alignment, ptr);
 }
 
 StStatus StPool_AllocateClear(size_t size __in, void **ptr __out)
 {
+    assert(ptr);
+
     StStatus status;
 
     status = StPool_Allocate(size, ptr);
@@ -525,6 +537,8 @@ StStatus StPool_AllocateClear(size_t size __in, void **ptr __out)
 
 StStatus StPool_AllocateClearAligned(size_t size __in, int alignment __in, void **ptr __out)
 {
+    assert(ptr);
+
     StStatus status;
 
     status = StPool_AllocateAligned(size, alignment, ptr);
@@ -537,6 +551,8 @@ StStatus StPool_AllocateClearAligned(size_t size __in, int alignment __in, void 
 
 StStatus StPool_Reallocate(void *ptr __in, size_t size __in, void **new_ptr __out)
 {
+    assert(new_ptr);
+
     StStatus status;
     void *allocated_ptr;
     struct subpool_header *subpool_header;
@@ -544,8 +560,6 @@ StStatus StPool_Reallocate(void *ptr __in, size_t size __in, void **new_ptr __ou
     St_PageCount page_count;
     uint16_t object_index;
     size_t copy_size;
-
-    if (!new_ptr) return STATUS_INVALID_VALUE;
 
     if (!ptr) {
         return StPool_Allocate(size, new_ptr);
@@ -596,7 +610,7 @@ StStatus StPool_Reallocate(void *ptr __in, size_t size __in, void **new_ptr __ou
     return STATUS_SUCCESS;
 }
 
-StStatus StPool_Free(void *ptr __in)
+void StPool_Free(void *ptr __in)
 {
     St_VirtPage begin_vpn;
     St_PageCount page_count;
@@ -609,14 +623,14 @@ StStatus StPool_Free(void *ptr __in)
     uint64_t bit_mask;
     int was_full;
 
-    if (!ptr) return STATUS_SUCCESS;
+    if (!ptr) return;
 
     StThread_LockPreemption();
 
     if (find_large_allocation_range_from_ptr(ptr, &begin_vpn, &page_count)) {
         StThread_UnlockPreemption();
         StMm_FreeGlobal(VMM_DOMAIN_KERNEL_SLOW, begin_vpn, page_count);
-        return STATUS_SUCCESS;
+        return;
     }
 
     subpool_header = find_subpool_header_from_ptr(ptr, &object_index);
@@ -624,7 +638,7 @@ StStatus StPool_Free(void *ptr __in)
         entry = get_object_entry(subpool_header->object_size, subpool_header->alignment_bits);
         if (!entry) {
             StThread_UnlockPreemption();
-            return STATUS_INVALID_VALUE;
+            return;
         }
 
         word_index = object_index / 64;
@@ -633,7 +647,7 @@ StStatus StPool_Free(void *ptr __in)
 
         if (!(subpool_header->bitmap[word_index] & bit_mask)) {
             StThread_UnlockPreemption();
-            return STATUS_INVALID_VALUE;
+            return;
         }
 
         was_full = subpool_is_completely_full(subpool_header);
@@ -652,7 +666,7 @@ StStatus StPool_Free(void *ptr __in)
                     STRATA_MM_POOL_SUBPOOL_PAGE_COUNT
                 );
             }
-            return STATUS_SUCCESS;
+            return;
         }
 
         if (was_full) {
@@ -660,9 +674,8 @@ StStatus StPool_Free(void *ptr __in)
         }
 
         StThread_UnlockPreemption();
-        return STATUS_SUCCESS;
+        return;
     }
 
     StThread_UnlockPreemption();
-    return STATUS_INVALID_VALUE;
 }

@@ -28,8 +28,8 @@ static unsigned int work_queue_head;
 static unsigned int work_queue_tail;
 static unsigned int work_queue_count;
 static unsigned int work_running_count;
-static struct StThread *work_thread;
-static struct StThread *sleeping_work_thread;
+static StThread_StrongRef work_thread;
+static StThread_InternalRef sleeping_work_thread;
 
 extern atomic_uint_fast32_t uacpi_kernel_interrupt_inflight_count;
 
@@ -41,7 +41,7 @@ static void wake_work_thread(void)
     sleeping_work_thread = NULL;
 }
 
-static void work_thread_main(struct StThread *thread)
+static void work_thread_main(StThread_BorrowedRef thread)
 {
     (void)thread;
 
@@ -52,7 +52,7 @@ static void work_thread_main(struct StThread *thread)
         StRawSpinlock_LockAndSaveIrq(&work_lock, &irqstate);
 
         if (!work_queue_count) {
-            sleeping_work_thread = thread;
+            sleeping_work_thread = (StThread_InternalRef)thread;
             thread->state = THREAD_STATE_BLOCKING;
             StRawSpinlock_UnlockAndRestoreIrq(&work_lock, irqstate);
             StThread_Yield();
@@ -78,17 +78,16 @@ static void work_thread_main(struct StThread *thread)
 uacpi_status uacpi_kernel_ensure_work_thread(void)
 {
     StStatus status;
-    struct StThread *thread;
+    StThread_StrongRef thread;
 
     if (work_thread) return UACPI_STATUS_OK;
 
-    status = StThread_CreateKernel(work_thread_main, &thread);
+    status = StThread_CreateKernel(work_thread_main, TCF_DEFAULT, &thread);
     if (!CHECK_SUCCESS(status)) {
         LOG_ERROR(LM_CAT_ACPI, "failed to create ACPI work thread: %08X\n", status);
         return UACPI_STATUS_INTERNAL_ERROR;
     }
 
-    StThread_Detach(thread);
     work_thread = thread;
 
     return UACPI_STATUS_OK;

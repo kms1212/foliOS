@@ -1,5 +1,6 @@
 #include <strata/syscall.h>
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <strata/compiler.h>
@@ -8,7 +9,7 @@
 #include <strata/status.h>
 
 __weak StStatus StSyscallA_DispatchCallReg(
-    struct StGnt_Node *node,
+    StGnt_Node_StrongRef node,
     uint32_t funcid,
     unsigned long arg0,
     unsigned long arg1,
@@ -17,6 +18,8 @@ __weak StStatus StSyscallA_DispatchCallReg(
     int *handled_out
 )
 {
+    assert(handled_out);
+
     (void)node;
     (void)funcid;
     (void)arg0;
@@ -24,13 +27,13 @@ __weak StStatus StSyscallA_DispatchCallReg(
     (void)arg2;
     (void)arg3;
 
-    if (handled_out) *handled_out = 0;
+    *handled_out = 0;
 
     return STATUS_NOT_SUPPORTED;
 }
 
 __weak StStatus StSyscallA_DispatchCallPtr(
-    struct StGnt_Node *node,
+    StGnt_Node_StrongRef node,
     uint32_t funcid,
     const void *args,
     void *result,
@@ -39,6 +42,8 @@ __weak StStatus StSyscallA_DispatchCallPtr(
     int *handled_out
 )
 {
+    assert(handled_out);
+
     (void)node;
     (void)funcid;
     (void)args;
@@ -46,7 +51,7 @@ __weak StStatus StSyscallA_DispatchCallPtr(
     (void)arg0;
     (void)arg1;
 
-    if (handled_out) *handled_out = 0;
+    *handled_out = 0;
 
     return STATUS_NOT_SUPPORTED;
 }

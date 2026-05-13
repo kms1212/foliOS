@@ -14,15 +14,21 @@
 extern struct StModule *StAcpi_Module;
 
 StStatus StAcpiGnt_DispatchCallArgs(
-    struct StGnt_Node *node __in, StHandle_Id handle __in, uint32_t funcid __in, const long args[4]
+    StGnt_Node_StrongRef node __in,
+    StHandle_Id handle __in,
+    uint32_t funcid __in,
+    const long args[4]
 );
 
 StStatus StAcpiTableMcfgIf_DispatchCallArgs(
-    struct StGnt_Node *node __in, StHandle_Id handle __in, uint32_t funcid __in, const long args[4]
+    StGnt_Node_StrongRef node __in,
+    StHandle_Id handle __in,
+    uint32_t funcid __in,
+    const long args[4]
 );
 
 StStatus StAcpiTableMcfgIf_RegisterNode(
-    struct StGnt_Node *table_node __inout,
+    StGnt_Node_StrongRef table_node __inout,
     struct uacpi_installed_table *table __in,
     unsigned long table_index __in
 );

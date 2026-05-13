@@ -3,10 +3,9 @@
 
 #include <strata/plat/syscall.h>
 
+#include <strata/gnt.h>
 #include <strata/status.h>
 #include <strata/uuid.h>
-
-struct StGnt_Node;
 
 StStatus StSyscall_Open(const uint8_t *path __in, uint32_t flags __in, uint32_t *handle __out);
 StStatus StSyscall_Close(uint32_t handle __in);
@@ -35,7 +34,7 @@ StStatus StSyscall_CallPtr(
 );
 
 StStatus StSyscallA_DispatchCallReg(
-    struct StGnt_Node *node __in,
+    StGnt_Node_StrongRef node __in,
     uint32_t funcid __in,
     unsigned long arg0 __in,
     unsigned long arg1 __in,
@@ -44,7 +43,7 @@ StStatus StSyscallA_DispatchCallReg(
     int *handled_out __out
 );
 StStatus StSyscallA_DispatchCallPtr(
-    struct StGnt_Node *node __in,
+    StGnt_Node_StrongRef node __in,
     uint32_t funcid __in,
     const void *args __in,
     void *result __out_optional,

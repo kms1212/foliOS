@@ -1,6 +1,7 @@
 #ifndef __STRATA_ARCH_INTRINSICS_CPUID_H__
 #define __STRATA_ARCH_INTRINSICS_CPUID_H__
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <strata/compiler.h>
@@ -26,9 +27,18 @@
 #define CPUID_INTEL_PM_INFO_RAS_CAPS  0x80000007
 
 __always_inline void StA_Cpuid(
-    uint32_t leaf, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx
+    uint32_t leaf __in,
+    uint32_t *eax __out,
+    uint32_t *ebx __out,
+    uint32_t *ecx __out,
+    uint32_t *edx __out
 )
 {
+    assert(eax);
+    assert(ebx);
+    assert(ecx);
+    assert(edx);
+
     __asm__ volatile("cpuid" : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx) : "a"(leaf));
 }
 

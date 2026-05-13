@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include <strata/compiler.h>
 #include <strata/gnt.h>
@@ -17,7 +18,7 @@
 
 #define MODULE_NAME "process"
 
-static StStatus register_process_directory_interfaces(struct StGnt_Node *node)
+static StStatus register_process_directory_interfaces(StGnt_Node_StrongRef node)
 {
     StStatus status;
 
@@ -30,7 +31,7 @@ static StStatus register_process_directory_interfaces(struct StGnt_Node *node)
     return StGnt_RegisterInterface(node, &StGntIf_Uuid_FileInfo, 0, 2);
 }
 
-static StStatus register_threads_directory_interfaces(struct StGnt_Node *node)
+static StStatus register_threads_directory_interfaces(StGnt_Node_StrongRef node)
 {
     StStatus status;
 
@@ -40,7 +41,7 @@ static StStatus register_threads_directory_interfaces(struct StGnt_Node *node)
     return StGnt_RegisterInterface(node, &StGntIf_Uuid_FileInfo, 0, 2);
 }
 
-static StStatus register_stdio_interfaces(struct StGnt_Node *node)
+static StStatus register_stdio_interfaces(StGnt_Node_StrongRef node)
 {
     StStatus status;
 
@@ -50,7 +51,7 @@ static StStatus register_stdio_interfaces(struct StGnt_Node *node)
     return StGnt_RegisterInterface(node, &StGntIf_Uuid_FileInfo, 0, 2);
 }
 
-static StStatus register_thread_interfaces(struct StGnt_Node *node)
+static StStatus register_thread_interfaces(StGnt_Node_StrongRef node)
 {
     StStatus status;
 
@@ -63,7 +64,7 @@ static StStatus register_thread_interfaces(struct StGnt_Node *node)
 static StStatus get_current_process(struct StProcess **process_out)
 {
     StStatus status;
-    struct StThread *thread;
+    StThread_InternalRef thread;
 
     status = StScheduler_GetCurrentThread(&thread);
     if (!CHECK_SUCCESS(status)) return status;
@@ -91,11 +92,11 @@ static StStatus format_id_name(
     );
 }
 
-static struct StGnt_Node *find_registered_child(
-    struct StGnt_Node *parent, const St_Utf32Char *name, size_t name_len
+static StGnt_Node_InternalRef find_registered_child(
+    StGnt_Node_StrongRef parent, const St_Utf32Char *name, size_t name_len
 )
 {
-    struct StGnt_Node *child;
+    StGnt_Node_InternalRef child;
 
     if (!parent || parent->type == GNT_NODETYPE_LINK) return NULL;
 
@@ -144,9 +145,7 @@ static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, in
     return STATUS_SUCCESS;
 }
 
-static StStatus get_process_id_from_process_node(
-    struct StGnt_Node *node, StProcess_Id *process_id_out
-)
+static StStatus get_process_id_from_process_node(StGnt_Node_StrongRef node, StProcess_Id *process_id_out)
 {
     if (!node) return STATUS_INVALID_VALUE;
 
@@ -154,12 +153,12 @@ static StStatus get_process_id_from_process_node(
 }
 
 static StStatus get_process_from_process_node(
-    struct StGnt_Node *node, struct StProcess **process_out
+    StGnt_Node_StrongRef node, StProcess_BorrowedRef *process_out
 )
 {
     StStatus status;
     StProcess_Id process_id;
-    struct StProcess *process;
+    StProcess_BorrowedRef process;
 
     status = get_process_id_from_process_node(node, &process_id);
     if (!CHECK_SUCCESS(status)) return status;
@@ -172,12 +171,12 @@ static StStatus get_process_from_process_node(
     return STATUS_SUCCESS;
 }
 
-static StStatus register_process_node(struct StProcess *process, struct StGnt_Node **node_out)
+static StStatus register_process_node(StProcess_BorrowedRef process, StGnt_Node_StrongRef *node_out)
 {
     StStatus status;
     St_Utf32Char process_name[NODENAME_MAX];
     size_t process_name_len;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
 
     if (!process) return STATUS_INVALID_VALUE;
 
@@ -192,7 +191,9 @@ static StStatus register_process_node(struct StProcess *process, struct StGnt_No
     status = format_id_name(process->id, process_name, sizeof(process_name), &process_name_len);
     if (!CHECK_SUCCESS(status)) return status;
 
-    node = find_registered_child(g_gnt_system_processes, process_name, process_name_len);
+    node = (StGnt_Node_StrongRef)find_registered_child(
+        g_gnt_system_processes, process_name, process_name_len
+    );
     if (node) {
         node->type = GNT_NODETYPE_DIRECTORY;
         node->handler_module = StProcess_Module;
@@ -222,16 +223,16 @@ static StStatus register_process_node(struct StProcess *process, struct StGnt_No
 }
 
 static StStatus register_directory_child(
-    struct StGnt_Node *parent,
+    StGnt_Node_StrongRef parent,
     const St_Utf32Char *name,
     size_t name_len,
-    struct StGnt_Node **node_out
+    StGnt_Node_StrongRef *node_out
 )
 {
     StStatus status;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
 
-    node = find_registered_child(parent, name, name_len);
+    node = (StGnt_Node_StrongRef)find_registered_child(parent, name, name_len);
     if (node) {
         node->type = GNT_NODETYPE_DIRECTORY;
         node->handler_module = StProcess_Module;
@@ -258,16 +259,16 @@ static StStatus register_directory_child(
 }
 
 static StStatus register_leaf_child(
-    struct StGnt_Node *parent,
+    StGnt_Node_StrongRef parent,
     const St_Utf32Char *name,
     size_t name_len,
-    struct StGnt_Node **node_out
+    StGnt_Node_StrongRef *node_out
 )
 {
     StStatus status;
-    struct StGnt_Node *node;
+    StGnt_Node_StrongRef node;
 
-    node = find_registered_child(parent, name, name_len);
+    node = (StGnt_Node_StrongRef)find_registered_child(parent, name, name_len);
     if (node) {
         node->type = GNT_NODETYPE_LEAF;
 
@@ -306,11 +307,11 @@ static StStatus register_leaf_child(
 }
 
 static StStatus resolve_process_root(
-    const St_Utf32Char *token, size_t token_len, struct StGnt_Node **next_node
+    const St_Utf32Char *token, size_t token_len, StGnt_Node_StrongRef *next_node
 )
 {
     StStatus status;
-    struct StProcess *process;
+    StProcess_BorrowedRef process;
     int process_id;
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Current", 7) == 0) {
@@ -331,14 +332,14 @@ static StStatus resolve_process_root(
 }
 
 static StStatus resolve_process_directory(
-    struct StGnt_Node *base_node,
+    StGnt_Node_StrongRef base_node,
     const St_Utf32Char *token,
     size_t token_len,
-    struct StGnt_Node **next_node
+    StGnt_Node_StrongRef *next_node
 )
 {
     StStatus status;
-    struct StProcess *process;
+    StProcess_BorrowedRef process;
 
     status = get_process_from_process_node(base_node, &process);
     if (!CHECK_SUCCESS(status)) return status;
@@ -364,22 +365,22 @@ static StStatus resolve_process_directory(
 }
 
 static StStatus resolve_threads_directory(
-    struct StGnt_Node *base_node,
+    StGnt_Node_StrongRef base_node,
     const St_Utf32Char *token,
     size_t token_len,
-    struct StGnt_Node **next_node
+    StGnt_Node_StrongRef *next_node
 )
 {
     StStatus status;
-    struct StProcess *process;
+    StProcess_BorrowedRef process;
 
     if (!base_node || !base_node->parent) return STATUS_INVALID_VALUE;
 
-    status = get_process_from_process_node(base_node->parent, &process);
+    status = get_process_from_process_node((StGnt_Node_StrongRef)base_node->parent, &process);
     if (!CHECK_SUCCESS(status)) return status;
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Main", 4) == 0) {
-        if (!process->main_thread || process->main_thread->is_dying) {
+        if (!process->main_thread || StRefControlBlock_IsDying(&process->main_thread->ref_control)) {
             return STATUS_ENTRY_NOT_FOUND;
         }
 
@@ -390,12 +391,15 @@ static StStatus resolve_threads_directory(
 }
 
 StStatus StProcessGnt_Resolve(
-    struct StGnt_Node *base_node __in,
+    StGnt_Node_StrongRef base_node __in,
     const St_Utf32Char *path __in,
-    struct StGnt_Node **next_node __out,
+    StGnt_Node_StrongRef *next_node __out,
     const St_Utf32Char **remaining_path __out
 )
 {
+    assert(next_node);
+    assert(remaining_path);
+
     StStatus status;
     St_Utf8Char path_utf8[512];
     size_t path_len;
@@ -430,7 +434,7 @@ StStatus StProcessGnt_Resolve(
 
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "Process GNT resolve %s\n", path_utf8);
 
-    if (remaining_path) *remaining_path = path;
+    *remaining_path = path;
 
     return STATUS_SUCCESS;
 }

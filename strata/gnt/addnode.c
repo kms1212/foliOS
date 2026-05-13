@@ -1,6 +1,5 @@
 #include <strata/gnt.h>
 
-#include <stdatomic.h>
 #include <string.h>
 
 #include <strata/compiler.h>
@@ -9,20 +8,20 @@
 #include <strata/utf.h>
 
 StStatus StGnt_AddNode(
-    struct StGnt_Node *parent __in,
+    StGnt_Node_StrongRef parent __in,
     const St_Utf32Char *name __in,
-    struct StGnt_Node **node __out_optional
+    StGnt_Node_StrongRef *node __out_optional
 )
 {
     StStatus status;
-    struct StGnt_Node *new_node;
+    StGnt_Node_StrongRef new_node;
     size_t name_len;
 
     status = StPool_AllocateClear(sizeof(*new_node), (void **)&new_node);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    new_node->parent = parent;
-    atomic_init(&new_node->ref_count, 1);
+    new_node->parent = (StGnt_Node_InternalRef)parent;
+    StRefControlBlock_Init(&new_node->ref_control, 1, new_node, StGnt_FinalizeNode);
 
     if (parent) {
         if (parent->type == GNT_NODETYPE_LINK) {
@@ -31,10 +30,10 @@ StStatus StGnt_AddNode(
         }
 
         if (!parent->children_head) {
-            parent->children_head = parent->children_tail = new_node;
+            parent->children_head = parent->children_tail = (StGnt_Node_InternalRef)new_node;
         } else {
-            parent->children_tail->sibling = new_node;
-            parent->children_tail = new_node;
+            parent->children_tail->sibling = (StGnt_Node_InternalRef)new_node;
+            parent->children_tail = (StGnt_Node_InternalRef)new_node;
         }
     }
 

@@ -18,19 +18,19 @@
 struct acpi_event {
     struct StRawSpinlock lock;
     uint32_t counter;
-    struct StThread *waiters;
+    StThread_InternalRef waiters;
 };
 
-static void wake_thread(struct StThread *thread)
+static void wake_thread(StThread_InternalRef thread)
 {
     thread->mutex_blocking_next = NULL;
     thread->sleep_until_uptime_ns = 0;
     thread->state = THREAD_STATE_RUNNING;
 }
 
-static int is_waiting(struct acpi_event *event, struct StThread *thread)
+static int is_waiting(struct acpi_event *event, StThread_InternalRef thread)
 {
-    for (struct StThread *current = event->waiters; current;
+    for (StThread_InternalRef current = event->waiters; current;
          current = current->mutex_blocking_next) {
         if (current == thread) return 1;
     }
@@ -38,7 +38,7 @@ static int is_waiting(struct acpi_event *event, struct StThread *thread)
     return 0;
 }
 
-static void add_waiter(struct acpi_event *event, struct StThread *thread)
+static void add_waiter(struct acpi_event *event, StThread_InternalRef thread)
 {
     if (is_waiting(event, thread)) return;
 
@@ -46,11 +46,11 @@ static void add_waiter(struct acpi_event *event, struct StThread *thread)
     event->waiters = thread;
 }
 
-static void remove_waiter(struct acpi_event *event, struct StThread *thread)
+static void remove_waiter(struct acpi_event *event, StThread_InternalRef thread)
 {
-    struct StThread *prev = NULL;
+    StThread_InternalRef prev = NULL;
 
-    for (struct StThread *current = event->waiters; current;
+    for (StThread_InternalRef current = event->waiters; current;
          current = current->mutex_blocking_next) {
         if (current != thread) {
             prev = current;
@@ -90,14 +90,15 @@ void uacpi_kernel_free_event(uacpi_handle event)
 uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle event, uacpi_u16 timeout_ms)
 {
     struct acpi_event *acpi_event = event;
-    struct StThread *current_thread;
+    StThread_InternalRef current_thread;
     uint64_t deadline_ns = 0;
     int finite_timeout = timeout_ms != UINT16_MAX;
 
     if (!acpi_event) return UACPI_FALSE;
 
     if (finite_timeout) {
-        deadline_ns = StTimeP_GetUptimeNanoseconds() + ((uint64_t)timeout_ms * 1000000);
+        StTimeP_GetUptimeNanoseconds(&deadline_ns);
+        deadline_ns += (uint64_t)timeout_ms * 1000000;
     }
 
     if (!timeout_ms) {
@@ -120,8 +121,9 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle event, uacpi_u16 timeout_ms)
 
     for (;;) {
         uint32_t irqstate;
-        uint64_t now_ns = StTimeP_GetUptimeNanoseconds();
+        uint64_t now_ns;
 
+        StTimeP_GetUptimeNanoseconds(&now_ns);
         StRawSpinlock_LockAndSaveIrq(&acpi_event->lock, &irqstate);
 
         if (acpi_event->counter) {
@@ -156,7 +158,7 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle event, uacpi_u16 timeout_ms)
 void uacpi_kernel_signal_event(uacpi_handle event)
 {
     struct acpi_event *acpi_event = event;
-    struct StThread *waiter;
+    StThread_InternalRef waiter;
     uint32_t irqstate;
 
     if (!acpi_event) return;

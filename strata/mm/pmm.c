@@ -1,5 +1,6 @@
 #include <strata/mm/pmm.h>
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -852,7 +853,7 @@ StStatus StPmm_MarkUsableContiguousFrame(St_PhysFrame base __in, St_PhysFrame li
 
             // it's ok to mark entire allocation table to usable
             alloc_table_ptr_array[base / ALLOC_TABLE_COVERAGE_PAGES] = ATPA_FREE;
-            base += ALLOC_TABLE_COVERAGE_PAGES;
+            base += (St_PhysFrame)ALLOC_TABLE_COVERAGE_PAGES;
 
             continue;
         }
@@ -919,7 +920,7 @@ StStatus StPmm_MarkUnusableContiguousFrame(St_PhysFrame base __in, St_PhysFrame 
             limit >= base + ALLOC_TABLE_COVERAGE_PAGES - 1) {
             // it's ok to mark entire allocation table to unusable
             alloc_table_ptr_array[base / ALLOC_TABLE_COVERAGE_PAGES] = ATPA_UNUSABLE;
-            base += ALLOC_TABLE_COVERAGE_PAGES;
+            base += (St_PhysFrame)ALLOC_TABLE_COVERAGE_PAGES;
 
             continue;
         }
@@ -1009,8 +1010,9 @@ StStatus StPmm_LateInit(void)
         if (alloc_table_ptr_array[i] == ATPA_UNUSABLE) continue;
 
         if (alloc_table_ptr_array[i] == ATPA_FREE) {
-            metadata_area_begin = i * ALLOC_TABLE_COVERAGE_PAGES;
-            metadata_area_end = (i * ALLOC_TABLE_COVERAGE_PAGES) + required_metadata_blocks;
+            metadata_area_begin = (St_PhysFrame)(i * ALLOC_TABLE_COVERAGE_PAGES);
+            metadata_area_end =
+                (St_PhysFrame)((i * ALLOC_TABLE_COVERAGE_PAGES) + required_metadata_blocks);
             break;
         }
 
@@ -1022,8 +1024,9 @@ StStatus StPmm_LateInit(void)
             }
 
             if (free_cont_frames == 0) {
-                metadata_area_end =
-                    (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES) - 1;
+                metadata_area_end = (St_PhysFrame)(
+                    (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES) - 1
+                );
             }
 
             free_cont_frames += ALLOCENT_COVERAGE_PAGES;
@@ -1144,16 +1147,18 @@ StStatus StPmm_LateInit(void)
     return STATUS_SUCCESS;
 }
 
-StStatus StPmm_GetTotalFrameCount(St_PageCount *frame_count __out)
+void StPmm_GetTotalFrameCount(St_PageCount *frame_count __out)
 {
+    assert(frame_count);
+
     *frame_count = total_frames;
-    return STATUS_SUCCESS;
 }
 
-StStatus StPmm_GetFreeFrameCount(St_PageCount *frame_count __out)
+void StPmm_GetFreeFrameCount(St_PageCount *frame_count __out)
 {
+    assert(frame_count);
+
     *frame_count = free_frames;
-    return STATUS_SUCCESS;
 }
 
 StStatus StPmm_AllocateContiguousFrame(
@@ -1163,6 +1168,8 @@ StStatus StPmm_AllocateContiguousFrame(
     StMm_AllocFlags alloc_flags __in
 )
 {
+    assert(pfn);
+
     StStatus status;
     St_PhysFrame allocated_pfn = 0;
     int order;
@@ -1255,7 +1262,7 @@ StStatus StPmm_AllocateContiguousFrame(
             if (!allocatable) continue;
             // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.-.-)\n", i);
 
-            allocated_pfn = i * ALLOC_TABLE_COVERAGE_PAGES;
+            allocated_pfn = (St_PhysFrame)(i * ALLOC_TABLE_COVERAGE_PAGES);
 
             // mark all ATPA entries as allocated
             for (size_t j = 0; j < atpa_slots_needed; j++) {
@@ -1377,7 +1384,8 @@ StStatus StPmm_AllocateContiguousFrame(
                 }
 
                 if (!allocatable) continue;
-                allocated_pfn = (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES);
+                allocated_pfn =
+                    (St_PhysFrame)((i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES));
                 // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i, j);
 
                 // mark entire entry as allocated
@@ -1431,8 +1439,10 @@ StStatus StPmm_AllocateContiguousFrame(
 
             allocate_from_bitmap_entry(&table->entries[table_search_start].bitmap, index, order);
 
-            allocated_pfn = (i * ALLOC_TABLE_COVERAGE_PAGES) +
-                (table_search_start * ALLOCENT_COVERAGE_PAGES) + index;
+            allocated_pfn = (St_PhysFrame)(
+                (i * ALLOC_TABLE_COVERAGE_PAGES) +
+                (table_search_start * ALLOCENT_COVERAGE_PAGES) + index
+            );
 
             // allocate and fill metadata directory & metadata table & metadata
             status = create_metadata(allocated_pfn, owner, order);
@@ -1523,8 +1533,9 @@ StStatus StPmm_AllocateContiguousFrame(
                 allocate_from_bitmap_entry(&table->entries[j].bitmap, index, order);
             }
 
-            allocated_pfn =
-                (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES) + index;
+            allocated_pfn = (St_PhysFrame)(
+                (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES) + index
+            );
 
             // allocate and fill metadata directory & metadata table & metadata
             status = create_metadata(allocated_pfn, owner, order);
@@ -1613,6 +1624,8 @@ void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
 
 StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, struct StPmm_AllocationMetadata **meta __out)
 {
+    assert(meta);
+
     struct pmm_metadata *metadata;
 
     metadata = get_metadata(pfn);
@@ -1626,6 +1639,8 @@ StStatus StPmm_LockAndGetAllocMetadata(
     St_PhysFrame pfn, struct StPmm_AllocationMetadata **meta __out
 )
 {
+    assert(meta);
+
     struct pmm_metadata *metadata;
     unsigned int expected = 0;
 

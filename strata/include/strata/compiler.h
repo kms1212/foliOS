@@ -121,10 +121,12 @@
 #ifdef __clang__
 #    define __annotate(name)      __attribute__((annotate("st_" #name)))
 #    define __annotate_v(name, v) __attribute__((annotate("st_" #name "=" #v)))
+#    define __ref_annotate(name)  __attribute__((annotate(#name)))
 
 #else
 #    define __annotate(name)
 #    define __annotate_v(name, v)
+#    define __ref_annotate(name)
 
 #endif
 
@@ -199,5 +201,10 @@
 
 #define __bitwise __annotate("bitwise")
 #define __nocast  __annotate("nocast")
+
+#define __ref_strong   __ref_annotate(ref_strong)
+#define __ref_weak     __ref_annotate(ref_weak)
+#define __ref_borrowed __ref_annotate(ref_borrowed)
+#define __ref_internal __ref_annotate(ref_internal)
 
 #endif  // __STRATA_COMPILER_H__

@@ -6,7 +6,7 @@
 #include <strata/arch/tss.h>
 
 void StP_InitTss(void);
-void StP_SetTssStack(uintptr_t kstack);
+void StP_SetTssStack(uintptr_t kstack __in);
 struct StA_Tss *StP_GetTss(void);
 
 #endif  // __STRATA_PLAT_TSS_H__

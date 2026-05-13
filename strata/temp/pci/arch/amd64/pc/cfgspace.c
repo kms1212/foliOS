@@ -1,5 +1,6 @@
 #include <plat/pci/cfgspace.h>
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <strata/arch/mmu_constants.h>
@@ -244,10 +245,10 @@ StStatus StPciP_ReadCfg32(
     uint32_t *value __out
 )
 {
+    assert(value);
+
     StStatus status;
     const struct pci_ecam_entry *entry;
-
-    if (!value) return STATUS_INVALID_VALUE;
 
     status = validate_cfg_access(device, function, offset, sizeof(*value));
     if (!CHECK_SUCCESS(status)) return status;
@@ -276,11 +277,11 @@ StStatus StPciP_ReadCfg16(
     uint16_t *value __out
 )
 {
+    assert(value);
+
     StStatus status;
     const struct pci_ecam_entry *entry;
     uint32_t value32;
-
-    if (!value) return STATUS_INVALID_VALUE;
 
     status = validate_cfg_access(device, function, offset, sizeof(*value));
     if (!CHECK_SUCCESS(status)) return status;
@@ -311,11 +312,11 @@ StStatus StPciP_ReadCfg8(
     uint8_t *value __out
 )
 {
+    assert(value);
+
     StStatus status;
     const struct pci_ecam_entry *entry;
     uint32_t value32;
-
-    if (!value) return STATUS_INVALID_VALUE;
 
     status = validate_cfg_access(device, function, offset, sizeof(*value));
     if (!CHECK_SUCCESS(status)) return status;

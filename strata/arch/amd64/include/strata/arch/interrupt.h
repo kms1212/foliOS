@@ -52,7 +52,7 @@ __always_inline uint32_t StA_SaveInterrupt(void)
     return !!(flags & 0x0200);
 }
 
-__always_inline void StA_RestoreInterrupt(uint32_t state)
+__always_inline void StA_RestoreInterrupt(uint32_t state __in)
 {
     if (state) {
         StA_EnableInterrupt();

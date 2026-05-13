@@ -1,5 +1,6 @@
 #include <strata/plat/mm.h>
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -171,11 +172,10 @@ static StStatus allocate_page_table_frame(St_PhysFrame *pfn, int allow_cache)
 
 static void free_page_table_frame(St_PhysFrame pfn)
 {
-    StStatus status;
     St_PageCount free_frames = 0;
 
-    status = StPmm_GetFreeFrameCount(&free_frames);
-    if (CHECK_SUCCESS(status) && free_frames > PAGE_TABLE_FRAME_CACHE_LOW_FREE_WATERMARK) {
+    StPmm_GetFreeFrameCount(&free_frames);
+    if (free_frames > PAGE_TABLE_FRAME_CACHE_LOW_FREE_WATERMARK) {
         StThread_LockPreemption();
 
         if (page_table_frame_cache_pages + page_table_frame_quarantine_pages <
@@ -390,6 +390,8 @@ static StStatus vpn_to_page_flags(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags *mapflags_out __out
 )
 {
+    assert(mapflags_out);
+
     StA_PageMapLevel4Entry *pml4;
     StA_PageDirPtrTableEntry *pdpt;
     StA_PaePageDirectoryEntry *pd;
@@ -400,7 +402,6 @@ static StStatus vpn_to_page_flags(
     uint64_t pde_idx;
     uint64_t pte_idx;
 
-    if (!mapflags_out) return STATUS_INVALID_VALUE;
     if (vpn > VIRT_PAGE_MAX) return STATUS_INVALID_VALUE;
     if (PML4_HOLE_START <= vpn && vpn <= PML4_HOLE_END) return STATUS_PAGE_NOT_PRESENT;
 
@@ -442,6 +443,9 @@ static StStatus local_addr_to_directmap_span(
     size_t *span_len __out
 )
 {
+    assert(direct_ptr);
+    assert(span_len);
+
     StA_PageMapLevel4Entry *pml4;
     StA_PageDirPtrTableEntry *pdpt;
     StA_PaePageDirectoryEntry *pd;
@@ -457,8 +461,8 @@ static StStatus local_addr_to_directmap_span(
     size_t available_len;
 
     if (!max_len) {
-        if (direct_ptr) *direct_ptr = NULL;
-        if (span_len) *span_len = 0;
+        *direct_ptr = NULL;
+        *span_len = 0;
         return STATUS_SUCCESS;
     }
 
@@ -508,12 +512,8 @@ has_span:
         available_len = max_len;
     }
 
-    if (direct_ptr) {
-        *direct_ptr = (uint8_t *)PHYS_TO_VIRT(FRAME_TO_VPTR(pfn)) + page_offset;
-    }
-    if (span_len) {
-        *span_len = available_len;
-    }
+    *direct_ptr = (uint8_t *)PHYS_TO_VIRT(FRAME_TO_VPTR(pfn)) + page_offset;
+    *span_len = available_len;
 
     return STATUS_SUCCESS;
 }
@@ -536,6 +536,8 @@ StStatus StMmP_LocalVirtPageToPhysFrame(
 
 StStatus StMmP_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out)
 {
+    assert(map_flags);
+
     if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
     return vpn_to_page_flags(&base_asp, vpn, map_flags);
@@ -545,6 +547,8 @@ StStatus StMmP_GetLocalPageFlags(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 )
 {
+    assert(map_flags);
+
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
     return vpn_to_page_flags(asp, vpn, map_flags);
@@ -1127,11 +1131,15 @@ StStatus StMmP_CopyLocal(
 
 StStatus StMmP_MapConventionalMemory(St_VirtPage *vpn __out)
 {
+    assert(vpn);
+
     static int mapped = 0;
     static St_VirtPage mapped_vpn;
 
     if (!mapped) {
-        StMm_MapGlobal(
+        StStatus status;
+
+        status = StMm_MapGlobal(
             VMM_DOMAIN_IO,
             &mapped_vpn,
             0,
@@ -1139,6 +1147,7 @@ StStatus StMmP_MapConventionalMemory(St_VirtPage *vpn __out)
             NULL,
             (struct StMm_CompoundFlags){AF_DEFAULT, MF_KERNEL_DEFAULT}
         );
+        if (!CHECK_SUCCESS(status)) return status;
 
         mapped = 1;
     }

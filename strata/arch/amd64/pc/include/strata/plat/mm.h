@@ -70,7 +70,7 @@ StStatus StMmP_WriteLocal(
 );
 
 StStatus StMmP_SetLocal(
-    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, int value, size_t len __in
+    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, int value __in, size_t len __in
 );
 
 StStatus StMmP_CopyLocal(

@@ -14,4 +14,21 @@
 #define __destructor              __attribute__((destructor))
 #define __pure                    __attribute__((pure))
 
+#ifdef __clang__
+#    define __annotate(name)      __attribute__((annotate("vl_" #name)))
+#    define __annotate_v(name, v) __attribute__((annotate("vl_" #name "=" #v)))
+#else
+#    define __annotate(name)
+#    define __annotate_v(name, v)
+#endif
+
+#define __in           __annotate("in")
+#define __out          __annotate("out")
+#define __out_optional __annotate("out_optional")
+#define __inout        __annotate("inout")
+#define __buf          __annotate("buf")
+
+#define __bitwise __annotate("bitwise")
+#define __nocast  __annotate("nocast")
+
 #endif  // __VELLUM_COMPILER_H__

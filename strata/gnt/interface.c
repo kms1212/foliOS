@@ -1,5 +1,6 @@
 #include <strata/gnt/interface.h>
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -122,16 +123,18 @@ static int uuid_equals(const struct StUuid *lhs, const struct StUuid *rhs)
 }
 
 StStatus StGnt_RegisterInterface(
-    struct StGnt_Node *node __inout,
+    StGnt_Node_StrongRef node __inout,
     const struct StUuid *if_uuid __in,
     uint32_t abi_version __in,
     uint32_t funcid_span __in
 )
 {
+    assert(node);
+
     StStatus status;
     struct StGnt_NodeInterface *entry;
 
-    if (!node || !if_uuid || !funcid_span) return STATUS_INVALID_VALUE;
+    if (!if_uuid || !funcid_span) return STATUS_INVALID_VALUE;
 
     entry = node->interface_head;
     while (entry) {
@@ -161,7 +164,7 @@ StStatus StGnt_RegisterInterface(
 }
 
 StStatus StGnt_QueryInterface(
-    struct StGnt_Node *node __in,
+    StGnt_Node_StrongRef node __in,
     const struct StUuid *if_uuid __in,
     uint32_t request_abiver __in,
     uint32_t *funcid_base_out __out_optional,

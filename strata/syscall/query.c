@@ -1,5 +1,6 @@
 #include <strata/syscall.h>
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <strata/compiler.h>
@@ -15,5 +16,8 @@ StStatus StSyscall_Query(
     uint32_t *result_abiver __out
 )
 {
+    assert(funcid_base);
+    assert(result_abiver);
+
     return StHandle_Query((StHandle)handle, if_uuid, request_abiver, funcid_base, result_abiver);
 }

@@ -22,15 +22,23 @@
 
 uacpi_u64 uacpi_kernel_get_nanoseconds_since_boot(void)
 {
-    return StTimeP_GetUptimeNanoseconds();
+    uint64_t uptime_ns;
+
+    StTimeP_GetUptimeNanoseconds(&uptime_ns);
+
+    return uptime_ns;
 }
 
 void uacpi_kernel_stall(uacpi_u8 usec)
 {
-    uint64_t start = StTimeP_GetUptimeNanoseconds();
+    uint64_t start;
+    uint64_t now_ns;
 
-    while (StTimeP_GetUptimeNanoseconds() - start < (uint64_t)usec * 1000) {
+    StTimeP_GetUptimeNanoseconds(&start);
+    StTimeP_GetUptimeNanoseconds(&now_ns);
+    while (now_ns - start < (uint64_t)usec * 1000) {
         StA_Pause();
+        StTimeP_GetUptimeNanoseconds(&now_ns);
     }
 }
 
@@ -42,7 +50,7 @@ void uacpi_kernel_sleep(uacpi_u64 msec)
 uacpi_thread_id uacpi_kernel_get_thread_id(void)
 {
     StStatus status;
-    struct StThread *thread;
+    StThread_InternalRef thread;
 
     status = StScheduler_GetCurrentThread(&thread);
     if (!CHECK_SUCCESS(status)) {

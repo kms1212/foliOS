@@ -1,5 +1,6 @@
 #include <strata/mm.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -16,6 +17,7 @@
 #include <strata/mm/types.h>
 #include <strata/mm/vmm.h>
 #include <strata/panic.h>
+#include <strata/process.h>
 #include <strata/status.h>
 
 #include "internal.h"
@@ -38,6 +40,9 @@ static StStatus allocate_sparse_frame_batch(
     StMm_AllocFlags alloc_flags __in
 )
 {
+    assert(pfn);
+    assert(allocated_count);
+
     StStatus status;
     St_PageCount batch_count = get_sparse_alloc_batch_count(remaining_count);
 
@@ -45,7 +50,7 @@ static StStatus allocate_sparse_frame_batch(
         status =
             StPmm_AllocateContiguousFrame(pfn, batch_count, owner, alloc_flags & ~AF_ALIGN_MASK);
         if (CHECK_SUCCESS(status)) {
-            if (allocated_count) *allocated_count = batch_count;
+            *allocated_count = batch_count;
             return STATUS_SUCCESS;
         }
 
@@ -143,6 +148,8 @@ StStatus StMm_MapGlobal(
     struct StMm_CompoundFlags flags __in
 )
 {
+    assert(vpn);
+
     StStatus status;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
 
@@ -188,6 +195,8 @@ StStatus StMm_AllocateGlobalContiguous(
     StMm_MapFlags map_flags __in
 )
 {
+    assert(vpn);
+
     StStatus status;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
@@ -237,6 +246,8 @@ StStatus StMm_AllocateGlobalSparse(
     StMm_MapFlags map_flags __in
 )
 {
+    assert(vpn);
+
     StStatus status;
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
@@ -353,6 +364,8 @@ StStatus StMm_AllocateLocalSparse(
     StMm_MapFlags map_flags __in
 )
 {
+    assert(vpn);
+
     StStatus status;
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
@@ -360,7 +373,7 @@ StStatus StMm_AllocateLocalSparse(
     St_PageCount batch_count = 0;
     struct StMm_AllocationOwner *owner;
 
-    if (!asp || !vpn) return STATUS_INVALID_VALUE;
+    if (!asp) return STATUS_INVALID_VALUE;
 
     owner = &asp->process->alloc_owner;
 
@@ -674,7 +687,9 @@ StStatus StMm_SetLocalPageFlags(
 
 StStatus StMm_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out)
 {
-    if (!IS_GLOBAL_VPN(vpn) || !map_flags) return STATUS_INVALID_VALUE;
+    assert(map_flags);
+
+    if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
     return StMmP_GetGlobalPageFlags(vpn, map_flags);
 }
@@ -683,7 +698,9 @@ StStatus StMm_GetLocalPageFlags(
     struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 )
 {
-    if (!IS_LOCAL_VPN(vpn) || !map_flags) return STATUS_INVALID_VALUE;
+    assert(map_flags);
+
+    if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
     return StMmP_GetLocalPageFlags(asp, vpn, map_flags);
 }
@@ -700,15 +717,27 @@ void StMm_CleanupOwnerAllocation(struct StMm_AllocationOwner *owner __in)
 
         if (node->alloc_type == AT_ALLOC) {
             if (node->asp) {
-                StMm_FreeLocal(node->asp, node->base_vpn, node->limit_vpn - node->base_vpn);
+                StMm_FreeLocal(
+                    node->asp,
+                    node->base_vpn,
+                    (St_PageCount)(node->limit_vpn - node->base_vpn)
+                );
             } else {
-                StMm_FreeGlobal(node->domain, node->base_vpn, node->limit_vpn - node->base_vpn);
+                StMm_FreeGlobal(
+                    node->domain,
+                    node->base_vpn,
+                    (St_PageCount)(node->limit_vpn - node->base_vpn)
+                );
             }
         } else {
             if (node->asp) {
                 // StMm_UnmapLocal(node->asp, node->base_vpn, node->limit_vpn - node->base_vpn);
             } else {
-                StMm_UnmapGlobal(node->domain, node->base_vpn, node->limit_vpn - node->base_vpn);
+                StMm_UnmapGlobal(
+                    node->domain,
+                    node->base_vpn,
+                    (St_PageCount)(node->limit_vpn - node->base_vpn)
+                );
             }
         }
         node = next;

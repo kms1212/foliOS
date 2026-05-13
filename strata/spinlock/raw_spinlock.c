@@ -1,5 +1,6 @@
 #include <strata/raw_spinlock.h>
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
 
@@ -15,6 +16,8 @@ void StRawSpinlock_Init(struct StRawSpinlock *lock __in)
 
 void StRawSpinlock_LockAndSaveIrq(struct StRawSpinlock *lock __in, uint32_t *irqstate __out)
 {
+    assert(irqstate);
+
     *irqstate = StA_SaveInterrupt();
     StA_DisableInterrupt();
 
@@ -27,6 +30,9 @@ void StRawSpinlock_TryLockAndSaveIrq(
     struct StRawSpinlock *lock __in, uint32_t *irqstate __out, int *locked __out
 )
 {
+    assert(irqstate);
+    assert(locked);
+
     *irqstate = StA_SaveInterrupt();
     StA_DisableInterrupt();
 

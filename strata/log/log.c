@@ -80,10 +80,12 @@ static const char *ll_str[] = {
 
 static void print_log_header(int level, const char *module_name)
 {
-    uint64_t uptime_ns = StTimeP_GetUptimeNanoseconds();
+    uint64_t uptime_ns;
     struct StCpuLocalP_Data *cpulocal = StCpuLocalP_GetData();
-    struct StThread *thread = NULL;
+    StThread_InternalRef thread = NULL;
     struct StProcess *process = NULL;
+
+    StTimeP_GetUptimeNanoseconds(&uptime_ns);
 
     if (cpulocal) {
         thread = cpulocal->scheduler.current_thread;

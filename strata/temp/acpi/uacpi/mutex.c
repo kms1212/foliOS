@@ -1,5 +1,6 @@
 #include <uacpi/kernel_api.h>
 
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -54,5 +55,7 @@ uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle mutex, uacpi_u16 timeout_ms
 
 void uacpi_kernel_release_mutex(uacpi_handle mutex)
 {
+    assert(mutex);
+
     StMutex_Unlock(mutex);
 }

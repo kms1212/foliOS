@@ -1,5 +1,6 @@
 #include <strata/mutex.h>
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <strata/log.h>
@@ -17,9 +18,9 @@ void StMutex_Init(struct StMutex *mtx)
     mtx->blocking_threads = NULL;
 }
 
-static void add_blocking_thread(struct StMutex *mtx, struct StThread *th)
+static void add_blocking_thread(struct StMutex *mtx, StThread_InternalRef th)
 {
-    struct StThread *last_blocking_th;
+    StThread_InternalRef last_blocking_th;
 
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "blocking thread #%d\n", th->id);
 
@@ -44,7 +45,7 @@ static void add_blocking_thread(struct StMutex *mtx, struct StThread *th)
 
 static void unblock_blocking_thread(struct StMutex *mtx)
 {
-    struct StThread *th_to_unblock;
+    StThread_InternalRef th_to_unblock;
 
     if (!mtx->blocking_threads) return;
 
@@ -61,10 +62,10 @@ static void unblock_blocking_thread(struct StMutex *mtx)
     }
 }
 
-static void remove_blocking_thread(struct StMutex *mtx, struct StThread *th)
+static void remove_blocking_thread(struct StMutex *mtx, StThread_InternalRef th)
 {
-    struct StThread *current;
-    struct StThread *prev;
+    StThread_InternalRef current;
+    StThread_InternalRef prev;
 
     if (!mtx || !th) return;
 
@@ -90,7 +91,7 @@ static void remove_blocking_thread(struct StMutex *mtx, struct StThread *th)
 StStatus StMutex_Lock(struct StMutex *mtx)
 {
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
@@ -117,7 +118,7 @@ StStatus StMutex_Lock(struct StMutex *mtx)
 StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
 {
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
     uint64_t deadline_ns;
 
     status = StScheduler_GetCurrentThread(&th);
@@ -136,7 +137,8 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
         return locked ? STATUS_SUCCESS : STATUS_TIMER_EXPIRED;
     }
 
-    deadline_ns = StTimeP_GetUptimeNanoseconds() + ((uint64_t)timeout_ms * 1000000);
+    StTimeP_GetUptimeNanoseconds(&deadline_ns);
+    deadline_ns += (uint64_t)timeout_ms * 1000000;
 
     for (;;) {
         uint64_t now_ns;
@@ -153,7 +155,7 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
             return STATUS_SUCCESS;
         }
 
-        now_ns = StTimeP_GetUptimeNanoseconds();
+        StTimeP_GetUptimeNanoseconds(&now_ns);
         if (now_ns >= deadline_ns) {
             remove_blocking_thread(mtx, th);
             th->mutex_blocking_next = NULL;
@@ -176,7 +178,7 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
 StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)
 {
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
@@ -201,21 +203,19 @@ StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)
     return STATUS_SUCCESS;
 }
 
-StStatus StMutex_Unlock(struct StMutex *mtx)
+void StMutex_Unlock(struct StMutex *mtx)
 {
     StStatus status;
-    struct StThread *th;
+    StThread_InternalRef th;
 
     status = StScheduler_GetCurrentThread(&th);
-    if (!CHECK_SUCCESS(status)) return status;
+    assert(CHECK_SUCCESS(status));
+    assert(th);
+    (void)status;
 
     StThread_LockPreemption();
 
-    if (mtx->owner != th) {
-        StThread_UnlockPreemption();
-
-        return STATUS_INVALID_THREAD;
-    }
+    assert(mtx->owner == th);
 
     mtx->locked = 0;
     mtx->owner = NULL;
@@ -223,6 +223,4 @@ StStatus StMutex_Unlock(struct StMutex *mtx)
     unblock_blocking_thread(mtx);
 
     StThread_UnlockPreemption();
-
-    return STATUS_SUCCESS;
 }

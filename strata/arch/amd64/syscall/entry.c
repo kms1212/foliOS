@@ -1,5 +1,6 @@
 #include <strata/plat/syscall.h>
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stdint.h>
@@ -25,6 +26,10 @@ extern void _StSyscallA_Handler(void);  // NOLINT
 
 StStatus StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Context *ctx)
 {
+    assert(frame);
+    assert(ctx);
+
+    StStatus status;
     uint64_t syscall_count = atomic_fetch_add(&StCpuLocalP_GetData()->syscall_count, 1);
 
     switch (ctx->rax) {
@@ -51,9 +56,14 @@ StStatus StSyscallA_Handler(struct StA_InterruptFrame *frame, struct StIntP_Cont
         const struct StUuid *if_uuid = (const struct StUuid *)ctx->rsi;  // TODO: use copy_from_user
         uint32_t request_abiver = ctx->rdx;
         uint32_t *funcid_base = (uint32_t *)ctx->r10;
-        uint32_t *result_abiver = (uint32_t *)ctx->r8;
+        uint32_t result_abiver;
+        uint32_t *result_abiver_out = (uint32_t *)ctx->r8;
 
-        return StSyscall_Query(handle, if_uuid, request_abiver, funcid_base, result_abiver);
+        status = StSyscall_Query(handle, if_uuid, request_abiver, funcid_base, &result_abiver);
+
+        if (result_abiver_out) *result_abiver_out = result_abiver;
+
+        return status;
     }
     case SYS_NODE_CALL_REG: {
         LOG_TRACE(LM_CAT_UNCLASSIFIED, "syscall #%" PRIu64 ": CALL_REG\n", syscall_count);
@@ -111,6 +121,8 @@ static void *compat_syscall_handler(
 
 StStatus StSyscallA_Init(void)
 {
+    StStatus status;
+
     if (!g_p_cpu_features->has_syscall) return STATUS_NOT_SUPPORTED;
 
     StA_WriteMsr(MSR_LSTAR, (uintptr_t)_StSyscallA_Handler);
@@ -120,7 +132,8 @@ StStatus StSyscallA_Init(void)
     );
     StA_WriteMsr(MSR_SFMASK, 0x0000000000000202);
 
-    StInt_CreateHandler(0x80, NULL, compat_syscall_handler, NULL);
+    status = StInt_CreateHandler(0x80, NULL, compat_syscall_handler, NULL);
+    if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
 }

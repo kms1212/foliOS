@@ -21,8 +21,8 @@
 #define MODULE_NAME "process"
 
 struct process_dispatch_context {
-    struct StProcess *process;
-    struct StGnt_Node *node;
+    StProcess_BorrowedRef process;
+    StGnt_Node_StrongRef node;
 };
 
 static StStatus read_user_u64(
@@ -69,27 +69,27 @@ static int is_process_node(const struct StGnt_Node *node)
     return node && node->parent == g_gnt_system_processes;
 }
 
-static StStatus get_current_process(struct StProcess **process_out)
+static StStatus get_current_process(StProcess_BorrowedRef *process_out)
 {
     StStatus status;
-    struct StThread *thread;
+    StThread_InternalRef thread;
 
     status = StScheduler_GetCurrentThread(&thread);
     if (!CHECK_SUCCESS(status)) return status;
     if (!thread || !thread->process) return STATUS_INVALID_THREAD;
 
-    if (process_out) *process_out = thread->process;
+    if (process_out) *process_out = (StProcess_BorrowedRef)thread->process;
 
     return STATUS_SUCCESS;
 }
 
 static StStatus get_process_from_process_node(
-    struct StGnt_Node *process_node, struct StProcess **process_out
+    StGnt_Node_StrongRef process_node, StProcess_BorrowedRef *process_out
 )
 {
     StStatus status;
     int process_id;
-    struct StProcess *process;
+    StProcess_BorrowedRef process;
 
     if (!is_process_node(process_node)) return STATUS_INVALID_HANDLE;
 
@@ -174,7 +174,7 @@ static StStatus prc_terminate(void *context, StHandle handle, StStatus exit_code
 {
     StStatus status;
     struct process_dispatch_context *ctx = (struct process_dispatch_context *)context;
-    struct StProcess *current_process;
+    StProcess_BorrowedRef current_process;
 
     (void)handle;
     (void)exit_code;
@@ -479,7 +479,10 @@ static const StIfPrc_ServerVTable g_prc_vtable = {
 };
 
 StStatus StProcessIf_DispatchCallArgs(
-    struct StGnt_Node *node __in, StHandle_Id handle __in, uint32_t funcid __in, const long args[4]
+    StGnt_Node_StrongRef node __in,
+    StHandle_Id handle __in,
+    uint32_t funcid __in,
+    const long args[4]
 )
 {
     StStatus status;
@@ -492,5 +495,5 @@ StStatus StProcessIf_DispatchCallArgs(
     if (!CHECK_SUCCESS(status)) return status;
 
     ctx.node = node;
-    return StIfPrc_ServerDispatchArgs(&g_prc_vtable, &ctx, handle, funcid, args);
+    return StIfPrc_ServerDispatchArgs(&g_prc_vtable, &ctx, (StHandle)handle, funcid, args);
 }

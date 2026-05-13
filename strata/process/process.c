@@ -1,5 +1,6 @@
 #include <strata/process.h>
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stdint.h>
 
@@ -13,19 +14,22 @@
 #include <strata/mm/asp.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
+#include <strata/panic.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 
 #define MODULE_NAME                               "process"
 #define PROCESS_CREATE_DEFERRED_REAP_BUDGET_PAGES ((St_PageCount)256)
 
-static struct StProcess *process_list_head = NULL;
-static struct StProcess *process_list_tail = NULL;
+static StProcess_InternalRef process_list_head = NULL;
+static StProcess_InternalRef process_list_tail = NULL;
 static atomic_uint_fast32_t process_count = 0;
 
-static void unlink_process(struct StProcess *process)
+static void finalize_process_object(void *object);
+
+static void unlink_process(StProcess_InternalRef process)
 {
-    struct StProcess *prev;
+    StProcess_InternalRef prev;
 
     if (!process) return;
 
@@ -49,13 +53,15 @@ static void unlink_process(struct StProcess *process)
     process->next = NULL;
 }
 
-StStatus StProcess_CreateUser(struct StProcess **process __out)
+StStatus StProcess_CreateUser(StProcess_StrongRef *process __out)
 {
+    assert(process);
+
     static StProcess_Id new_process_id = (StProcess_Id)1;
 
     StStatus status;
-    struct StProcess *proc = NULL;
-    struct StMm_AddressSpace *asp = NULL;
+    StProcess_StrongRef proc = NULL;
+    StMm_AddressSpace_StrongRef asp = NULL;
     uint32_t prev_process_count;
 
     StThread_RunDeferredReap(PROCESS_CREATE_DEFERRED_REAP_BUDGET_PAGES);
@@ -64,6 +70,7 @@ StStatus StProcess_CreateUser(struct StProcess **process __out)
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     proc->id = new_process_id++;
+    StRefControlBlock_Init(&proc->ref_control, 1, proc, finalize_process_object);
 
     status = StMm_CreateAddressSpace(&asp, proc);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -77,10 +84,10 @@ StStatus StProcess_CreateUser(struct StProcess **process __out)
     StThread_LockPreemption();
 
     if (!process_list_head) {
-        process_list_head = process_list_tail = proc;
+        process_list_head = process_list_tail = (StProcess_InternalRef)proc;
     } else {
-        process_list_tail->next = proc;
-        process_list_tail = proc;
+        process_list_tail->next = (StProcess_InternalRef)proc;
+        process_list_tail = (StProcess_InternalRef)proc;
     }
 
     prev_process_count = atomic_fetch_add(&process_count, 1);
@@ -110,7 +117,7 @@ has_error:
     return status;
 }
 
-void StProcess_BeginRemove(struct StProcess *process)
+void StProcess_BeginRemove(StProcess_StrongRef process)
 {
     uint32_t prev_process_count;
 
@@ -118,8 +125,8 @@ void StProcess_BeginRemove(struct StProcess *process)
 
     StThread_LockPreemption();
 
-    process->is_dying = 1;
-    unlink_process(process);
+    StRefControlBlock_MarkDying(&process->ref_control);
+    unlink_process((StProcess_InternalRef)process);
 
     prev_process_count = atomic_fetch_sub(&process_count, 1);
 
@@ -138,8 +145,25 @@ void StProcess_BeginRemove(struct StProcess *process)
     }
 }
 
-void StProcess_FinalizeRemove(struct StProcess *process)
+void StProcess_Acquire(StProcess_StrongRef process __inout)
 {
+    assert(process);
+
+    StRefControlBlock_Acquire(&process->ref_control);
+}
+
+void StProcess_Release(StProcess_StrongRef process __inout)
+{
+    assert(process);
+
+    (void)StRefControlBlock_Release(&process->ref_control);
+}
+
+void StProcess_FinalizeRemove(StProcess_StrongRef process)
+{
+    StThread_StrongRef main_thread = NULL;
+    StStatus status;
+
     if (!process) return;
 
     StHandle_TableClear(&process->handle_table);
@@ -147,49 +171,68 @@ void StProcess_FinalizeRemove(struct StProcess *process)
     StMm_CleanupOwnerAllocation(&process->alloc_owner);
 
     StMm_RemoveAddressSpace(process->address_space);
+    process->address_space = NULL;
 
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "leaked %zd pages\n", process->alloc_owner.page_usage_count);
 
-    if (process->main_thread && !process->main_thread->is_dying) {
-        StThread_Remove(process->main_thread);
+    status = StThread_AcquireInternal(process->main_thread, &main_thread);
+    if (CHECK_SUCCESS(status)) {
+        status = StThread_Remove(main_thread);
+        StThread_Release(main_thread);
+        if (!CHECK_SUCCESS(status) && status != STATUS_THREAD_NOT_FINISHED) {
+            St_Panic(status, "failed to remove process main thread");
+        }
     }
 
     StPool_Free(process);
 }
 
-void StProcess_Remove(struct StProcess *process)
+static void finalize_process_object(void *object)
 {
+    StProcess_FinalizeRemove((StProcess_StrongRef)object);
+}
+
+void StProcess_Remove(StProcess_StrongRef process)
+{
+    StThread_StrongRef main_thread = NULL;
+    StStatus status;
+
     if (!process) return;
 
     StProcess_BeginRemove(process);
 
-    if (process->main_thread && !process->main_thread->is_dying) {
-        StThread_Remove(process->main_thread);
+    status = StThread_AcquireInternal(process->main_thread, &main_thread);
+    if (CHECK_SUCCESS(status)) {
+        status = StThread_Remove(main_thread);
+        StThread_Release(main_thread);
+        if (!CHECK_SUCCESS(status) && status != STATUS_THREAD_NOT_FINISHED) {
+            St_Panic(status, "failed to remove process main thread");
+        }
         return;
     }
 
-    StProcess_FinalizeRemove(process);
+    StProcess_Release(process);
 }
 
-StStatus StProcess_GetCount(uint32_t *count __out)
+void StProcess_GetCount(uint32_t *count __out)
 {
+    assert(count);
+
     *count = atomic_load(&process_count);
-
-    return STATUS_SUCCESS;
 }
 
-struct StProcess *StProcess_GetListHead(void)
+StProcess_BorrowedRef StProcess_GetListHead(void)
 {
-    return process_list_head;
+    return (StProcess_BorrowedRef)process_list_head;
 }
 
-struct StProcess *StProcess_FindById(StProcess_Id id)
+StProcess_BorrowedRef StProcess_FindById(StProcess_Id id)
 {
-    struct StProcess *current = process_list_head;
+    StProcess_InternalRef current = process_list_head;
 
     while (current) {
-        if (current->id == id && !current->is_dying) {
-            return current;
+        if (current->id == id && !StRefControlBlock_IsDying(&current->ref_control)) {
+            return (StProcess_BorrowedRef)current;
         }
 
         current = current->next;

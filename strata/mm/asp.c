@@ -1,5 +1,7 @@
 #include <strata/mm/asp.h>
 
+#include <assert.h>
+
 #include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
 
@@ -15,12 +17,22 @@
 
 struct StMm_AddressSpace base_asp;
 
-static struct StMm_AddressSpace *first_asp = &base_asp;
-static struct StMm_AddressSpace *last_asp = &base_asp;
+static StMm_AddressSpace_InternalRef first_asp = &base_asp;
+static StMm_AddressSpace_InternalRef last_asp = &base_asp;
 
-static void unlink_address_space(struct StMm_AddressSpace *asp)
+static void finalize_address_space(void *object)
 {
-    struct StMm_AddressSpace *prev;
+    StMm_AddressSpace_StrongRef asp = object;
+
+    if (!asp || asp == &base_asp) return;
+
+    StMmP_RemoveAddressSpace(asp);
+    StPool_Free(asp);
+}
+
+static void unlink_address_space(StMm_AddressSpace_InternalRef asp)
+{
+    StMm_AddressSpace_InternalRef prev;
 
     if (!asp || asp == &base_asp) return;
 
@@ -42,27 +54,31 @@ static void unlink_address_space(struct StMm_AddressSpace *asp)
 StStatus StMm_InitBaseAddressSpace(void)
 {
     base_asp.next = NULL;
+    StRefControlBlock_Init(&base_asp.ref_control, 1, &base_asp, NULL);
 
     return StMmP_InitBaseAddressSpace();
 }
 
 StStatus StMm_CreateAddressSpace(
-    struct StMm_AddressSpace **asp __out, struct StProcess *process __in
+    StMm_AddressSpace_StrongRef *asp __out, StProcess_StrongRef process __in
 )
 {
+    assert(asp);
+
     StStatus status;
-    struct StMm_AddressSpace *new_asp = NULL;
+    StMm_AddressSpace_StrongRef new_asp = NULL;
     int p_asp_created = 0;
     int domain_initialized = 0;
 
     status = StPool_AllocateClear(sizeof(*new_asp), (void **)&new_asp);
     if (!CHECK_SUCCESS(status)) goto has_error;
+    StRefControlBlock_Init(&new_asp->ref_control, 1, new_asp, finalize_address_space);
 
     status = StMmP_CreateAddressSpace(new_asp);
     if (!CHECK_SUCCESS(status)) goto has_error;
     p_asp_created = 1;
 
-    new_asp->process = process;
+    new_asp->process = (StProcess_InternalRef)process;
 
     status = StVmm_InitLocalDomain(new_asp, MEMMAP_USER_VPN_BASE, MEMMAP_USER_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -71,8 +87,8 @@ StStatus StMm_CreateAddressSpace(
     new_asp->next = NULL;
 
     StThread_LockPreemption();
-    last_asp->next = new_asp;
-    last_asp = new_asp;
+    last_asp->next = (StMm_AddressSpace_InternalRef)new_asp;
+    last_asp = (StMm_AddressSpace_InternalRef)new_asp;
     StThread_UnlockPreemption();
 
     *asp = new_asp;
@@ -95,9 +111,10 @@ has_error:
     return status;
 }
 
-void StMm_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
+void StMm_RemoveAddressSpace(StMm_AddressSpace_StrongRef asp __in)
 {
     if (!asp) return;
+    if (asp == &base_asp) return;
 
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "removing address space\n");
 
@@ -108,14 +125,28 @@ void StMm_RemoveAddressSpace(struct StMm_AddressSpace *asp __in)
      */
 
     StThread_LockPreemption();
-    unlink_address_space(asp);
+    StRefControlBlock_MarkDying(&asp->ref_control);
+    unlink_address_space((StMm_AddressSpace_InternalRef)asp);
     StThread_UnlockPreemption();
 
-    StMmP_RemoveAddressSpace(asp);
-    StPool_Free(asp);
+    StMm_ReleaseAddressSpace(asp);
 }
 
-StStatus StMm_SwitchAddressSpace(struct StMm_AddressSpace *asp __in)
+void StMm_AcquireAddressSpace(StMm_AddressSpace_StrongRef asp __inout)
+{
+    assert(asp);
+
+    StRefControlBlock_Acquire(&asp->ref_control);
+}
+
+void StMm_ReleaseAddressSpace(StMm_AddressSpace_StrongRef asp __inout)
+{
+    assert(asp);
+
+    (void)StRefControlBlock_Release(&asp->ref_control);
+}
+
+StStatus StMm_SwitchAddressSpace(StMm_AddressSpace_StrongRef asp __in)
 {
     return StMmP_SwitchAddressSpace(asp);
 }

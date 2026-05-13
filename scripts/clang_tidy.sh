@@ -7,6 +7,9 @@ COMPONENT=strata
 JOBS=${JOBS:-0}
 CLANG_TIDY_BIN=${CLANG_TIDY_BIN:-clang-tidy}
 RUN_CLANG_TIDY_BIN=${RUN_CLANG_TIDY_BIN:-run-clang-tidy}
+FOLIOS_CLANG_TIDY_PLUGIN=${FOLIOS_CLANG_TIDY_PLUGIN:-}
+FOLIOS_CLANG_TIDY_CHECKS=${FOLIOS_CLANG_TIDY_CHECKS:-folios-*}
+ENABLE_FOLIOS_CHECKS=0
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
@@ -35,8 +38,10 @@ pick_tool() {
 }
 
 print_usage() {
-    echo "usage: $0 [-b build_dir] [-c component] [-j jobs]"
+    echo "usage: $0 [-b build_dir] [-c component] [-j jobs] [--folios-plugin path] [--folios-checks]"
     echo "  component: strata | vellum | all"
+    echo "  --folios-plugin path  load the foliOS clang-tidy plugin"
+    echo "  --folios-checks       run the foliOS plugin checks filter (${FOLIOS_CLANG_TIDY_CHECKS})"
 }
 
 run_with_compile_db() {
@@ -85,6 +90,12 @@ run_with_compile_db() {
             -extra-arg=-Qunused-arguments
             "${source_regex}"
         )
+        if [[ -n "${FOLIOS_CLANG_TIDY_PLUGIN}" ]]; then
+            args+=(-load "${FOLIOS_CLANG_TIDY_PLUGIN}")
+        fi
+        if [[ "${ENABLE_FOLIOS_CHECKS}" -ne 0 ]]; then
+            args+=("-checks=${FOLIOS_CLANG_TIDY_CHECKS}")
+        fi
         if [[ "${JOBS}" -gt 0 ]]; then
             args+=(-j "${JOBS}")
         fi
@@ -95,7 +106,7 @@ run_with_compile_db() {
     fi
 
     echo "[clang-tidy] component=${comp} (python fallback)"
-    python3 - "${db_dir}" "${CLANG_TIDY_BIN}" "${source_root}" "${comp}" <<'PY'
+python3 - "${db_dir}" "${CLANG_TIDY_BIN}" "${source_root}" "${comp}" "${FOLIOS_CLANG_TIDY_PLUGIN}" "${ENABLE_FOLIOS_CHECKS}" "${FOLIOS_CLANG_TIDY_CHECKS}" <<'PY'
 import json
 import os
 import re
@@ -106,6 +117,9 @@ db_dir = sys.argv[1]
 clang_tidy = sys.argv[2]
 source_root = os.path.realpath(sys.argv[3])
 component = sys.argv[4]
+folios_plugin = sys.argv[5]
+enable_folios_checks = sys.argv[6] != "0"
+folios_checks = sys.argv[7]
 repo_root = os.path.realpath(os.path.join(source_root, os.pardir))
 db_path = os.path.join(db_dir, "compile_commands.json")
 
@@ -160,6 +174,10 @@ for src in files:
         "-extra-arg=-Qunused-arguments",
         src,
     ]
+    if folios_plugin:
+        cmd[1:1] = ["-load", folios_plugin]
+    if enable_folios_checks:
+        cmd[1:1] = ["-checks=" + folios_checks]
     if subprocess.call(cmd) != 0:
         failed = True
 
@@ -180,6 +198,14 @@ while [[ $# -gt 0 ]]; do
     -j | --jobs)
         JOBS="$2"
         shift 2
+        ;;
+    --folios-plugin)
+        FOLIOS_CLANG_TIDY_PLUGIN="$2"
+        shift 2
+        ;;
+    --folios-checks)
+        ENABLE_FOLIOS_CHECKS=1
+        shift
         ;;
     -h | --help)
         print_usage

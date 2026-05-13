@@ -1,12 +1,22 @@
 #ifndef __STRATA_GNT_H__
 #define __STRATA_GNT_H__
 
-#include <stdatomic.h>
 #include <stddef.h>
 
+#include <strata/compiler.h>
 #include <strata/limits.h>
+#include <strata/ref_control.h>
 #include <strata/status.h>
 #include <strata/utf.h>
+
+#ifndef __STRATA_GNT_NODE_REFS_DEFINED__
+#    define __STRATA_GNT_NODE_REFS_DEFINED__
+struct StGnt_Node;
+typedef struct StGnt_Node *StGnt_Node_StrongRef __ref_strong;
+typedef struct StGnt_Node *StGnt_Node_WeakRef __ref_weak;
+typedef struct StGnt_Node *StGnt_Node_BorrowedRef __ref_borrowed;
+typedef struct StGnt_Node *StGnt_Node_InternalRef __ref_internal;
+#endif
 
 enum StGnt_NodeType {
     GNT_NODETYPE_LEAF = 0,
@@ -26,10 +36,12 @@ struct StModule;
 struct StGnt_NodeInterface;
 
 struct StGnt_Node {
-    struct StGnt_Node *next;
+    struct StRefControlBlock ref_control;
 
-    struct StGnt_Node *parent;
-    struct StGnt_Node *sibling;
+    StGnt_Node_InternalRef next;
+
+    StGnt_Node_InternalRef parent;
+    StGnt_Node_InternalRef sibling;
 
     size_t name_len;
     St_Utf32Char name[NODENAME_MAX];
@@ -40,15 +52,15 @@ struct StGnt_Node {
      * Unified node payload for both file-like and directory-like nodes.
      * A node can have stream/file interfaces and still own children.
      */
-    struct StGnt_Node *children_head;
-    struct StGnt_Node *children_tail;
+    StGnt_Node_InternalRef children_head;
+    StGnt_Node_InternalRef children_tail;
     struct StModule *handler_module;
 
     struct {
         int is_virtual;
 
         struct {
-            struct StGnt_Node *target_node;
+            StGnt_Node_InternalRef target_node;
         } virtual;
 
         struct {
@@ -60,20 +72,18 @@ struct StGnt_Node {
     struct StGnt_NodeInterface *interface_head;
     struct StGnt_NodeInterface *interface_tail;
 
-    atomic_uint ref_count;
-
     void *private_data;
 };
 
 typedef StStatus (*StGnt_ResolveFunc)(
-    struct StGnt_Node *base_node __in,
+    StGnt_Node_StrongRef base_node __in,
     const St_Utf32Char *inner_path __in,
-    struct StGnt_Node **next_node __out,
+    StGnt_Node_StrongRef *next_node __out,
     const St_Utf32Char **remaining_path __out
 );
 
 typedef StStatus (*StGnt_IterateFunc)(
-    struct StGnt_Node *parent __in,
+    StGnt_Node_StrongRef parent __in,
     uint64_t cookie __in,
     void *buffer __in,
     size_t buffer_size __in,
@@ -81,27 +91,30 @@ typedef StStatus (*StGnt_IterateFunc)(
     uint64_t *next_cookie __out
 );
 
-extern struct StGnt_Node *g_gnt_root_network;  // "//"
-extern struct StGnt_Node *g_gnt_root_local;    // "/"
-extern struct StGnt_Node *g_gnt_system_processes;
+extern StGnt_Node_StrongRef g_gnt_root_network;  // "//"
+extern StGnt_Node_StrongRef g_gnt_root_local;    // "/"
+extern StGnt_Node_StrongRef g_gnt_system_processes;
 
 StStatus StGnt_Init(void);
 StStatus StGnt_AddNode(
-    struct StGnt_Node *parent __in,
+    StGnt_Node_StrongRef parent __in,
     const St_Utf32Char *name __in,
-    struct StGnt_Node **node __out_optional
+    StGnt_Node_StrongRef *node __out_optional
 );
-StStatus StGnt_RemoveNode(struct StGnt_Node *node __in);
-void StGnt_AcquireNode(struct StGnt_Node *node __inout);
-void StGnt_ReleaseNode(struct StGnt_Node *node __inout);
+void StGnt_RemoveNode(StGnt_Node_StrongRef node __in);
+void StGnt_AcquireNode(StGnt_Node_StrongRef node __inout);
+void StGnt_ReleaseNode(StGnt_Node_StrongRef node __inout);
+void StGnt_FinalizeNode(void *node __in);
 StStatus StGnt_ResolveLink(
-    struct StGnt_Node *link_node __in, struct StGnt_Node **target_node __out
+    StGnt_Node_StrongRef link_node __in, StGnt_Node_StrongRef *target_node __out
 );
 StStatus StGnt_ResolvePath(
-    struct StGnt_Node *base_node __in, const St_Utf32Char *path __in, struct StGnt_Node **node __out
+    StGnt_Node_StrongRef base_node __in,
+    const St_Utf32Char *path __in,
+    StGnt_Node_StrongRef *node __out
 );
 StStatus StGnt_Iterate(
-    struct StGnt_Node *parent __in,
+    StGnt_Node_StrongRef parent __in,
     uint64_t cookie __in,
     void *buffer __in,
     size_t buffer_size __in,

@@ -7,7 +7,7 @@
 
 #include <strata/compiler.h>
 
-__always_inline void StA_Lidt(struct StA_Idtr *idtr)
+__always_inline void StA_Lidt(struct StA_Idtr *idtr __in)
 {
     __asm__ volatile("lidt (%0)" : : "r"(idtr));
 }

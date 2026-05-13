@@ -1,12 +1,12 @@
 #include <strata/gnt.h>
 
-#include <stdatomic.h>
+#include <assert.h>
 
 #include <strata/compiler.h>
 #include <strata/gnt/interface.h>
 #include <strata/mm/pool.h>
 
-static void free_interface_entries(struct StGnt_Node *node)
+static void free_interface_entries(StGnt_Node_InternalRef node)
 {
     struct StGnt_NodeInterface *entry = node->interface_head;
 
@@ -21,22 +21,19 @@ static void free_interface_entries(struct StGnt_Node *node)
     }
 }
 
-void StGnt_AcquireNode(struct StGnt_Node *node __inout)
+void StGnt_AcquireNode(StGnt_Node_StrongRef node __inout)
 {
-    if (!node) return;
+    assert(node);
 
-    atomic_fetch_add_explicit(&node->ref_count, 1, memory_order_relaxed);
+    StRefControlBlock_Acquire(&node->ref_control);
 }
 
-void StGnt_ReleaseNode(struct StGnt_Node *node __inout)  // NOLINT(misc-no-recursion)
+void StGnt_FinalizeNode(void *object __in)  // NOLINT(misc-no-recursion)
 {
-    struct StGnt_Node *child;
+    StGnt_Node_InternalRef node = object;
+    StGnt_Node_InternalRef child;
 
-    if (!node) return;
-
-    if (atomic_fetch_sub_explicit(&node->ref_count, 1, memory_order_acq_rel) != 1) {
-        return;
-    }
+    assert(node);
 
     if (node->type != GNT_NODETYPE_LINK) {
         child = node->children_head;
@@ -44,11 +41,11 @@ void StGnt_ReleaseNode(struct StGnt_Node *node __inout)  // NOLINT(misc-no-recur
         node->children_tail = NULL;
 
         while (child) {
-            struct StGnt_Node *next = child->sibling;
+            StGnt_Node_InternalRef next = child->sibling;
 
             child->parent = NULL;
             child->sibling = NULL;
-            StGnt_ReleaseNode(child);
+            StGnt_ReleaseNode((StGnt_Node_StrongRef)child);
             child = next;
         }
     } else if (
@@ -61,4 +58,11 @@ void StGnt_ReleaseNode(struct StGnt_Node *node __inout)  // NOLINT(misc-no-recur
 
     free_interface_entries(node);
     StPool_Free(node);
+}
+
+void StGnt_ReleaseNode(StGnt_Node_StrongRef node __inout)
+{
+    assert(node);
+
+    (void)StRefControlBlock_Release(&node->ref_control);
 }

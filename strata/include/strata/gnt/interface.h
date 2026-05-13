@@ -22,13 +22,13 @@ extern const struct StUuid StGntIf_Uuid_Process;
 extern const struct StUuid StGntIf_Uuid_Thread;
 
 StStatus StGnt_RegisterInterface(
-    struct StGnt_Node *node __inout,
+    StGnt_Node_StrongRef node __inout,
     const struct StUuid *if_uuid __in,
     uint32_t abi_version __in,
     uint32_t funcid_span __in
 );
 StStatus StGnt_QueryInterface(
-    struct StGnt_Node *node __in,
+    StGnt_Node_StrongRef node __in,
     const struct StUuid *if_uuid __in,
     uint32_t request_abiver __in,
     uint32_t *funcid_base_out __out_optional,

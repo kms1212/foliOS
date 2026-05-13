@@ -101,30 +101,26 @@ struct StPci_DeviceInfo {
     uint8_t sub_class;
     uint8_t prog_if;
     uint8_t revision_id;
-    uint8_t interrupt_line;  // (옵션) Legacy IRQ
+    uint8_t interrupt_line;
     uint8_t interrupt_pin;
 };
 
-// BAR (Base Address Register) 정보 DTO
 struct StPci_BarInfo {
-    uint64_t base_address;  // 64-bit BAR를 위해 항상 64비트로 제공
-    uint64_t size;          // 바이트 단위 크기
-    uint8_t type;           // 0: Memory, 1: I/O
+    uint64_t base_address;
+    uint64_t size;
+    uint8_t type;
     uint8_t is_prefetchable;
     uint8_t is_64bit;
 };
 
-// 커널 스페이스에 상주하는 PCI 장치 컨텍스트
 struct pci_device_node {
-    // 위치 정보 (동적 Config Space 접근 시 사용)
     uint8_t bus;
     uint8_t device;
     uint8_t function;
 
-    // 캐싱된 정적 정보
     struct StPci_DeviceInfo info;
     struct StPci_BarInfo bars[PCI_MAX_BARS];
-    int bar_valid[PCI_MAX_BARS];  // 해당 BAR가 유효한지 여부
+    int bar_valid[PCI_MAX_BARS];
 };
 
 static void pci_scan_bars(struct pci_device_node *node)
@@ -135,8 +131,8 @@ static void pci_scan_bars(struct pci_device_node *node)
     uint8_t header_type;
     uint16_t orig_cmd;
 
-    StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_COMMAND, &orig_cmd);
-    StPciP_WriteCfg16(
+    (void)StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_COMMAND, &orig_cmd);
+    (void)StPciP_WriteCfg16(
         bus,
         device,
         function,
@@ -144,7 +140,7 @@ static void pci_scan_bars(struct pci_device_node *node)
         orig_cmd & ~(PCI_COMMAND_MEMORY_SPACE | PCI_COMMAND_IO_SPACE)
     );
 
-    StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_HEADER_TYPE, &header_type);
+    (void)StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_HEADER_TYPE, &header_type);
     header_type &= 0x7F;
     int max_bars;
     if (header_type == 0x00) {
@@ -160,10 +156,10 @@ static void pci_scan_bars(struct pci_device_node *node)
         uint32_t orig_val;
         uint32_t size_mask;
 
-        StPciP_ReadCfg32(bus, device, function, offset, &orig_val);
-        StPciP_WriteCfg32(bus, device, function, offset, 0xFFFFFFFF);
-        StPciP_ReadCfg32(bus, device, function, offset, &size_mask);
-        StPciP_WriteCfg32(bus, device, function, offset, orig_val);
+        (void)StPciP_ReadCfg32(bus, device, function, offset, &orig_val);
+        (void)StPciP_WriteCfg32(bus, device, function, offset, 0xFFFFFFFF);
+        (void)StPciP_ReadCfg32(bus, device, function, offset, &size_mask);
+        (void)StPciP_WriteCfg32(bus, device, function, offset, orig_val);
 
         uint32_t base_mask =
             (orig_val & PCI_BAR_IOSPACE_SEL) ? PCI_BAR_IO_BASE_MASK : PCI_BAR_MEM_BASE_MASK;
@@ -192,10 +188,10 @@ static void pci_scan_bars(struct pci_device_node *node)
                     uint32_t orig_high;
                     uint32_t size_mask_high;
 
-                    StPciP_ReadCfg32(bus, device, function, offset_high, &orig_high);
-                    StPciP_WriteCfg32(bus, device, function, offset_high, 0xFFFFFFFF);
-                    StPciP_ReadCfg32(bus, device, function, offset_high, &size_mask_high);
-                    StPciP_WriteCfg32(bus, device, function, offset_high, orig_high);
+                    (void)StPciP_ReadCfg32(bus, device, function, offset_high, &orig_high);
+                    (void)StPciP_WriteCfg32(bus, device, function, offset_high, 0xFFFFFFFF);
+                    (void)StPciP_ReadCfg32(bus, device, function, offset_high, &size_mask_high);
+                    (void)StPciP_WriteCfg32(bus, device, function, offset_high, orig_high);
 
                     bar->base_address |= ((uint64_t)orig_high << 32);
 
@@ -212,7 +208,7 @@ static void pci_scan_bars(struct pci_device_node *node)
         }
     }
 
-    StPciP_WriteCfg16(bus, device, function, PCI_CFGHDR_COMMAND, orig_cmd);
+    (void)StPciP_WriteCfg16(bus, device, function, PCI_CFGHDR_COMMAND, orig_cmd);
 }
 
 enum StPci_ScanIterationDecision iterate_function(
@@ -225,38 +221,30 @@ enum StPci_ScanIterationDecision iterate_function(
     St_Utf32Char node_name_utf32[2] = {
         0,
     };
-    uint16_t vendor_id;
-    uint16_t device_id;
-    uint8_t base_class;
-    uint8_t sub_class;
-    uint8_t interface;
-    uint16_t subsystem_vendor_id;
-    uint16_t subsystem_id;
+    uint16_t vendor_id = 0xFFFF;
+    uint16_t device_id = 0xFFFF;
+    uint8_t base_class = 0;
+    uint8_t sub_class = 0;
+    uint8_t interface = 0;
+    uint16_t subsystem_vendor_id = 0;
+    uint16_t subsystem_id = 0;
     struct pci_device_node info = {
         0,
     };
 
-    status = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID, &vendor_id);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    status = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_DEVICEID, &device_id);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    status = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_BASE_CLASS, &base_class);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    status = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_SUB_CLASS, &sub_class);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    status = StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_INTERFACE, &interface);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    status =
-        StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_VENDOR_ID, &subsystem_vendor_id);
-    if (!CHECK_SUCCESS(status)) goto has_error;
-
-    status = StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_ID, &subsystem_id);
-    if (!CHECK_SUCCESS(status)) goto has_error;
+    (void)StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_VENDORID, &vendor_id);
+    (void)StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR_DEVICEID, &device_id);
+    (void)StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_BASE_CLASS, &base_class);
+    (void)StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_SUB_CLASS, &sub_class);
+    (void)StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_INTERFACE, &interface);
+    (void)StPciP_ReadCfg16(
+        bus,
+        device,
+        function,
+        PCI_CFGHDR0_SUBSYS_VENDOR_ID,
+        &subsystem_vendor_id
+    );
+    (void)StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_ID, &subsystem_id);
 
     snprintf(node_name, sizeof(node_name), "%X", function);
 
@@ -316,12 +304,7 @@ enum StPci_ScanIterationDecision iterate_function(
             info.bars[i].base_address + info.bars[i].size - 1
         );
     }
-
     return ITERATION_CONTINUE;
-
-has_error:
-    iter_data->status = status;
-    return ITERATION_ABORT;
 }
 
 static StStatus register_gnt_nodes(struct StGnt_Node *parent_node)

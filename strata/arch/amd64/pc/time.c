@@ -2,6 +2,7 @@
 
 #include <strata/plat/time.h>
 
+#include <assert.h>
 #include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -13,6 +14,7 @@
 #include <strata/plat/interrupt_constants.h>
 #include <strata/plat/pit.h>
 
+#include <strata/panic.h>
 #include <strata/compiler.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
@@ -50,6 +52,8 @@ void StTimeP_EarlyBusyWaitNanoseconds(uint64_t ns)
 
 void StTimeP_InitTimer(int _use_hpet __in)
 {
+    StStatus status;
+
     use_hpet = _use_hpet;
 
     if (use_hpet) {
@@ -70,9 +74,12 @@ void StTimeP_InitTimer(int _use_hpet __in)
     if (!use_hpet) {
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "using PIT tick for uptime counter\n");
         uptime_counter_freq = STRATA_TICK_RATE_HZ;
-        uptime_start_counter = StTimeP_GetGlobalTick();
+        StTimeP_GetGlobalTick(&uptime_start_counter);
 
-        StPitP_SetPeriodic(STRATA_TICK_RATE_HZ);
+        status = StPitP_SetPeriodic(STRATA_TICK_RATE_HZ);
+        if (!CHECK_SUCCESS(status)) {
+            St_Panic(status, "failed to initialize PIT timer");
+        }
 
         LOG_INFO(
             LM_CAT_UNCLASSIFIED,
@@ -84,34 +91,54 @@ void StTimeP_InitTimer(int _use_hpet __in)
     }
     initialized = 1;
 
-    StInt_CreateHandler(use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE, NULL, tick_isr, NULL);
+    status = StInt_CreateHandler(TIMER_IRQ_VECTOR(use_hpet), NULL, tick_isr, NULL);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "Failed to init timer IRQ handler");
+    }
 }
 
 StStatus StTimeP_StartTimer(void)
 {
+    StStatus status;
+
     if (!initialized) return STATUS_NOT_PERMITTED;
 
-    StIntP_Unmask(use_hpet ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE);
+    status = StIntP_Unmask(TIMER_IRQ_VECTOR(use_hpet));
+    if (!CHECK_SUCCESS(status)) return status;
 
     return STATUS_SUCCESS;
 }
 
-uint64_t StTimeP_GetUptimeNanoseconds(void)
+void StTimeP_GetUptimeNanoseconds(uint64_t *uptime_ns __out)
 {
-    if (!initialized) return 0;
+    assert(uptime_ns);
 
-    uint64_t current = use_hpet ? StHpetP_GetMainCounter() : StTimeP_GetGlobalTick();
+    if (!initialized) {
+        *uptime_ns = 0;
+        return;
+    }
+
+    uint64_t current;
+    if (use_hpet) {
+        current = StHpetP_GetMainCounter();
+    } else {
+        StTimeP_GetGlobalTick(&current);
+    }
     uint64_t ticks_diff = current - uptime_start_counter;
 
-    return ((__uint128_t)ticks_diff * 1000000000ULL) / uptime_counter_freq;
+    *uptime_ns = ((__uint128_t)ticks_diff * 1000000000ULL) / uptime_counter_freq;
 }
 
-uint64_t StTimeP_GetGlobalTick(void)
+void StTimeP_GetGlobalTick(uint64_t *tick __out)
 {
-    return global_tick;
+    assert(tick);
+
+    *tick = global_tick;
 }
 
-uint32_t StTimeP_GetGlobalTickFrequency(void)
+void StTimeP_GetGlobalTickFrequency(uint32_t *frequency __out)
 {
-    return STRATA_TICK_RATE_HZ;
+    assert(frequency);
+
+    *frequency = STRATA_TICK_RATE_HZ;
 }

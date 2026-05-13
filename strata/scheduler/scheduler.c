@@ -1,5 +1,6 @@
 #include <strata/scheduler.h>
 
+#include <assert.h>
 #include <limits.h>
 #include <stdint.h>
 
@@ -7,6 +8,8 @@
 #include <strata/plat/time.h>
 
 #include <strata/log.h>
+#include <strata/panic.h>
+#include <strata/compiler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 
@@ -21,12 +24,12 @@ static void ensure_scheduler_defaults(struct StScheduler_Data *scheduler)
 }
 
 static uint64_t get_min_runnable_pass(
-    const struct StScheduler_Data *scheduler, const struct StThread *exclude
+    const struct StScheduler_Data *scheduler, StThread_InternalRef exclude
 )
 {
     uint64_t min_pass = UINT64_MAX;
 
-    for (const struct StThread *current = scheduler->runqueue_head; current;
+    for (StThread_InternalRef current = scheduler->runqueue_head; current;
          current = current->next) {
         if (current == exclude) continue;
         if (current->state != THREAD_STATE_RUNNING) continue;
@@ -36,7 +39,7 @@ static uint64_t get_min_runnable_pass(
     return min_pass;
 }
 
-static void catch_up_runnable_pass(struct StScheduler_Data *scheduler, struct StThread *thread)
+static void catch_up_runnable_pass(struct StScheduler_Data *scheduler, StThread_InternalRef thread)
 {
     uint64_t min_pass;
 
@@ -50,7 +53,7 @@ static void catch_up_runnable_pass(struct StScheduler_Data *scheduler, struct St
     }
 }
 
-static int waiting_thread_is_ready(struct StThread *thread)
+static int waiting_thread_is_ready(StThread_InternalRef thread)
 {
     int ready = 1;
 
@@ -70,7 +73,7 @@ static int waiting_thread_is_ready(struct StThread *thread)
 }
 
 static void finish_waiting_thread(
-    struct StScheduler_Data *scheduler, struct StThread *thread, StStatus status
+    struct StScheduler_Data *scheduler, StThread_InternalRef thread, StStatus status
 )
 {
     thread->wait_list = NULL;
@@ -83,7 +86,7 @@ static void finish_waiting_thread(
 }
 
 static void update_runnable_state(
-    struct StScheduler_Data *scheduler, struct StThread *thread, uint64_t now_ns
+    struct StScheduler_Data *scheduler, StThread_InternalRef thread, uint64_t now_ns
 )
 {
     switch (thread->state) {
@@ -110,7 +113,7 @@ static void update_runnable_state(
     }
 }
 
-static void account_thread_runtime(struct StThread *thread, uint64_t now_ns)
+static void account_thread_runtime(StThread_InternalRef thread, uint64_t now_ns)
 {
     uint64_t delta_ns;
 
@@ -123,13 +126,13 @@ static void account_thread_runtime(struct StThread *thread, uint64_t now_ns)
     thread->last_scheduled_in_ns = now_ns;
 }
 
-static struct StThread *select_next_runnable_thread(
+static StThread_InternalRef select_next_runnable_thread(
     struct StScheduler_Data *scheduler, uint64_t now_ns, int update_accounting
 )
 {
-    struct StThread *start;
-    struct StThread *cursor;
-    struct StThread *best = NULL;
+    StThread_InternalRef start;
+    StThread_InternalRef cursor;
+    StThread_InternalRef best = NULL;
     uint64_t best_pass = UINT64_MAX;
 
     if (!scheduler->runqueue_head) {
@@ -161,7 +164,7 @@ static struct StThread *select_next_runnable_thread(
     return best;
 }
 
-StStatus StScheduler_AddThread(struct StThread *th)
+StStatus StScheduler_AddThread(StThread_InternalRef th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     uint64_t initial_pass = 0;
@@ -191,13 +194,11 @@ StStatus StScheduler_AddThread(struct StThread *th)
     return STATUS_SUCCESS;
 }
 
-StStatus StScheduler_RemoveThread(struct StThread *th)
+void StScheduler_RemoveThread(StThread_InternalRef th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
-    if (th->state != THREAD_STATE_FINISHED) {
-        return STATUS_THREAD_NOT_FINISHED;
-    }
+    assert(th);
 
     if (th == scheduler->runqueue_head) {
         scheduler->runqueue_head = th->next;
@@ -206,7 +207,7 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
         }
     }
 
-    for (struct StThread *current = scheduler->runqueue_head; current && current->next;
+    for (StThread_InternalRef current = scheduler->runqueue_head; current && current->next;
          current = current->next) {
         if (th == current->next) {
             current->next = th->next;
@@ -217,12 +218,12 @@ StStatus StScheduler_RemoveThread(struct StThread *th)
         }
     }
 
-    LOG_TRACE(LM_CAT_UNCLASSIFIED, "thread #%d removed from scheduler\n", th->id);
+    th->next = NULL;
 
-    return STATUS_SUCCESS;
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "thread #%d removed from scheduler\n", th->id);
 }
 
-StStatus StScheduler_GetCurrentThread(struct StThread **current)
+StStatus StScheduler_GetCurrentThread(StThread_InternalRef *current)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 
@@ -231,10 +232,12 @@ StStatus StScheduler_GetCurrentThread(struct StThread **current)
     return STATUS_SUCCESS;
 }
 
-StStatus StScheduler_GetNextThread(struct StThread **next)
+StStatus StScheduler_GetNextThread(StThread_InternalRef *next)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    uint64_t now_ns = StTimeP_GetUptimeNanoseconds();
+    uint64_t now_ns;
+
+    StTimeP_GetUptimeNanoseconds(&now_ns);
 
     if (next) {
         *next = select_next_runnable_thread(scheduler, now_ns, 1);
@@ -245,10 +248,10 @@ StStatus StScheduler_GetNextThread(struct StThread **next)
     return STATUS_SUCCESS;
 }
 
-StStatus StScheduler_SwitchCurrentThread(struct StThread *th)
+StStatus StScheduler_SwitchCurrentThread(StThread_InternalRef th)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    struct StThread *prev;
+    StThread_InternalRef prev;
     uint64_t now_ns;
 
     if (!th) {
@@ -258,7 +261,7 @@ StStatus StScheduler_SwitchCurrentThread(struct StThread *th)
     ensure_scheduler_defaults(scheduler);
 
     prev = scheduler->current_thread;
-    now_ns = StTimeP_GetUptimeNanoseconds();
+    StTimeP_GetUptimeNanoseconds(&now_ns);
 
     if (prev && prev != th) {
         account_thread_runtime(prev, now_ns);
@@ -276,13 +279,11 @@ StStatus StScheduler_SwitchCurrentThread(struct StThread *th)
     return STATUS_SUCCESS;
 }
 
-StStatus StScheduler_GetIdleTimeNanoseconds(uint64_t *idle_runtime_ns)
+void StScheduler_GetIdleTimeNanoseconds(uint64_t *idle_runtime_ns __out)
 {
-    if (idle_runtime_ns) {
-        *idle_runtime_ns = StCpuLocalP_GetData()->scheduler.idle_runtime_ns;
-    }
+    assert(idle_runtime_ns);
 
-    return STATUS_SUCCESS;
+    *idle_runtime_ns = StCpuLocalP_GetData()->scheduler.idle_runtime_ns;
 }
 
 void StScheduler_AccountIdleTimeNanoseconds(uint64_t idle_delta_ns)
@@ -295,9 +296,12 @@ void StScheduler_AccountIdleTimeNanoseconds(uint64_t idle_delta_ns)
 int StScheduler_CheckHasOtherRunnableThread(void)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    struct StThread *current = scheduler->current_thread;
-    struct StThread *next =
-        select_next_runnable_thread(scheduler, StTimeP_GetUptimeNanoseconds(), 0);
+    StThread_InternalRef current = scheduler->current_thread;
+    StThread_InternalRef next;
+    uint64_t now_ns;
+
+    StTimeP_GetUptimeNanoseconds(&now_ns);
+    next = select_next_runnable_thread(scheduler, now_ns, 0);
 
     return next && next != current;
 }
@@ -330,14 +334,14 @@ void StScheduler_RequestMaintain(void)
 StStatus StScheduler_Maintain(void)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
-    struct StThread *current;
+    StThread_InternalRef current;
     uint64_t now_ns;
     int needs_followup_maintain = 0;
 
     ensure_scheduler_defaults(scheduler);
 
     StThread_LockPreemption();
-    now_ns = StTimeP_GetUptimeNanoseconds();
+    StTimeP_GetUptimeNanoseconds(&now_ns);
 
     /* check waiting threads */
     for (current = scheduler->runqueue_head; current; current = current->next) {
@@ -347,7 +351,7 @@ StStatus StScheduler_Maintain(void)
     /* remove finished detached threads */
     current = scheduler->runqueue_head;
     while (current) {
-        struct StThread *next = current->next;
+        StThread_InternalRef next = current->next;
 
         if (current == scheduler->current_thread) {
             if (current->state == THREAD_STATE_FINISHED && current->is_detached) {
@@ -363,7 +367,10 @@ StStatus StScheduler_Maintain(void)
         }
 
         if (current->state == THREAD_STATE_FINISHED && current->is_detached) {
-            StThread_Remove(current);
+            StStatus status = StThread_Remove((StThread_StrongRef)current);
+            if (!CHECK_SUCCESS(status)) {
+                St_Panic(status, "failed to remove detached finished thread");
+            }
 
             /*
              * StThread_Remove mutates runqueue; restart traversal from head

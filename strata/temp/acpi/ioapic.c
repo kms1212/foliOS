@@ -1,5 +1,6 @@
 #include <ioapic.h>
 
+#include <assert.h>
 #include <stdint.h>
 
 #include <strata/compiler.h>
@@ -84,6 +85,8 @@ StStatus StIoapicP_Add(uint8_t id __in, uint32_t gsi_base __in, uintptr_t mmio_b
 
 StStatus StIoapicP_Read(uint8_t ioapic_idx __in, uint8_t reg __in, uint32_t *value __out)
 {
+    assert(value);
+
     volatile void *mmio_base;
 
     if (ioapic_idx >= ioapic_count) return STATUS_INVALID_VALUE;
@@ -140,6 +143,8 @@ StStatus StIoapicP_RouteGsiToVector(
 
 StStatus StIoapicP_GetIndexFromGsi(uint32_t gsi __in, uint8_t *ioapic_idx __out)
 {
+    assert(ioapic_idx);
+
     for (uint32_t i = 0; i < ioapic_count; i++) {
         if (ioapic_arr[i].gsi_base <= gsi &&
             gsi <= ioapic_arr[i].gsi_base + ioapic_arr[i].max_intr) {
@@ -155,6 +160,9 @@ StStatus StIoapicP_GetIndexAndPinFromGsi(
     uint32_t gsi __in, uint8_t *ioapic_idx __out, uint8_t *pin __out
 )
 {
+    assert(ioapic_idx);
+    assert(pin);
+
     StStatus status;
 
     status = StIoapicP_GetIndexFromGsi(gsi, ioapic_idx);

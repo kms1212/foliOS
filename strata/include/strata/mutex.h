@@ -6,8 +6,8 @@
 
 struct __capability("mutex") StMutex {
     volatile int locked;
-    struct StThread *owner;
-    struct StThread *blocking_threads;
+    StThread_InternalRef owner;
+    StThread_InternalRef blocking_threads;
 };
 
 void StMutex_Init(struct StMutex *mtx);
@@ -15,6 +15,6 @@ void StMutex_Init(struct StMutex *mtx);
 StStatus StMutex_Lock(struct StMutex *mtx) __acquires(mtx);
 StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms);
 StStatus StMutex_TryLock(struct StMutex *mtx, int *locked);
-StStatus StMutex_Unlock(struct StMutex *mtx) __releases(mtx);
+void StMutex_Unlock(struct StMutex *mtx) __releases(mtx);
 
 #endif  // __STRATA_MUTEX_H__

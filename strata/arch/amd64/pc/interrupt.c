@@ -1,5 +1,6 @@
 #include <strata/plat/interrupt.h>
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdatomic.h>
 #include <stdint.h>
@@ -9,6 +10,7 @@
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/idt.h>
 #include <strata/arch/mmu_constants.h>
+#include <strata/arch/interrupt_constants.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt_constants.h>
@@ -20,9 +22,7 @@
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/panic.h>
-#include <strata/scheduler.h>
 #include <strata/status.h>
-#include <strata/thread.h>
 
 #define MODULE_NAME "irq"
 
@@ -366,7 +366,7 @@ StStatus StIntP_Init(int _use_ioapic __in)
     StA_Lidt(&idtr);
 
     if (!_use_ioapic) {
-        StPicP_Remap(0x20, 0x28);
+        StPicP_Remap(LEGACY_IRQ_VECTOR_BASE, LEGACY_IRQ_VECTOR_BASE + 8);
     }
 
     return STATUS_SUCCESS;
@@ -374,9 +374,11 @@ StStatus StIntP_Init(int _use_ioapic __in)
 
 StStatus StIntP_GetFirstHandler(int num, struct StInt_Handler **handler)
 {
+    assert(handler);
+
     if (num > 0xFF) return STATUS_INVALID_VALUE;
 
-    if (handler) *handler = _pc_isr_table[num];
+    *handler = _pc_isr_table[num];
 
     return STATUS_SUCCESS;
 }
@@ -399,14 +401,14 @@ void StIntP_UnsetFirstHandler(int num)
 
 StStatus StIntP_Mask(int num)
 {
-    if (num > 0xFF) return STATUS_INVALID_VALUE;
+    if (num > USER_IRQ_VECTOR_LIMIT) return STATUS_INVALID_VALUE;
 
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "masking interrupt #%02X...\n", num);
 
-    if (0x20 <= num) {
+    if (USER_IRQ_VECTOR_BASE <= num) {
         if (use_ioapic) {
             StIoapicP_Mask(num);
-        } else if (num < 0x30) {
+        } else if (num <= LEGACY_IRQ_VECTOR_LIMIT) {
             StPicP_Mask(num);
         }
     }
@@ -416,14 +418,14 @@ StStatus StIntP_Mask(int num)
 
 StStatus StIntP_Unmask(int num)
 {
-    if (num > 0xFF) return STATUS_INVALID_VALUE;
+    if (num > USER_IRQ_VECTOR_LIMIT) return STATUS_INVALID_VALUE;
 
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "unmasking interrupt #%02X...\n", num);
 
-    if (0x20 <= num) {
+    if (USER_IRQ_VECTOR_BASE <= num) {
         if (use_ioapic) {
             StIoapicP_Unmask(num);
-        } else if (num < 0x30) {
+        } else if (num <= LEGACY_IRQ_VECTOR_LIMIT) {
             StPicP_Unmask(num);
         }
     }
@@ -448,7 +450,7 @@ __optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
     atomic_fetch_add(&StCpuLocalP_GetData()->irq_count, 1);
     atomic_fetch_add(&StCpuLocalP_GetData()->irq_depth, 1);
 
-    if (num < 0x20) {
+    if (num < USER_IRQ_VECTOR_BASE) {
         has_error = (HAS_ERROR_BITMAP >> num) & 1;
         is_fault = (IS_FAULT_BITMAP >> num) & 1;
     } else if (num <= LEGACY_IRQ_VECTOR_LIMIT && !use_ioapic) {
@@ -460,9 +462,6 @@ __optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
     if (!current_isr) {
         if (is_fault) {
             if (has_error) {
-                struct StThread *thread;
-
-                StScheduler_GetCurrentThread(&thread);
                 St_Panic(
                     STATUS_UNKNOWN_ERROR,
                     "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016" PRIX64 "\n",

@@ -29,14 +29,14 @@
 #define IA32_APIC_BASE_ENABLE    (1ULL << 11)
 #define IA32_APIC_BASE_ADDR_MASK 0x000FFFFFFFFFF000ULL
 
-__always_inline uint64_t StA_ReadMsr(uint32_t msr)
+__always_inline uint64_t StA_ReadMsr(uint32_t msr __in)
 {
     uint32_t high, low;
     __asm__ volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(msr));
     return ((uint64_t)high << 32) | low;
 }
 
-__always_inline void StA_WriteMsr(uint32_t msr, uint64_t value)
+__always_inline void StA_WriteMsr(uint32_t msr __in, uint64_t value __in)
 {
     uint32_t high = value >> 32;
     uint32_t low = value & 0xFFFFFFFF;
