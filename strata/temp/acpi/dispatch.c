@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 #include <strata/compiler.h>
-#include <strata/gnt.h>
+#include <strata/gnt_refs.h>
 #include <strata/handle.h>
 #include <strata/status.h>
 

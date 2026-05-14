@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include <strata/compiler.h>
+#include <strata/gnt_refs.h>
 #include <strata/limits.h>
 #include <strata/module.h>
 #include <strata/status.h>

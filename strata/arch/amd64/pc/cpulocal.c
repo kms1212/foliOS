@@ -5,16 +5,15 @@
 
 #include <strata/arch/intrinsics/msr.h>
 
-#include <strata/plat/mm.h>
-
 #include <strata/compiler.h>
+#include <strata/mm/address_space_refs.h>
 #include <strata/status.h>
 
 static struct StCpuLocalP_Data bsp_data;
 __externally_visible int _cpulocal_initialized = 0;
 
 extern char _early_stack[];
-extern struct StMm_AddressSpace base_asp;
+extern struct StAddressSpace base_asp;
 
 StStatus StCpuLocalP_Init(void)
 {
@@ -22,7 +21,7 @@ StStatus StCpuLocalP_Init(void)
     bsp_data.is_bsp = 1;
     bsp_data.self = &bsp_data;
     bsp_data.kernel_rsp = (uintptr_t)_early_stack;
-    bsp_data.current_asp = (StMm_AddressSpace_InternalRef)&base_asp;
+    bsp_data.current_asp = (StAddressSpace_InternalRef)&base_asp;
 
     StA_WriteMsr(MSR_GS_BASE, (uintptr_t)&bsp_data);
 

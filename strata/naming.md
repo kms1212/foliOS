@@ -28,11 +28,11 @@ St[Region][Scope]_[Action]()
 
 | Category | Prefix Structure | Description | Examples |
 | --- | --- | --- | --- |
-| **Generic API** | `St[Region]_` | High-level, architecture-agnostic logic. <br/><br/> *Call Direction: Downward* | `StVmm_Map()`<br/><br/>`StSched_Yield()` |
-| **Architecture** | `StA_` | **CPU/ISA-specific** routines (ASM/Intrinsics).<br/><br/>Pure hardware manipulation. | `StA_Hlt()`<br/><br/>`StA_EnableIntr()` |
-| **Platform** | `StP_` | **Board/Firmware-specific** routines.<br/><br/>Peripheral & Bus control. | `StP_Reset()`<br/><br/>`StP_OutByte()` |
-| **Hybrid Impl** | `St[Region]A_` <br/><br/> `St[Region]P_` | **Architecture/Platform-specific implementation** of a generic region. | `StVmmA_SetCR3()`<br/><br/>`StIrqP_Ack()` |
-| **Global Util** | `St_` | Kernel-wide utilities (Logging, Panic). | `St_Panic()`<br/><br/>`St_Log()` |
+| **Generic API** | `St[Region]_` | High-level, architecture-agnostic logic. <br/><br/> *Call Direction: Downward* | `StMm_MapGlobal()`<br/><br/>`StThread_Yield()` |
+| **Architecture** | `StA_` | **CPU/ISA-specific** routines (ASM/Intrinsics).<br/><br/>Pure hardware manipulation. | `StA_Hlt()`<br/><br/>`StA_SaveInterrupt()` |
+| **Platform** | `StP_` | **Board/Firmware-specific** routines.<br/><br/>Peripheral & Bus control. | `StP_InitGdt()`<br/><br/>`StP_Panic()` |
+| **Hybrid Impl** | `St[Region]A_` <br/><br/> `St[Region]P_` | **Architecture/Platform-specific implementation** of a generic region. | `StApicA_EnableLocal()`<br/><br/>`StThreadP_Switch()` |
+| **Global Util** | `St_` | Kernel-wide utilities. | `St_Panic()`<br/><br/>`St_SwapEndian32()` |
 
 ---
 
@@ -45,18 +45,28 @@ Use standard abbreviations for Regions to keep names concise.
 * `StPmm`: Physical Memory Manager
 * `StVmm`: Virtual Memory Manager
 * `StSched`: Scheduler / Threading
-* `StIrq`: Interrupt Requests / IDT
+* `StInt`: Interrupt handling / IDT
 * `StIo`: Input/Output (Port/MMIO)
 * `StFs`: File System abstraction
+
+First-class object families that own a lifecycle or public API may use the
+object name as the Region even when their implementation lives under a broader
+subsystem directory.
+
+* `StPool`: Pool allocator
+* `StAddressSpace`: Address space lifecycle
+* `StAllocationOwner`: Allocation ownership and accounting
 
 **Example:**
 
 ```c
-// Good: Clear Hierarchy
-StVmm_MapPage(vaddr, paddr);
+// Good: current codebase examples with clear hierarchy
+StVmm_InitGlobalDomain(domain, base_vpn, limit_vpn);
+StAddressSpace_Create(&asp, process);
 
-// Bad: Snake case, ambiguous scope
-vmm_map_page(vaddr, paddr);
+// Avoid: snake case, ambiguous scope, or hiding a first-class object under MM
+vmm_init_global_domain(domain, base_vpn, limit_vpn);
+StMm_CreateAddressSpace(&asp, process);
 
 ```
 
@@ -65,26 +75,20 @@ vmm_map_page(vaddr, paddr);
 Use `StA_` or `St[Region]A_` for code residing in `strata/arch/*`. These functions often wrap assembly instructions or CPU-specific registers.
 
 * **`StA_`**: Pure architectural actions (Context switch, Cache flush).
-* *Example:* `StA_SwitchContext()`
-
+* *Example:* `StA_SaveInterrupt()`
 
 * **`St[Region]A_`**: A generic region's architectural backend.
-* *Example:* `StVmmA_InvalidatePage()` (wraps `invlpg` on x86)
-
-
+* *Example:* `StApicA_SendEoi()`
 
 ### 3.3. Platform Abstraction (`P`)
 
 Use `StP_` or `St[Region]P_` for code residing in `strata/arch/[arch]/*`. These functions handle board variations (ACPI, BIOS, UEFI, Device Tree).
 
 * **`StP_`**: System-level platform actions.
-* *Example:* `StP_PowerOff()`
-
+* *Example:* `StP_InitGdt()`
 
 * **`St[Region]P_`**: A generic region's platform backend.
-* *Example:* `StIrqP_InitController()` (initializes PIC or APIC)
-
-
+* *Example:* `StIntP_Init()` (initializes the platform interrupt backend)
 
 ---
 
@@ -107,7 +111,7 @@ Types should be **PascalCase**. Structs used across the kernel may carry the `St
 
 ### 4.3. Macros & Constants
 
-All caps with underscores (**UPPER_SNAKE_CASE**).
+All caps with underscores (**UPPER_SNAKE_CASE**). Do not attach prefix `ST_` or `VL_`.
 
 * `STATUS_SUCCESS`
 * `STATUS_ERROR_UNCLASSIFIED`

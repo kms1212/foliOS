@@ -5,18 +5,20 @@
 #include <stdint.h>
 
 #include <strata/handle.h>
-#include <strata/plat/thread.h>
 
 #include <strata/compiler.h>
 #include <strata/gnt.h>
 #include <strata/log.h>
-#include <strata/mm.h>
-#include <strata/mm/asp.h>
+#include <strata/mm/address_space_refs.h>
+#include <strata/mm/address_space.h>
+#include <strata/mm/allocation_owner.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
 #include <strata/panic.h>
+#include <strata/process_refs.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 #define MODULE_NAME                               "process"
 #define PROCESS_CREATE_DEFERRED_REAP_BUDGET_PAGES ((St_PageCount)256)
@@ -61,7 +63,7 @@ StStatus StProcess_CreateUser(StProcess_StrongRef *process __out)
 
     StStatus status;
     StProcess_StrongRef proc = NULL;
-    StMm_AddressSpace_StrongRef asp = NULL;
+    StAddressSpace_StrongRef asp = NULL;
     uint32_t prev_process_count;
 
     StThread_RunDeferredReap(PROCESS_CREATE_DEFERRED_REAP_BUDGET_PAGES);
@@ -72,10 +74,10 @@ StStatus StProcess_CreateUser(StProcess_StrongRef *process __out)
     proc->id = new_process_id++;
     StRefControlBlock_Init(&proc->ref_control, 1, proc, finalize_process_object);
 
-    status = StMm_CreateAllocationOwner(&proc->alloc_owner);
+    status = StAllocationOwner_Create(&proc->alloc_owner);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
-    status = StMm_CreateAddressSpace(&asp, proc);
+    status = StAddressSpace_Create(&asp, proc);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
     proc->address_space = asp;
@@ -110,12 +112,12 @@ StStatus StProcess_CreateUser(StProcess_StrongRef *process __out)
 
 has_error:
     if (asp) {
-        StMm_RemoveAddressSpace(asp);
+        StAddressSpace_Remove(asp);
     }
 
     if (proc) {
         if (proc->alloc_owner) {
-            StMm_ReleaseAllocationOwner(proc->alloc_owner);
+            StAllocationOwner_Release(proc->alloc_owner);
         }
         StPool_Free(proc);
     }
@@ -175,10 +177,10 @@ void StProcess_FinalizeRemove(StProcess_StrongRef process)
     StHandle_TableClear(&process->handle_table);
 
     if (process->alloc_owner) {
-        StMm_CloseAllocationOwner(process->alloc_owner);
+        StAllocationOwner_Close(process->alloc_owner);
     }
 
-    StMm_RemoveAddressSpace(process->address_space);
+    StAddressSpace_Remove(process->address_space);
     process->address_space = NULL;
 
     if (process->alloc_owner) {
@@ -187,7 +189,7 @@ void StProcess_FinalizeRemove(StProcess_StrongRef process)
             "leaked %zd pages\n",
             process->alloc_owner->page_usage_count
         );
-        StMm_ReleaseAllocationOwner(process->alloc_owner);
+        StAllocationOwner_Release(process->alloc_owner);
         process->alloc_owner = NULL;
     }
 

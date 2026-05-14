@@ -26,6 +26,7 @@
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/address_space_refs.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
@@ -36,6 +37,7 @@
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 #define MODULE_NAME                          "thread"
 #define THREAD_KERNEL_STACK_CACHE_MAX_STACKS ((St_PageCount)8)
@@ -46,7 +48,7 @@
 
 extern void _StThreadP_KernelThreadEntry(void);
 extern void _StThreadP_UserThreadEntry(void);
-extern struct StMm_AddressSpace base_asp;
+extern struct StAddressSpace base_asp;
 
 struct cached_kernel_stack {
     struct cached_kernel_stack *next;
@@ -360,7 +362,7 @@ StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
         ustack_base_vpn,
         th->umode_stack_page_count,
         AF_DEFAULT,
-        MF_USER_DEFAULT
+        MF_USER_DEFAULT | MF_ZERO_FILL
     );
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -371,7 +373,7 @@ StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
 }
 
 static inline void push_u64(
-    StMm_AddressSpace_StrongRef asp __in, uintptr_t *sp __inout, uint64_t val __in
+    StAddressSpace_StrongRef asp __in, uintptr_t *sp __inout, uint64_t val __in
 )
 {
     StStatus status;
@@ -393,7 +395,7 @@ StStatus StThreadP_SetupThreadUserStack(
 )
 {
     StStatus status;
-    StMm_AddressSpace_StrongRef asp = th->process->address_space;
+    StAddressSpace_StrongRef asp = th->process->address_space;
     uintptr_t rsp = th->umode_stack_ptr;
     size_t data_size = 0;
     char *envs_start;
@@ -546,7 +548,7 @@ StStatus StThreadP_Switch(
 
     StStatus status;
     StThread_InternalRef current;
-    StMm_AddressSpace_InternalRef current_asp = StCpuLocalP_GetData()->current_asp;
+    StAddressSpace_InternalRef current_asp = StCpuLocalP_GetData()->current_asp;
     uintptr_t kstack_top;
 
     status = StScheduler_GetCurrentThread(&current);
@@ -561,10 +563,10 @@ StStatus StThreadP_Switch(
 
     /* switch address space */
     if (next->type == THREAD_TYPE_USER) {
-        status = StMmP_SwitchAddressSpace(next->process->address_space);
+        status = StAddressSpaceP_Switch(next->process->address_space);
         if (!CHECK_SUCCESS(status)) return status;
-    } else if (current_asp != (StMm_AddressSpace_InternalRef)&base_asp) {
-        status = StMmP_SwitchAddressSpace((StMm_AddressSpace_StrongRef)&base_asp);
+    } else if (current_asp != (StAddressSpace_InternalRef)&base_asp) {
+        status = StAddressSpaceP_Switch((StAddressSpace_StrongRef)&base_asp);
         if (!CHECK_SUCCESS(status)) return status;
     }
 

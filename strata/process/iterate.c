@@ -8,9 +8,11 @@
 
 #include <strata/compiler.h>
 #include <strata/gnt.h>
+#include <strata/gnt_refs.h>
 #include <strata/limits.h>
 #include <strata/macros.h>
 #include <strata/process.h>
+#include <strata/process_refs.h>
 #include <strata/status.h>
 #include <strata/utf.h>
 

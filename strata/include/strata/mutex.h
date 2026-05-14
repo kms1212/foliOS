@@ -2,7 +2,7 @@
 #define __STRATA_MUTEX_H__
 
 #include <strata/status.h>
-#include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 struct __capability("mutex") StMutex {
     volatile int locked;

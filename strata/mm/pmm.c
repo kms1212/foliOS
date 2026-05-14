@@ -17,7 +17,9 @@
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/macros.h>
-#include <strata/mm/owner.h>
+#include <strata/mm/allocation_owner.h>
+#include <strata/mm/allocation_owner_refs.h>
+#include <strata/mm/pmm_refs.h>
 #include <strata/mm/types.h>
 #include <strata/panic.h>
 #include <strata/status.h>
@@ -704,7 +706,7 @@ static St_PhysFrame get_pfn_from_metadata(struct pmm_metadata *metadata)
         sizeof(struct pmm_metadata);
 }
 
-static StStatus create_metadata(St_PhysFrame pfn, StMm_AllocationOwner_StrongRef owner, int order)
+static StStatus create_metadata(St_PhysFrame pfn, StAllocationOwner_StrongRef owner, int order)
 {
     if (!metadata_available) return STATUS_SUCCESS;
 
@@ -717,7 +719,7 @@ static StStatus create_metadata(St_PhysFrame pfn, StMm_AllocationOwner_StrongRef
     metadata->public.flags = 0;
     metadata->public.owner = owner;
     if (owner) {
-        StMm_AcquireAllocationOwner(owner);
+        StAllocationOwner_Acquire(owner);
         owner->page_usage_count += allocated_count;
         if (owner->page_usage_peak_count < owner->page_usage_count) {
             owner->page_usage_peak_count = owner->page_usage_count;
@@ -1172,7 +1174,7 @@ void StPmm_GetFreeFrameCount(St_PageCount *frame_count __out)
 StStatus StPmm_AllocateContiguousFrame(
     St_PhysFrame *pfn __out,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in
 )
 {
@@ -1202,7 +1204,7 @@ StStatus StPmm_AllocateContiguousFrame(
     order = get_order(count);
     if (order < 0) return STATUS_INVALID_VALUE;
     if (order > PMM_MAX_ORDER) return STATUS_INSUFFICIENT_MEMORY;
-    if (owner && StMm_IsAllocationOwnerClosed(owner)) return STATUS_CONFLICTING_STATE;
+    if (owner && StAllocationOwner_IsClosed(owner)) return STATUS_CONFLICTING_STATE;
 
     below_value = alloc_flags & AF_PMM_BELOW_MASK;
     align_order = (int)(((alloc_flags & AF_ALIGN_MASK) >> 4) - 12);
@@ -1605,7 +1607,7 @@ StStatus StPmm_AcquireContiguousFrame(St_PhysFrame pfn __in)
 void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
 {
     struct pmm_metadata *metadata;
-    StMm_AllocationOwner_StrongRef owner;
+    StAllocationOwner_StrongRef owner;
     St_PageCount allocated_count;
     uint32_t prev_refcount;
 
@@ -1638,7 +1640,7 @@ void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
             owner->page_usage_count = 0;
         }
         metadata->public.owner = NULL;
-        StMm_ReleaseAllocationOwner(owner);
+        StAllocationOwner_Release(owner);
     }
     do_free_contiguous_frame(pfn, (int)metadata->public.order);
     StThread_UnlockPreemption();

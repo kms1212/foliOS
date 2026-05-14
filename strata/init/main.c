@@ -33,9 +33,11 @@
 #include <strata/mutex.h>
 #include <strata/panic.h>
 #include <strata/process.h>
+#include <strata/process_refs.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 #include <strata/utf.h>
 
 #include <loadst/bootinfo.h>
@@ -499,6 +501,7 @@ static int setup_user_process(
     StProcess_StrongRef process;
     struct StElf_Object *elf;
     struct StElf64_Phdr ph;
+    struct StElf_LoadOptions elf_load_options;
     unsigned int ph_count;
     size_t userexec_size = (uintptr_t)_userexec_end - (uintptr_t)_userexec_start;
     uintptr_t entry_point;
@@ -524,6 +527,10 @@ static int setup_user_process(
         St_Panic(status, "failed to get program header count");
     }
 
+    elf_load_options.asp = process->address_space;
+    elf_load_options.alloc_flags = AF_DEFAULT;
+    elf_load_options.flags = ELF_LOAD_DEFAULT;
+
     for (unsigned int i = 0; i < ph_count; i++) {
         status = StElf_GetProgramHeader(elf, i, &ph, sizeof(ph));
         if (!CHECK_SUCCESS(status)) {
@@ -539,7 +546,7 @@ static int setup_user_process(
 
         if (ph.type != PT_LOAD) continue;
 
-        status = StElf_LoadProgram(elf, i, process->address_space);
+        status = StElf_LoadProgram(elf, i, &elf_load_options);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to load program");
         }

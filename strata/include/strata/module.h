@@ -5,7 +5,7 @@
 
 #include <strata/gnt.h>
 #include <strata/handle.h>
-#include <strata/process.h>
+#include <strata/process_refs.h>
 #include <strata/status.h>
 
 typedef int StModule_Id __nocast;

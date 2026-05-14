@@ -3,6 +3,7 @@
 #include <string.h>
 
 #include <strata/compiler.h>
+#include <strata/gnt_refs.h>
 #include <strata/mm/pool.h>
 #include <strata/status.h>
 #include <strata/utf.h>

@@ -8,6 +8,7 @@
 #include <strata/compiler.h>
 #include <strata/gnt.h>
 #include <strata/gnt/interface.h>
+#include <strata/gnt_refs.h>
 #include <strata/limits.h>
 #include <strata/log.h>
 #include <strata/mm/pool.h>
@@ -17,6 +18,7 @@
 #include <strata/status.h>
 #include <strata/syscall.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 #include <strata/utf.h>
 #include <strata/uuid.h>
 
@@ -50,7 +52,7 @@ static StStatus find_handle(
 static void retain_handle_object(enum StHandle_Type type, void *object)
 {
     switch (type) {
-    case ST_HANDLE_TYPE_GNT_NODE:
+    case HANDLE_TYPE_GNT_NODE:
         StGnt_AcquireNode((struct StGnt_Node *)object);
         return;
     default:
@@ -61,7 +63,7 @@ static void retain_handle_object(enum StHandle_Type type, void *object)
 static void release_handle_object(enum StHandle_Type type, void *object)
 {
     switch (type) {
-    case ST_HANDLE_TYPE_GNT_NODE:
+    case HANDLE_TYPE_GNT_NODE:
         StGnt_ReleaseNode((struct StGnt_Node *)object);
         return;
     default:
@@ -323,7 +325,7 @@ static StStatus get_node_from_handle(StHandle handle, StGnt_Node_StrongRef *node
 
     status = StHandle_TableGetRetained(table, (StHandle_Id)handle, &type, (void **)&node);
     if (!CHECK_SUCCESS(status)) return status;
-    if (type != ST_HANDLE_TYPE_GNT_NODE) {
+    if (type != HANDLE_TYPE_GNT_NODE) {
         StHandle_TableReleaseObject(type, node);
         return STATUS_INVALID_HANDLE;
     }
@@ -356,7 +358,7 @@ StStatus StHandle_Open(const uint8_t *path, uint32_t flags, StHandle *handle)
     status = get_current_handle_table(&table);
     if (!CHECK_SUCCESS(status)) return status;
 
-    status = StHandle_TableCreate(table, ST_HANDLE_TYPE_GNT_NODE, node, &new_handle);
+    status = StHandle_TableCreate(table, HANDLE_TYPE_GNT_NODE, node, &new_handle);
     if (!CHECK_SUCCESS(status)) return status;
 
     LOG_TRACE(

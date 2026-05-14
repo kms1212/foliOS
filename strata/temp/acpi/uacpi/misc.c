@@ -17,6 +17,7 @@
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 #define MODULE_NAME "acpi"
 

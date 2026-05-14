@@ -11,8 +11,10 @@
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/mm.h>
-#include <strata/mm/asp.h>
-#include <strata/mm/owner.h>
+#include <strata/mm/address_space_refs.h>
+#include <strata/mm/address_space.h>
+#include <strata/mm/allocation_owner.h>
+#include <strata/mm/allocation_owner_refs.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
 #include <strata/plat/memmap.h>
@@ -236,7 +238,7 @@ static int validate_domain_list(struct vmm_alloc_node *head, const char *where)
     return 1;
 }
 
-static inline struct vmm_alloc_node **get_local_head_slot(StMm_AddressSpace_StrongRef asp)
+static inline struct vmm_alloc_node **get_local_head_slot(StAddressSpace_StrongRef asp)
 {
     return (struct vmm_alloc_node **)&asp->user_alloc_head;
 }
@@ -332,7 +334,29 @@ static StStatus create_alloc_node(struct vmm_alloc_node **node)
     return STATUS_SUCCESS;
 }
 
-static StStatus attach_owner_node(struct vmm_alloc_node *node, StMm_AllocationOwner_StrongRef owner)
+static void init_alloc_node_metadata(
+    struct vmm_alloc_node *node __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in,
+    enum StVmm_BackingType backing_type __in
+)
+{
+    node->alloc_type = (alloc_flags & AF_VMM_HIDDEN_AT_MAP) ? AT_MAP : AT_ALLOC;
+    node->backing_type = backing_type;
+    node->alloc_flags = alloc_flags;
+    node->map_flags = map_flags;
+}
+
+static enum StVmm_BackingType local_backing_type_from_map_flags(StMm_MapFlags map_flags __in)
+{
+    if ((map_flags & MF_ZERO_FILL) && !(map_flags & MF_IMMEDIATE)) {
+        return VMM_BACKING_DEMAND_ZERO;
+    }
+
+    return VMM_BACKING_PHYSICAL;
+}
+
+static StStatus attach_owner_node(struct vmm_alloc_node *node, StAllocationOwner_StrongRef owner)
 {
     struct vmm_alloc_node *owner_last;
 
@@ -341,9 +365,9 @@ static StStatus attach_owner_node(struct vmm_alloc_node *node, StMm_AllocationOw
     node->owner_next = NULL;
 
     if (!owner) return STATUS_SUCCESS;
-    if (StMm_IsAllocationOwnerClosed(owner)) return STATUS_CONFLICTING_STATE;
+    if (StAllocationOwner_IsClosed(owner)) return STATUS_CONFLICTING_STATE;
 
-    StMm_AcquireAllocationOwner(owner);
+    StAllocationOwner_Acquire(owner);
     node->owner = owner;
 
     owner_last = (struct vmm_alloc_node *)owner->last_vmm_node;
@@ -360,7 +384,7 @@ static StStatus attach_owner_node(struct vmm_alloc_node *node, StMm_AllocationOw
 
 static void detach_owner_node(struct vmm_alloc_node *node)
 {
-    StMm_AllocationOwner_StrongRef owner;
+    StAllocationOwner_StrongRef owner;
 
     if (!node || !node->owner) return;
 
@@ -382,7 +406,7 @@ static void detach_owner_node(struct vmm_alloc_node *node)
     node->owner_prev = NULL;
     node->owner_next = NULL;
 
-    StMm_ReleaseAllocationOwner(owner);
+    StAllocationOwner_Release(owner);
 }
 
 static StStatus insert_domain_node_sorted(
@@ -545,7 +569,7 @@ static int is_global_range_unmapped(St_VirtPage base_vpn __in, St_PageCount coun
 }
 
 static int is_local_range_unmapped(
-    StMm_AddressSpace_StrongRef asp __in, St_VirtPage base_vpn __in, St_PageCount count __in
+    StAddressSpace_StrongRef asp __in, St_VirtPage base_vpn __in, St_PageCount count __in
 )
 {
     StStatus status;
@@ -579,7 +603,7 @@ StStatus StVmm_InitGlobalDomain(
 }
 
 StStatus StVmm_InitLocalDomain(
-    StMm_AddressSpace_StrongRef asp __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
+    StAddressSpace_StrongRef asp __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
 )
 {
     if (!asp) return STATUS_INVALID_VALUE;
@@ -593,7 +617,7 @@ StStatus StVmm_InitLocalDomain(
     return STATUS_SUCCESS;
 }
 
-void StVmm_RemoveLocalDomain(StMm_AddressSpace_StrongRef asp __in)
+void StVmm_RemoveLocalDomain(StAddressSpace_StrongRef asp __in)
 {
     assert(asp);
 
@@ -654,7 +678,7 @@ StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain __in, St_PageCoun
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_GetTotalLocalPageCount(StMm_AddressSpace_StrongRef asp __in, St_PageCount *count __out)
+StStatus StVmm_GetTotalLocalPageCount(StAddressSpace_StrongRef asp __in, St_PageCount *count __out)
 {
     assert(count);
 
@@ -665,7 +689,7 @@ StStatus StVmm_GetTotalLocalPageCount(StMm_AddressSpace_StrongRef asp __in, St_P
     return STATUS_SUCCESS;
 }
 
-StStatus StVmm_GetFreeLocalPageCount(StMm_AddressSpace_StrongRef asp __in, St_PageCount *count __out)
+StStatus StVmm_GetFreeLocalPageCount(StAddressSpace_StrongRef asp __in, St_PageCount *count __out)
 {
     assert(count);
 
@@ -680,7 +704,7 @@ StStatus StVmm_AllocateGlobalPage(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in
 )
 {
@@ -740,7 +764,7 @@ StStatus StVmm_AllocateGlobalPage(
     new_node->limit_vpn = candidate_start + count;
     new_node->asp = NULL;
     new_node->domain = domain;
-    new_node->alloc_type = (alloc_flags & AF_VMM_HIDDEN_AT_MAP) ? AT_MAP : AT_ALLOC;
+    init_alloc_node_metadata(new_node, alloc_flags, 0, VMM_BACKING_PHYSICAL);
     new_node->is_live = 1;
 
     status = attach_owner_node(new_node, owner);
@@ -774,17 +798,18 @@ has_error:
 }
 
 StStatus StVmm_AllocateLocalPage(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StMm_AllocFlags alloc_flags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 )
 {
     assert(vpn);
 
     StStatus status;
     struct vmm_alloc_node *new_node;
-    StMm_AllocationOwner_StrongRef owner;
+    StAllocationOwner_StrongRef owner;
     struct vmm_alloc_node **head_slot;
     St_VirtPage candidate_start;
     St_VirtPage search_start;
@@ -835,9 +860,14 @@ StStatus StVmm_AllocateLocalPage(
 
     new_node->base_vpn = candidate_start;
     new_node->limit_vpn = candidate_start + count;
-    new_node->asp = (StMm_AddressSpace_InternalRef)asp;
+    new_node->asp = (StAddressSpace_InternalRef)asp;
     new_node->domain = VMM_DOMAIN_MAX;
-    new_node->alloc_type = (alloc_flags & AF_VMM_HIDDEN_AT_MAP) ? AT_MAP : AT_ALLOC;
+    init_alloc_node_metadata(
+        new_node,
+        alloc_flags,
+        map_flags,
+        local_backing_type_from_map_flags(map_flags)
+    );
     new_node->is_live = 1;
 
     status = attach_owner_node(new_node, owner);
@@ -872,7 +902,7 @@ StStatus StVmm_AllocateGlobalPageTo(
     enum StVmm_Domain domain __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in
 )
 {
@@ -922,7 +952,7 @@ StStatus StVmm_AllocateGlobalPageTo(
     new_node->limit_vpn = limit_vpn;
     new_node->asp = NULL;
     new_node->domain = domain;
-    new_node->alloc_type = (alloc_flags & AF_VMM_HIDDEN_AT_MAP) ? AT_MAP : AT_ALLOC;
+    init_alloc_node_metadata(new_node, alloc_flags, 0, VMM_BACKING_PHYSICAL);
     new_node->is_live = 1;
 
     status = attach_owner_node(new_node, owner);
@@ -959,15 +989,16 @@ has_error:
 }
 
 StStatus StVmm_AllocateLocalPageTo(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StMm_AllocFlags alloc_flags __in
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
 )
 {
     StStatus status;
     struct vmm_alloc_node *new_node;
-    StMm_AllocationOwner_StrongRef owner;
+    StAllocationOwner_StrongRef owner;
     struct vmm_alloc_node **head_slot;
     St_VirtPage limit_vpn;
     uint32_t irq_state;
@@ -1011,9 +1042,14 @@ StStatus StVmm_AllocateLocalPageTo(
 
     new_node->base_vpn = vpn;
     new_node->limit_vpn = limit_vpn;
-    new_node->asp = (StMm_AddressSpace_InternalRef)asp;
+    new_node->asp = (StAddressSpace_InternalRef)asp;
     new_node->domain = VMM_DOMAIN_MAX;
-    new_node->alloc_type = (alloc_flags & AF_VMM_HIDDEN_AT_MAP) ? AT_MAP : AT_ALLOC;
+    init_alloc_node_metadata(
+        new_node,
+        alloc_flags,
+        map_flags,
+        local_backing_type_from_map_flags(map_flags)
+    );
     new_node->is_live = 1;
 
     status = attach_owner_node(new_node, owner);
@@ -1085,7 +1121,7 @@ void StVmm_FreeGlobalPage(
 }
 
 void StVmm_FreeLocalPage(
-    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
 )
 {
     StStatus status;
@@ -1173,7 +1209,7 @@ done:
 }
 
 StStatus StVmm_GetLocalAllocationRange(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_VirtPage *begin_vpn __out_optional,
     St_VirtPage *end_vpn __out_optional
@@ -1206,6 +1242,106 @@ StStatus StVmm_GetLocalAllocationRange(
 
     if (begin_vpn) *begin_vpn = node->base_vpn;
     if (end_vpn) *end_vpn = node->limit_vpn;
+
+done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return status;
+}
+
+StStatus StVmm_GetLocalPageInfo(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage vpn __in,
+    struct StVmm_PageInfo *info __out
+)
+{
+    assert(info);
+
+    struct vmm_alloc_node **head_slot;
+    struct vmm_alloc_node *node;
+    uint32_t irq_state;
+    StStatus status = STATUS_SUCCESS;
+
+    if (!asp) return STATUS_INVALID_VALUE;
+    if (vpn < asp->user_base_vpn || vpn > asp->user_limit_vpn) return STATUS_INVALID_VALUE;
+
+    head_slot = get_local_head_slot(asp);
+
+    irq_state = StA_SaveInterrupt();
+    StA_DisableInterrupt();
+    StThread_LockPreemption();
+
+    if (!validate_domain_list(*head_slot, "get-local-page-info")) {
+        status = STATUS_SYSTEM_CORRUPTED;
+        goto done;
+    }
+
+    node = find_overlap(*head_slot, vpn, 1);
+    if (!node) {
+        status = STATUS_NOT_ALLOCATED;
+        goto done;
+    }
+
+    info->backing_type = node->backing_type;
+    info->alloc_flags = node->alloc_flags;
+    info->map_flags = node->map_flags;
+    info->image_backing = node->image_backing;
+
+done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return status;
+}
+
+StStatus StVmm_SetLocalPageImageBacking(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    const struct StMm_ImageBacking *backing __in
+)
+{
+    assert(backing);
+
+    StStatus status;
+    St_VirtPage limit_vpn;
+    struct vmm_alloc_node **head_slot;
+    struct vmm_alloc_node *node;
+    uint32_t irq_state;
+
+    if (!asp) return STATUS_INVALID_VALUE;
+    if (count == 0) return STATUS_INVALID_VALUE;
+
+    status = make_limit_exclusive(vpn, count, &limit_vpn);
+    if (!CHECK_SUCCESS(status)) return status;
+    if (vpn < asp->user_base_vpn || limit_vpn - 1 > asp->user_limit_vpn) {
+        return STATUS_INVALID_VALUE;
+    }
+
+    head_slot = get_local_head_slot(asp);
+
+    irq_state = StA_SaveInterrupt();
+    StA_DisableInterrupt();
+    StThread_LockPreemption();
+
+    if (!validate_domain_list(*head_slot, "set-local-image-backing")) {
+        status = STATUS_SYSTEM_CORRUPTED;
+        goto done;
+    }
+
+    node = find_exact(*head_slot, vpn, count);
+    if (!node) {
+        status = STATUS_NOT_ALLOCATED;
+        goto done;
+    }
+
+    if (node->backing_type != VMM_BACKING_DEMAND_ZERO) {
+        status = STATUS_CONFLICTING_STATE;
+        goto done;
+    }
+
+    node->backing_type = VMM_BACKING_IMAGE;
+    node->image_backing = *backing;
+    status = STATUS_SUCCESS;
 
 done:
     StThread_UnlockPreemption();

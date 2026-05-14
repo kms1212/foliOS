@@ -12,6 +12,7 @@
 #include <strata/compiler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 #define MODULE_NAME                              "sched"
 #define SCHED_DEFAULT_MAINTAIN_INTERVAL_SWITCHES (64U)

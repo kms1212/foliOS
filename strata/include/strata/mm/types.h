@@ -48,15 +48,12 @@
 #define MF_WRITETHRU_CACHE ((StMm_MapFlags)0x00000008)
 #define MF_NO_EXECUTE      ((StMm_MapFlags)0x00000010)
 #define MF_GLOBAL          ((StMm_MapFlags)0x00000020)
-#define MF_SOFTWARE_0      ((StMm_MapFlags)0x00000040)
-#define MF_SOFTWARE_1      ((StMm_MapFlags)0x00000080)
-#define MF_SOFTWARE_2      ((StMm_MapFlags)0x00000100)
 #define MF_IMMEDIATE       ((StMm_MapFlags)0x00010000)
 #define MF_ZERO_FILL       ((StMm_MapFlags)0x00020000)
 #define MF_NO_HUGE         ((StMm_MapFlags)0x00040000)
 
-#define MF_POOL_LARGE_ALLOC MF_SOFTWARE_0
-#define MF_POOL_SUBPOOL     MF_SOFTWARE_1
+#define MF_POOL_LARGE_ALLOC ((StMm_MapFlags)0x00000040)
+#define MF_POOL_SUBPOOL     ((StMm_MapFlags)0x00000080)
 
 #define MF_KERNEL_DEFAULT (MF_WRITABLE)
 #define MF_USER_DEFAULT   (MF_WRITABLE | MF_USER)
@@ -67,6 +64,14 @@ typedef uint32_t StMm_MapFlags __nocast;
 struct StMm_CompoundFlags {
     StMm_AllocFlags alloc_flags;
     StMm_MapFlags map_flags;
+};
+
+struct StMm_ImageBacking {
+    const void *base;
+    size_t size;
+    uintptr_t content_addr;
+    size_t content_offset;
+    size_t content_size;
 };
 
 typedef size_t St_PageCount __nocast;

@@ -11,6 +11,7 @@
 #include <strata/compiler.h>
 #include <strata/gnt.h>
 #include <strata/gnt/interface.h>
+#include <strata/gnt_refs.h>
 #include <strata/handle.h>
 #include <strata/mm/pool.h>
 #include <strata/status.h>

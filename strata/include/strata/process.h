@@ -6,9 +6,12 @@
 
 #include <strata/compiler.h>
 #include <strata/gnt.h>
-#include <strata/mm/owner.h>
+#include <strata/mm/address_space_refs.h>
+#include <strata/mm/allocation_owner_refs.h>
+#include <strata/process_refs.h>
 #include <strata/ref_control.h>
 #include <strata/status.h>
+#include <strata/thread_refs.h>
 
 enum StProcess_State {
     PROCESS_STATE_PENDING = 0,
@@ -24,34 +27,7 @@ enum StProcess_Type {
 
 typedef int StProcess_Id __nocast;
 
-struct StMm_AddressSpace;
 struct StModule;
-struct StThread;
-
-#ifndef __STRATA_PROCESS_REFS_DEFINED__
-#    define __STRATA_PROCESS_REFS_DEFINED__
-struct StProcess;
-typedef struct StProcess *StProcess_StrongRef __ref_strong;
-typedef struct StProcess *StProcess_WeakRef __ref_weak;
-typedef struct StProcess *StProcess_BorrowedRef __ref_borrowed;
-typedef struct StProcess *StProcess_InternalRef __ref_internal;
-#endif
-
-#ifndef __STRATA_MM_ADDRESS_SPACE_REFS_DEFINED__
-#    define __STRATA_MM_ADDRESS_SPACE_REFS_DEFINED__
-typedef struct StMm_AddressSpace *StMm_AddressSpace_StrongRef __ref_strong;
-typedef struct StMm_AddressSpace *StMm_AddressSpace_WeakRef __ref_weak;
-typedef struct StMm_AddressSpace *StMm_AddressSpace_BorrowedRef __ref_borrowed;
-typedef struct StMm_AddressSpace *StMm_AddressSpace_InternalRef __ref_internal;
-#endif
-
-#ifndef __STRATA_THREAD_REFS_DEFINED__
-#    define __STRATA_THREAD_REFS_DEFINED__
-typedef struct StThread *StThread_StrongRef __ref_strong;
-typedef struct StThread *StThread_WeakRef __ref_weak;
-typedef struct StThread *StThread_BorrowedRef __ref_borrowed;
-typedef struct StThread *StThread_InternalRef __ref_internal;
-#endif
 
 struct StProcess {
     struct StRefControlBlock ref_control;
@@ -65,7 +41,7 @@ struct StProcess {
     StGnt_Node_StrongRef gnt_node;
 
     struct StProcessP_PlatformData platform_data;
-    StMm_AddressSpace_StrongRef address_space;
+    StAddressSpace_StrongRef address_space;
 
     StThread_InternalRef main_thread;
     StThread_InternalRef thread_list_head;
@@ -80,7 +56,7 @@ struct StProcess {
     size_t tls_mem_size;
     size_t tls_align;
 
-    StMm_AllocationOwner_StrongRef alloc_owner;
+    StAllocationOwner_StrongRef alloc_owner;
 };
 
 extern struct StModule *StProcess_Module;

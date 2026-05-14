@@ -4,6 +4,7 @@
 
 #include <strata/compiler.h>
 #include <strata/gnt/interface.h>
+#include <strata/gnt_refs.h>
 #include <strata/mm/pool.h>
 
 static void free_interface_entries(StGnt_Node_InternalRef node)

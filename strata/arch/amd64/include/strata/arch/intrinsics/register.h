@@ -29,16 +29,16 @@ __always_inline void StA_WriteCr0(uint64_t value __in)
     __asm__ volatile("mov %q0, %%cr0" : : "r"(value) : "memory");
 }
 
-__always_inline uint32_t StA_ReadCr2(void)
+__always_inline uint64_t StA_ReadCr2(void)
 {
-    uint32_t value;
-    __asm__ volatile("mov %%cr2, %d0" : "=r"(value));
+    uint64_t value;
+    __asm__ volatile("mov %%cr2, %q0" : "=r"(value));
     return value;
 }
 
-__always_inline void StA_WriteCr2(uint32_t value __in)
+__always_inline void StA_WriteCr2(uint64_t value __in)
 {
-    __asm__ volatile("mov %d0, %%cr2" : : "r"(value));
+    __asm__ volatile("mov %q0, %%cr2" : : "r"(value));
 }
 
 #define CR3_PWT      0x00000008

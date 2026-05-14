@@ -3,6 +3,7 @@
 #include <assert.h>
 
 #include <strata/compiler.h>
+#include <strata/gnt_refs.h>
 
 void StGnt_RemoveNode(StGnt_Node_StrongRef node __in)
 {

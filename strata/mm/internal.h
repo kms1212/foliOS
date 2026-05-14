@@ -4,7 +4,7 @@
 #include <stdatomic.h>
 #include <stdint.h>
 
-#include <strata/mm/owner.h>
+#include <strata/mm/allocation_owner.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
 #include <strata/mm/vmm.h>
@@ -12,7 +12,7 @@
 struct pmm_metadata_ipublic_view {
     uint32_t order;
     uint32_t flags;
-    StMm_AllocationOwner_StrongRef owner;
+    StAllocationOwner_StrongRef owner;
 };
 
 _Static_assert(
@@ -48,11 +48,15 @@ struct vmm_alloc_domain {
 
 struct vmm_alloc_node {
     St_VirtPage base_vpn, limit_vpn;
-    StMm_AllocationOwner_StrongRef owner;
+    StAllocationOwner_StrongRef owner;
     struct vmm_alloc_node *owner_prev, *owner_next;
     struct vmm_alloc_node *domain_prev, *domain_next;
-    StMm_AddressSpace_InternalRef asp;
+    StAddressSpace_InternalRef asp;
     uint32_t alloc_type;
+    enum StVmm_BackingType backing_type;
+    StMm_AllocFlags alloc_flags;
+    StMm_MapFlags map_flags;
+    struct StMm_ImageBacking image_backing;
     enum StVmm_Domain domain;
     uint8_t is_live;
 };

@@ -33,7 +33,7 @@ typedef uint64_t StA_PageMapLevel5Entry;
 #define PTE_G   (1ULL << 8)
 #define PTE_SW0 (1ULL << 9)
 #define PTE_SW1 (1ULL << 10)
-#define PTE_SW2 (1ULL << 11)
+#define PTE_MANAGED (1ULL << 11)
 #define PTE_XD  (1ULL << 63)
 
 #define PTE_BASE_MASK  0x000FFFFFFFFFF000ULL

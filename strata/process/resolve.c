@@ -8,12 +8,15 @@
 #include <strata/gnt.h>
 #include <strata/gnt/interface.h>
 #include <strata/gnt/path.h>
+#include <strata/gnt_refs.h>
 #include <strata/limits.h>
 #include <strata/log.h>
 #include <strata/process.h>
+#include <strata/process_refs.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 #include <strata/utf.h>
 
 #define MODULE_NAME "process"

@@ -8,8 +8,8 @@
 #include <strata/compiler.h>
 #include <strata/mm/types.h>
 
-#define ST_REF_CONTROL_BLOCK_DYING       ((uint32_t)0x00000001)
-#define ST_REF_CONTROL_BLOCK_REAP_QUEUED ((uint32_t)0x00000002)
+#define REFCTL_BLOCK_DYING       ((uint32_t)0x00000001)
+#define REFCTL_BLOCK_REAP_QUEUED ((uint32_t)0x00000002)
 
 typedef void (*StRefControlBlock_FinalizeFunc)(void *object __in);
 
@@ -63,35 +63,35 @@ static inline int StRefControlBlock_IsDying(const struct StRefControlBlock *ref_
 {
     assert(ref_control);
 
-    return (ref_control->flags & ST_REF_CONTROL_BLOCK_DYING) != 0;
+    return (ref_control->flags & REFCTL_BLOCK_DYING) != 0;
 }
 
 static inline void StRefControlBlock_MarkDying(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);
 
-    ref_control->flags |= ST_REF_CONTROL_BLOCK_DYING;
+    ref_control->flags |= REFCTL_BLOCK_DYING;
 }
 
 static inline int StRefControlBlock_IsReapQueued(const struct StRefControlBlock *ref_control __in)
 {
     assert(ref_control);
 
-    return (ref_control->flags & ST_REF_CONTROL_BLOCK_REAP_QUEUED) != 0;
+    return (ref_control->flags & REFCTL_BLOCK_REAP_QUEUED) != 0;
 }
 
 static inline void StRefControlBlock_MarkReapQueued(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);
 
-    ref_control->flags |= ST_REF_CONTROL_BLOCK_REAP_QUEUED;
+    ref_control->flags |= REFCTL_BLOCK_REAP_QUEUED;
 }
 
 static inline void StRefControlBlock_ClearReapQueued(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);
 
-    ref_control->flags &= ~ST_REF_CONTROL_BLOCK_REAP_QUEUED;
+    ref_control->flags &= ~REFCTL_BLOCK_REAP_QUEUED;
 }
 
 #endif  // __STRATA_REF_CONTROL_H__

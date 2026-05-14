@@ -15,6 +15,7 @@
 #include <strata/status.h>
 #include <strata/symbol.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 #define PANIC_BACKTRACE_MAX_FRAMES 32
 

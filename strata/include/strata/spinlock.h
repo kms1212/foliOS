@@ -5,7 +5,7 @@
 
 #include <strata/compiler.h>
 #include <strata/status.h>
-#include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 struct StSpinlock {
     StThread_InternalRef owner;

@@ -7,11 +7,14 @@
 
 #include <strata/compiler.h>
 #include <strata/gnt.h>
+#include <strata/gnt_refs.h>
 #include <strata/handle.h>
 #include <strata/mm/utils.h>
 #include <strata/process.h>
+#include <strata/process_refs.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 #include <strata/utf.h>
 
 #include "sidl/thread.server.h"

@@ -5,29 +5,13 @@
 
 #include <strata/compiler.h>
 #include <strata/ref_control.h>
-#include <strata/mm/owner.h>
+#include <strata/mm/allocation_owner.h>
 #include <strata/mm/types.h>
+#include <strata/process_refs.h>
 #include <strata/status.h>
+#include <strata/thread_refs.h>
 
-struct StProcess;
 struct StScheduler;
-struct StThread;
-
-#ifndef __STRATA_PROCESS_REFS_DEFINED__
-#    define __STRATA_PROCESS_REFS_DEFINED__
-typedef struct StProcess *StProcess_StrongRef __ref_strong;
-typedef struct StProcess *StProcess_WeakRef __ref_weak;
-typedef struct StProcess *StProcess_BorrowedRef __ref_borrowed;
-typedef struct StProcess *StProcess_InternalRef __ref_internal;
-#endif
-
-#ifndef __STRATA_THREAD_REFS_DEFINED__
-#    define __STRATA_THREAD_REFS_DEFINED__
-typedef struct StThread *StThread_StrongRef __ref_strong;
-typedef struct StThread *StThread_WeakRef __ref_weak;
-typedef struct StThread *StThread_BorrowedRef __ref_borrowed;
-typedef struct StThread *StThread_InternalRef __ref_internal;
-#endif
 
 typedef void (*StThread_EntryFunction)(StThread_BorrowedRef);
 

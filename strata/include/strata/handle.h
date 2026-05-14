@@ -10,8 +10,8 @@ typedef uint32_t StHandle_Id __nocast;
 typedef StHandle_Id StHandle __nocast;
 
 enum StHandle_Type {
-    ST_HANDLE_TYPE_NONE = 0,
-    ST_HANDLE_TYPE_GNT_NODE,
+    HANDLE_TYPE_NONE = 0,
+    HANDLE_TYPE_GNT_NODE,
 };
 
 struct StHandle_Entry {

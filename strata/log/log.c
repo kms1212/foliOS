@@ -11,6 +11,7 @@
 #include <strata/process.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 static int log_level = LL_DEFAULT;
 

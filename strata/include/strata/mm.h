@@ -11,8 +11,8 @@
 #include <strata/status.h>
 #include <strata/types.h>
 
-#include <strata/mm/asp.h>
-#include <strata/mm/owner.h>
+#include <strata/mm/address_space.h>
+#include <strata/mm/allocation_owner.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
@@ -23,7 +23,7 @@ StStatus StMm_Init(void);
 
 StStatus StMm_GlobalVirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional);
 StStatus StMm_LocalVirtPageToPhysFrame(
-    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
 );
 
 __always_inline StStatus
@@ -40,7 +40,7 @@ StMm_GlobalVirtAddrToPhysAddr(uintptr_t vaddr __in, uintptr_t *paddr __out_optio
     return STATUS_SUCCESS;
 }
 __always_inline StStatus StMm_LocalVirtAddrToPhysAddr(
-    StMm_AddressSpace_StrongRef asp __in, uintptr_t vaddr __in, uintptr_t *paddr __out_optional
+    StAddressSpace_StrongRef asp __in, uintptr_t vaddr __in, uintptr_t *paddr __out_optional
 )
 {
     StStatus status;
@@ -59,11 +59,11 @@ StStatus StMm_MapGlobal(
     St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     struct StMm_CompoundFlags flags __in
 );
 StStatus StMm_MapLocal(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage *vpn __out,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
@@ -74,12 +74,12 @@ StStatus StMm_MapGlobalTo(
     St_VirtPage vpn __in,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
 );
 StStatus StMm_MapLocalTo(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
@@ -88,19 +88,19 @@ StStatus StMm_MapLocalTo(
 );
 void StMm_UnmapGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in);
 void StMm_UnmapLocal(
-    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 
 StStatus StMm_AllocateGlobalContiguous(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalContiguous(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
     StMm_AllocFlags alloc_flags __in,
@@ -110,12 +110,12 @@ StStatus StMm_AllocateGlobalSparse(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalSparse(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
     StMm_AllocFlags alloc_flags __in,
@@ -124,12 +124,12 @@ StStatus StMm_AllocateLocalSparse(
 StStatus StMm_AllocateGlobalContiguousTo(
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalContiguousTo(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
     StMm_AllocFlags alloc_flags __in,
@@ -139,28 +139,36 @@ StStatus StMm_AllocateGlobalSparseTo(
     enum StVmm_Domain domain __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    StMm_AllocationOwner_StrongRef owner __in,
+    StAllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateLocalSparseTo(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_AllocateLocalImageTo(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    const struct StMm_ImageBacking *backing __in,
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
 );
 
 void StMm_FreeGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in);
 void StMm_FreeLocal(
-    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 
 StStatus StMm_SetGlobalPageFlags(
     St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in
 );
 StStatus StMm_SetLocalPageFlags(
-    StMm_AddressSpace_StrongRef asp __in,
+    StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
     StMm_MapFlags map_flags __in
@@ -168,7 +176,11 @@ StStatus StMm_SetLocalPageFlags(
 
 StStatus StMm_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
 StStatus StMm_GetLocalPageFlags(
-    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
+);
+
+StStatus StMm_HandlePageFault(
+    StAddressSpace_StrongRef asp __in, uintptr_t fault_addr __in, uint64_t error_code __in
 );
 
 #endif  // __STRATA_MM_H__

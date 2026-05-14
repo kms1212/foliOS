@@ -1,7 +1,11 @@
 #ifndef __STRATA_SCHEDULER_H__
 #define __STRATA_SCHEDULER_H__
 
-#include <strata/thread.h>
+#include <stdint.h>
+
+#include <strata/compiler.h>
+#include <strata/status.h>
+#include <strata/thread_refs.h>
 
 struct StScheduler_Data {
     StThread_InternalRef volatile runqueue_head;

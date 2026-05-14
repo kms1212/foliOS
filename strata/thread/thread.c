@@ -19,8 +19,10 @@
 #include <strata/mm/types.h>
 #include <strata/panic.h>
 #include <strata/process.h>
+#include <strata/process_refs.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
+#include <strata/thread_refs.h>
 
 #define MODULE_NAME                                   "thread"
 #define THREAD_DEFERRED_REAP_MAX_PENDING_PAGES        ((St_PageCount)512)

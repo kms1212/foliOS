@@ -9,7 +9,8 @@
 #include <strata/compiler.h>
 #include <strata/status.h>
 
-#include <strata/mm/asp.h>
+#include <strata/mm/address_space_refs.h>
+#include <strata/mm/types.h>
 
 typedef uint32_t StElf32_Addr;
 typedef uint16_t StElf32_Half;
@@ -232,13 +233,13 @@ struct StElf64_Shdr {
     StElf64_XWord entry_size;
 } __packed;
 
-#define ELF32_ST_BIND(info)       ((info) >> 4)
-#define ELF32_ST_TYPE(info)       ((info) & 0xf)
-#define ELF32_ST_INFO(bind, type) (((bind) << 4) + ((type) & 0xf))
+#define ELF32_BIND(info)       ((info) >> 4)
+#define ELF32_TYPE(info)       ((info) & 0xf)
+#define ELF32_INFO(bind, type) (((bind) << 4) + ((type) & 0xf))
 
-#define ELF64_ST_BIND(info)       ((info) >> 4)
-#define ELF64_ST_TYPE(info)       ((info) & 0xf)
-#define ELF64_ST_INFO(bind, type) (((bind) << 4) + ((type) & 0xf))
+#define ELF64_BIND(info)       ((info) >> 4)
+#define ELF64_TYPE(info)       ((info) & 0xf)
+#define ELF64_INFO(bind, type) (((bind) << 4) + ((type) & 0xf))
 
 #define STB_LOCAL  0
 #define STB_GLOBAL 1
@@ -369,6 +370,18 @@ struct StElf_Object {
     size_t symtab_size;
 };
 
+typedef uint32_t StElf_LoadFlags __nocast;
+
+#define ELF_LOAD_DEFAULT   ((StElf_LoadFlags)0x00000000)
+#define ELF_LOAD_IMMEDIATE ((StElf_LoadFlags)0x00000001)
+#define ELF_LOAD_MASK      ((StElf_LoadFlags)0x00000001)
+
+struct StElf_LoadOptions {
+    StAddressSpace_StrongRef asp;
+    StMm_AllocFlags alloc_flags;
+    StElf_LoadFlags flags;
+};
+
 StStatus StElf_Open(
     const void *img_base __in, size_t img_size __in, struct StElf_Object **elf __out
 );
@@ -383,7 +396,9 @@ StStatus StElf_GetProgramHeader(
     struct StElf_Object *elf __in, unsigned int index __in, void *buf __buf, size_t len __in
 );
 StStatus StElf_LoadProgram(
-    struct StElf_Object *elf __in, unsigned int index __in, StMm_AddressSpace_StrongRef asp __in
+    struct StElf_Object *elf __in,
+    unsigned int index __in,
+    const struct StElf_LoadOptions *options __in
 );
 
 #endif  // __STRATA_ELF_H__

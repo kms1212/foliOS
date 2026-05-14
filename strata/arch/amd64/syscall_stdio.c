@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include <strata/gnt.h>
+#include <strata/gnt_refs.h>
 #include <strata/status.h>
 #include <strata/utf.h>
 

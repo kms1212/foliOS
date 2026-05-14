@@ -1,5 +1,6 @@
 #include "config.h"
 
+#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,6 +16,7 @@
 #include <strata/arch/cpufeatures.h>
 #include <strata/arch/interrupt.h>
 #include <strata/arch/intrinsics/io.h>
+#include <strata/arch/intrinsics/register.h>
 #include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/cpulocal.h>
@@ -34,6 +36,7 @@
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
+#include <strata/mm/address_space_refs.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
@@ -42,10 +45,12 @@
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 #include <loadst/bootinfo.h>
 
 #define MODULE_NAME "init"
+#define PAGE_FAULT_VECTOR 0x0E
 
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
 
@@ -158,6 +163,40 @@ static void *preempt_isr(
 
         return next_stack_ptr;
     }
+
+    return NULL;
+}
+
+static void *page_fault_isr(
+    int num, struct StA_InterruptFrame *frame, struct StIntP_Context *ctx, void *data
+)
+{
+    StStatus status;
+    uint64_t fault_addr;
+    struct StCpuLocalP_Data *cpu_data;
+    StAddressSpace_StrongRef asp;
+
+    (void)num;
+    (void)data;
+
+    fault_addr = StA_ReadCr2();
+    cpu_data = StCpuLocalP_GetData();
+    asp = cpu_data ? (StAddressSpace_StrongRef)cpu_data->current_asp : NULL;
+
+    status = StMm_HandlePageFault(asp, (uintptr_t)fault_addr, frame->error);
+    if (CHECK_SUCCESS(status)) return NULL;
+
+    St_PanicFromContext(
+        status,
+        ctx->rbp,
+        frame->rip,
+        "Unhandled page fault at 0x%016" PRIX64 " error=0x%08" PRIX64
+        " rip=0x%04X:0x%016" PRIX64 "\n",
+        fault_addr,
+        frame->error,
+        frame->cs,
+        frame->rip
+    );
 
     return NULL;
 }
@@ -451,6 +490,12 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     status = StIntP_Init(use_apic);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize interrupt system");
+    }
+
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing page fault handler...\n");
+    status = StInt_CreateHandler(PAGE_FAULT_VECTOR, NULL, page_fault_isr, NULL);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to create page fault handler");
     }
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing RTC...\n");

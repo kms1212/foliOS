@@ -11,7 +11,6 @@
 #include <strata/compiler.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
-#include <strata/mm/asp.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
 #include <strata/mm/utils.h>
@@ -32,14 +31,59 @@ static StStatus copy_from_img(
 static StStatus copy_from_img_to_local(
     struct StElf_Object *elf __in,
     size_t offset __in,
-    StMm_AddressSpace_StrongRef asp __in,
+    const struct StElf_LoadOptions *options __in,
     uintptr_t addr __in,
     size_t len __in
 )
 {
+    assert(options);
+
     if (offset + len > elf->img_size) return STATUS_INVALID_VALUE;
 
-    return StMm_WriteLocal(asp, addr, (const char *)elf->img_base + offset, len);
+    return StMm_WriteLocal(options->asp, addr, (const char *)elf->img_base + offset, len);
+}
+
+struct elf_load_segment {
+    uintptr_t load_addr;
+    St_PageCount page_count;
+    size_t data_offset;
+    size_t file_size;
+    size_t mem_size;
+    StMm_MapFlags map_flags;
+};
+
+static StStatus init_load_segment(
+    uintptr_t load_addr __in,
+    size_t data_offset __in,
+    size_t file_size __in,
+    size_t mem_size __in,
+    uint32_t segment_flags __in,
+    struct elf_load_segment *segment __out
+)
+{
+    assert(segment);
+
+    size_t page_offset = load_addr % PAGE_SIZE;
+
+    if (file_size > mem_size) return STATUS_INVALID_VALUE;
+    if (mem_size > SIZE_MAX - page_offset) return STATUS_INVALID_VALUE;
+
+    segment->load_addr = load_addr;
+    segment->page_count = ALIGN_DIV(page_offset + mem_size, PAGE_SIZE);
+    segment->data_offset = data_offset;
+    segment->file_size = file_size;
+    segment->mem_size = mem_size;
+    segment->map_flags = MF_USER_DEFAULT | MF_ZERO_FILL;
+
+    if (!(segment_flags & PF_X)) {
+        segment->map_flags |= MF_NO_EXECUTE;
+    }
+
+    if (!(segment_flags & PF_W)) {
+        segment->map_flags &= ~MF_WRITABLE;
+    }
+
+    return STATUS_SUCCESS;
 }
 
 StStatus StElf_Open(
@@ -191,18 +235,21 @@ StStatus StElf_GetProgramHeader(
 }
 
 StStatus StElf_LoadProgram(
-    struct StElf_Object *elf __in, unsigned int index __in, StMm_AddressSpace_StrongRef asp __in
+    struct StElf_Object *elf __in,
+    unsigned int index __in,
+    const struct StElf_LoadOptions *options __in
 )
 {
     StStatus status;
     struct StElf32_Phdr phdr32;
     struct StElf64_Phdr phdr64;
-    uintptr_t program_load_addr;
-    size_t program_size_page;
-    uintptr_t program_data_offset;
-    size_t program_filesz;
+    struct elf_load_segment segment;
+    struct StMm_ImageBacking backing;
+    StMm_MapFlags map_flags;
     int allocated = 0;
-    uint32_t map_flags = MF_USER_DEFAULT | MF_ZERO_FILL;
+
+    if (!elf || !options || !options->asp) return STATUS_INVALID_VALUE;
+    if (options->flags & ~ELF_LOAD_MASK) return STATUS_INVALID_VALUE;
 
     if (elf->ident.class == ELFCLASS32) {
         status = StElf_GetProgramHeader(elf, index, &phdr32, sizeof(phdr32));
@@ -212,18 +259,15 @@ StStatus StElf_LoadProgram(
             return STATUS_INVALID_VALUE;
         }
 
-        program_load_addr = phdr32.vaddr;
-        program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr32.memsz, PAGE_SIZE);
-        program_data_offset = phdr32.offset;
-        program_filesz = phdr32.filesz;
-
-        if (!(phdr32.flags & PF_X)) {
-            map_flags |= MF_NO_EXECUTE;
-        }
-
-        if (!(phdr32.flags & PF_W)) {
-            map_flags &= ~MF_WRITABLE;
-        }
+        status = init_load_segment(
+            (uintptr_t)phdr32.vaddr,
+            (size_t)phdr32.offset,
+            (size_t)phdr32.filesz,
+            (size_t)phdr32.memsz,
+            phdr32.flags,
+            &segment
+        );
+        if (!CHECK_SUCCESS(status)) goto has_error;
     } else if (elf->ident.class == ELFCLASS64) {
         status = StElf_GetProgramHeader(elf, index, &phdr64, sizeof(phdr64));
         if (!CHECK_SUCCESS(status)) goto has_error;
@@ -232,43 +276,69 @@ StStatus StElf_LoadProgram(
             return STATUS_INVALID_VALUE;
         }
 
-        program_load_addr = phdr64.vaddr;
-        program_size_page = ALIGN_DIV((program_load_addr % PAGE_SIZE) + phdr64.memsz, PAGE_SIZE);
-        program_data_offset = phdr64.offset;
-        program_filesz = phdr64.filesz;
-
-        if (!(phdr64.flags & PF_X)) {
-            map_flags |= MF_NO_EXECUTE;
-        }
-
-        if (!(phdr64.flags & PF_W)) {
-            map_flags &= ~MF_WRITABLE;
-        }
+        status = init_load_segment(
+            (uintptr_t)phdr64.vaddr,
+            (size_t)phdr64.offset,
+            (size_t)phdr64.filesz,
+            (size_t)phdr64.memsz,
+            phdr64.flags,
+            &segment
+        );
+        if (!CHECK_SUCCESS(status)) goto has_error;
     } else {
         return STATUS_NOT_SUPPORTED;
     }
 
-    // allocate page
-    status = StMm_AllocateLocalSparseTo(
-        asp,
-        ADDR_TO_PAGE(program_load_addr),
-        program_size_page,
-        AF_DEFAULT,
-        map_flags
-    );
-    if (!CHECK_SUCCESS(status)) goto has_error;
-    allocated = 1;
+    if (segment.page_count == 0) return STATUS_SUCCESS;
 
-    // copy program data
-    status =
-        copy_from_img_to_local(elf, program_data_offset, asp, program_load_addr, program_filesz);
-    if (!CHECK_SUCCESS(status)) goto has_error;
+    if (segment.data_offset > elf->img_size) return STATUS_INVALID_VALUE;
+    if (segment.file_size > elf->img_size - segment.data_offset) return STATUS_INVALID_VALUE;
+
+    // allocate page
+    if (options->flags & ELF_LOAD_IMMEDIATE) {
+        map_flags = segment.map_flags | MF_IMMEDIATE;
+        status = StMm_AllocateLocalSparseTo(
+            options->asp,
+            ADDR_TO_PAGE(segment.load_addr),
+            segment.page_count,
+            options->alloc_flags,
+            map_flags
+        );
+        if (!CHECK_SUCCESS(status)) goto has_error;
+        allocated = 1;
+
+        // copy program data
+        status = copy_from_img_to_local(
+            elf,
+            segment.data_offset,
+            options,
+            segment.load_addr,
+            segment.file_size
+        );
+        if (!CHECK_SUCCESS(status)) goto has_error;
+    } else {
+        backing.base = elf->img_base;
+        backing.size = elf->img_size;
+        backing.content_addr = segment.load_addr;
+        backing.content_offset = segment.data_offset;
+        backing.content_size = segment.file_size;
+
+        status = StMm_AllocateLocalImageTo(
+            options->asp,
+            ADDR_TO_PAGE(segment.load_addr),
+            segment.page_count,
+            &backing,
+            options->alloc_flags,
+            segment.map_flags
+        );
+        if (!CHECK_SUCCESS(status)) goto has_error;
+    }
 
     return STATUS_SUCCESS;
 
 has_error:
     if (allocated) {
-        StMm_FreeLocal(asp, ADDR_TO_PAGE(program_load_addr), program_size_page);
+        StMm_FreeLocal(options->asp, ADDR_TO_PAGE(segment.load_addr), segment.page_count);
     }
 
     return status;

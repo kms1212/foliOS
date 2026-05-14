@@ -3,7 +3,7 @@
 
 #include <strata/plat/syscall.h>
 
-#include <strata/gnt.h>
+#include <strata/gnt_refs.h>
 #include <strata/status.h>
 #include <strata/uuid.h>
 

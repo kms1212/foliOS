@@ -4,19 +4,11 @@
 #include <stddef.h>
 
 #include <strata/compiler.h>
+#include <strata/gnt_refs.h>
 #include <strata/limits.h>
 #include <strata/ref_control.h>
 #include <strata/status.h>
 #include <strata/utf.h>
-
-#ifndef __STRATA_GNT_NODE_REFS_DEFINED__
-#    define __STRATA_GNT_NODE_REFS_DEFINED__
-struct StGnt_Node;
-typedef struct StGnt_Node *StGnt_Node_StrongRef __ref_strong;
-typedef struct StGnt_Node *StGnt_Node_WeakRef __ref_weak;
-typedef struct StGnt_Node *StGnt_Node_BorrowedRef __ref_borrowed;
-typedef struct StGnt_Node *StGnt_Node_InternalRef __ref_internal;
-#endif
 
 enum StGnt_NodeType {
     GNT_NODETYPE_LEAF = 0,
