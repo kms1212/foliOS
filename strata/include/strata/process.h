@@ -80,7 +80,7 @@ struct StProcess {
     size_t tls_mem_size;
     size_t tls_align;
 
-    struct StMm_AllocationOwner alloc_owner;
+    StMm_AllocationOwner_StrongRef alloc_owner;
 };
 
 extern struct StModule *StProcess_Module;

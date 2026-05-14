@@ -9,30 +9,30 @@
 #include <strata/status.h>
 
 StStatus StMm_ReadLocal(
-    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, void *buf __buf, size_t len __in
+    StMm_AddressSpace_StrongRef asp __in, uintptr_t addr __in, void *buf __buf, size_t len __in
 )
 {
     return StMmP_ReadLocal(asp, addr, buf, len);
 }
 
 StStatus StMm_WriteLocal(
-    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, const void *buf __in, size_t len __in
+    StMm_AddressSpace_StrongRef asp __in, uintptr_t addr __in, const void *buf __in, size_t len __in
 )
 {
     return StMmP_WriteLocal(asp, addr, buf, len);
 }
 
 StStatus StMm_SetLocal(
-    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, int value, size_t len __in
+    StMm_AddressSpace_StrongRef asp __in, uintptr_t addr __in, int value, size_t len __in
 )
 {
     return StMmP_SetLocal(asp, addr, value, len);
 }
 
 StStatus StMm_CopyLocal(
-    struct StMm_AddressSpace *dest_asp __in,
+    StMm_AddressSpace_StrongRef dest_asp __in,
     uintptr_t dest __in,
-    struct StMm_AddressSpace *src_asp __in,
+    StMm_AddressSpace_StrongRef src_asp __in,
     uintptr_t src __in,
     size_t len __in
 )

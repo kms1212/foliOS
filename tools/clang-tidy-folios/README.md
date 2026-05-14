@@ -41,7 +41,7 @@ existing numeric helper macros do not drown out the higher-signal mistakes. Set
 `StrictNocast=true` to also report plain integer conversions.
 
 Reference typedefs use the plain annotation names `ref_strong`, `ref_weak`,
-`ref_borrowed`, and `ref_internal`. They are domain-to-domain by default:
+`ref_borrowed`, `ref_internal`, and `ref_locked`. They are domain-to-domain by default:
 implicit conversion between different ref types, or between different object ref
 domains, is reported. Set `StrictRefs=true` to also report conversions between
 raw pointers and ref typedefs.
@@ -61,12 +61,21 @@ The intended ref meanings are:
   iteration APIs while the surrounding subsystem guarantees stability.
 * `InternalRef`: intrusive kernel links and scheduler/object-private references
   that do not imply ownership.
+* `LockedRef`: a borrowed view protected by a lock or equivalent synchronization
+  contract; it must be released with the matching unlock API.
 
 Ref-counted objects embed `struct StRefControlBlock ref_control` as their first
 field. Strong/weak acquisition APIs should use the object-specific wrappers
 rather than touching the control block directly outside the implementation.
 Conversions between ref kinds should be explicit casts so the ownership boundary
 is visible in review and to `folios-distinct-typedefs`.
+
+MM allocation owners follow the same model: `StMm_AllocationOwner` is a
+first-class ref-counted object, and VMM/PMM allocation records keep owner refs
+while their allocations can remain live.
+
+PMM allocation metadata uses `BorrowedRef` for unlocked read-only views and
+`LockedRef` for metadata returned by `StPmm_LockAndGetAllocMetadata`.
 
 ### `folios-status-must-check`
 

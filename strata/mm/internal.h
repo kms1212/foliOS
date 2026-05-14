@@ -12,7 +12,7 @@
 struct pmm_metadata_ipublic_view {
     uint32_t order;
     uint32_t flags;
-    struct StMm_AllocationOwner *owner;
+    StMm_AllocationOwner_StrongRef owner;
 };
 
 _Static_assert(
@@ -48,10 +48,10 @@ struct vmm_alloc_domain {
 
 struct vmm_alloc_node {
     St_VirtPage base_vpn, limit_vpn;
-    struct StMm_AllocationOwner *owner;
+    StMm_AllocationOwner_StrongRef owner;
     struct vmm_alloc_node *owner_prev, *owner_next;
     struct vmm_alloc_node *domain_prev, *domain_next;
-    struct StMm_AddressSpace *asp;
+    StMm_AddressSpace_InternalRef asp;
     uint32_t alloc_type;
     enum StVmm_Domain domain;
     uint8_t is_live;

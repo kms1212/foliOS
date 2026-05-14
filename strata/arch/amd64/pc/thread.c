@@ -371,7 +371,7 @@ StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
 }
 
 static inline void push_u64(
-    struct StMm_AddressSpace *asp __in, uintptr_t *sp __inout, uint64_t val __in
+    StMm_AddressSpace_StrongRef asp __in, uintptr_t *sp __inout, uint64_t val __in
 )
 {
     StStatus status;
@@ -393,7 +393,7 @@ StStatus StThreadP_SetupThreadUserStack(
 )
 {
     StStatus status;
-    struct StMm_AddressSpace *asp = th->process->address_space;
+    StMm_AddressSpace_StrongRef asp = th->process->address_space;
     uintptr_t rsp = th->umode_stack_ptr;
     size_t data_size = 0;
     char *envs_start;
@@ -546,7 +546,7 @@ StStatus StThreadP_Switch(
 
     StStatus status;
     StThread_InternalRef current;
-    struct StMm_AddressSpace *current_asp = StCpuLocalP_GetData()->current_asp;
+    StMm_AddressSpace_InternalRef current_asp = StCpuLocalP_GetData()->current_asp;
     uintptr_t kstack_top;
 
     status = StScheduler_GetCurrentThread(&current);
@@ -563,8 +563,8 @@ StStatus StThreadP_Switch(
     if (next->type == THREAD_TYPE_USER) {
         status = StMmP_SwitchAddressSpace(next->process->address_space);
         if (!CHECK_SUCCESS(status)) return status;
-    } else if (current_asp != &base_asp) {
-        status = StMmP_SwitchAddressSpace(&base_asp);
+    } else if (current_asp != (StMm_AddressSpace_InternalRef)&base_asp) {
+        status = StMmP_SwitchAddressSpace((StMm_AddressSpace_StrongRef)&base_asp);
         if (!CHECK_SUCCESS(status)) return status;
     }
 

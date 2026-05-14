@@ -9,6 +9,15 @@
 #include <strata/status.h>
 #include <strata/thread.h>
 
+#ifndef __STRATA_MM_ADDRESS_SPACE_REFS_DEFINED__
+#    define __STRATA_MM_ADDRESS_SPACE_REFS_DEFINED__
+struct StMm_AddressSpace;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_StrongRef __ref_strong;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_WeakRef __ref_weak;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_BorrowedRef __ref_borrowed;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_InternalRef __ref_internal;
+#endif
+
 struct StCpuLocalP_Data {
     uintptr_t kernel_rsp;
     uintptr_t user_rsp;
@@ -21,7 +30,7 @@ struct StCpuLocalP_Data {
     uint32_t cpu_id;
     int is_bsp;
     struct StScheduler_Data scheduler;
-    struct StMm_AddressSpace *current_asp;
+    StMm_AddressSpace_InternalRef current_asp;
 } __aligned(64);
 
 StStatus StCpuLocalP_Init(void);

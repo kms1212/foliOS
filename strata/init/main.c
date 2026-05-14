@@ -569,8 +569,6 @@ static int setup_user_process(
 
     cprintf(early_print_char2, &pstate, "UPROC#%d\n", main_thread->id);
 
-    process->main_thread = (StThread_InternalRef)main_thread;
-
     *process_out = process;
     *main_thread_out = main_thread;
 

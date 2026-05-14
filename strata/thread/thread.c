@@ -159,7 +159,9 @@ static St_PageCount get_process_reap_page_count(StProcess_InternalRef process)
 
     if (!process) return 0;
 
-    pages += process->alloc_owner.page_usage_count;
+    if (process->alloc_owner) {
+        pages += process->alloc_owner->page_usage_count;
+    }
     if (process->main_thread) {
         pages += get_thread_reap_page_count(process->main_thread);
     }
@@ -571,8 +573,10 @@ StStatus StThread_CreateUserMain(
     int ustack_allocated = 0;
     int added_thread_to_process = 0;
     int acquired_process = 0;
+    int assigned_main_thread = 0;
     uint32_t prev_thread_count;
 
+    assert(process);
     relieve_deferred_reap_pressure(STRATA_KSTACK_PAGE_COUNT + STRATA_USTACK_PAGE_COUNT);
 
     StThread_LockPreemption();
@@ -616,6 +620,13 @@ StStatus StThread_CreateUserMain(
     StProcess_Acquire(process);
     acquired_process = 1;
 
+    if (process->main_thread) {
+        status = STATUS_CONFLICTING_STATE;
+        goto has_error;
+    }
+    process->main_thread = (StThread_InternalRef)th;
+    assigned_main_thread = 1;
+
     /* add thread object to list */
     status = StScheduler_AddThread((StThread_InternalRef)th);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -640,6 +651,10 @@ StStatus StThread_CreateUserMain(
     return STATUS_SUCCESS;
 
 has_error:
+    if (assigned_main_thread && process->main_thread == (StThread_InternalRef)th) {
+        process->main_thread = NULL;
+    }
+
     if (th && added_thread_to_process) {
         remove_thread_from_process((StThread_InternalRef)th);
     }
@@ -674,14 +689,23 @@ StStatus StThread_Remove(StThread_StrongRef th)
     uint32_t prev_thread_count;
     int release_join_ref;
 
-    if (th->type == THREAD_TYPE_MAIN) return STATUS_INVALID_THREAD;
-    if (th->state != THREAD_STATE_FINISHED) return STATUS_THREAD_NOT_FINISHED;
-    if (StRefControlBlock_IsReapQueued(&th->ref_control)) return STATUS_SUCCESS;
+    StThread_LockPreemption();
+
+    if (th->type == THREAD_TYPE_MAIN) {
+        StThread_UnlockPreemption();
+        return STATUS_INVALID_THREAD;
+    }
+    if (StRefControlBlock_IsReapQueued(&th->ref_control)) {
+        StThread_UnlockPreemption();
+        return STATUS_SUCCESS;
+    }
+    if (th->state != THREAD_STATE_FINISHED) {
+        StThread_UnlockPreemption();
+        return STATUS_THREAD_NOT_FINISHED;
+    }
 
     release_join_ref = !th->is_detached;
     StRefControlBlock_MarkDying(&th->ref_control);
-
-    StThread_LockPreemption();
 
     prev_thread_count = atomic_fetch_sub(&thread_count, 1);
 
@@ -825,7 +849,18 @@ StStatus StThread_Wait(StThread_StrongRef *list __in, int count __in, uint64_t t
 
         if (current_thread->state != THREAD_STATE_WAITING) {
             status = current_thread->wait_status;
-            if (status == STATUS_PENDING) status = STATUS_SUCCESS;
+            if (status == STATUS_PENDING) {
+                if (!wait_list_is_ready(current_thread->wait_list, current_thread->wait_count)) {
+                    current_thread->state = THREAD_STATE_WAITING;
+                    StThread_UnlockPreemption();
+                    continue;
+                }
+                status = STATUS_SUCCESS;
+            }
+            current_thread->wait_list = NULL;
+            current_thread->wait_count = 0;
+            current_thread->wait_timeout_ms = 0;
+            current_thread->sleep_until_uptime_ns = 0;
             current_thread->wait_status = STATUS_SUCCESS;
             StThread_UnlockPreemption();
             return status;
@@ -925,10 +960,11 @@ __noreturn void StThread_Exit(void)
         St_Panic(STATUS_INVALID_THREAD, "cannot exit from main thread");
     }
 
+    StThread_LockPreemption();
     current_thread->state = THREAD_STATE_FINISHED;
     StScheduler_RequestMaintain();
-
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "thread #%d finished\n", current_thread->id);
+    StThread_UnlockPreemption();
 
     StThread_Yield();
 

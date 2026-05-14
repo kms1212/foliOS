@@ -383,7 +383,7 @@ StStatus StElf_GetProgramHeader(
     struct StElf_Object *elf __in, unsigned int index __in, void *buf __buf, size_t len __in
 );
 StStatus StElf_LoadProgram(
-    struct StElf_Object *elf __in, unsigned int index __in, struct StMm_AddressSpace *asp __in
+    struct StElf_Object *elf __in, unsigned int index __in, StMm_AddressSpace_StrongRef asp __in
 );
 
 #endif  // __STRATA_ELF_H__

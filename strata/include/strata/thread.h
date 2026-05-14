@@ -96,7 +96,6 @@ struct StThread {
     uint64_t runtime_total_ns;
     uint64_t last_scheduled_in_ns;
 
-    struct StMm_AllocationOwner alloc_owner;
 };
 
 StStatus StThread_Init(StThread_StrongRef *main_thread __out);

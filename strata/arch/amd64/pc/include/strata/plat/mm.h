@@ -12,24 +12,31 @@ struct StMmP_AddressSpace {
     St_PhysFrame root_table_pfn;
 };
 
+#ifndef __STRATA_MM_ADDRESS_SPACE_REFS_DEFINED__
+#    define __STRATA_MM_ADDRESS_SPACE_REFS_DEFINED__
 struct StMm_AddressSpace;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_StrongRef __ref_strong;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_WeakRef __ref_weak;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_BorrowedRef __ref_borrowed;
+typedef struct StMm_AddressSpace *StMm_AddressSpace_InternalRef __ref_internal;
+#endif
 
 StStatus StMmP_CleanupTempMapping(void);
 
 StStatus StMmP_InitBaseAddressSpace(void);
 St_PageCount StMmP_ReclaimCachedPageTableFrames(St_PageCount page_budget __in);
 
-StStatus StMmP_CreateAddressSpace(struct StMm_AddressSpace *asp __in);
-void StMmP_RemoveAddressSpace(struct StMm_AddressSpace *asp __in);
-StStatus StMmP_SwitchAddressSpace(struct StMm_AddressSpace *asp __in);
+StStatus StMmP_CreateAddressSpace(StMm_AddressSpace_StrongRef asp __in);
+void StMmP_RemoveAddressSpace(StMm_AddressSpace_StrongRef asp __in);
+StStatus StMmP_SwitchAddressSpace(StMm_AddressSpace_StrongRef asp __in);
 
 StStatus StMmP_GlobalVirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional);
 StStatus StMmP_LocalVirtPageToPhysFrame(
-    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
+    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
 );
 StStatus StMmP_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
 StStatus StMmP_GetLocalPageFlags(
-    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
+    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 );
 
 StStatus StMmP_MapGlobalContiguousMemory(
@@ -39,7 +46,7 @@ StStatus StMmP_MapGlobalContiguousMemory(
     StMm_MapFlags mapflags __in
 );
 StStatus StMmP_MapLocalContiguousMemory(
-    struct StMm_AddressSpace *asp __in,
+    StMm_AddressSpace_StrongRef asp __in,
     St_PhysFrame pfn __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
@@ -50,7 +57,7 @@ StStatus StMmP_RemapGlobalContiguousMemory(
     St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in
 );
 StStatus StMmP_RemapLocalContiguousMemory(
-    struct StMm_AddressSpace *asp __in,
+    StMm_AddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
     StMm_MapFlags mapflags __in
@@ -58,25 +65,25 @@ StStatus StMmP_RemapLocalContiguousMemory(
 
 void StMmP_UnmapGlobalContiguousMemory(St_VirtPage vpn __in, St_PageCount count __in);
 void StMmP_UnmapLocalContiguousMemory(
-    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
+    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 
 StStatus StMmP_ReadLocal(
-    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, void *buf __buf, size_t len __in
+    StMm_AddressSpace_StrongRef asp __in, uintptr_t addr __in, void *buf __buf, size_t len __in
 );
 
 StStatus StMmP_WriteLocal(
-    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, const void *buf __in, size_t len __in
+    StMm_AddressSpace_StrongRef asp __in, uintptr_t addr __in, const void *buf __in, size_t len __in
 );
 
 StStatus StMmP_SetLocal(
-    struct StMm_AddressSpace *asp __in, uintptr_t addr __in, int value __in, size_t len __in
+    StMm_AddressSpace_StrongRef asp __in, uintptr_t addr __in, int value __in, size_t len __in
 );
 
 StStatus StMmP_CopyLocal(
-    struct StMm_AddressSpace *dest_asp __in,
+    StMm_AddressSpace_StrongRef dest_asp __in,
     uintptr_t dest __in,
-    struct StMm_AddressSpace *src_asp __in,
+    StMm_AddressSpace_StrongRef src_asp __in,
     uintptr_t src __in,
     size_t len __in
 );

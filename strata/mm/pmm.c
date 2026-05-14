@@ -704,17 +704,25 @@ static St_PhysFrame get_pfn_from_metadata(struct pmm_metadata *metadata)
         sizeof(struct pmm_metadata);
 }
 
-static StStatus create_metadata(St_PhysFrame pfn, struct StMm_AllocationOwner *owner, int order)
+static StStatus create_metadata(St_PhysFrame pfn, StMm_AllocationOwner_StrongRef owner, int order)
 {
     if (!metadata_available) return STATUS_SUCCESS;
 
     struct pmm_metadata *metadata = get_metadata(pfn);
+    St_PageCount allocated_count = (St_PageCount)1ULL << order;
 
     metadata->lock = 0;
     metadata->refcount = 1;
     metadata->public.order = order;
     metadata->public.flags = 0;
     metadata->public.owner = owner;
+    if (owner) {
+        StMm_AcquireAllocationOwner(owner);
+        owner->page_usage_count += allocated_count;
+        if (owner->page_usage_peak_count < owner->page_usage_count) {
+            owner->page_usage_peak_count = owner->page_usage_count;
+        }
+    }
 
     return STATUS_SUCCESS;
 }
@@ -1164,7 +1172,7 @@ void StPmm_GetFreeFrameCount(St_PageCount *frame_count __out)
 StStatus StPmm_AllocateContiguousFrame(
     St_PhysFrame *pfn __out,
     St_PageCount count __in,
-    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in
 )
 {
@@ -1194,6 +1202,7 @@ StStatus StPmm_AllocateContiguousFrame(
     order = get_order(count);
     if (order < 0) return STATUS_INVALID_VALUE;
     if (order > PMM_MAX_ORDER) return STATUS_INSUFFICIENT_MEMORY;
+    if (owner && StMm_IsAllocationOwnerClosed(owner)) return STATUS_CONFLICTING_STATE;
 
     below_value = alloc_flags & AF_PMM_BELOW_MASK;
     align_order = (int)(((alloc_flags & AF_ALIGN_MASK) >> 4) - 12);
@@ -1596,6 +1605,8 @@ StStatus StPmm_AcquireContiguousFrame(St_PhysFrame pfn __in)
 void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
 {
     struct pmm_metadata *metadata;
+    StMm_AllocationOwner_StrongRef owner;
+    St_PageCount allocated_count;
     uint32_t prev_refcount;
 
     metadata = get_metadata(pfn);
@@ -1618,11 +1629,22 @@ void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
     }
 
     StThread_LockPreemption();
+    owner = metadata->public.owner;
+    if (owner) {
+        allocated_count = (St_PageCount)1ULL << metadata->public.order;
+        if (owner->page_usage_count >= allocated_count) {
+            owner->page_usage_count -= allocated_count;
+        } else {
+            owner->page_usage_count = 0;
+        }
+        metadata->public.owner = NULL;
+        StMm_ReleaseAllocationOwner(owner);
+    }
     do_free_contiguous_frame(pfn, (int)metadata->public.order);
     StThread_UnlockPreemption();
 }
 
-StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, struct StPmm_AllocationMetadata **meta __out)
+StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, StPmm_AllocationMetadata_BorrowedRef *meta __out)
 {
     assert(meta);
 
@@ -1630,13 +1652,13 @@ StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, struct StPmm_AllocationMe
 
     metadata = get_metadata(pfn);
 
-    *meta = (struct StPmm_AllocationMetadata *)metadata;
+    *meta = (StPmm_AllocationMetadata_BorrowedRef)metadata;
 
     return STATUS_SUCCESS;
 }
 
 StStatus StPmm_LockAndGetAllocMetadata(
-    St_PhysFrame pfn, struct StPmm_AllocationMetadata **meta __out
+    St_PhysFrame pfn __in, StPmm_AllocationMetadata_LockedRef *meta __out
 )
 {
     assert(meta);
@@ -1657,12 +1679,12 @@ StStatus StPmm_LockAndGetAllocMetadata(
         StA_Pause();
     }
 
-    *meta = (struct StPmm_AllocationMetadata *)metadata;
+    *meta = (StPmm_AllocationMetadata_LockedRef)metadata;
 
     return STATUS_SUCCESS;
 }
 
-StStatus StPmm_UnlockAllocMetadata(struct StPmm_AllocationMetadata *meta __in)
+StStatus StPmm_UnlockAllocMetadata(StPmm_AllocationMetadata_LockedRef meta __in)
 {
     struct pmm_metadata *metadata = (struct pmm_metadata *)meta;
 

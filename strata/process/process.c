@@ -72,6 +72,9 @@ StStatus StProcess_CreateUser(StProcess_StrongRef *process __out)
     proc->id = new_process_id++;
     StRefControlBlock_Init(&proc->ref_control, 1, proc, finalize_process_object);
 
+    status = StMm_CreateAllocationOwner(&proc->alloc_owner);
+    if (!CHECK_SUCCESS(status)) goto has_error;
+
     status = StMm_CreateAddressSpace(&asp, proc);
     if (!CHECK_SUCCESS(status)) goto has_error;
 
@@ -111,6 +114,9 @@ has_error:
     }
 
     if (proc) {
+        if (proc->alloc_owner) {
+            StMm_ReleaseAllocationOwner(proc->alloc_owner);
+        }
         StPool_Free(proc);
     }
 
@@ -168,12 +174,22 @@ void StProcess_FinalizeRemove(StProcess_StrongRef process)
 
     StHandle_TableClear(&process->handle_table);
 
-    StMm_CleanupOwnerAllocation(&process->alloc_owner);
+    if (process->alloc_owner) {
+        StMm_CloseAllocationOwner(process->alloc_owner);
+    }
 
     StMm_RemoveAddressSpace(process->address_space);
     process->address_space = NULL;
 
-    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "leaked %zd pages\n", process->alloc_owner.page_usage_count);
+    if (process->alloc_owner) {
+        LOG_DEBUG(
+            LM_CAT_UNCLASSIFIED,
+            "leaked %zd pages\n",
+            process->alloc_owner->page_usage_count
+        );
+        StMm_ReleaseAllocationOwner(process->alloc_owner);
+        process->alloc_owner = NULL;
+    }
 
     status = StThread_AcquireInternal(process->main_thread, &main_thread);
     if (CHECK_SUCCESS(status)) {

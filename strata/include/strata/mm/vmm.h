@@ -23,26 +23,26 @@ StStatus StVmm_InitGlobalDomain(
     enum StVmm_Domain domain __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
 );
 StStatus StVmm_InitLocalDomain(
-    struct StMm_AddressSpace *asp __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
+    StMm_AddressSpace_StrongRef asp __in, St_VirtPage base_vpn __in, St_VirtPage limit_vpn __in
 );
-void StVmm_RemoveLocalDomain(struct StMm_AddressSpace *asp __in);
+void StVmm_RemoveLocalDomain(StMm_AddressSpace_StrongRef asp __in);
 
 StStatus StVmm_GetTotalGlobalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out);
-StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain, St_PageCount *count __out);
+StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out);
 StStatus StVmm_GetTotalLocalPageCount(
-    struct StMm_AddressSpace *asp __in, St_PageCount *count __out
+    StMm_AddressSpace_StrongRef asp __in, St_PageCount *count __out
 );
-StStatus StVmm_GetFreeLocalPageCount(struct StMm_AddressSpace *asp __in, St_PageCount *count __out);
+StStatus StVmm_GetFreeLocalPageCount(StMm_AddressSpace_StrongRef asp __in, St_PageCount *count __out);
 
 StStatus StVmm_AllocateGlobalPage(
     enum StVmm_Domain domain __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
-    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in
 );
 StStatus StVmm_AllocateLocalPage(
-    struct StMm_AddressSpace *asp __in,
+    StMm_AddressSpace_StrongRef asp __in,
     St_VirtPage *vpn __out,
     St_PageCount count __in,
     StMm_AllocFlags alloc_flags __in
@@ -52,11 +52,11 @@ StStatus StVmm_AllocateGlobalPageTo(
     enum StVmm_Domain domain __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    struct StMm_AllocationOwner *owner __in,
+    StMm_AllocationOwner_StrongRef owner __in,
     StMm_AllocFlags alloc_flags __in
 );
 StStatus StVmm_AllocateLocalPageTo(
-    struct StMm_AddressSpace *asp __in,
+    StMm_AddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
     StMm_AllocFlags alloc_flags __in
@@ -66,7 +66,7 @@ void StVmm_FreeGlobalPage(
     enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 void StVmm_FreeLocalPage(
-    struct StMm_AddressSpace *asp __in, St_VirtPage vpn __in, St_PageCount count __in
+    StMm_AddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 
 StStatus StVmm_GetGlobalAllocationRange(
@@ -77,7 +77,7 @@ StStatus StVmm_GetGlobalAllocationRange(
 );
 
 StStatus StVmm_GetLocalAllocationRange(
-    struct StMm_AddressSpace *asp __in,
+    StMm_AddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_VirtPage *begin_vpn __out_optional,
     St_VirtPage *end_vpn __out_optional

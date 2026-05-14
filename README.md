@@ -167,12 +167,18 @@ both reviewers and local clang-tidy checks.
 * Distinct integer and pointer domains use `__bitwise`, `__nocast`, and
   reference annotations to catch accidental conversions.
 * Ref-counted kernel objects declare their own `StrongRef`, `WeakRef`,
-  `BorrowedRef`, and `InternalRef` typedefs in the owning header. Intrusive
-  links and scheduler-private references use `InternalRef`; APIs that transfer or
-  require ownership use `StrongRef`.
+  `BorrowedRef`, `InternalRef`, and, when needed, `LockedRef` typedefs in the
+  owning header. Intrusive links and scheduler-private references use
+  `InternalRef`; APIs that transfer or require ownership use `StrongRef`.
 * Ref-counted objects embed `struct StRefControlBlock ref_control` as their first
   field and should go through the object-specific acquire/release API rather than
   manipulating the control block from unrelated code.
+* MM allocation ownership is modeled as a first-class ref-counted object:
+  `StMm_AllocationOwner` tracks allocation charge and cleanup, while VMM/PMM
+  records hold owner refs for as long as the allocation they describe can remain
+  live.
+* PMM metadata distinguishes unlocked borrowed views from locked views in the
+  type system; locked metadata must be released through the matching unlock API.
 
 ### Prerequisites
 

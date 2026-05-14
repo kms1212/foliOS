@@ -22,7 +22,7 @@ StStatus StCpuLocalP_Init(void)
     bsp_data.is_bsp = 1;
     bsp_data.self = &bsp_data;
     bsp_data.kernel_rsp = (uintptr_t)_early_stack;
-    bsp_data.current_asp = &base_asp;
+    bsp_data.current_asp = (StMm_AddressSpace_InternalRef)&base_asp;
 
     StA_WriteMsr(MSR_GS_BASE, (uintptr_t)&bsp_data);
 

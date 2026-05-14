@@ -32,7 +32,7 @@ static StStatus copy_from_img(
 static StStatus copy_from_img_to_local(
     struct StElf_Object *elf __in,
     size_t offset __in,
-    struct StMm_AddressSpace *asp __in,
+    StMm_AddressSpace_StrongRef asp __in,
     uintptr_t addr __in,
     size_t len __in
 )
@@ -191,7 +191,7 @@ StStatus StElf_GetProgramHeader(
 }
 
 StStatus StElf_LoadProgram(
-    struct StElf_Object *elf __in, unsigned int index __in, struct StMm_AddressSpace *asp __in
+    struct StElf_Object *elf __in, unsigned int index __in, StMm_AddressSpace_StrongRef asp __in
 )
 {
     StStatus status;

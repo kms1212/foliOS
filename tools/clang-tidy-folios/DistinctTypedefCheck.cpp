@@ -22,6 +22,7 @@ enum class DistinctKind {
     RefWeak,
     RefBorrowed,
     RefInternal,
+    RefLocked,
 };
 
 struct DistinctType {
@@ -67,6 +68,10 @@ DistinctKind annotationKind(llvm::StringRef Annotation)
     if (Normalized == "ref_internal" || Normalized == "st_ref_internal" ||
         Normalized == "vl_ref_internal") {
         return DistinctKind::RefInternal;
+    }
+    if (Normalized == "ref_locked" || Normalized == "st_ref_locked" ||
+        Normalized == "vl_ref_locked") {
+        return DistinctKind::RefLocked;
     }
     return DistinctKind::None;
 }
@@ -128,7 +133,8 @@ bool isExplicitCast(const Expr *Expr)
 bool isRefKind(DistinctKind Kind)
 {
     return Kind == DistinctKind::RefStrong || Kind == DistinctKind::RefWeak ||
-           Kind == DistinctKind::RefBorrowed || Kind == DistinctKind::RefInternal;
+           Kind == DistinctKind::RefBorrowed || Kind == DistinctKind::RefInternal ||
+           Kind == DistinctKind::RefLocked;
 }
 
 bool shouldCheckMismatch(
@@ -172,6 +178,8 @@ llvm::StringRef kindName(DistinctKind Kind)
         return "__ref_borrowed";
     case DistinctKind::RefInternal:
         return "__ref_internal";
+    case DistinctKind::RefLocked:
+        return "__ref_locked";
     case DistinctKind::None:
         return "plain";
     }

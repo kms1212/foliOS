@@ -206,5 +206,6 @@
 #define __ref_weak     __ref_annotate(ref_weak)
 #define __ref_borrowed __ref_annotate(ref_borrowed)
 #define __ref_internal __ref_annotate(ref_internal)
+#define __ref_locked   __ref_annotate(ref_locked)
 
 #endif  // __STRATA_COMPILER_H__
