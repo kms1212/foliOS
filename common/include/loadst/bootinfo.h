@@ -148,6 +148,6 @@ struct bootinfo_entry_ramdisk {
     uint8_t reserved[3];
     uint32_t size;
     uint64_t data_addr;
-};
+} __packed;
 
 #endif  // __LOADST_BOOTINFO_H__

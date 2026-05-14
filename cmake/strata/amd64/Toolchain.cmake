@@ -17,7 +17,7 @@ else()
     set(CMAKE_ASM_COMPILER_TARGET x86_64-elf)
 endif()
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -nostdlib -fno-stack-protector -mno-red-zone -fno-pic -Wl,-no-pie -fno-pie")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ffreestanding -nostdlib -fno-stack-protector -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -mno-red-zone -fno-pic -Wl,-no-pie -fno-pie")
 
 find_program(CMAKE_CXX_COMPILER "${TOOLCHAIN_PREFIX}g++" ENV PATH REQUIRED)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ffreestanding -nostdlib -fno-stack-protector -mno-red-zone -fno-pic -Wl,-no-pie -fno-pie")

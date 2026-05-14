@@ -27,7 +27,7 @@ option(BUILD_TESTING "Build tests" OFF)
 configure_file("config.h.in" "config.h")
 
 # Dependencies
-find_package(Python3 COMPONENTS Interpreter)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 # Target Configurations
 add_executable(strata)
@@ -86,10 +86,17 @@ add_subdirectory(process)
 add_subdirectory(scheduler)
 add_subdirectory(spinlock)
 add_subdirectory(stdc)
+add_subdirectory(symbol)
 add_subdirectory(syscall)
 add_subdirectory(thread)
 add_subdirectory(utils)
 add_subdirectory(temp)
+
+set_property(
+    TARGET strata
+    PROPERTY RULE_LAUNCH_LINK
+        "\"${Python3_EXECUTABLE}\" \"${ROOT_SOURCE_DIR}/tools/symbol_info/link_with_symbol_info.py\" --nm \"${CMAKE_NM}\" --cc \"${CMAKE_C_COMPILER}\" --"
+)
 
 # Additional Targets
 if (BUILD_TESTING)

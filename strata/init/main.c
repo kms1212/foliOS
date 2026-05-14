@@ -18,6 +18,7 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/time.h>
 
+#include <strata/symbol.h>
 #include <strata/compiler.h>
 #include <strata/elf.h>
 #include <strata/gnt.h>

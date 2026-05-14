@@ -74,7 +74,9 @@ _start:
     .bss
     .align  4096
 
-    .globl  _early_stack
+    .globl  _early_stack_base
+_early_stack_base:
     .skip   16384
-_early_stack:
 
+    .globl  _early_stack
+_early_stack:

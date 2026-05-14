@@ -462,17 +462,21 @@ __optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
     if (!current_isr) {
         if (is_fault) {
             if (has_error) {
-                St_Panic(
+                St_PanicFromContext(
                     STATUS_UNKNOWN_ERROR,
-                    "Unhandled fault #%02X(0x%08X) has occurred at 0x%04X:0x%016" PRIX64 "\n",
+                    ctx->rbp,
+                    frame->rip,
+                    "Unhandled fault #%02X(0x%08" PRIX64 ") has occurred at 0x%04X:0x%016" PRIX64 "\n",
                     num,
                     frame->error,
                     frame->cs,
                     frame->rip
                 );
             } else {
-                St_Panic(
+                St_PanicFromContext(
                     STATUS_UNKNOWN_ERROR,
+                    ctx->rbp,
+                    frame->rip,
                     "Unhandled fault #%02X has occurred at 0x%04X:0x%016" PRIX64 "\n",
                     num,
                     frame->cs,
