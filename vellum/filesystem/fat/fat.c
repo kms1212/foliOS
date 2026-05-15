@@ -10,10 +10,10 @@
 
 #include <vellum/device.h>
 #include <vellum/disk.h>
-#include <vellum/types.h>
 #include <vellum/filesystem.h>
 #include <vellum/interface/block.h>
 #include <vellum/status.h>
+#include <vellum/types.h>
 
 #include "fat.h"
 
@@ -293,7 +293,8 @@ static fatcluster_t sector_to_cluster12_16(struct filesystem *fs, lba_t lba)
 {
     struct fat_data *data = (struct fat_data *)fs->data;
 
-    return ((lba - data->data_area_begin - data->root_sector_count) / data->sectors_per_cluster) + 2;
+    return ((lba - data->data_area_begin - data->root_sector_count) / data->sectors_per_cluster) +
+        2;
 }
 
 static fatcluster_t sector_to_cluster32(struct filesystem *fs, lba_t lba)

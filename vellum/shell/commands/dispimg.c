@@ -132,7 +132,8 @@ static int dispimg_handler(struct shell_instance *inst, int argc, char **argv)
         for (uint32_t x = 0; x < dibheader.width; x++) {
             uint32_t buf;
             fread(&buf, dibheader.bpp / 8, 1, fp);
-            framebuffer[((ystart + dibheader.height - y - 1) * vmode_info.width) + xstart + x] = buf;
+            framebuffer[((ystart + dibheader.height - y - 1) * vmode_info.width) + xstart + x] =
+                buf;
         }
     }
     fbif->invalidate(fbdev, 0, 0, vmode_info.width - 1, vmode_info.height - 1);

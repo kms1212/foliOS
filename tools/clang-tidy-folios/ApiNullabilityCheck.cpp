@@ -9,6 +9,7 @@
 #include <clang/Lex/Lexer.h>
 #include <llvm/ADT/StringRef.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -74,7 +75,7 @@ bool isNullPointer(const Expr *Expr, ASTContext &Ctx)
     }
     Expr = Expr->IgnoreParenImpCasts();
     return Expr->isNullPointerConstant(Ctx, Expr::NPC_ValueDependentIsNotNull) !=
-           Expr::NPCK_NotNull;
+        Expr::NPCK_NotNull;
 }
 
 bool isNullCheckExpr(const Expr *Expr, const ParmVarDecl *Param, ASTContext &Ctx)
@@ -99,7 +100,7 @@ bool isNullCheckExpr(const Expr *Expr, const ParmVarDecl *Param, ASTContext &Ctx
     }
 
     return (isParamRef(Binary->getLHS(), Param) && isNullPointer(Binary->getRHS(), Ctx)) ||
-           (isParamRef(Binary->getRHS(), Param) && isNullPointer(Binary->getLHS(), Ctx));
+        (isParamRef(Binary->getRHS(), Param) && isNullPointer(Binary->getLHS(), Ctx));
 }
 
 class NullCheckVisitor : public RecursiveASTVisitor<NullCheckVisitor> {
@@ -114,7 +115,10 @@ public:
         return true;
     }
 
-    const std::vector<SourceLocation> &getNullChecks() const { return NullChecks; }
+    const std::vector<SourceLocation> &getNullChecks() const
+    {
+        return NullChecks;
+    }
 
 private:
     const ParmVarDecl *Param;
@@ -122,9 +126,7 @@ private:
     std::vector<SourceLocation> NullChecks;
 };
 
-std::string getStatementText(
-    const Stmt *Stmt, const SourceManager &SM, const LangOptions &LangOpts
-)
+std::string getStatementText(const Stmt *Stmt, const SourceManager &SM, const LangOptions &LangOpts)
 {
     if (!Stmt) {
         return {};
@@ -135,7 +137,10 @@ std::string getStatementText(
 }
 
 bool statementLooksLikeAssertForParam(
-    const Stmt *Stmt, llvm::StringRef ParamName, const SourceManager &SM, const LangOptions &LangOpts
+    const Stmt *Stmt,
+    llvm::StringRef ParamName,
+    const SourceManager &SM,
+    const LangOptions &LangOpts
 )
 {
     if (ParamName.empty()) {
@@ -144,7 +149,7 @@ bool statementLooksLikeAssertForParam(
 
     const std::string Text = getStatementText(Stmt, SM, LangOpts);
     return Text.find("assert") != std::string::npos &&
-           Text.find(ParamName.str()) != std::string::npos;
+        Text.find(ParamName.str()) != std::string::npos;
 }
 
 bool hasEntryAssert(
@@ -172,11 +177,65 @@ bool hasEntryAssert(
     return false;
 }
 
+const CallExpr *getSingleReturnCall(const CompoundStmt *Body)
+{
+    if (!Body) {
+        return nullptr;
+    }
+
+    const Stmt *OnlyStmt = nullptr;
+    for (const Stmt *Stmt : Body->body()) {
+        if (!Stmt) {
+            continue;
+        }
+        if (OnlyStmt) {
+            return nullptr;
+        }
+        OnlyStmt = Stmt;
+    }
+
+    const auto *Return = dyn_cast_or_null<ReturnStmt>(OnlyStmt);
+    if (!Return || !Return->getRetValue()) {
+        return nullptr;
+    }
+
+    return dyn_cast<CallExpr>(Return->getRetValue()->IgnoreParenImpCasts());
+}
+
+bool delegatesRequiredOutputParam(const CompoundStmt *Body, const ParmVarDecl *Param)
+{
+    const CallExpr *Call = getSingleReturnCall(Body);
+    if (!Call || !Param) {
+        return false;
+    }
+
+    const FunctionDecl *Callee = Call->getDirectCallee();
+    if (!Callee) {
+        return false;
+    }
+
+    const unsigned ArgCount = Call->getNumArgs();
+    const unsigned ParamCount = Callee->getNumParams();
+    const unsigned Count = std::min(ArgCount, ParamCount);
+
+    for (unsigned Index = 0; Index < Count; ++Index) {
+        if (!isParamRef(Call->getArg(Index), Param)) {
+            continue;
+        }
+
+        const Direction CalleeDir = getDirection(*Callee->getParamDecl(Index));
+        if (CalleeDir == Direction::Out || CalleeDir == Direction::InOut) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 }  // namespace
 
 ApiNullabilityCheck::ApiNullabilityCheck(llvm::StringRef Name, ClangTidyContext *Context)
-    : ClangTidyCheck(Name, Context),
-      EntryStatementLimit(Options.get("EntryStatementLimit", 8U))
+    : ClangTidyCheck(Name, Context), EntryStatementLimit(Options.get("EntryStatementLimit", 8U))
 {
 }
 
@@ -220,7 +279,8 @@ void ApiNullabilityCheck::check(const ast_matchers::MatchFinder::MatchResult &Re
 
         const llvm::StringRef ParamName = Param->getName();
         if (Dir == Direction::Out || Dir == Direction::InOut) {
-            if (!hasEntryAssert(Body, ParamName, EntryStatementLimit, SM, LangOpts)) {
+            if (!hasEntryAssert(Body, ParamName, EntryStatementLimit, SM, LangOpts) &&
+                !delegatesRequiredOutputParam(Body, Param)) {
                 diag(
                     Param->getLocation(),
                     "non-optional output parameter %0 should be asserted at function entry"
@@ -237,8 +297,10 @@ void ApiNullabilityCheck::check(const ast_matchers::MatchFinder::MatchResult &Re
                     "intentionally discarded without changing ownership or resource lifetime"
                 ) << ParamName;
             }
-        } else if (Dir == Direction::OutOptional &&
-                   hasEntryAssert(Body, ParamName, EntryStatementLimit, SM, LangOpts)) {
+        } else if (
+            Dir == Direction::OutOptional &&
+            hasEntryAssert(Body, ParamName, EntryStatementLimit, SM, LangOpts)
+        ) {
             diag(
                 Param->getLocation(),
                 "optional output parameter %0 should be handled with a NULL check, not asserted"

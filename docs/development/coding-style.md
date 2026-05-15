@@ -182,6 +182,12 @@ silence a warning. Creation, allocation, open, and ownership-transfer functions
 usually need a required output slot so the caller can receive and release the
 resource.
 
+A thin wrapper whose entire body is `return OtherApi(...);` may rely on the
+callee's entry assert when the required output parameter is passed directly to a
+callee parameter that is also `__out` or `__inout`. Do not use this exception
+once the wrapper owns validation, cleanup, logging, transformation, or any other
+local behavior.
+
 For `__out_optional`, check for `NULL` before writing and do not assert.
 
 For buffers, put the size/count parameter immediately after the buffer when the

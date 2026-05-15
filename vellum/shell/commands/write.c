@@ -1,7 +1,7 @@
 #include <vellum/shell.h>
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 static int write_handler(struct shell_instance *inst, int argc, char **argv)

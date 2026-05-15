@@ -9,17 +9,17 @@
 #include <strata/compiler.h>
 #include <strata/gnt.h>
 #include <strata/log.h>
-#include <strata/mm/address_space_refs.h>
 #include <strata/mm/address_space.h>
+#include <strata/mm/address_space_refs.h>
 #include <strata/mm/allocation_owner.h>
 #include <strata/mm/pool.h>
 #include <strata/mm/types.h>
 #include <strata/panic.h>
 #include <strata/process_refs.h>
+#include <strata/ref_control.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
-#include <strata/ref_control.h>
 
 #define MODULE_NAME                               "process"
 #define PROCESS_CREATE_DEFERRED_REAP_BUDGET_PAGES ((St_PageCount)256)

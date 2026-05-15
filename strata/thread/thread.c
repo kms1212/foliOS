@@ -20,10 +20,10 @@
 #include <strata/panic.h>
 #include <strata/process.h>
 #include <strata/process_refs.h>
+#include <strata/ref_control.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread_refs.h>
-#include <strata/ref_control.h>
 
 #define MODULE_NAME                                   "thread"
 #define THREAD_DEFERRED_REAP_MAX_PENDING_PAGES        ((St_PageCount)512)
@@ -126,7 +126,7 @@ static int wait_list_is_ready(StThread_StrongRef *list, int count)
 
 static uint64_t get_timeout_deadline_ns(uint64_t now_ns, uint64_t timeout_ms)
 {
-    if (timeout_ms == UINT64_MAX) return 0;
+    if (timeout_ms == THREAD_WAIT_INFINITE) return THREAD_WAIT_INFINITE;
     if (timeout_ms > (UINT64_MAX - now_ns) / 1000000) return UINT64_MAX;
 
     return now_ns + (timeout_ms * 1000000);
@@ -858,7 +858,7 @@ StStatus StThread_Wait(StThread_StrongRef *list __in, int count __in, uint64_t t
         }
 
         StTimeP_GetUptimeNanoseconds(&now_ns);
-        if (timeout_ms != UINT64_MAX && now_ns >= deadline_ns) {
+        if (timeout_ms != THREAD_WAIT_INFINITE && now_ns >= deadline_ns) {
             finish_current_wait(current_thread, STATUS_TIMER_EXPIRED);
             StThread_UnlockPreemption();
             return STATUS_TIMER_EXPIRED;
@@ -923,7 +923,6 @@ void StThread_Sleep(uint64_t timeout_ms __in)
             StThreadP_IdleUntilInterrupt();
         }
     }
-
 }
 
 void StThread_Yield(void)

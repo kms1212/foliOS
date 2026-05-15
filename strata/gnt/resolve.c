@@ -75,7 +75,9 @@ StStatus StGnt_ResolveLink(
 }
 
 StStatus StGnt_ResolvePath(
-    StGnt_Node_StrongRef base_node __in, const St_Utf32Char *path __in, StGnt_Node_StrongRef *node __out
+    StGnt_Node_StrongRef base_node __in,
+    const St_Utf32Char *path __in,
+    StGnt_Node_StrongRef *node __out
 )
 {
     assert(node);
@@ -145,7 +147,12 @@ StStatus StGnt_ResolvePath(
         if (!child_found) {
             if (!resolver_module) return STATUS_ENTRY_NOT_FOUND;
 
-            status = invoke_resolver((StGnt_Node_StrongRef)current, cursor.token, &resolve_target, &remaining_path);
+            status = invoke_resolver(
+                (StGnt_Node_StrongRef)current,
+                cursor.token,
+                &resolve_target,
+                &remaining_path
+            );
             if (!CHECK_SUCCESS(status)) return status;
 
             if (!resolve_target || !remaining_path) return STATUS_INVALID_VALUE;

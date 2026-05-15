@@ -1,8 +1,8 @@
 #ifndef __FOLIFS_HPP__
 #define __FOLIFS_HPP__
 
-#include "types.h"
 #include "image.hpp"
+#include "types.h"
 
 typedef int64_t block_t;
 
@@ -49,31 +49,64 @@ public:
     private:
         Afs &folifs;
         const block_t mdb;
-    
+
     public:
         Directory(Afs &folifs, block_t mdb);
-    
+
         std::string getName(void);
-        
+
         Afs::File *openFile(const std::string &name);
         Afs::Directory *openDirectory(const std::string &name);
     };
-    
+
     Afs(Image &image, lba_t offset);
 
     Afs::Directory *openRootDirectory(void);
 
-    lba_t getOffset(void) const { return this->offset; }
-    uint16_t getReservedSectors(void) const { return this->reserved_sectors; }
-    uint64_t getTotalSectorCount(void) const { return this->total_sector_count; }
-    uint64_t getTotalBlockCount(void) const { return this->total_block_count; }
-    uint8_t getRdbCopyCount(void) const { return this->rdb_copy_count; }
-    uint16_t getBytesPerSector(void) const { return this->bytes_per_sector; }
-    uint8_t getSectorsPerBlock(void) const { return this->sectors_per_block; }
-    uint16_t getBytesPerBlock(void) const { return this->bytes_per_block; }
-    uuid_t getVolumeUuid(void) const { return this->volume_uuid; }
-    std::string getFormattedOs(void) const { return std::string(this->formatted_os); }
-    uint16_t getFilesystemVersion(void) const { return this->filesystem_version; }
+    lba_t getOffset(void) const
+    {
+        return this->offset;
+    }
+    uint16_t getReservedSectors(void) const
+    {
+        return this->reserved_sectors;
+    }
+    uint64_t getTotalSectorCount(void) const
+    {
+        return this->total_sector_count;
+    }
+    uint64_t getTotalBlockCount(void) const
+    {
+        return this->total_block_count;
+    }
+    uint8_t getRdbCopyCount(void) const
+    {
+        return this->rdb_copy_count;
+    }
+    uint16_t getBytesPerSector(void) const
+    {
+        return this->bytes_per_sector;
+    }
+    uint8_t getSectorsPerBlock(void) const
+    {
+        return this->sectors_per_block;
+    }
+    uint16_t getBytesPerBlock(void) const
+    {
+        return this->bytes_per_block;
+    }
+    uuid_t getVolumeUuid(void) const
+    {
+        return this->volume_uuid;
+    }
+    std::string getFormattedOs(void) const
+    {
+        return std::string(this->formatted_os);
+    }
+    uint16_t getFilesystemVersion(void) const
+    {
+        return this->filesystem_version;
+    }
 };
 
-#endif // __FOLIFS_HPP__
+#endif  // __FOLIFS_HPP__

@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <vellum/status.h>
 #include <vellum/device.h>
+#include <vellum/status.h>
 
 static struct filesystem *fs_list_head = NULL;
 

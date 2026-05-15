@@ -5,15 +5,14 @@
 #include <string.h>
 
 #include <vellum/arch/farptr.h>
-#include <vellum/arch/mmu.h>
 #include <vellum/arch/intrinsics/io.h>
+#include <vellum/arch/mmu.h>
 
 #include <vellum/plat/bios/video.h>
 #include <vellum/plat/isr.h>
 #include <vellum/plat/panic.h>
 
 #include <vellum/device.h>
-#include <vellum/resource.h>
 #include <vellum/encoding/cp437.h>
 #include <vellum/interface/console.h>
 #include <vellum/interface/framebuffer.h>
@@ -21,6 +20,7 @@
 #include <vellum/log.h>
 #include <vellum/macros.h>
 #include <vellum/mm.h>
+#include <vellum/resource.h>
 #include <vellum/status.h>
 
 #define MODULE_NAME "vga"

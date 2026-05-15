@@ -11,9 +11,9 @@
 #include <strata/mm/pool.h>
 #include <strata/mm/vmm.h>
 #include <strata/process_refs.h>
+#include <strata/ref_control.h>
 #include <strata/status.h>
 #include <strata/thread.h>
-#include <strata/ref_control.h>
 
 #define MODULE_NAME "mm"
 

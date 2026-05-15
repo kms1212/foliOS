@@ -28,10 +28,9 @@ bool isDirectionAnnotation(llvm::StringRef Annotation)
 {
     const std::string Normalized = normalizeAnnotation(Annotation);
     return Normalized == "in" || Normalized == "out" || Normalized == "inout" ||
-           Normalized == "out_optional" || Normalized == "st_in" || Normalized == "st_out" ||
-           Normalized == "st_inout" || Normalized == "st_out_optional" ||
-           Normalized == "vl_in" || Normalized == "vl_out" || Normalized == "vl_inout" ||
-           Normalized == "vl_out_optional";
+        Normalized == "out_optional" || Normalized == "st_in" || Normalized == "st_out" ||
+        Normalized == "st_inout" || Normalized == "st_out_optional" || Normalized == "vl_in" ||
+        Normalized == "vl_out" || Normalized == "vl_inout" || Normalized == "vl_out_optional";
 }
 
 bool isBufferAnnotation(llvm::StringRef Annotation)
@@ -126,7 +125,8 @@ void ApiAnnotationsCheck::check(const ast_matchers::MatchFinder::MatchResult &Re
         if (ParamName.empty()) {
             diag(Param->getLocation(), "public API parameter is missing an API annotation");
         } else {
-            diag(Param->getLocation(), "public API parameter %0 is missing an API annotation") << ParamName;
+            diag(Param->getLocation(), "public API parameter %0 is missing an API annotation")
+                << ParamName;
         }
     }
 }

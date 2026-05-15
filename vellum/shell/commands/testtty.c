@@ -1,7 +1,7 @@
 #include <vellum/shell.h>
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 static uint8_t clamp_rgb(int v)
 {

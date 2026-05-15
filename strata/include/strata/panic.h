@@ -5,7 +5,7 @@
 
 #include <strata/compiler.h>
 
-#define St_Panic StP_Panic
+#define St_Panic            StP_Panic
 #define St_PanicFromContext StP_PanicFromContext
 
 #endif  // __STRATA_PANIC_H__

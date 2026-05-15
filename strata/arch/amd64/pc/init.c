@@ -49,7 +49,7 @@
 
 #include <loadst/bootinfo.h>
 
-#define MODULE_NAME "init"
+#define MODULE_NAME       "init"
 #define PAGE_FAULT_VECTOR 0x0E
 
 __externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
@@ -194,8 +194,8 @@ static void *page_fault_isr(
         status,
         ctx->rbp,
         frame->rip,
-        "Unhandled page fault at 0x%016" PRIX64 " error=0x%08" PRIX64
-        " rip=0x%04X:0x%016" PRIX64 "\n",
+        "Unhandled page fault at 0x%016" PRIX64 " error=0x%08" PRIX64 " rip=0x%04X:0x%016" PRIX64
+        "\n",
         fault_addr,
         frame->error,
         frame->cs,
@@ -515,12 +515,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
             St_Panic(status, "failed to create preemption interrupt handler");
         }
     } else {
-        status = StInt_CreateHandler(
-            TIMER_IRQ_VECTOR(use_hpet),
-            NULL,
-            preempt_isr,
-            NULL
-        );
+        status = StInt_CreateHandler(TIMER_IRQ_VECTOR(use_hpet), NULL, preempt_isr, NULL);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to create preemption interrupt handler");
         }

@@ -9,9 +9,9 @@
 #define SPURIOUS_IRQ_VECTOR       0xFF
 
 #if HPET_IRQ_VECTOR == LEGACY_IRQ_VECTOR_BASE
-#define TIMER_IRQ_VECTOR(use_hpet) HPET_IRQ_VECTOR
+#    define TIMER_IRQ_VECTOR(use_hpet) HPET_IRQ_VECTOR
 #else
-#define TIMER_IRQ_VECTOR(use_hpet) ((use_hpet) ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE)
+#    define TIMER_IRQ_VECTOR(use_hpet) ((use_hpet) ? HPET_IRQ_VECTOR : LEGACY_IRQ_VECTOR_BASE)
 #endif
 
 #endif  // __STRATA_PLAT_INTERRUPT_CONSTANTS_H__

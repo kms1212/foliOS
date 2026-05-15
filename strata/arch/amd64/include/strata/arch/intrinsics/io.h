@@ -21,17 +21,23 @@ __always_inline void StIoA_Out32(uint16_t port __in, uint32_t value __in)
     __asm__ volatile("outl %0, %w1" : : "a"(value), "Nd"(port));
 }
 
-__always_inline void StIoA_Outs8(uint16_t port __in, const uint8_t *data __in, unsigned long count __in)
+__always_inline void StIoA_Outs8(
+    uint16_t port __in, const uint8_t *data __in, unsigned long count __in
+)
 {
     __asm__ volatile("rep outsb" : "+S"(data), "+c"(count) : "d"(port) : "memory");
 }
 
-__always_inline void StIoA_Outs16(uint16_t port __in, const uint16_t *data __in, unsigned long count __in)
+__always_inline void StIoA_Outs16(
+    uint16_t port __in, const uint16_t *data __in, unsigned long count __in
+)
 {
     __asm__ volatile("rep outsw" : "+S"(data), "+c"(count) : "d"(port) : "memory");
 }
 
-__always_inline void StIoA_Outs32(uint16_t port __in, const uint32_t *data __in, unsigned long count __in)
+__always_inline void StIoA_Outs32(
+    uint16_t port __in, const uint32_t *data __in, unsigned long count __in
+)
 {
     __asm__ volatile("rep outsl" : "+S"(data), "+c"(count) : "d"(port) : "memory");
 }

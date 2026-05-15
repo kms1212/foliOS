@@ -11,8 +11,8 @@
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/mm.h>
-#include <strata/mm/address_space_refs.h>
 #include <strata/mm/address_space.h>
+#include <strata/mm/address_space_refs.h>
 #include <strata/mm/allocation_owner.h>
 #include <strata/mm/allocation_owner_refs.h>
 #include <strata/mm/pmm.h>
@@ -30,7 +30,7 @@
 #define EARLY_RESERVATION_NODE_POOL_COUNT      1024
 #define DYNAMIC_RESERVATION_NODE_LOW_WATERMARK 16
 #define DYNAMIC_RESERVATION_NODE_MAX_SLABS     256
-#define VMM_GUARD_PAGE_COUNT            ((St_PageCount)1)
+#define VMM_GUARD_PAGE_COUNT                   ((St_PageCount)1)
 
 static struct vmm_reservation_domain reservation_domain_list[VMM_DOMAIN_MAX] = {
     [VMM_DOMAIN_MODULE] = {.initialized = 0},
@@ -162,8 +162,7 @@ static int is_node_in_pool(const struct vmm_reservation_node *node)
     start = (uintptr_t)&early_reservation_node_pool[0];
     end = (uintptr_t)&early_reservation_node_pool[EARLY_RESERVATION_NODE_POOL_COUNT];
 
-    if (addr >= start &&
-        addr < end &&
+    if (addr >= start && addr < end &&
         ((addr - start) % sizeof(early_reservation_node_pool[0]) == 0)) {
         return 1;
     }
@@ -287,9 +286,7 @@ static StStatus validate_guard_map_flags(StMm_MapFlags map_flags __in, int allow
 }
 
 static StStatus make_guarded_count(
-    St_PageCount count __in,
-    St_PageCount guard_count __in,
-    St_PageCount *total_count_out __out
+    St_PageCount count __in, St_PageCount guard_count __in, St_PageCount *total_count_out __out
 )
 {
     assert(total_count_out);
@@ -383,8 +380,8 @@ static void fill_page_info_from_node(
     info->alloc_flags = node->alloc_flags;
     info->map_flags = node->map_flags;
     info->physical_layout = (node->alloc_flags & AF_VMM_RESERVATION_SPARSE)
-                                ? VMM_PHYSICAL_LAYOUT_SPARSE
-                                : VMM_PHYSICAL_LAYOUT_CONTIGUOUS;
+        ? VMM_PHYSICAL_LAYOUT_SPARSE
+        : VMM_PHYSICAL_LAYOUT_CONTIGUOUS;
     if (vpn < node_usable_base_vpn(node)) {
         info->mapping_policy = make_simple_page_mapping_policy(VMM_PAGE_MAPPING_GUARD);
     } else {
@@ -1608,9 +1605,7 @@ done:
 }
 
 StStatus StVmm_GetGlobalPageInfo(
-    enum StVmm_Domain domain __in,
-    St_VirtPage vpn __in,
-    struct StVmm_PageInfo *info __out
+    enum StVmm_Domain domain __in, St_VirtPage vpn __in, struct StVmm_PageInfo *info __out
 )
 {
     assert(info);
@@ -1650,9 +1645,7 @@ done:
 }
 
 StStatus StVmm_GetLocalPageInfo(
-    StAddressSpace_StrongRef asp __in,
-    St_VirtPage vpn __in,
-    struct StVmm_PageInfo *info __out
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, struct StVmm_PageInfo *info __out
 )
 {
     assert(info);
@@ -1727,8 +1720,7 @@ StStatus StVmm_ResolveLocalPage(StAddressSpace_StrongRef asp __in, St_VirtPage v
         goto done;
     }
 
-    if (node->guard_page_count == 0 ||
-        usable_base_vpn == 0 ||
+    if (node->guard_page_count == 0 || usable_base_vpn == 0 ||
         vpn != usable_base_vpn - (St_VirtPage)1) {
         status = STATUS_NOT_PERMITTED;
         goto done;

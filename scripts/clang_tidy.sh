@@ -111,6 +111,7 @@ run_with_compile_db() {
             -clang-tidy-binary "${CLANG_TIDY_BIN}"
             -header-filter "${header_filter}"
             -exclude-header-filter "${exclude_header_filter}"
+            -quiet
             -extra-arg=-Wno-error
             -extra-arg=-Wno-unused-command-line-argument
             -extra-arg=-Qunused-arguments
@@ -191,6 +192,7 @@ exclude_header_filter = (
 for src in files:
     cmd = [
         clang_tidy,
+        "--quiet",
         "-p",
         db_dir,
         "-header-filter=^" + source_root + "/",

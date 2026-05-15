@@ -37,7 +37,7 @@ _Static_assert(
 #define AF_VMM_RESERVATION_MAP       ((StMm_AllocFlags)0x10000000)
 #define AF_VMM_RESERVATION_SPARSE    ((StMm_AllocFlags)0x20000000)
 #define AF_VMM_RESERVATION_ON_DEMAND ((StMm_AllocFlags)0x40000000)
-#define AF_VMM_RESERVATION_MASK                                                                  \
+#define AF_VMM_RESERVATION_MASK                                                                    \
     (AF_VMM_RESERVATION_MAP | AF_VMM_RESERVATION_SPARSE | AF_VMM_RESERVATION_ON_DEMAND)
 
 struct vmm_reservation_domain {

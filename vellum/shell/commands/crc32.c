@@ -2,8 +2,8 @@
 
 #include <inttypes.h>
 #include <limits.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <zlib.h>

@@ -1,7 +1,7 @@
 #include <vellum/shell.h>
 
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include <vellum/arch/intrinsics/cpuid.h>
 

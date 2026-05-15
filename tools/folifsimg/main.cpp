@@ -1,9 +1,9 @@
 #include <cstdio>
-#include <cstring>
 #include <cstdlib>
+#include <cstring>
 
-#include "image.hpp"
 #include "folifs.hpp"
+#include "image.hpp"
 
 int main(int argc, char **argv)
 {
@@ -31,7 +31,8 @@ int main(int argc, char **argv)
     printf("bytes per sector: %u\n", folifs.getBytesPerSector());
     printf("sectors per block: %u\n", folifs.getSectorsPerBlock());
 
-    std::unique_ptr<Afs::Directory> root_dir = std::unique_ptr<Afs::Directory>(folifs.openRootDirectory());
+    std::unique_ptr<Afs::Directory> root_dir =
+        std::unique_ptr<Afs::Directory>(folifs.openRootDirectory());
 
     printf("volume name: %s\n", root_dir->getName().c_str());
 

@@ -180,27 +180,25 @@ __always_inline void StA_FNInit(void)
 
 __always_inline void StA_ZeroXmmRegisters(void)
 {
-    __asm__ volatile(
-        "pxor %%xmm0, %%xmm0\n\t"
-        "pxor %%xmm1, %%xmm1\n\t"
-        "pxor %%xmm2, %%xmm2\n\t"
-        "pxor %%xmm3, %%xmm3\n\t"
-        "pxor %%xmm4, %%xmm4\n\t"
-        "pxor %%xmm5, %%xmm5\n\t"
-        "pxor %%xmm6, %%xmm6\n\t"
-        "pxor %%xmm7, %%xmm7\n\t"
-        "pxor %%xmm8, %%xmm8\n\t"
-        "pxor %%xmm9, %%xmm9\n\t"
-        "pxor %%xmm10, %%xmm10\n\t"
-        "pxor %%xmm11, %%xmm11\n\t"
-        "pxor %%xmm12, %%xmm12\n\t"
-        "pxor %%xmm13, %%xmm13\n\t"
-        "pxor %%xmm14, %%xmm14\n\t"
-        "pxor %%xmm15, %%xmm15\n\t"
-        :
-        :
-        : "memory"
-    );
+    __asm__ volatile("pxor %%xmm0, %%xmm0\n\t"
+                     "pxor %%xmm1, %%xmm1\n\t"
+                     "pxor %%xmm2, %%xmm2\n\t"
+                     "pxor %%xmm3, %%xmm3\n\t"
+                     "pxor %%xmm4, %%xmm4\n\t"
+                     "pxor %%xmm5, %%xmm5\n\t"
+                     "pxor %%xmm6, %%xmm6\n\t"
+                     "pxor %%xmm7, %%xmm7\n\t"
+                     "pxor %%xmm8, %%xmm8\n\t"
+                     "pxor %%xmm9, %%xmm9\n\t"
+                     "pxor %%xmm10, %%xmm10\n\t"
+                     "pxor %%xmm11, %%xmm11\n\t"
+                     "pxor %%xmm12, %%xmm12\n\t"
+                     "pxor %%xmm13, %%xmm13\n\t"
+                     "pxor %%xmm14, %%xmm14\n\t"
+                     "pxor %%xmm15, %%xmm15\n\t"
+                     :
+                     :
+                     : "memory");
 }
 
 __always_inline void StA_VZeroAll(void)

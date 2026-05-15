@@ -262,7 +262,11 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "%*s- //\n", depth, "");
     } else if (node->type == GNT_NODETYPE_LINK) {
         (void)StUtf_Utf32ToUtf8(
-            node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL
+            node->name,
+            node->name_len,
+            ctx->name_buf,
+            NODENAME_UTF8_MAX + 1,
+            NULL
         );
         LOG_DEBUG(
             LM_CAT_UNCLASSIFIED,
@@ -301,7 +305,11 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
         return;
     } else {
         (void)StUtf_Utf32ToUtf8(
-            node->name, node->name_len, ctx->name_buf, NODENAME_UTF8_MAX + 1, NULL
+            node->name,
+            node->name_len,
+            ctx->name_buf,
+            NODENAME_UTF8_MAX + 1,
+            NULL
         );
         LOG_DEBUG(
             LM_CAT_UNCLASSIFIED,
@@ -704,7 +712,7 @@ static void thread1_main(StThread_BorrowedRef th)
 
     waitlist[0] = new_thread1;
     waitlist[1] = new_thread2;
-    status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
+    status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), THREAD_WAIT_INFINITE);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to wait for kernel test threads");
     }
@@ -832,7 +840,7 @@ static void thread5_main(StThread_BorrowedRef th)
     for (;; StThread_Sleep(250)) {
         if (setup_user_process(&process, &main_thread)) continue;
         waitlist[0] = main_thread;
-        status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), -1);
+        status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), THREAD_WAIT_INFINITE);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to wait for user process main thread");
         }

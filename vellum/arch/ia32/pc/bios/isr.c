@@ -1,20 +1,20 @@
 #include <vellum/plat/isr.h>
 
 #include <inttypes.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #include <vellum/arch/idt.h>
 #include <vellum/arch/interrupt.h>
 #include <vellum/arch/intrinsics/idt.h>
 #include <vellum/arch/intrinsics/io.h>
 
-#include <vellum/plat/pic.h>
 #include <vellum/plat/panic.h>
+#include <vellum/plat/pic.h>
 
 #include <vellum/log.h>
-#include <vellum/status.h>
 #include <vellum/macros.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "isr"
 

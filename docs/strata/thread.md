@@ -37,8 +37,10 @@ reaped before the creator calls a separate detach operation.
 that has already finished; if cleanup is needed, it requests scheduler
 maintenance instead of treating "already finished" as a caller error.
 
-`StThread_Wait` waits for joinable threads to finish or for the timeout path to
-set `STATUS_TIMER_EXPIRED`.
+`StThread_Wait` waits for every joinable thread in the wait list to finish, or
+for the timeout path to set `STATUS_TIMER_EXPIRED`. Use
+`THREAD_WAIT_INFINITE` for an unbounded wait; callers should not pass `-1`
+directly.
 
 `StThread_Remove` is stricter: the thread must be finished unless the caller is
 on a path that explicitly owns the teardown invariant. Finished detached

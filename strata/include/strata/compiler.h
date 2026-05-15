@@ -61,7 +61,7 @@
 
 #if __has_attribute(nonnull)
 #    define __nonnull(...) __attribute__((nonnull(__VA_ARGS__)))
-#    define __arg_nonnull __attribute__((nonnull))
+#    define __arg_nonnull  __attribute__((nonnull))
 
 #else
 #    define __nonnull(...)
@@ -102,11 +102,11 @@
 #endif
 
 #if __has_attribute(access)
-#    define __access_read_only(ptr_index, size_index)                                           \
+#    define __access_read_only(ptr_index, size_index)                                              \
         __attribute__((access(read_only, ptr_index, size_index)))
-#    define __access_write_only(ptr_index, size_index)                                          \
+#    define __access_write_only(ptr_index, size_index)                                             \
         __attribute__((access(write_only, ptr_index, size_index)))
-#    define __access_read_write(ptr_index, size_index)                                          \
+#    define __access_read_write(ptr_index, size_index)                                             \
         __attribute__((access(read_write, ptr_index, size_index)))
 
 #else

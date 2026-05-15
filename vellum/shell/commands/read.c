@@ -1,8 +1,8 @@
 #include <vellum/shell.h>
 
 #include <inttypes.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 static int read_handler(struct shell_instance *inst, int argc, char **argv)

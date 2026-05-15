@@ -1034,9 +1034,8 @@ StStatus StPmm_LateInit(void)
             }
 
             if (free_cont_frames == 0) {
-                metadata_area_end = (St_PhysFrame)(
-                    (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES) - 1
-                );
+                metadata_area_end = (St_PhysFrame)((i * ALLOC_TABLE_COVERAGE_PAGES) +
+                                                   (j * ALLOCENT_COVERAGE_PAGES) - 1);
             }
 
             free_cont_frames += ALLOCENT_COVERAGE_PAGES;
@@ -1395,8 +1394,8 @@ StStatus StPmm_AllocateContiguousFrame(
                 }
 
                 if (!allocatable) continue;
-                allocated_pfn =
-                    (St_PhysFrame)((i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES));
+                allocated_pfn = (St_PhysFrame)((i * ALLOC_TABLE_COVERAGE_PAGES) +
+                                               (j * ALLOCENT_COVERAGE_PAGES));
                 // LOG_TRACE(LM_CAT_UNCLASSIFIED, "found (%zd.%zd.-)\n", i, j);
 
                 // mark entire entry as allocated
@@ -1450,10 +1449,8 @@ StStatus StPmm_AllocateContiguousFrame(
 
             allocate_from_bitmap_entry(&table->entries[table_search_start].bitmap, index, order);
 
-            allocated_pfn = (St_PhysFrame)(
-                (i * ALLOC_TABLE_COVERAGE_PAGES) +
-                (table_search_start * ALLOCENT_COVERAGE_PAGES) + index
-            );
+            allocated_pfn = (St_PhysFrame)((i * ALLOC_TABLE_COVERAGE_PAGES) +
+                                           (table_search_start * ALLOCENT_COVERAGE_PAGES) + index);
 
             // allocate and fill metadata directory & metadata table & metadata
             status = create_metadata(allocated_pfn, owner, order);
@@ -1544,9 +1541,8 @@ StStatus StPmm_AllocateContiguousFrame(
                 allocate_from_bitmap_entry(&table->entries[j].bitmap, index, order);
             }
 
-            allocated_pfn = (St_PhysFrame)(
-                (i * ALLOC_TABLE_COVERAGE_PAGES) + (j * ALLOCENT_COVERAGE_PAGES) + index
-            );
+            allocated_pfn = (St_PhysFrame)((i * ALLOC_TABLE_COVERAGE_PAGES) +
+                                           (j * ALLOCENT_COVERAGE_PAGES) + index);
 
             // allocate and fill metadata directory & metadata table & metadata
             status = create_metadata(allocated_pfn, owner, order);
@@ -1646,7 +1642,9 @@ void StPmm_FreeContiguousFrame(St_PhysFrame pfn __in)
     StThread_UnlockPreemption();
 }
 
-StStatus StPmm_GetAllocMetadata(St_PhysFrame pfn __in, StPmm_AllocationMetadata_BorrowedRef *meta __out)
+StStatus StPmm_GetAllocMetadata(
+    St_PhysFrame pfn __in, StPmm_AllocationMetadata_BorrowedRef *meta __out
+)
 {
     assert(meta);
 

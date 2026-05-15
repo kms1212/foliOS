@@ -1,5 +1,6 @@
 ---
 BasedOnStyle: LLVM
+AccessModifierOffset: -4
 AlignAfterOpenBracket: BlockIndent
 AlignArrayOfStructures: None
 AlignConsecutiveAssignments:

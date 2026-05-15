@@ -7,9 +7,9 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/time.h>
 
+#include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/panic.h>
-#include <strata/compiler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
@@ -105,7 +105,10 @@ static void update_runnable_state(
     case THREAD_STATE_WAITING:
         if (waiting_thread_is_ready(thread)) {
             finish_waiting_thread(scheduler, thread, STATUS_SUCCESS);
-        } else if (thread->wait_timeout_ms != UINT64_MAX && now_ns >= thread->sleep_until_uptime_ns) {
+        } else if (
+            thread->wait_timeout_ms != THREAD_WAIT_INFINITE &&
+            now_ns >= thread->sleep_until_uptime_ns
+        ) {
             finish_waiting_thread(scheduler, thread, STATUS_TIMER_EXPIRED);
         }
         break;

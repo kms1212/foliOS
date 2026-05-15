@@ -859,12 +859,7 @@ static int print_ptr(int (*func)(void *, char), void *farg, struct fmt_spec spec
             max_chars = spec.width;
         }
 
-        return print_utf32_string(
-            func,
-            farg,
-            va_arg(*args, const void *),
-            max_chars
-        );
+        return print_utf32_string(func, farg, va_arg(*args, const void *), max_chars);
     }
     case PTR_FMT_HEX_BYTES:
         return print_hex_bytes(

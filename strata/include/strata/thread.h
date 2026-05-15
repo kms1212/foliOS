@@ -1,13 +1,15 @@
 #ifndef __STRATA_THREAD_H__
 #define __STRATA_THREAD_H__
 
+#include <stdint.h>
+
 #include <strata/plat/thread.h>
 
 #include <strata/compiler.h>
-#include <strata/ref_control.h>
 #include <strata/mm/allocation_owner.h>
 #include <strata/mm/types.h>
 #include <strata/process_refs.h>
+#include <strata/ref_control.h>
 #include <strata/status.h>
 #include <strata/thread_refs.h>
 
@@ -50,9 +52,12 @@ typedef int StThread_Id __nocast;
 typedef uint32_t StThread_CreateFlags __nocast;
 
 /** Normal joinable thread creation. */
-#define TCF_DEFAULT  ((StThread_CreateFlags)0x00000000)
+#define TCF_DEFAULT ((StThread_CreateFlags)0x00000000)
 /** Create the thread already detached; the creator receives no join ref. */
 #define TCF_DETACHED ((StThread_CreateFlags)0x00000001)
+
+/** Infinite timeout sentinel for StThread_Wait. */
+#define THREAD_WAIT_INFINITE ((uint64_t)UINT64_MAX)
 
 /**
  * Ref-counted Strata thread object.
@@ -185,7 +190,7 @@ void StThread_RunDeferredReap(St_PageCount page_budget __in);
 
 /** Detach a joinable thread and release the join reference. */
 StStatus StThread_Detach(StThread_StrongRef thread __in);
-/** Wait until any thread in list finishes or timeout_ms expires. */
+/** Wait until every thread in list finishes or timeout_ms expires. */
 StStatus StThread_Wait(StThread_StrongRef *list __in, int count __in, uint64_t timeout_ms __in);
 
 /** Put the current thread to sleep for timeout_ms. */

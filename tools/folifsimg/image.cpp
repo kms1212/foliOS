@@ -1,8 +1,8 @@
 #include "image.hpp"
 
+#include <cerrno>
 #include <cstdlib>
 #include <cstring>
-#include <cerrno>
 
 Image::Image(const std::string &path, bool readonly) : readonly(readonly)
 {

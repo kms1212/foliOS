@@ -26,7 +26,7 @@ bool isVoidExplicitCast(const Stmt *Stmt)
 bool isTransparentParent(const Stmt *Stmt)
 {
     return isa<ImplicitCastExpr>(Stmt) || isa<ParenExpr>(Stmt) || isa<ExprWithCleanups>(Stmt) ||
-           isa<FullExpr>(Stmt);
+        isa<FullExpr>(Stmt);
 }
 
 const Stmt *getOnlyStmtParent(const Stmt *Stmt, ASTContext &Ctx)

@@ -15,8 +15,8 @@
 
 #include <strata/compiler.h>
 #include <strata/mm.h>
-#include <strata/mm/address_space_refs.h>
 #include <strata/mm/address_space.h>
+#include <strata/mm/address_space_refs.h>
 #include <strata/mm/pmm.h>
 #include <strata/mm/types.h>
 #include <strata/mm/vmm.h>

@@ -149,8 +149,7 @@ void *StIntP_HandleUserFault(
         ILOG_WARN(
             LM_CAT_THREAD,
             "terminating user thread #%d after fault #%02X status=0x%08" PRIX32
-            " addr=0x%016" PRIXPTR " error=0x%08" PRIX64
-            " rip=0x%04X:0x%016" PRIX64 "\n",
+            " addr=0x%016" PRIXPTR " error=0x%08" PRIX64 " rip=0x%04X:0x%016" PRIX64 "\n",
             (int)current_thread->id,
             num,
             (uint32_t)fault_status,
@@ -576,7 +575,8 @@ __optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
                     STATUS_UNKNOWN_ERROR,
                     ctx->rbp,
                     frame->rip,
-                    "Unhandled fault #%02X(0x%08" PRIX64 ") has occurred at 0x%04X:0x%016" PRIX64 "\n",
+                    "Unhandled fault #%02X(0x%08" PRIX64 ") has occurred at 0x%04X:0x%016" PRIX64
+                    "\n",
                     num,
                     frame->error,
                     frame->cs,

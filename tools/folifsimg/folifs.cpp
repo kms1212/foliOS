@@ -2,8 +2,8 @@
 
 #include <cstring>
 
-#include "folifs.h"
 #include "crc32.h"
+#include "folifs.h"
 
 static void hexdump(const void *data, long len, uint32_t offset)
 {
@@ -18,7 +18,6 @@ static void hexdump(const void *data, long len, uint32_t offset)
 
         for (int i = 0; i < sizeof(buf) && count + i < len; i++) {
             printf("%02X ", buf[i]);
-
         }
 
         printf("│ ");
@@ -26,7 +25,7 @@ static void hexdump(const void *data, long len, uint32_t offset)
         for (int i = 0; i < sizeof(buf) && count + i < len; i++) {
             printf("%c", buf[i] >= 0x20 && buf[i] < 0x80 ? (char)buf[i] : '.');
         }
-        
+
         printf("\n");
 
         addr += 16;
@@ -37,10 +36,10 @@ static void hexdump(const void *data, long len, uint32_t offset)
 Afs::Afs(Image &image, lba_t offset) : image(image), offset(offset)
 {
     std::unique_ptr<uint8_t[]> read_buf = std::make_unique<uint8_t[]>(512);
-    
+
     image.read(read_buf.get(), offset, 1);
     const auto *first_sector = (const struct folifs_first_sector *)read_buf.get();
-    
+
     if (strncmp(first_sector->filesystem_signature, "FOLIFS", 4) != 0) {
         fprintf(stderr, "invalid signature\n");
         exit(1);
@@ -52,7 +51,7 @@ Afs::Afs(Image &image, lba_t offset) : image(image), offset(offset)
     }
 
     this->reserved_sectors = first_sector->reserved_sectors;
-    
+
     image.read(read_buf.get(), offset + this->reserved_sectors, 1);
     const auto *rdb = (const struct folifs_rdb *)read_buf.get();
 
@@ -84,10 +83,9 @@ long Afs::readBlock(void *buf, block_t blk, long count, bool check_crc)
     long read_count = 0;
 
     std::unique_ptr<uint8_t[]> read_buf = std::make_unique<uint8_t[]>(this->bytes_per_block);
-    
+
     for (int i = 0; i < count; i++) {
-        if (
-            image.read(
+        if (image.read(
                 read_buf.get(),
                 this->offset + this->reserved_sectors + blk * this->sectors_per_block,
                 this->sectors_per_block
@@ -95,12 +93,19 @@ long Afs::readBlock(void *buf, block_t blk, long count, bool check_crc)
             break;
         }
 
-        if (check_crc && crc32(read_buf.get(), this->bytes_per_block - sizeof(uint32_t)) != *(uint32_t *)(read_buf.get() + this->bytes_per_block - sizeof(uint32_t))) {
-            fprintf(stderr, "crc32 error: lba %08llX, block %08llX\n", this->offset + this->reserved_sectors + blk * this->sectors_per_block, blk);
+        if (check_crc &&
+            crc32(read_buf.get(), this->bytes_per_block - sizeof(uint32_t)) !=
+                *(uint32_t *)(read_buf.get() + this->bytes_per_block - sizeof(uint32_t))) {
+            fprintf(
+                stderr,
+                "crc32 error: lba %08llX, block %08llX\n",
+                this->offset + this->reserved_sectors + blk * this->sectors_per_block,
+                blk
+            );
         }
 
         memcpy((uint8_t *)buf + i * this->bytes_per_block, read_buf.get(), this->bytes_per_block);
-        
+
         read_count++;
     }
 
@@ -116,7 +121,8 @@ Afs::Directory::Directory(Afs &folifs, block_t mdb) : folifs(folifs), mdb(mdb) {
 
 std::string Afs::Directory::getName(void)
 {
-    std::unique_ptr<uint8_t[]> read_buf = std::make_unique<uint8_t[]>(this->folifs.getBytesPerBlock());
+    std::unique_ptr<uint8_t[]> read_buf =
+        std::make_unique<uint8_t[]>(this->folifs.getBytesPerBlock());
 
     this->folifs.readBlock(read_buf.get(), this->mdb, 1, true);
     const auto *mdb = (const struct folifs_mdb *)read_buf.get();
@@ -131,7 +137,3 @@ std::string Afs::Directory::getName(void)
 
     return std::string(mdb_fae->filename);
 }
-
-
-
-

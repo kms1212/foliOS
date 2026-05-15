@@ -185,7 +185,7 @@ void draw_ellipse_rect(int x0, int y0, int x1, int y1, uint32_t color, int fill)
 {
     int a = abs(x1 - x0), b = abs(y1 - y0), b1 = b & 1;       /* values of diameter */
     long dx = 4 * (1 - a) * b * b, dy = 4 * (b1 + 1) * a * a; /* error increment */
-    long err = dx + dy + (b1 * a * a), e2;                      /* error of 1.step */
+    long err = dx + dy + (b1 * a * a), e2;                    /* error of 1.step */
 
     if (x0 > x1) {
         x0 = x1;
@@ -239,7 +239,7 @@ void draw_ellipse_rect(int x0, int y0, int x1, int y1, uint32_t color, int fill)
 static void draw_bezier2_part(int x0, int y0, int x1, int y1, int x2, int y2, uint32_t color)
 {
     int sx = x0 < x2 ? 1 : -1;
-    int sy = y0 < y2 ? 1 : -1;                                           /* step direction */
+    int sy = y0 < y2 ? 1 : -1;                                               /* step direction */
     int cur = sx * sy * (((x0 - x1) * (y2 - y1)) - ((x2 - x1) * (y0 - y1))); /* curvature */
     int x = x0 - (2 * x1) + x2, y = y0 - (2 * y1) + y2, xy = 2 * x * y * sx * sy;
     /* compute error increments of P0 */
@@ -276,7 +276,7 @@ static void draw_bezier2_part(int x0, int y0, int x1, int y1, int x2, int y2, ui
     dy -= xy;  /* error of 1.step */
     for (;;) { /* plot curve */
         framebuffer[(y0 * vmode_info.width) + x0] = color;
-        ey = (2 * ex) - dy;   /* save value for test of y step */
+        ey = (2 * ex) - dy; /* save value for test of y step */
         if (2 * ex >= dx) { /* x step */
             if (x0 == x2) break;
             x0 += sx;

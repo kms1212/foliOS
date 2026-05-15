@@ -10,8 +10,8 @@
 #include <vellum/disk.h>
 #include <vellum/filesystem.h>
 #include <vellum/interface/block.h>
-#include <vellum/types.h>
 #include <vellum/status.h>
+#include <vellum/types.h>
 
 #include "iso9660.h"
 
@@ -360,7 +360,8 @@ static VlStatus read(struct fs_file *file, void *buf, size_t len, size_t *result
             read_len = len;
         }
 
-        status = read_sector(fs, file_data->data_start_lba + (file_data->cursor / data->sector_size));
+        status =
+            read_sector(fs, file_data->data_start_lba + (file_data->cursor / data->sector_size));
         if (!CHECK_SUCCESS(status)) return status;
 
         memcpy(buf, data->databuf + sector_offset, read_len);

@@ -13,8 +13,8 @@
 
 #include <strata/compiler.h>
 #include <strata/log.h>
-#include <strata/mm/address_space_refs.h>
 #include <strata/mm/address_space.h>
+#include <strata/mm/address_space_refs.h>
 #include <strata/mm/allocation_owner.h>
 #include <strata/mm/allocation_owner_refs.h>
 #include <strata/mm/pmm.h>
@@ -91,9 +91,7 @@ static StStatus validate_image_backing(
 }
 
 static StStatus fill_image_backed_frame(
-    St_PhysFrame pfn __in,
-    St_VirtPage vpn __in,
-    const struct StMm_ImageBacking *image_backing __in
+    St_PhysFrame pfn __in, St_VirtPage vpn __in, const struct StMm_ImageBacking *image_backing __in
 )
 {
     uintptr_t page_start;
@@ -327,12 +325,7 @@ StStatus StMm_MapLocal(
 
     *vpn = reserved_vpn;
 
-    LOG_TRACE(
-        LM_CAT_UNCLASSIFIED,
-        "mapped %zu pages to %013zX\n",
-        count,
-        (uintptr_t)reserved_vpn
-    );
+    LOG_TRACE(LM_CAT_UNCLASSIFIED, "mapped %zu pages to %013zX\n", count, (uintptr_t)reserved_vpn);
 
     return STATUS_SUCCESS;
 }
@@ -383,13 +376,8 @@ StStatus StMm_MapLocalTo(
 
     if (!asp) return STATUS_INVALID_VALUE;
 
-    status = StVmm_ReserveLocalPageTo(
-        asp,
-        vpn,
-        count,
-        alloc_flags | AF_VMM_RESERVATION_MAP,
-        map_flags
-    );
+    status =
+        StVmm_ReserveLocalPageTo(asp, vpn, count, alloc_flags | AF_VMM_RESERVATION_MAP, map_flags);
     if (!CHECK_SUCCESS(status)) return status;
 
     status = StMmP_MapLocalContiguousMemory(asp, pfn, vpn, count, map_flags);
@@ -552,14 +540,7 @@ StStatus StMm_AllocateGlobalSparse(
     St_PageCount batch_count = 0;
 
     /* reserve virtual memory pages first */
-    status = StVmm_ReserveGlobalPage(
-        domain,
-        &allocated_vpn,
-        count,
-        owner,
-        alloc_flags,
-        map_flags
-    );
+    status = StVmm_ReserveGlobalPage(domain, &allocated_vpn, count, owner, alloc_flags, map_flags);
     if (!CHECK_SUCCESS(status)) {
         LOG_ERROR(
             LM_CAT_UNCLASSIFIED,
@@ -1555,8 +1536,7 @@ void StMm_FreeGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_Pag
     LOG_TRACE(LM_CAT_UNCLASSIFIED, "freeing %zu pages at %013zX\n", count, (uintptr_t)vpn);
 
     status = StVmm_GetGlobalPageInfo(domain, vpn, &page_info);
-    if (CHECK_SUCCESS(status) &&
-        !(page_info.alloc_flags & AF_VMM_RESERVATION_MAP) &&
+    if (CHECK_SUCCESS(status) && !(page_info.alloc_flags & AF_VMM_RESERVATION_MAP) &&
         page_info.mapping_policy.type == VMM_PAGE_MAPPING_PHYSICAL) {
         allow_unmapped_pages = 1;
     }
@@ -1623,9 +1603,7 @@ void StMm_FreeLocal(
         allow_unmapped_pages = 1;
     }
 
-    if (CHECK_SUCCESS(status) &&
-        allow_unmapped_pages &&
-        (page_info.map_flags & MF_GUARD)) {
+    if (CHECK_SUCCESS(status) && allow_unmapped_pages && (page_info.map_flags & MF_GUARD)) {
         status = StVmm_GetLocalReservedRange(asp, vpn, &reserved_begin_vpn, &reserved_end_vpn);
         if (!CHECK_SUCCESS(status) || reserved_end_vpn <= reserved_begin_vpn) {
             St_Panic(STATUS_CONFLICTING_STATE, "guarded local VMM range unavailable");
@@ -1775,17 +1753,9 @@ void StAllocationOwner_Close(StAllocationOwner_StrongRef owner __in)
 
         if (node->reservation_type == VMM_RESERVATION_ALLOC) {
             if (node->asp) {
-                StMm_FreeLocal(
-                    (StAddressSpace_StrongRef)node->asp,
-                    usable_vpn,
-                    usable_count
-                );
+                StMm_FreeLocal((StAddressSpace_StrongRef)node->asp, usable_vpn, usable_count);
             } else {
-                StMm_FreeGlobal(
-                    node->domain,
-                    usable_vpn,
-                    usable_count
-                );
+                StMm_FreeGlobal(node->domain, usable_vpn, usable_count);
             }
         } else {
             if (node->asp) {

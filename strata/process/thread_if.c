@@ -12,11 +12,11 @@
 #include <strata/mm/utils.h>
 #include <strata/process.h>
 #include <strata/process_refs.h>
+#include <strata/ref_control.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
 #include <strata/utf.h>
-#include <strata/ref_control.h>
 
 #include "sidl/thread.server.h"
 #include "sidl/thread.types.h"
@@ -81,7 +81,10 @@ static StStatus get_thread_from_thread_node(
 
     if (!thread_node->parent || thread_node->parent->name_len != 7 ||
         StUtf_CompareUtf32Chars(
-            thread_node->parent->name, thread_node->parent->name_len, U"Threads", 7
+            thread_node->parent->name,
+            thread_node->parent->name_len,
+            U"Threads",
+            7
         ) != 0) {
         return STATUS_INVALID_HANDLE;
     }
@@ -90,9 +93,8 @@ static StStatus get_thread_from_thread_node(
         return STATUS_INVALID_HANDLE;
     }
 
-    status = get_process_from_process_node(
-        (StGnt_Node_StrongRef)thread_node->parent->parent, &process
-    );
+    status =
+        get_process_from_process_node((StGnt_Node_StrongRef)thread_node->parent->parent, &process);
     if (!CHECK_SUCCESS(status)) return status;
 
     thread = process->main_thread;
@@ -178,12 +180,7 @@ static StStatus initialize_static_tls(StThread_InternalRef thread, uintptr_t fs_
 
     tls_start = fs_base - process->tls_mem_size;
 
-    status = StMm_SetLocal(
-        process->address_space,
-        tls_start,
-        0,
-        process->tls_mem_size
-    );
+    status = StMm_SetLocal(process->address_space, tls_start, 0, process->tls_mem_size);
     if (!CHECK_SUCCESS(status)) return status;
 
     remaining = process->tls_file_size;
@@ -194,12 +191,8 @@ static StStatus initialize_static_tls(StThread_InternalRef thread, uintptr_t fs_
             chunk = sizeof(buf);
         }
 
-        status = StMm_ReadLocal(
-            process->address_space,
-            process->tls_image_addr + copied,
-            buf,
-            chunk
-        );
+        status =
+            StMm_ReadLocal(process->address_space, process->tls_image_addr + copied, buf, chunk);
         if (!CHECK_SUCCESS(status)) return status;
 
         status = StMm_WriteLocal(process->address_space, tls_start + copied, buf, chunk);

@@ -11,8 +11,8 @@
 #include <vellum/interface/framebuffer.h>
 #include <vellum/interface/video.h>
 #include <vellum/log.h>
-#include <vellum/status.h>
 #include <vellum/resource.h>
+#include <vellum/status.h>
 
 #define MODULE_NAME "vconsole"
 
@@ -210,7 +210,8 @@ static VlStatus invalidate(struct device *dev, int x0, int y0, int x1, int y1)
 
     for (int row = y0; row <= y1; row++) {
         for (int col = x0; col <= x1; col++) {
-            data->diff_buffer[((row * data->cols) + col) / 8] |= 1 << (((row * data->cols) + col) % 8);
+            data->diff_buffer[((row * data->cols) + col) / 8] |= 1
+                << (((row * data->cols) + col) % 8);
         }
     }
 

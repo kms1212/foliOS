@@ -14,10 +14,10 @@
 #include <strata/plat/interrupt_constants.h>
 #include <strata/plat/pit.h>
 
-#include <strata/panic.h>
 #include <strata/compiler.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
+#include <strata/panic.h>
 #include <strata/status.h>
 
 #define MODULE_NAME "time"

@@ -75,9 +75,7 @@ StStatus StVmm_GetTotalGlobalPageCount(enum StVmm_Domain domain __in, St_PageCou
 /** Write currently unreserved page capacity for a global domain. */
 StStatus StVmm_GetFreeGlobalPageCount(enum StVmm_Domain domain __in, St_PageCount *count __out);
 /** Write total page capacity for an address-space local domain. */
-StStatus StVmm_GetTotalLocalPageCount(
-    StAddressSpace_StrongRef asp __in, St_PageCount *count __out
-);
+StStatus StVmm_GetTotalLocalPageCount(StAddressSpace_StrongRef asp __in, St_PageCount *count __out);
 /** Write currently unreserved page capacity for an address-space local domain. */
 StStatus StVmm_GetFreeLocalPageCount(StAddressSpace_StrongRef asp __in, St_PageCount *count __out);
 
@@ -153,15 +151,11 @@ StStatus StVmm_GetLocalReservedRange(
 
 /** Read VMM metadata for a global virtual page. */
 StStatus StVmm_GetGlobalPageInfo(
-    enum StVmm_Domain domain __in,
-    St_VirtPage vpn __in,
-    struct StVmm_PageInfo *info __out
+    enum StVmm_Domain domain __in, St_VirtPage vpn __in, struct StVmm_PageInfo *info __out
 );
 /** Read VMM metadata for a local virtual page. */
 StStatus StVmm_GetLocalPageInfo(
-    StAddressSpace_StrongRef asp __in,
-    St_VirtPage vpn __in,
-    struct StVmm_PageInfo *info __out
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, struct StVmm_PageInfo *info __out
 );
 /** Resolve local reservation policy before MM materializes a faulting page. */
 StStatus StVmm_ResolveLocalPage(StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in);

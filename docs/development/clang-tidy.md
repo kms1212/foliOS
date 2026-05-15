@@ -21,6 +21,10 @@ The scripts add the target triple used by the corresponding external project.
 For AMD64 Strata, Vellum still receives an i686-style target because the BIOS
 bootloader side is IA-32.
 
+Both the CMake integration and `scripts/clang_tidy.sh` run clang-tidy in quiet
+mode so hidden-header statistics such as `Suppressed N warnings` do not obscure
+the actionable diagnostics.
+
 ## foliOS Plugin
 
 Build the plugin and run only the foliOS checks:

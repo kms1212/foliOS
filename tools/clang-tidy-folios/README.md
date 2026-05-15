@@ -25,6 +25,12 @@ Do not mechanically convert such parameters to `__out_optional`: creation,
 allocation, open, and ownership-transfer APIs usually require a non-NULL output
 slot so the caller can receive and eventually release the resource.
 
+The check allows a narrow thin-wrapper exception: if the whole function body is
+`return Callee(...);` and the non-optional output parameter is passed directly to
+a callee parameter that is also annotated `__out` or `__inout`, the wrapper may
+rely on the callee's entry assertion. The exception is intentionally not applied
+to wrappers that perform validation, cleanup, logging, or other local behavior.
+
 `__out_optional` parameters are optional outputs. Asserting them at entry is
 reported because callers are allowed to pass NULL.
 

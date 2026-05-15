@@ -1,8 +1,8 @@
 #include "internal.h"
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 
 #include <strata/compiler.h>
 #include <strata/gnt.h>
@@ -13,12 +13,12 @@
 #include <strata/log.h>
 #include <strata/process.h>
 #include <strata/process_refs.h>
+#include <strata/ref_control.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
 #include <strata/utf.h>
-#include <strata/ref_control.h>
 
 #define MODULE_NAME "process"
 
@@ -132,7 +132,9 @@ static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, in
     return STATUS_SUCCESS;
 }
 
-static StStatus get_process_id_from_process_node(StGnt_Node_StrongRef node, StProcess_Id *process_id_out)
+static StStatus get_process_id_from_process_node(
+    StGnt_Node_StrongRef node, StProcess_Id *process_id_out
+)
 {
     if (!node) return STATUS_INVALID_VALUE;
 
@@ -178,9 +180,8 @@ static StStatus register_process_node(StProcess_BorrowedRef process, StGnt_Node_
     status = format_id_name(process->id, process_name, sizeof(process_name), &process_name_len);
     if (!CHECK_SUCCESS(status)) return status;
 
-    node = (StGnt_Node_StrongRef)find_registered_child(
-        g_gnt_system_processes, process_name, process_name_len
-    );
+    node = (StGnt_Node_StrongRef)
+        find_registered_child(g_gnt_system_processes, process_name, process_name_len);
     if (node) {
         node->type = GNT_NODETYPE_DIRECTORY;
         node->handler_module = StProcess_Module;
@@ -355,7 +356,8 @@ static StStatus resolve_threads_directory(
     if (!CHECK_SUCCESS(status)) return status;
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Main", 4) == 0) {
-        if (!process->main_thread || StRefControlBlock_IsDying(&process->main_thread->ref_control)) {
+        if (!process->main_thread ||
+            StRefControlBlock_IsDying(&process->main_thread->ref_control)) {
             return STATUS_ENTRY_NOT_FOUND;
         }
 

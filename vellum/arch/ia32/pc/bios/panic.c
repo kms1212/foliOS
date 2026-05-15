@@ -1,8 +1,8 @@
 #include <vellum/plat/panic.h>
 
-#include <stdio.h>
-#include <stdint.h>
 #include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
 
 #include <vellum/arch/intrinsics/io.h>
 #include <vellum/arch/intrinsics/misc.h>

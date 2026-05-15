@@ -96,7 +96,14 @@ static void print_backtrace(uintptr_t rbp, uintptr_t rip)
         char symbol[128];
         StStatus status = StSymbol_FormatStatic(rip, symbol, sizeof(symbol));
         if (CHECK_SUCCESS(status)) {
-            cprintf(panic_out, NULL, "  #%02zu 0x%016" PRIXPTR " <%s>\n", frame_index++, rip, symbol);
+            cprintf(
+                panic_out,
+                NULL,
+                "  #%02zu 0x%016" PRIXPTR " <%s>\n",
+                frame_index++,
+                rip,
+                symbol
+            );
         } else {
             cprintf(panic_out, NULL, "  #%02zu 0x%016" PRIXPTR "\n", frame_index++, rip);
         }
@@ -133,14 +140,25 @@ static void print_backtrace(uintptr_t rbp, uintptr_t rip)
                     symbol
                 );
             } else {
-                cprintf(panic_out, NULL, "  #%02zu 0x%016" PRIXPTR "\n", frame_index++, call_address);
+                cprintf(
+                    panic_out,
+                    NULL,
+                    "  #%02zu 0x%016" PRIXPTR "\n",
+                    frame_index++,
+                    call_address
+                );
             }
         }
 
         prev_rbp = (uintptr_t)frame->prev;
         if (!prev_rbp) return;
         if (prev_rbp <= rbp) {
-            cprintf(panic_out, NULL, "  <non-monotonic frame pointer: 0x%016" PRIXPTR ">\n", prev_rbp);
+            cprintf(
+                panic_out,
+                NULL,
+                "  <non-monotonic frame pointer: 0x%016" PRIXPTR ">\n",
+                prev_rbp
+            );
             return;
         }
 
@@ -152,10 +170,13 @@ static void print_backtrace(uintptr_t rbp, uintptr_t rip)
     }
 }
 
-static __noreturn void panic_common(StStatus status, uintptr_t rbp, uintptr_t rip, const char *fmt, va_list args)
+static __noreturn void panic_common(
+    StStatus status, uintptr_t rbp, uintptr_t rip, const char *fmt, va_list args
+)
 {
     cprintf(panic_out, NULL, "panic: %" PRIX32 ", ", status);
     vcprintf(panic_out, NULL, fmt, args);
+    cprintf(panic_out, NULL, "\n");
     print_backtrace(rbp, rip);
 
     StA_Cli();
@@ -174,7 +195,9 @@ __noreturn void StP_Panic(StStatus status, const char *fmt, ...)
     va_end(args);
 }
 
-__noreturn void StP_PanicFromContext(StStatus status, uintptr_t rbp, uintptr_t rip, const char *fmt, ...)
+__noreturn void StP_PanicFromContext(
+    StStatus status, uintptr_t rbp, uintptr_t rip, const char *fmt, ...
+)
 {
     va_list args;
 

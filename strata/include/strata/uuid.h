@@ -12,7 +12,10 @@ struct StUuid {
 };
 
 #define UUID(...) ((struct StUuid){.data = {__VA_ARGS__}})
-#define UUID_INIT(...) {.data = {__VA_ARGS__}}
+#define UUID_INIT(...)                                                                             \
+    {                                                                                              \
+        .data = { __VA_ARGS__ }                                                                    \
+    }
 #define UUID_NULL UUID(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 #define UUID_MAX                                                                                   \
     UUID(                                                                                          \

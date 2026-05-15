@@ -20,7 +20,6 @@
 
 #include <vellum/compiler.h>
 #include <vellum/device.h>
-#include <vellum/types.h>
 #include <vellum/disk.h>
 #include <vellum/filesystem.h>
 #include <vellum/global_configs.h>
@@ -30,6 +29,7 @@
 #include <vellum/mm.h>
 #include <vellum/resource.h>
 #include <vellum/status.h>
+#include <vellum/types.h>
 
 #define MODULE_NAME "init"
 

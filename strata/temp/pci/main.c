@@ -237,13 +237,8 @@ enum StPci_ScanIterationDecision iterate_function(
     (void)StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_BASE_CLASS, &base_class);
     (void)StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_SUB_CLASS, &sub_class);
     (void)StPciP_ReadCfg8(bus, device, function, PCI_CFGHDR_INTERFACE, &interface);
-    (void)StPciP_ReadCfg16(
-        bus,
-        device,
-        function,
-        PCI_CFGHDR0_SUBSYS_VENDOR_ID,
-        &subsystem_vendor_id
-    );
+    (void)
+        StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_VENDOR_ID, &subsystem_vendor_id);
     (void)StPciP_ReadCfg16(bus, device, function, PCI_CFGHDR0_SUBSYS_ID, &subsystem_id);
 
     snprintf(node_name, sizeof(node_name), "%X", function);

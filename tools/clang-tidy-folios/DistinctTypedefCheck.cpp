@@ -29,7 +29,10 @@ struct DistinctType {
     DistinctKind Kind = DistinctKind::None;
     std::string Name;
 
-    bool isTagged() const { return Kind != DistinctKind::None; }
+    bool isTagged() const
+    {
+        return Kind != DistinctKind::None;
+    }
 };
 
 std::string normalizeAnnotation(llvm::StringRef Annotation)
@@ -57,8 +60,7 @@ DistinctKind annotationKind(llvm::StringRef Annotation)
         Normalized == "vl_ref_strong") {
         return DistinctKind::RefStrong;
     }
-    if (Normalized == "ref_weak" || Normalized == "st_ref_weak" ||
-        Normalized == "vl_ref_weak") {
+    if (Normalized == "ref_weak" || Normalized == "st_ref_weak" || Normalized == "vl_ref_weak") {
         return DistinctKind::RefWeak;
     }
     if (Normalized == "ref_borrowed" || Normalized == "st_ref_borrowed" ||
@@ -133,8 +135,8 @@ bool isExplicitCast(const Expr *Expr)
 bool isRefKind(DistinctKind Kind)
 {
     return Kind == DistinctKind::RefStrong || Kind == DistinctKind::RefWeak ||
-           Kind == DistinctKind::RefBorrowed || Kind == DistinctKind::RefInternal ||
-           Kind == DistinctKind::RefLocked;
+        Kind == DistinctKind::RefBorrowed || Kind == DistinctKind::RefInternal ||
+        Kind == DistinctKind::RefLocked;
 }
 
 bool shouldCheckMismatch(
@@ -213,7 +215,13 @@ public:
         if (!Decl || !Decl->hasInit() || shouldSkip(Decl->getLocation())) {
             return true;
         }
-        checkConversion(Decl->getLocation(), Decl->getType(), Decl->getInit()->getType(), Decl->getInit(), "initialization");
+        checkConversion(
+            Decl->getLocation(),
+            Decl->getType(),
+            Decl->getInit()->getType(),
+            Decl->getInit(),
+            "initialization"
+        );
         return true;
     }
 
@@ -222,7 +230,13 @@ public:
         if (!Op || !Op->isAssignmentOp() || shouldSkip(Op->getOperatorLoc())) {
             return true;
         }
-        checkConversion(Op->getOperatorLoc(), Op->getLHS()->getType(), Op->getRHS()->getType(), Op->getRHS(), "assignment");
+        checkConversion(
+            Op->getOperatorLoc(),
+            Op->getLHS()->getType(),
+            Op->getRHS()->getType(),
+            Op->getRHS(),
+            "assignment"
+        );
         return true;
     }
 
@@ -320,8 +334,7 @@ private:
 }  // namespace
 
 DistinctTypedefCheck::DistinctTypedefCheck(llvm::StringRef Name, ClangTidyContext *Context)
-    : ClangTidyCheck(Name, Context),
-      StrictNocast(Options.get("StrictNocast", false)),
+    : ClangTidyCheck(Name, Context), StrictNocast(Options.get("StrictNocast", false)),
       StrictBitwise(Options.get("StrictBitwise", true)),
       StrictRefs(Options.get("StrictRefs", false))
 {

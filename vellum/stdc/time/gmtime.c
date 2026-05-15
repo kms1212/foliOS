@@ -22,7 +22,7 @@ void gmtime_r(const time_t *_time, struct tm *result)
     unsigned doy = doe - ((365 * yoe) + (yoe / 4) - (yoe / 100));
 
     unsigned mp = ((5 * doy) + 2) / 153;
-    unsigned d = doy -(((153 * mp) + 2) / 5) + 1;
+    unsigned d = doy - (((153 * mp) + 2) / 5) + 1;
     unsigned m = mp < 10 ? mp + 3 : mp - 9;
 
     result->tm_year = (int)(y + (m <= 2)) - 1900;

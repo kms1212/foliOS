@@ -9,9 +9,8 @@
 
 #include <vellum/plat/panic.h>
 
-#include <vellum/device.h>
 #include <vellum/compiler.h>
-#include <vellum/resource.h>
+#include <vellum/device.h>
 #include <vellum/global_configs.h>
 #include <vellum/hid.h>
 #include <vellum/interface/console.h>
@@ -19,6 +18,7 @@
 #include <vellum/interface/hid.h>
 #include <vellum/json.h>
 #include <vellum/log.h>
+#include <vellum/resource.h>
 #include <vellum/shell.h>
 #include <vellum/status.h>
 

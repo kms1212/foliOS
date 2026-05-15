@@ -20,4 +20,4 @@ public:
     long write(const void *buf, lba_t lba, long count);
 };
 
-#endif // __IMAGE_HPP__
+#endif  // __IMAGE_HPP__

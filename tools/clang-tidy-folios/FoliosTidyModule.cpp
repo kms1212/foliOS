@@ -20,8 +20,7 @@ public:
 };
 
 static ClangTidyModuleRegistry::Add<FoliosModule> X(
-    "folios-module",
-    "Adds foliOS-specific clang-tidy checks."
+    "folios-module", "Adds foliOS-specific clang-tidy checks."
 );
 
 }  // namespace

@@ -8,10 +8,10 @@
 #include <vellum/plat/panic.h>
 
 #include <vellum/device.h>
+#include <vellum/disk.h>
 #include <vellum/interface/block.h>
 #include <vellum/log.h>
 #include <vellum/macros.h>
-#include <vellum/disk.h>
 #include <vellum/resource.h>
 #include <vellum/status.h>
 
