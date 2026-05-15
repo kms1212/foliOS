@@ -18,6 +18,7 @@
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
 #include <strata/utf.h>
+#include <strata/ref_control.h>
 
 #define MODULE_NAME "process"
 

@@ -13,6 +13,7 @@
 #include <strata/process_refs.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+#include <strata/ref_control.h>
 
 #define MODULE_NAME "mm"
 
@@ -69,7 +70,6 @@ StStatus StAddressSpace_Create(
     StStatus status;
     StAddressSpace_StrongRef new_asp = NULL;
     int p_asp_created = 0;
-    int domain_initialized = 0;
 
     status = StPool_AllocateClear(sizeof(*new_asp), (void **)&new_asp);
     if (!CHECK_SUCCESS(status)) goto has_error;
@@ -83,7 +83,6 @@ StStatus StAddressSpace_Create(
 
     status = StVmm_InitLocalDomain(new_asp, MEMMAP_USER_VPN_BASE, MEMMAP_USER_VPN_LIMIT);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    domain_initialized = 1;
 
     new_asp->next = NULL;
 
@@ -97,10 +96,6 @@ StStatus StAddressSpace_Create(
     return STATUS_SUCCESS;
 
 has_error:
-    if (new_asp && domain_initialized) {
-        StVmm_RemoveLocalDomain(new_asp);
-    }
-
     if (new_asp && p_asp_created) {
         StAddressSpaceP_Remove(new_asp);
     }

@@ -24,6 +24,7 @@
 #include <strata/mm/vmm.h>
 #include <strata/panic.h>
 #include <strata/process.h>
+#include <strata/ref_control.h>
 #include <strata/status.h>
 
 #include "internal.h"

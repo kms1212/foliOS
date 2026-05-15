@@ -14,6 +14,7 @@
 #include <strata/process.h>
 #include <strata/process_refs.h>
 #include <strata/status.h>
+#include <strata/ref_control.h>
 #include <strata/utf.h>
 
 static StStatus format_id_name(

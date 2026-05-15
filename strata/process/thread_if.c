@@ -16,6 +16,7 @@
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
 #include <strata/utf.h>
+#include <strata/ref_control.h>
 
 #include "sidl/thread.server.h"
 #include "sidl/thread.types.h"

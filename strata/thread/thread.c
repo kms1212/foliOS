@@ -23,6 +23,7 @@
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread_refs.h>
+#include <strata/ref_control.h>
 
 #define MODULE_NAME                                   "thread"
 #define THREAD_DEFERRED_REAP_MAX_PENDING_PAGES        ((St_PageCount)512)
@@ -432,7 +433,7 @@ void StThread_LockPreemption(void)
     atomic_uint_fast32_t *depth_ptr = get_preemption_disable_depth_ptr();
     uint32_t depth = atomic_fetch_add(depth_ptr, 1);
 
-    if (depth < 0) {
+    if (depth == UINT32_MAX) {
         St_Panic(STATUS_CONFLICTING_STATE, "preemption enable underflow");
     }
 }
@@ -480,7 +481,6 @@ StStatus StThread_CreateKernel(
     StStatus status;
     StThread_StrongRef th = NULL;
     int stack_allocated = 0;
-    int added_thread_to_scheduler = 0;
     uint32_t prev_thread_count;
 
     if (flags & ~TCF_DETACHED) return STATUS_INVALID_VALUE;
@@ -519,7 +519,6 @@ StStatus StThread_CreateKernel(
     /* add thread object to list */
     status = StScheduler_AddThread((StThread_InternalRef)th);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    added_thread_to_scheduler = 1;
 
     prev_thread_count = atomic_fetch_add(&thread_count, 1);
 
@@ -537,10 +536,6 @@ StStatus StThread_CreateKernel(
     return STATUS_SUCCESS;
 
 has_error:
-    if (th && added_thread_to_scheduler) {
-        StScheduler_RemoveThread((StThread_InternalRef)th);
-    }
-
     if (th && stack_allocated) {
         StThreadP_FreeThreadKernelStack(th);
     }
@@ -570,10 +565,8 @@ StStatus StThread_CreateUserMain(
 
     StStatus status;
     StThread_StrongRef th = NULL;
-    int added_thread_to_scheduler = 0;
     int kstack_allocated = 0;
     int ustack_allocated = 0;
-    int added_thread_to_process = 0;
     int acquired_process = 0;
     int assigned_main_thread = 0;
     uint32_t prev_thread_count;
@@ -632,10 +625,8 @@ StStatus StThread_CreateUserMain(
     /* add thread object to list */
     status = StScheduler_AddThread((StThread_InternalRef)th);
     if (!CHECK_SUCCESS(status)) goto has_error;
-    added_thread_to_scheduler = 1;
 
     add_thread_to_process((StThread_InternalRef)th);
-    added_thread_to_process = 1;
 
     prev_thread_count = atomic_fetch_add(&thread_count, 1);
 
@@ -655,14 +646,6 @@ StStatus StThread_CreateUserMain(
 has_error:
     if (assigned_main_thread && process->main_thread == (StThread_InternalRef)th) {
         process->main_thread = NULL;
-    }
-
-    if (th && added_thread_to_process) {
-        remove_thread_from_process((StThread_InternalRef)th);
-    }
-
-    if (th && added_thread_to_scheduler) {
-        StScheduler_RemoveThread((StThread_InternalRef)th);
     }
 
     if (acquired_process) {

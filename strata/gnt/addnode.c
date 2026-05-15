@@ -6,6 +6,7 @@
 #include <strata/gnt_refs.h>
 #include <strata/mm/pool.h>
 #include <strata/status.h>
+#include <strata/ref_control.h>
 #include <strata/utf.h>
 
 StStatus StGnt_AddNode(

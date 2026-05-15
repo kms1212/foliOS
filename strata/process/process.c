@@ -19,6 +19,7 @@
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
+#include <strata/ref_control.h>
 
 #define MODULE_NAME                               "process"
 #define PROCESS_CREATE_DEFERRED_REAP_BUDGET_PAGES ((St_PageCount)256)

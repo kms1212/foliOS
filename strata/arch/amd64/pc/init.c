@@ -246,8 +246,8 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     struct bootinfo_table_header *newbtblhdr = NULL;
     int use_apic = STRATA_ENABLE_ACPI;
     int use_hpet = STRATA_ENABLE_ACPI;
-    int use_acpi = STRATA_ENABLE_ACPI;
-    int use_apm = STRATA_ENABLE_APM;
+    // int use_acpi = STRATA_ENABLE_ACPI;
+    // int use_apm = STRATA_ENABLE_APM;
 
     StLog_EarlyInit(early_print_char, NULL);
 
@@ -451,7 +451,7 @@ __externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
     status = init_acpi();
     if (!CHECK_SUCCESS(status)) {
         LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to initialize ACPI\n");
-        use_acpi = 0;
+        // use_acpi = 0;
         use_apic = 0;
         use_hpet = 0;
     }

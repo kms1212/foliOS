@@ -475,8 +475,7 @@ static StStatus allocate_internal(size_t size __in, int alignment_bits __in, voi
     }
 
     bitmap_word_count = get_subpool_bitmap_word_count(header->object_count);
-    object_index = 0;
-
+    
     StThread_LockPreemption();
 
     for (size_t i = 0; i < bitmap_word_count; i++) {
