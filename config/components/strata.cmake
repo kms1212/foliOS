@@ -36,4 +36,4 @@ folios_build_config_set(
 )
 folios_build_config_set(CONFIG_ENABLE_APM "0" "^[01]$" "Enable APM")
 folios_build_config_set(CONFIG_ENABLE_ACPI "0" "^[01]$" "Enable ACPI")
-folios_build_config_set(CONFIG_ENABLE_MPTABLE "0" "^[01]$" "Enable ACPI")
+folios_build_config_set(CONFIG_ENABLE_MPTABLE "0" "^[01]$" "Enable MP table")
