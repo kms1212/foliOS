@@ -72,16 +72,19 @@ Global Strata types use `St...`; Vellum types use `Vl...`. Some Vellum object
 types still use older lowercase names such as `struct device`; treat those as
 migration targets, but do not rename them mechanically in unrelated patches.
 
-Use `struct St<TypeName>` for ref-counted Strata object bodies:
+Use `struct St<TypeName>` for ref-counted Strata object bodies. If an object is
+a first-class type inside a subsystem namespace, keep the subsystem-local noun
+in the struct name instead of flattening it:
 
 ```c
 struct StThread;
 struct StProcess;
 struct StAddressSpace;
+struct StGnt_Node;
 ```
 
 Reference typedefs are declared next to the object family, not in a central
-`refs.h`:
+`refs.h`. Append the ref suffix to the exact struct body name:
 
 ```c
 typedef struct StThread *StThread_StrongRef __ref_strong;
@@ -89,7 +92,15 @@ typedef struct StThread *StThread_WeakRef __ref_weak;
 typedef struct StThread *StThread_BorrowedRef __ref_borrowed;
 typedef struct StThread *StThread_InternalRef __ref_internal;
 typedef struct StThread *StThread_LockedRef __ref_locked;
+
+typedef struct StGnt_Node *StGnt_Node_StrongRef __ref_strong;
+typedef struct StGnt_Node *StGnt_Node_InternalRef __ref_internal;
 ```
+
+Do not collapse subsystem-local type names when forming ref typedefs. Prefer
+`StGnt_Node_StrongRef` over `StGntNode_StrongRef`, `StGnt_NodeStrongRef`, or a
+separate alias such as `StGntNodeRef`. The long form is intentional: the part
+before the final ref suffix is always the object body type.
 
 Use the suffixes exactly:
 
