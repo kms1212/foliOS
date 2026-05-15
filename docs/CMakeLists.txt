@@ -1,7 +1,27 @@
 find_package(Doxygen QUIET)
 
 if(DOXYGEN_FOUND)
+    include(FetchContent)
+
     set(FOLIOS_DOXYFILE_IN "${CMAKE_CURRENT_SOURCE_DIR}/doxygen/Doxyfile.in")
+
+    option(
+        FOLIOS_DOXYGEN_AWESOME
+        "Use doxygen-awesome-css for generated Doxygen HTML"
+        ON
+    )
+    set(
+        FOLIOS_DOXYGEN_AWESOME_VERSION
+        "v2.4.2"
+        CACHE STRING
+        "doxygen-awesome-css release tag to download"
+    )
+    set(
+        FOLIOS_DOXYGEN_AWESOME_URL_HASH
+        "SHA256=6f527e5733723bfd7243c28f24588dca4714cf977fea6147fdb4ae2050244409"
+        CACHE STRING
+        "Expected hash for the doxygen-awesome-css release archive"
+    )
 
     set(
         FOLIOS_DOXYGEN_EXTRA_INPUTS
@@ -82,6 +102,39 @@ if(DOXYGEN_FOUND)
 
         set("${output_var}" "${_formatted}" PARENT_SCOPE)
     endfunction()
+
+    set(FOLIOS_DOXYGEN_HTML_EXTRA_STYLESHEET "HTML_EXTRA_STYLESHEET =")
+
+    if(FOLIOS_DOXYGEN_AWESOME)
+        set(_doxygen_awesome_css_dir "${CMAKE_CURRENT_BINARY_DIR}/doxygen-awesome-css")
+
+        FetchContent_Populate(
+            doxygen_awesome_css
+            QUIET
+            URL "https://github.com/jothepro/doxygen-awesome-css/archive/refs/tags/${FOLIOS_DOXYGEN_AWESOME_VERSION}.tar.gz"
+            URL_HASH "${FOLIOS_DOXYGEN_AWESOME_URL_HASH}"
+            SOURCE_DIR "${_doxygen_awesome_css_dir}"
+            BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/doxygen-awesome-css-build"
+            SUBBUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/doxygen-awesome-css-subbuild"
+        )
+
+        folios_doxygen_collect_existing(
+            _doxygen_awesome_stylesheets
+            "${_doxygen_awesome_css_dir}/doxygen-awesome.css"
+            "${_doxygen_awesome_css_dir}/doxygen-awesome-sidebar-only.css"
+        )
+        list(LENGTH _doxygen_awesome_stylesheets _doxygen_awesome_stylesheet_count)
+
+        if(NOT _doxygen_awesome_stylesheet_count EQUAL 2)
+            message(FATAL_ERROR "Failed to locate downloaded doxygen-awesome-css stylesheets")
+        endif()
+
+        folios_doxygen_format_setting(
+            FOLIOS_DOXYGEN_HTML_EXTRA_STYLESHEET
+            HTML_EXTRA_STYLESHEET
+            ${_doxygen_awesome_stylesheets}
+        )
+    endif()
 
     function(folios_doxygen_add_target target_name)
         cmake_parse_arguments(

@@ -54,6 +54,10 @@ Generate all documentation outputs:
 cmake --build build --target docs-doxygen-all
 ```
 
+Doxygen HTML uses `doxygen-awesome-css` by default. CMake downloads the pinned
+release into the build directory during configuration instead of tracking it as
+a submodule. Disable the theme with `-DFOLIOS_DOXYGEN_AWESOME=OFF`.
+
 The generated references are split by component:
 
 - `build/docs/doxygen/html`: top-level conceptual docs;
