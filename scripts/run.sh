@@ -1,23 +1,40 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 QEMU_ARCH=
 QEMU_MACHINE=
 OVMF_PATH=
 CPU_TYPE=
-BOOT_TYPE= 
+BOOT_TYPE=
 MEM_SIZE=128M
+DISK_IMAGE=${FOLIOS_DISK_IMAGE:-disk.img}
+FLOPPY_IMAGE=${FOLIOS_FLOPPY_IMAGE:-floppy.img}
+CDROM_IMAGE=${FOLIOS_CDROM_IMAGE:-cdrom.iso}
 CDBOOT=false
 FDBOOT=false
-declare -a ADDITIONAL_FLAGS
 declare -a DEVICES
 declare -a QEMU_DEVICE_FLAGS
 declare -a DRIVES
 declare -a QEMU_DRIVE_FLAGS
+declare -a QEMU_BASE_FLAGS
+declare -a QEMU_EXTRA_ARGS
 
 print_usage() {
-    echo "usage: $0 [-cfhu] machine"
+    echo "usage: $0 [options] machine [qemu-args...]"
+    echo
+    echo "options:"
+    echo "  -c, --cdboot          boot from the CD-ROM image"
+    echo "      --cdrom path      CD-ROM image path (default: ${CDROM_IMAGE})"
+    echo "  -d, --disk path       disk image path (default: ${DISK_IMAGE})"
+    echo "  -f, --fdboot          boot from the floppy image"
+    echo "      --floppy path     floppy image path (default: ${FLOPPY_IMAGE})"
+    echo "  -h, --help            show this help"
+    echo "  -m, --memory size     guest memory size (default: ${MEM_SIZE})"
+    echo "  -u, --uefi            boot through UEFI firmware"
+    echo
+    echo "machine:"
+    echo "  run '$0 help' to list available machine types"
 }
 
 print_machines() {
@@ -33,33 +50,73 @@ print_machines() {
     echo "  mac99-ppc64"
 }
 
-while getopts "cfhm:u" arg; do
-    case $arg in
-        c)
+require_option_value() {
+    if [[ $# -lt 2 || "$2" == -* ]]; then
+        echo "$0: missing value for $1" >&2
+        exit 1
+    fi
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -c | --cdboot)
             CDBOOT=true
+            shift
             ;;
-        f)
+        --cdrom)
+            require_option_value "$@"
+            CDROM_IMAGE="$2"
+            shift 2
+            ;;
+        -d | --disk)
+            require_option_value "$@"
+            DISK_IMAGE="$2"
+            shift 2
+            ;;
+        -f | --fdboot)
             FDBOOT=true
+            shift
             ;;
-        h)
+        --floppy)
+            require_option_value "$@"
+            FLOPPY_IMAGE="$2"
+            shift 2
+            ;;
+        -h | --help)
             print_usage
             exit 0
             ;;
-        m)
-            MEM_SIZE="$OPTARG"
+        -m | --memory)
+            require_option_value "$@"
+            MEM_SIZE="$2"
+            shift 2
             ;;
-        u)
+        -u | --uefi)
             BOOT_TYPE=uefi
+            shift
             ;;
-        *)
+        --)
+            shift
+            break
+            ;;
+        -*)
             print_usage
             exit 1
+            ;;
+        *)
+            break
             ;;
     esac
 done
 
-shift "$((OPTIND - 1))"
+if [[ $# -lt 1 ]]; then
+    print_usage
+    exit 1
+fi
+
 QEMU_MACHINE=$1
+shift
+QEMU_EXTRA_ARGS=("$@")
 
 case $QEMU_MACHINE in
     isapc-ia32)
@@ -76,14 +133,14 @@ case $QEMU_MACHINE in
             mc146818rtc
             pc-testdev
         )
-        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,if=none,format=raw")
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
-            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${FLOPPY_IMAGE},id=rd0,if=none,format=raw")
         fi
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd1")
-            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd1,if=none,format=raw")
         fi
         ;;
     q35-ia32)
@@ -105,11 +162,11 @@ case $QEMU_MACHINE in
             usb-mouse
         )
         DRIVES=(
-            "file=disk.img,id=fd0,if=none,format=raw"
+            "file=${DISK_IMAGE},id=fd0,if=none,format=raw"
         )
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd0")
-            DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd0,if=none,format=raw")
         fi
         ;;
     pc-ia32)
@@ -128,14 +185,14 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=("file=disk.img,id=fd0,index=0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,index=0,if=none,format=raw")
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
-            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${FLOPPY_IMAGE},id=rd0,if=none,format=raw")
         fi
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd1")
-            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd1,if=none,format=raw")
         fi
         ;;
     isapc-amd64)
@@ -151,14 +208,14 @@ case $QEMU_MACHINE in
             mc146818rtc
             pc-testdev
         )
-        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,if=none,format=raw")
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
-            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${FLOPPY_IMAGE},id=rd0,if=none,format=raw")
         fi
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd1")
-            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd1,if=none,format=raw")
         fi
         ;;
     q35-amd64)
@@ -179,10 +236,10 @@ case $QEMU_MACHINE in
             usb-kbd
             usb-mouse
         )
-        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,if=none,format=raw")
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd0")
-            DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd0,if=none,format=raw")
         fi
         ;;
     pc-amd64)
@@ -201,14 +258,14 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,if=none,format=raw")
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
-            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${FLOPPY_IMAGE},id=rd0,if=none,format=raw")
         fi
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("ide-cd,drive=rd1")
-            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd1,if=none,format=raw")
         fi
         ;;
     virt-arm)
@@ -231,10 +288,10 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,if=none,format=raw")
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("scsi-cd,drive=rd1")
-            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd1,if=none,format=raw")
         fi
         ;;
     virt-aarch64)
@@ -257,10 +314,10 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,if=none,format=raw")
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("scsi-cd,drive=rd1")
-            DRIVES+=("file=cdrom.iso,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd1,if=none,format=raw")
         fi
         ;;
     mac99-ppc64)
@@ -280,14 +337,14 @@ case $QEMU_MACHINE in
             pci-serial
             pci-testdev
         )
-        DRIVES=("file=disk.img,id=fd0,if=none,format=raw")
+        DRIVES=("file=${DISK_IMAGE},id=fd0,if=none,format=raw")
         if [ "$FDBOOT" = "true" ]; then
             DEVICES+=("floppy,drive=rd0")
-            DRIVES+=("file=floppy.img,id=rd0,if=none,format=raw")
+            DRIVES+=("file=${FLOPPY_IMAGE},id=rd0,if=none,format=raw")
         fi
         if [ "$CDBOOT" = "true" ]; then
             DEVICES+=("scsi-cd,drive=rd1")
-            DRIVES+=("file=cdrom.iso,id=rd1,if=none,format=raw")
+            DRIVES+=("file=${CDROM_IMAGE},id=rd1,if=none,format=raw")
         fi
         ;;
     help)
@@ -305,7 +362,7 @@ if [ "$BOOT_TYPE" = "uefi" ]; then
         ia32)
             OVMF_PATH="/usr/local/share/edk2.git/ovmf-ia32/OVMF-pure-efi.fd"
             ;;
-        amd64)
+        x86_64)
             OVMF_PATH="/usr/local/share/edk2.git/ovmf-x64/OVMF-pure-efi.fd"
             ;;
         arm)
@@ -330,20 +387,21 @@ for drive in "${DRIVES[@]}"; do
 done
 
 if [ "$CDBOOT" = "true" ]; then
-    ADDITIONAL_FLAGS+=(-boot d)
+    QEMU_EXTRA_ARGS+=(-boot d)
 elif [ "$FDBOOT" = "true" ]; then
-    ADDITIONAL_FLAGS+=(-boot a)
+    QEMU_EXTRA_ARGS+=(-boot a)
 fi
 
-# shellcheck disable=2086
-shift
-qemu-system-$QEMU_ARCH \
-    ${CPU_TYPE:+-cpu $CPU_TYPE} \
-    ${OVMF_PATH:+-bios $OVMF_PATH} \
-    -m $MEM_SIZE \
-    -M $MACHINE_TYPE \
-    -s \
+if [[ -n "${CPU_TYPE}" ]]; then
+    QEMU_BASE_FLAGS+=(-cpu "${CPU_TYPE}")
+fi
+if [[ -n "${OVMF_PATH}" ]]; then
+    QEMU_BASE_FLAGS+=(-bios "${OVMF_PATH}")
+fi
+QEMU_BASE_FLAGS+=(-m "${MEM_SIZE}" -M "${MACHINE_TYPE}" -s)
+
+qemu-system-"${QEMU_ARCH}" \
+    "${QEMU_BASE_FLAGS[@]}" \
     "${QEMU_DRIVE_FLAGS[@]}" \
     "${QEMU_DEVICE_FLAGS[@]}" \
-    "${ADDITIONAL_FLAGS[@]}" \
-    "$@"
+    "${QEMU_EXTRA_ARGS[@]}"

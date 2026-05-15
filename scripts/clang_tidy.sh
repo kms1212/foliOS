@@ -38,10 +38,36 @@ pick_tool() {
 }
 
 print_usage() {
-    echo "usage: $0 [-b build_dir] [-c component] [-j jobs] [--folios-plugin path] [--folios-checks]"
+    echo "usage: $0 [-b build_dir] [-c component] [-j jobs] [--folios-plugin path|auto] [--folios-checks]"
     echo "  component: strata | vellum | all"
+    echo "  --strata              shorthand for --component strata"
+    echo "  --vellum              shorthand for --component vellum"
+    echo "  --all                 shorthand for --component all"
     echo "  --folios-plugin path  load the foliOS clang-tidy plugin"
+    echo "  --folios-plugin auto  auto-detect the plugin under the build directory"
     echo "  --folios-checks       run the foliOS plugin checks filter (${FOLIOS_CLANG_TIDY_CHECKS})"
+    echo "  --folios              shorthand for --folios-plugin auto --folios-checks"
+}
+
+find_folios_plugin() {
+    local build_root="${BUILD_DIR}"
+    local candidate
+
+    if [[ "${build_root}" != /* ]]; then
+        build_root="${REPO_ROOT}/${build_root}"
+    fi
+
+    for candidate in \
+        "${build_root}/tools/clang-tidy-folios/libFoliosClangTidyPlugin.so" \
+        "${build_root}/tools/clang-tidy-folios/libFoliosClangTidyPlugin.dylib" \
+        "${build_root}/tools/clang-tidy-folios/FoliosClangTidyPlugin.dll"; do
+        if [[ -f "${candidate}" ]]; then
+            echo "${candidate}"
+            return 0
+        fi
+    done
+
+    return 1
 }
 
 run_with_compile_db() {
@@ -207,6 +233,25 @@ while [[ $# -gt 0 ]]; do
         ENABLE_FOLIOS_CHECKS=1
         shift
         ;;
+    --folios)
+        ENABLE_FOLIOS_CHECKS=1
+        if [[ -z "${FOLIOS_CLANG_TIDY_PLUGIN}" ]]; then
+            FOLIOS_CLANG_TIDY_PLUGIN=auto
+        fi
+        shift
+        ;;
+    --strata)
+        COMPONENT=strata
+        shift
+        ;;
+    --vellum)
+        COMPONENT=vellum
+        shift
+        ;;
+    --all)
+        COMPONENT=all
+        shift
+        ;;
     -h | --help)
         print_usage
         exit 0
@@ -226,6 +271,15 @@ fi
 
 if ! RUN_CLANG_TIDY_BIN="$(pick_tool "${RUN_CLANG_TIDY_BIN}" "/opt/homebrew/opt/llvm/bin/run-clang-tidy" "/usr/local/opt/llvm/bin/run-clang-tidy")"; then
     RUN_CLANG_TIDY_BIN=""
+fi
+
+if [[ "${FOLIOS_CLANG_TIDY_PLUGIN}" == "auto" ||
+      ( "${ENABLE_FOLIOS_CHECKS}" -ne 0 && -z "${FOLIOS_CLANG_TIDY_PLUGIN}" ) ]]; then
+    if ! FOLIOS_CLANG_TIDY_PLUGIN="$(find_folios_plugin)"; then
+        echo "$0: foliOS clang-tidy plugin not found under ${BUILD_DIR}" >&2
+        echo "$0: hint: build the FoliosClangTidyPlugin target or pass --folios-plugin path" >&2
+        exit 1
+    fi
 fi
 
 case "${COMPONENT}" in
