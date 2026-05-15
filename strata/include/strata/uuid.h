@@ -34,22 +34,24 @@ struct StUuid {
         0xFF                                                                                       \
     )
 
-static __always_inline int StUuid_IsEqual(struct StUuid *uuid1 __in, struct StUuid *uuid2 __in)
+static __always_inline int StUuid_IsEqual(
+    const struct StUuid *uuid1 __in, const struct StUuid *uuid2 __in
+)
 {
     return memcmp(uuid1, uuid2, sizeof(struct StUuid)) == 0;
 }
 
-static __always_inline int StUuid_IsNil(struct StUuid *uuid __in)
+static __always_inline int StUuid_IsNil(const struct StUuid *uuid __in)
 {
     return StUuid_IsEqual(uuid, &UUID_NULL);
 }
 
-static __always_inline int StUuid_IsMax(struct StUuid *uuid __in)
+static __always_inline int StUuid_IsMax(const struct StUuid *uuid __in)
 {
     return StUuid_IsEqual(uuid, &UUID_MAX);
 }
 
-static __always_inline int StUuid_GetVersion(struct StUuid *uuid __in)
+static __always_inline int StUuid_GetVersion(const struct StUuid *uuid __in)
 {
     return (uuid->data[6] >> 4) & 0x0F;
 }

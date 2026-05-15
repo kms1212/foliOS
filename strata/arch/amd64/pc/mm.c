@@ -127,7 +127,7 @@ static StMm_MapFlags pte_to_mapflags(StA_PaePageTableEntry pte)
     return mapflags;
 }
 
-static St_PhysFrame directmap_ptr_to_pfn(const void *ptr)
+static __always_inline St_PhysFrame directmap_ptr_to_pfn(const void *ptr)
 {
     return ADDR_TO_FRAME((uintptr_t)ptr - PAGE_TO_ADDR(MEMMAP_DIRECTMAP_VPN_BASE));
 }

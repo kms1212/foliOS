@@ -8,21 +8,26 @@
 #include <strata/arch/apic.h>
 #include <strata/arch/idt.h>
 #include <strata/arch/interrupt.h>
+#include <strata/arch/interrupt_constants.h>
 #include <strata/arch/intrinsics/idt.h>
 #include <strata/arch/mmu_constants.h>
-#include <strata/arch/interrupt_constants.h>
 
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/gdt_constants.h>
 #include <strata/plat/interrupt_constants.h>
 #include <strata/plat/pic.h>
+#include <strata/plat/thread.h>
 
 #include <strata/compiler.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
 #include <strata/macros.h>
 #include <strata/panic.h>
+#include <strata/process.h>
+#include <strata/scheduler.h>
 #include <strata/status.h>
+#include <strata/thread.h>
+#include <strata/thread_refs.h>
 
 #define MODULE_NAME "irq"
 
@@ -86,6 +91,108 @@ static int use_ioapic;
 
 void StIoapicP_Mask(int num __in);    // TODO: remove after VIF is implemented
 void StIoapicP_Unmask(int num __in);  // TODO: remove after VIF is implemented
+
+static StStatus switch_from_finished_current_thread(
+    struct StIntP_Context *ctx, void **next_stack_ptr
+)
+{
+    StStatus status;
+    StThread_InternalRef current_thread;
+    StThread_InternalRef next_thread;
+
+    assert(ctx);
+    assert(next_stack_ptr);
+
+    *next_stack_ptr = NULL;
+
+    status = StScheduler_Maintain();
+    if (!CHECK_SUCCESS(status)) return status;
+
+    status = StScheduler_GetNextThread(&next_thread);
+    if (!CHECK_SUCCESS(status)) return status;
+    if (!next_thread) return STATUS_INVALID_THREAD;
+
+    status = StScheduler_GetCurrentThread(&current_thread);
+    if (!CHECK_SUCCESS(status)) return status;
+    if (!current_thread || next_thread == current_thread) return STATUS_INVALID_THREAD;
+
+    return StThreadP_Switch(next_thread, ctx, next_stack_ptr);
+}
+
+void *StIntP_HandleUserFault(
+    int num __in,
+    StStatus fault_status __in,
+    int has_fault_addr __in,
+    uintptr_t fault_addr __in,
+    struct StA_InterruptFrame *frame __in,
+    struct StIntP_Context *ctx __in
+)
+{
+    StStatus status;
+    StThread_InternalRef current_thread;
+    void *next_stack_ptr;
+
+    assert(frame);
+    assert(ctx);
+
+    if ((frame->cs & 3) != 3) return NULL;
+
+    status = StScheduler_GetCurrentThread(&current_thread);
+    if (!CHECK_SUCCESS(status) || !current_thread) return NULL;
+
+    if (current_thread->process) {
+        current_thread->process->exit_status = fault_status;
+        current_thread->process->state = PROCESS_STATE_TERMINATED;
+    }
+
+    if (has_fault_addr) {
+        ILOG_WARN(
+            LM_CAT_THREAD,
+            "terminating user thread #%d after fault #%02X status=0x%08" PRIX32
+            " addr=0x%016" PRIXPTR " error=0x%08" PRIX64
+            " rip=0x%04X:0x%016" PRIX64 "\n",
+            (int)current_thread->id,
+            num,
+            (uint32_t)fault_status,
+            fault_addr,
+            frame->error,
+            frame->cs,
+            frame->rip
+        );
+    } else {
+        ILOG_WARN(
+            LM_CAT_THREAD,
+            "terminating user thread #%d after fault #%02X status=0x%08" PRIX32
+            " error=0x%08" PRIX64 " rip=0x%04X:0x%016" PRIX64 "\n",
+            (int)current_thread->id,
+            num,
+            (uint32_t)fault_status,
+            frame->error,
+            frame->cs,
+            frame->rip
+        );
+    }
+
+    StThread_LockPreemption();
+    if (current_thread->state != THREAD_STATE_FINISHED) {
+        current_thread->state = THREAD_STATE_FINISHED;
+        StScheduler_RequestMaintain();
+    }
+    StThread_UnlockPreemption();
+
+    status = switch_from_finished_current_thread(ctx, &next_stack_ptr);
+    if (CHECK_SUCCESS(status) && !next_stack_ptr) status = STATUS_INVALID_THREAD;
+    if (!CHECK_SUCCESS(status) || !next_stack_ptr) {
+        St_PanicFromContext(
+            status,
+            ctx->rbp,
+            frame->rip,
+            "failed to switch away from faulted user thread\n"
+        );
+    }
+
+    return next_stack_ptr;
+}
 
 StStatus StIntP_Init(int _use_ioapic __in)
 {
@@ -461,6 +568,9 @@ __optimize("O0") __externally_visible void *_pc_isr_common(  // NOLINT
 
     if (!current_isr) {
         if (is_fault) {
+            new_esp = StIntP_HandleUserFault(num, STATUS_UNKNOWN_ERROR, 0, 0, frame, ctx);
+            if (new_esp) goto irq_end;
+
             if (has_error) {
                 St_PanicFromContext(
                     STATUS_UNKNOWN_ERROR,

@@ -26,16 +26,6 @@ struct thread_dispatch_context {
     StThread_InternalRef thread;
 };
 
-static int node_name_equals(
-    const struct StGnt_Node *node, const St_Utf32Char *name, size_t name_len
-)
-{
-    if (!node) return 0;
-    if (node->name_len != name_len) return 0;
-
-    return StUtf_CompareUtf32Chars(node->name, node->name_len, name, name_len) == 0;
-}
-
 static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, int *value_out)
 {
     int value = 0;
@@ -52,18 +42,6 @@ static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, in
     return STATUS_SUCCESS;
 }
 
-static int is_process_node(const struct StGnt_Node *node)
-{
-    return node && node->parent == g_gnt_system_processes;
-}
-
-static int is_thread_node(const struct StGnt_Node *node)
-{
-    return node && node_name_equals(node, U"Main", 4) && node->parent &&
-        node_name_equals(node->parent, U"Threads", 7) && node->parent->parent &&
-        is_process_node(node->parent->parent);
-}
-
 static StStatus get_process_from_process_node(
     StGnt_Node_StrongRef process_node, StProcess_BorrowedRef *process_out
 )
@@ -72,7 +50,9 @@ static StStatus get_process_from_process_node(
     int process_id;
     StProcess_BorrowedRef process;
 
-    if (!is_process_node(process_node)) return STATUS_INVALID_HANDLE;
+    if (!process_node || process_node->parent != g_gnt_system_processes) {
+        return STATUS_INVALID_HANDLE;
+    }
 
     status = parse_decimal_id(process_node->name, process_node->name_len, &process_id);
     if (!CHECK_SUCCESS(status)) return status;
@@ -93,10 +73,25 @@ static StStatus get_thread_from_thread_node(
     StProcess_BorrowedRef process;
     StThread_InternalRef thread;
 
-    if (!is_thread_node(thread_node)) return STATUS_INVALID_HANDLE;
+    if (!thread_node || thread_node->name_len != 4 ||
+        StUtf_CompareUtf32Chars(thread_node->name, thread_node->name_len, U"Main", 4) != 0) {
+        return STATUS_INVALID_HANDLE;
+    }
 
-    status =
-        get_process_from_process_node((StGnt_Node_StrongRef)thread_node->parent->parent, &process);
+    if (!thread_node->parent || thread_node->parent->name_len != 7 ||
+        StUtf_CompareUtf32Chars(
+            thread_node->parent->name, thread_node->parent->name_len, U"Threads", 7
+        ) != 0) {
+        return STATUS_INVALID_HANDLE;
+    }
+
+    if (!thread_node->parent->parent) {
+        return STATUS_INVALID_HANDLE;
+    }
+
+    status = get_process_from_process_node(
+        (StGnt_Node_StrongRef)thread_node->parent->parent, &process
+    );
     if (!CHECK_SUCCESS(status)) return status;
 
     thread = process->main_thread;
@@ -297,9 +292,9 @@ StStatus StThreadIf_DispatchCallArgs(
     struct thread_dispatch_context ctx;
 
     if (!node || !args) return STATUS_INVALID_VALUE;
-    if (!is_thread_node(node)) return STATUS_NOT_SUPPORTED;
 
     status = get_thread_from_thread_node(node, &ctx.thread);
+    if (status == STATUS_INVALID_HANDLE) return STATUS_NOT_SUPPORTED;
     if (!CHECK_SUCCESS(status)) return status;
 
     return StIfThr_ServerDispatchArgs(&g_thr_vtable, &ctx, (StHandle)handle, funcid, args);

@@ -168,11 +168,11 @@ static StStatus mcfg_get_entry(
     if (!CHECK_SUCCESS(status)) return status;
 
     status = get_mcfg_entry_count_from_table(mcfg, &entry_count);
-    if (!CHECK_SUCCESS(status)) goto cleanup;
+    if (!CHECK_SUCCESS(status)) goto has_error;
 
     if (index >= entry_count) {
         status = STATUS_ENTRY_NOT_FOUND;
-        goto cleanup;
+        goto has_error;
     }
 
     allocation = &mcfg->entries[index];
@@ -181,9 +181,9 @@ static StStatus mcfg_get_entry(
     entry->start_bus = allocation->start_bus;
     entry->end_bus = allocation->end_bus;
 
-    status = STATUS_SUCCESS;
+    return release_mcfg_table(STATUS_SUCCESS, &table_ref);
 
-cleanup:
+has_error:
     return release_mcfg_table(status, &table_ref);
 }
 

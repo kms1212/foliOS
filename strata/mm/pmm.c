@@ -700,7 +700,7 @@ static struct pmm_metadata *get_metadata(St_PhysFrame pfn)
                                    (pfn * sizeof(struct pmm_metadata)));
 }
 
-static St_PhysFrame get_pfn_from_metadata(struct pmm_metadata *metadata)
+static __always_inline St_PhysFrame get_pfn_from_metadata(struct pmm_metadata *metadata)
 {
     return (St_PhysFrame)((uintptr_t)metadata - PAGE_TO_ADDR(MEMMAP_MFMAREA_VPN_BASE)) /
         sizeof(struct pmm_metadata);

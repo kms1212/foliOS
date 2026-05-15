@@ -34,7 +34,7 @@ typedef uint32_t StStatus __nocast;
 #define STATUS_AREA_ACPI           ((StStatus)0x00E70000)
 #define STATUS_AREA_USER_BASE      ((StStatus)0x00F00000)
 #define STATUS_AREA_USER_MAX       ((StStatus)0x00F70000)
-#define STATUS_AREA_POSIX_EXITCODE ((StStatus)0x00FF0000)
+#define STATUS_AREA_PROCESS_EXIT  ((StStatus)0x00FF0000)
 
 #define STATUS_SUCCESS           MAKE_BASE_STATUS(0, STATUS_AREA_GENERIC, 0x0000)
 #define STATUS_PENDING           MAKE_BASE_STATUS(0, STATUS_AREA_GENERIC, 0x0001)

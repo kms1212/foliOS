@@ -234,11 +234,6 @@ struct dump_gnt_context {
     St_Utf32Char *child_name;
 };
 
-static int dump_gnt_node_is_container(const struct StGnt_Node *node)
-{
-    return node && node->type == GNT_NODETYPE_DIRECTORY;
-}
-
 static struct StGnt_Node *dump_gnt_find_registered_child(
     struct StGnt_Node *parent, const St_Utf32Char *name, size_t name_len
 )
@@ -276,7 +271,7 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
             depth,
             "",
             (char *)ctx->name_buf,
-            dump_gnt_node_is_container(node) ? "/" : ""
+            (node->type == GNT_NODETYPE_DIRECTORY) ? "/" : ""
         );
         while (node->type == GNT_NODETYPE_LINK) {
             node = node->link.virtual.target_node;
@@ -300,7 +295,7 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
                     depth,
                     "",
                     (char *)ctx->name_buf,
-                    dump_gnt_node_is_container(node) ? '/' : ' '
+                    (node->type == GNT_NODETYPE_DIRECTORY) ? '/' : ' '
                 );
             }
         }
@@ -315,7 +310,7 @@ static void dump_gnt_print_node(struct dump_gnt_context *ctx, struct StGnt_Node 
             depth,
             "",
             (char *)ctx->name_buf,
-            dump_gnt_node_is_container(node) ? '/' : ' '
+            (node->type == GNT_NODETYPE_DIRECTORY) ? '/' : ' '
         );
     }
 }
@@ -346,7 +341,7 @@ static void dump_gnt_materialize_children(
     uint64_t next_cookie = 0;
     StStatus status;
 
-    if (!dump_gnt_node_is_container(node)) return;
+    if (node->type != GNT_NODETYPE_DIRECTORY) return;
 
     for (;;) {
         size_t offset = 0;
@@ -430,7 +425,7 @@ void dump_gnt(struct StGnt_Node *node, int depth)
             "- <dump buffer allocation failed: %08" PRIX32 ">\n",
             status
         );
-        goto cleanup;
+        goto has_error;
     }
 
     status = StPool_Allocate(NODENAME_UTF8_MAX + 1, (void **)&ctx->name_buf);
@@ -440,7 +435,7 @@ void dump_gnt(struct StGnt_Node *node, int depth)
             "- <dump name buffer allocation failed: %08" PRIX32 ">\n",
             status
         );
-        goto cleanup;
+        goto has_error;
     }
 
     status =
@@ -451,7 +446,7 @@ void dump_gnt(struct StGnt_Node *node, int depth)
             "- <dump child name buffer allocation failed: %08" PRIX32 ">\n",
             status
         );
-        goto cleanup;
+        goto has_error;
     }
 
     current = node;
@@ -461,7 +456,7 @@ void dump_gnt(struct StGnt_Node *node, int depth)
         dump_gnt_print_node(ctx, current, current_depth);
         dump_gnt_materialize_children(ctx, current, current_depth);
 
-        if (dump_gnt_node_is_container(current) && current->children_head) {
+        if (current->type == GNT_NODETYPE_DIRECTORY && current->children_head) {
             current = current->children_head;
             current_depth++;
             continue;
@@ -470,7 +465,7 @@ void dump_gnt(struct StGnt_Node *node, int depth)
         while (current != node && !current->sibling) {
             current = current->parent;
             current_depth--;
-            if (!current) goto cleanup;
+            if (!current) goto has_error;
         }
 
         if (current == node) break;
@@ -478,7 +473,13 @@ void dump_gnt(struct StGnt_Node *node, int depth)
         current = current->sibling;
     }
 
-cleanup:
+    if (ctx->child_name) StPool_Free(ctx->child_name);
+    if (ctx->name_buf) StPool_Free(ctx->name_buf);
+    if (ctx->entry_buffer) StPool_Free(ctx->entry_buffer);
+    StPool_Free(ctx);
+    return;
+
+has_error:
     if (ctx->child_name) StPool_Free(ctx->child_name);
     if (ctx->name_buf) StPool_Free(ctx->name_buf);
     if (ctx->entry_buffer) StPool_Free(ctx->entry_buffer);

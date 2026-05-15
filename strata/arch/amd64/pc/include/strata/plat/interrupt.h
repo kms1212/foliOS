@@ -37,5 +37,13 @@ StStatus StIntP_Mask(int num __in);
 StStatus StIntP_Unmask(int num __in);
 
 uint64_t StIntP_GetIrqCount(void);
+void *StIntP_HandleUserFault(
+    int num __in,
+    StStatus fault_status __in,
+    int has_fault_addr __in,
+    uintptr_t fault_addr __in,
+    struct StA_InterruptFrame *frame __in,
+    struct StIntP_Context *ctx __in
+);
 
 #endif  // __STRATA_PLAT_INTERRUPT_H__

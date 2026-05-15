@@ -40,17 +40,17 @@ static StGnt_Node_InternalRef find_next_child(
     return NULL;
 }
 
-static int is_module_cookie(uint64_t cookie)
+static __always_inline int is_module_cookie(uint64_t cookie)
 {
     return (cookie & MODULE_COOKIE_FLAG) != 0;
 }
 
-static uint64_t encode_module_cookie(uint64_t cookie)
+static __always_inline uint64_t encode_module_cookie(uint64_t cookie)
 {
     return (cookie << 1) | MODULE_COOKIE_FLAG;
 }
 
-static uint64_t decode_module_cookie(uint64_t cookie)
+static __always_inline uint64_t decode_module_cookie(uint64_t cookie)
 {
     return cookie >> 1;
 }

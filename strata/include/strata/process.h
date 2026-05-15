@@ -37,6 +37,7 @@ struct StProcess {
     StProcess_Id id;
     enum StProcess_Type type;
     enum StProcess_State state;
+    StStatus exit_status;
 
     StGnt_Node_StrongRef gnt_node;
 

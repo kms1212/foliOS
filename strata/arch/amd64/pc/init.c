@@ -175,6 +175,7 @@ static void *page_fault_isr(
     uint64_t fault_addr;
     struct StCpuLocalP_Data *cpu_data;
     StAddressSpace_StrongRef asp;
+    void *next_stack_ptr;
 
     (void)num;
     (void)data;
@@ -185,6 +186,9 @@ static void *page_fault_isr(
 
     status = StMm_HandlePageFault(asp, (uintptr_t)fault_addr, frame->error);
     if (CHECK_SUCCESS(status)) return NULL;
+
+    next_stack_ptr = StIntP_HandleUserFault(num, status, 1, (uintptr_t)fault_addr, frame, ctx);
+    if (next_stack_ptr) return next_stack_ptr;
 
     St_PanicFromContext(
         status,

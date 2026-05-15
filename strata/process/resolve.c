@@ -115,23 +115,6 @@ static StGnt_Node_InternalRef find_registered_child(
     return NULL;
 }
 
-static int node_name_equals(
-    const struct StGnt_Node *node, const St_Utf32Char *name, size_t name_len
-)
-{
-    if (!node) return 0;
-
-    return node->name_len == name_len &&
-        StUtf_CompareUtf32Chars(node->name, node->name_len, name, name_len) == 0;
-}
-
-static int utf32_name_equals(
-    const St_Utf32Char *lhs, size_t lhs_len, const St_Utf32Char *rhs, size_t rhs_len
-)
-{
-    return lhs_len == rhs_len && StUtf_CompareUtf32Chars(lhs, lhs_len, rhs, rhs_len) == 0;
-}
-
 static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, int *value_out)
 {
     int value = 0;
@@ -270,36 +253,24 @@ static StStatus register_leaf_child(
 {
     StStatus status;
     StGnt_Node_StrongRef node;
+    int is_main_thread_leaf;
+
+    is_main_thread_leaf = parent && parent->parent && parent->name_len == 7 &&
+        StUtf_CompareUtf32Chars(parent->name, parent->name_len, U"Threads", 7) == 0 &&
+        name_len == 4 && StUtf_CompareUtf32Chars(name, name_len, U"Main", 4) == 0;
 
     node = (StGnt_Node_StrongRef)find_registered_child(parent, name, name_len);
-    if (node) {
-        node->type = GNT_NODETYPE_LEAF;
-
-        if (parent && parent->parent && node_name_equals(parent, U"Threads", 7) &&
-            utf32_name_equals(name, name_len, U"Main", 4)) {
-            status = register_thread_interfaces(node);
-            node->handler_module = StProcess_Module;
-        } else {
-            status = register_stdio_interfaces(node);
-            node->handler_module = StProcess_Module;
-        }
+    if (!node) {
+        status = StGnt_AddNode(parent, name, &node);
         if (!CHECK_SUCCESS(status)) return status;
-
-        if (node_out) *node_out = node;
-        return STATUS_SUCCESS;
     }
 
-    status = StGnt_AddNode(parent, name, &node);
-    if (!CHECK_SUCCESS(status)) return status;
-
     node->type = GNT_NODETYPE_LEAF;
+    node->handler_module = StProcess_Module;
 
-    if (parent && parent->parent && node_name_equals(parent, U"Threads", 7) &&
-        utf32_name_equals(name, name_len, U"Main", 4)) {
-        node->handler_module = StProcess_Module;
+    if (is_main_thread_leaf) {
         status = register_thread_interfaces(node);
     } else {
-        node->handler_module = StProcess_Module;
         status = register_stdio_interfaces(node);
     }
     if (!CHECK_SUCCESS(status)) return status;

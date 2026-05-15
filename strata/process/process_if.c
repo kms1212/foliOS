@@ -67,11 +67,6 @@ static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, in
     return STATUS_SUCCESS;
 }
 
-static int is_process_node(const struct StGnt_Node *node)
-{
-    return node && node->parent == g_gnt_system_processes;
-}
-
 static StStatus get_current_process(StProcess_BorrowedRef *process_out)
 {
     StStatus status;
@@ -94,7 +89,9 @@ static StStatus get_process_from_process_node(
     int process_id;
     StProcess_BorrowedRef process;
 
-    if (!is_process_node(process_node)) return STATUS_INVALID_HANDLE;
+    if (!process_node || process_node->parent != g_gnt_system_processes) {
+        return STATUS_INVALID_HANDLE;
+    }
 
     status = parse_decimal_id(process_node->name, process_node->name_len, &process_id);
     if (!CHECK_SUCCESS(status)) return status;
@@ -180,13 +177,13 @@ static StStatus prc_terminate(void *context, StHandle handle, StStatus exit_code
     StProcess_BorrowedRef current_process;
 
     (void)handle;
-    (void)exit_code;
     if (!ctx || !ctx->process || !ctx->node) return STATUS_INVALID_VALUE;
 
     status = get_current_process(&current_process);
     if (!CHECK_SUCCESS(status)) return status;
     if (current_process != ctx->process) return STATUS_NOT_SUPPORTED;
 
+    ctx->process->exit_status = exit_code;
     ctx->process->state = PROCESS_STATE_TERMINATED;
 
     /*
@@ -492,9 +489,9 @@ StStatus StProcessIf_DispatchCallArgs(
     struct process_dispatch_context ctx;
 
     if (!node || !args) return STATUS_INVALID_VALUE;
-    if (!is_process_node(node)) return STATUS_NOT_SUPPORTED;
 
     status = get_process_from_process_node(node, &ctx.process);
+    if (status == STATUS_INVALID_HANDLE) return STATUS_NOT_SUPPORTED;
     if (!CHECK_SUCCESS(status)) return status;
 
     ctx.node = node;

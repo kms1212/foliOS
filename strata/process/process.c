@@ -84,6 +84,7 @@ StStatus StProcess_CreateUser(StProcess_StrongRef *process __out)
     proc->gnt_node = NULL;
     StHandle_TableInit(&proc->handle_table);
     proc->state = PROCESS_STATE_PENDING;
+    proc->exit_status = STATUS_PENDING;
     proc->type = PROCESS_TYPE_USER;
 
     StThread_LockPreemption();

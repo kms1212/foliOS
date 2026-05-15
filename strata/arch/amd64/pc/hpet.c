@@ -53,22 +53,22 @@ static int hpet_initialized;
 static uint64_t hpet_last_counter_value;
 static struct StRawSpinlock hpet_lock;
 
-static uint64_t read_hpet64(uintptr_t offset)
+static __always_inline uint64_t read_hpet64(uintptr_t offset)
 {
     return *(volatile uint64_t *)(hpet_mmio_base + offset);
 }
 
-static uint32_t read_hpet32(uintptr_t offset)
+static __always_inline uint32_t read_hpet32(uintptr_t offset)
 {
     return *(volatile uint32_t *)(hpet_mmio_base + offset);
 }
 
-static void write_hpet64(uintptr_t offset, uint64_t value)
+static __always_inline void write_hpet64(uintptr_t offset, uint64_t value)
 {
     *(volatile uint64_t *)(hpet_mmio_base + offset) = value;
 }
 
-static uint64_t get_raw_main_counter(void)
+static __always_inline uint64_t get_raw_main_counter(void)
 {
     if (hpet_counter_is_64bit) {
         return read_hpet64(HPET_REG_MAIN_COUNTER);

@@ -43,7 +43,7 @@ static uintptr_t read_rbp(void)
     return rbp;
 }
 
-static int contains_frame(uintptr_t base, uintptr_t limit, uintptr_t rbp)
+static __always_inline int contains_frame(uintptr_t base, uintptr_t limit, uintptr_t rbp)
 {
     if (limit < base || limit - base < sizeof(struct panic_stack_frame)) return 0;
     return rbp >= base && rbp <= limit - sizeof(struct panic_stack_frame);

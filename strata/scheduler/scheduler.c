@@ -17,7 +17,7 @@
 #define MODULE_NAME                              "sched"
 #define SCHED_DEFAULT_MAINTAIN_INTERVAL_SWITCHES (64U)
 
-static void ensure_scheduler_defaults(struct StScheduler_Data *scheduler)
+static __always_inline void ensure_scheduler_defaults(struct StScheduler_Data *scheduler)
 {
     if (!scheduler->maintain_interval_switches) {
         scheduler->maintain_interval_switches = SCHED_DEFAULT_MAINTAIN_INTERVAL_SWITCHES;

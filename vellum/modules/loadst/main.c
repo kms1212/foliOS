@@ -225,6 +225,19 @@ static VlStatus load_kernel(
 
             if (phdr32.type != PT_LOAD) continue;
 
+            printf(
+                "PHDR #%d:\n"
+                "  paddr=0x%08" PRIX32 "\n"
+                "  vaddr=0x%08" PRIX32 "\n"
+                "  filesz=%08" PRIX32 "\n"
+                "  memsz=%08" PRIX32 "\n",
+                i,
+                phdr32.paddr,
+                phdr32.vaddr,
+                phdr32.filesz,
+                phdr32.memsz
+            );
+
             status = VlElf_LoadProgram(elf, i, NULL);
             if (!CHECK_SUCCESS(status)) return status;
         }
@@ -234,6 +247,19 @@ static VlStatus load_kernel(
             if (!CHECK_SUCCESS(status)) return status;
 
             if (phdr64.type != PT_LOAD) continue;
+
+            printf(
+                "PHDR #%d:\n"
+                "  paddr=0x%016" PRIX64 "\n"
+                "  vaddr=0x%016" PRIX64 "\n"
+                "  filesz=%016" PRIX64 "\n"
+                "  memsz=%016" PRIX64 "\n",
+                i,
+                phdr64.paddr,
+                phdr64.vaddr,
+                phdr64.filesz,
+                phdr64.memsz
+            );
 
             status = VlElf_LoadProgram(elf, i, NULL);
             if (!CHECK_SUCCESS(status)) return status;
@@ -361,7 +387,7 @@ static VlStatus make_bootinfo_table(
     btblentsize += ALIGN(
         sizeof(*entry_unavailable_frames) +
             ((pagetable_frame_count + kernel_ufent_count) *
-                sizeof(*entry_unavailable_frames->entries)),
+             sizeof(*entry_unavailable_frames->entries)),
         16
     );
     btblentcount++;
@@ -496,7 +522,7 @@ static VlStatus make_bootinfo_table(
     benthdr->size = benthdr->header_size +
         ALIGN(sizeof(*entry_unavailable_frames) +
                   ((pagetable_frame_count + kernel_ufent_count) *
-                      sizeof(*entry_unavailable_frames->entries)),
+                   sizeof(*entry_unavailable_frames->entries)),
               16);
     benthdr->flags = BEF_REQUIRED;
 

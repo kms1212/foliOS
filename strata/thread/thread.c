@@ -955,17 +955,21 @@ __noreturn void StThread_Exit(void)
 
     status = StScheduler_GetCurrentThread(&current_thread);
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "cannot get current thread");
+        St_Panic(status, "cannot get current thread for exit");
     }
 
-    if (current_thread->type == THREAD_TYPE_MAIN) {
-        St_Panic(STATUS_INVALID_THREAD, "cannot exit from main thread");
+    if (!current_thread || current_thread->type == THREAD_TYPE_MAIN) {
+        St_Panic(STATUS_INVALID_THREAD, "cannot exit current thread");
     }
 
     StThread_LockPreemption();
-    current_thread->state = THREAD_STATE_FINISHED;
-    StScheduler_RequestMaintain();
-    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "thread #%d finished\n", current_thread->id);
+
+    if (current_thread->state != THREAD_STATE_FINISHED) {
+        current_thread->state = THREAD_STATE_FINISHED;
+        StScheduler_RequestMaintain();
+        LOG_DEBUG(LM_CAT_UNCLASSIFIED, "thread #%d finished\n", current_thread->id);
+    }
+
     StThread_UnlockPreemption();
 
     StThread_Yield();

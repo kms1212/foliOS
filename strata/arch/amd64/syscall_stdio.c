@@ -25,28 +25,24 @@ enum stdio_node_kind {
     STDIO_NODE_STDERR,
 };
 
-static int node_name_equals(
-    const struct StGnt_Node *node, const St_Utf32Char *name, size_t name_len
-)
-{
-    if (!node || !name) return 0;
-    if (node->name_len != name_len) return 0;
-
-    return StUtf_CompareUtf32Chars(node->name, node->name_len, name, name_len) == 0;
-}
-
-static int is_process_node(const struct StGnt_Node *node)
-{
-    return node && node->parent == g_gnt_system_processes;
-}
-
 static enum stdio_node_kind get_stdio_node_kind(const struct StGnt_Node *node)
 {
-    if (!node || !node->parent || !is_process_node(node->parent)) return STDIO_NODE_NONE;
+    if (!node || !node->parent || node->parent->parent != g_gnt_system_processes) {
+        return STDIO_NODE_NONE;
+    }
 
-    if (node_name_equals(node, U"Stdin", 5)) return STDIO_NODE_STDIN;
-    if (node_name_equals(node, U"Stdout", 6)) return STDIO_NODE_STDOUT;
-    if (node_name_equals(node, U"Stderr", 6)) return STDIO_NODE_STDERR;
+    if (node->name_len == 5 &&
+        StUtf_CompareUtf32Chars(node->name, node->name_len, U"Stdin", 5) == 0) {
+        return STDIO_NODE_STDIN;
+    }
+    if (node->name_len == 6 &&
+        StUtf_CompareUtf32Chars(node->name, node->name_len, U"Stdout", 6) == 0) {
+        return STDIO_NODE_STDOUT;
+    }
+    if (node->name_len == 6 &&
+        StUtf_CompareUtf32Chars(node->name, node->name_len, U"Stderr", 6) == 0) {
+        return STDIO_NODE_STDERR;
+    }
 
     return STDIO_NODE_NONE;
 }

@@ -116,13 +116,6 @@ const struct StUuid StGntIf_Uuid_Thread = {
     },
 };
 
-static int uuid_equals(const struct StUuid *lhs, const struct StUuid *rhs)
-{
-    if (!lhs || !rhs) return 0;
-
-    return memcmp(lhs, rhs, sizeof(*lhs)) == 0;
-}
-
 StStatus StGnt_RegisterInterface(
     StGnt_Node_StrongRef node __inout,
     const struct StUuid *if_uuid __in,
@@ -139,7 +132,7 @@ StStatus StGnt_RegisterInterface(
 
     entry = node->interface_head;
     while (entry) {
-        if (uuid_equals(&entry->uuid, if_uuid) && entry->abi_version == abi_version) {
+        if (StUuid_IsEqual(&entry->uuid, if_uuid) && entry->abi_version == abi_version) {
             if (entry->funcid_span != funcid_span) return STATUS_CONFLICTING_STATE;
             return STATUS_SUCCESS;
         }
@@ -182,7 +175,7 @@ StStatus StGnt_QueryInterface(
 
     entry = node->interface_head;
     while (entry) {
-        if (uuid_equals(&entry->uuid, if_uuid) && entry->abi_version <= request_abiver &&
+        if (StUuid_IsEqual(&entry->uuid, if_uuid) && entry->abi_version <= request_abiver &&
             (!found || entry->abi_version > matched_abiver)) {
             matched_base = funcid_base;
             matched_abiver = entry->abi_version;
