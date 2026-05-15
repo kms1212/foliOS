@@ -7,14 +7,22 @@ This page describes standard clang-tidy usage and foliOS custom checks.
 Configure with clang-tidy enabled:
 
 ```sh
-cmake -S . -B build -DTARGET=amd64-pc-bios -DENABLE_CLANG_TIDY=ON
+export PATH="$(pwd)/folisdk/build/folisdk-host/bin:$(pwd)/folisdk/build/folisdk-x86_64/bin:$PATH"
+
+folisdk/build/folisdk-host/bin/cmake \
+    -S . \
+    -B build \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DTARGET=amd64-pc-bios \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DENABLE_CLANG_TIDY=ON
 ```
 
 Then run the component target:
 
 ```sh
-cmake --build build --target tidy-strata
-cmake --build build --target tidy-vellum
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-strata
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-vellum
 ```
 
 The scripts add the target triple used by the corresponding external project.
@@ -30,16 +38,16 @@ the actionable diagnostics.
 Build the plugin and run only the foliOS checks:
 
 ```sh
-cmake --build build --target FoliosClangTidyPlugin
+folisdk/build/folisdk-host/bin/cmake --build build --target FoliosClangTidyPlugin
 scripts/clang_tidy.sh --build-dir build --component strata --folios
 ```
 
 The CMake convenience targets do the same thing when the plugin target exists:
 
 ```sh
-cmake --build build --target tidy-folios-strata
-cmake --build build --target tidy-folios-vellum
-cmake --build build --target tidy-folios-all
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-folios-strata
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-folios-vellum
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-folios-all
 ```
 
 `--folios` is shorthand for loading the plugin from the build directory and

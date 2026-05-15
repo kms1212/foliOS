@@ -8,8 +8,16 @@ because the bootloader architecture is IA-32.
 ## Typical Flow
 
 ```sh
-cmake -S . -B build -DTARGET=amd64-pc-bios
-cmake --build build
+(cd folisdk && ./build.py --arch x86_64 --builddir-layout --jobs 18)
+export PATH="$(pwd)/folisdk/build/folisdk-host/bin:$(pwd)/folisdk/build/folisdk-x86_64/bin:$PATH"
+
+folisdk/build/folisdk-host/bin/cmake \
+    -S . \
+    -B build \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DTARGET=amd64-pc-bios \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+folisdk/build/folisdk-host/bin/cmake --build build --parallel=18
 scripts/mkdisk.sh -a ia32 disk.img
 scripts/run.sh --disk disk.img pc-amd64
 ```

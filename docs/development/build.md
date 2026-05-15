@@ -1,14 +1,38 @@
 # Build {#development_build}
 
-The root CMake project drives host tools directly and builds Vellum and Strata
-as external projects with component-specific toolchains.
+The root CMake project drives host tools, user-space programs, Vellum, and
+Strata from the foliSDK-provided CMake. Build foliSDK first and keep its host
+and target tool directories at the front of `PATH` while configuring foliOS.
+
+## SDK Toolchain
+
+Build foliSDK with the build-directory layout:
+
+```sh
+(cd folisdk && ./build.py --arch x86_64 --builddir-layout --jobs 18)
+```
+
+Then expose the SDK tools from the root of the foliOS checkout:
+
+```sh
+export PATH="$(pwd)/folisdk/build/folisdk-host/bin:$(pwd)/folisdk/build/folisdk-x86_64/bin:$PATH"
+```
+
+Use `folisdk/build/folisdk-host/bin/cmake` for configure and build commands.
+This keeps the kernel, bootloader, SDK runtime, and user-space programs on the
+same toolchain path.
 
 ## Configure
 
 The common development target is BIOS-based AMD64:
 
 ```sh
-cmake -S . -B build -DTARGET=amd64-pc-bios
+folisdk/build/folisdk-host/bin/cmake \
+    -S . \
+    -B build \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DTARGET=amd64-pc-bios \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ```
 
 `TARGET` follows the `arch-platform-firmware` shape. The top-level build derives
@@ -30,14 +54,14 @@ That split is also reflected in disk image creation.
 Build everything:
 
 ```sh
-cmake --build build
+folisdk/build/folisdk-host/bin/cmake --build build --parallel=18
 ```
 
 Build one side explicitly:
 
 ```sh
-cmake --build build --target vellum
-cmake --build build --target strata
+folisdk/build/folisdk-host/bin/cmake --build build --target vellum
+folisdk/build/folisdk-host/bin/cmake --build build --target strata
 ```
 
 The external project build directories are normally:
@@ -51,7 +75,7 @@ The external project build directories are normally:
 Generate all documentation outputs:
 
 ```sh
-cmake --build build --target docs-doxygen-all
+folisdk/build/folisdk-host/bin/cmake --build build --target docs-doxygen-all
 ```
 
 Doxygen HTML uses `doxygen-awesome-css` by default. CMake downloads the pinned
@@ -70,15 +94,21 @@ The generated references are split by component:
 Configure with clang-tidy enabled:
 
 ```sh
-cmake -S . -B build -DTARGET=amd64-pc-bios -DENABLE_CLANG_TIDY=ON
+folisdk/build/folisdk-host/bin/cmake \
+    -S . \
+    -B build \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DTARGET=amd64-pc-bios \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+    -DENABLE_CLANG_TIDY=ON
 ```
 
 Run the scripted targets after the component build exists:
 
 ```sh
-cmake --build build --target tidy-strata
-cmake --build build --target tidy-vellum
-cmake --build build --target tidy-all
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-strata
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-vellum
+folisdk/build/folisdk-host/bin/cmake --build build --target tidy-all
 ```
 
 The tidy scripts use the root `.clang-tidy` configuration and add target-aware

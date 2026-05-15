@@ -183,8 +183,8 @@ both reviewers and local clang-tidy checks.
 
 ### Prerequisites
 
-* CMake 3.13+
-* LLVM/Clang or GCC (cross-compiler for amd64/i686, e.g. x86_64-elf-gcc)
+* Python 3 and the host build tools needed by foliSDK.
+* `i686-elf-gcc` for the IA-32 BIOS bootloader build.
 * QEMU (for testing)
 
 ### Steps
@@ -194,9 +194,18 @@ both reviewers and local clang-tidy checks.
 git clone https://github.com/kms1212/foliOS --recursive
 cd foliOS
 
-# Configure and build for BIOS-based amd64 machine
-cmake -S. -Bbuild -DTARGET=amd64-pc-bios
-cmake --build build
+# Build the canonical SDK/toolchain layout used by foliOS
+(cd folisdk && ./build.py --arch x86_64 --builddir-layout --jobs 18)
+export PATH="$(pwd)/folisdk/build/folisdk-host/bin:$(pwd)/folisdk/build/folisdk-x86_64/bin:$PATH"
+
+# Configure and build for BIOS-based amd64 machine using foliSDK CMake
+folisdk/build/folisdk-host/bin/cmake \
+    -S . \
+    -B build \
+    -DCMAKE_BUILD_TYPE=Debug \
+    -DTARGET=amd64-pc-bios \
+    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+folisdk/build/folisdk-host/bin/cmake --build build --parallel=18
 
 # Generate disk image and run 
 # Note: option "-a ia32" is correct because the bootloader is still built for IA-32
