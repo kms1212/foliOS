@@ -14,8 +14,8 @@
 struct StAllocationOwner {
     struct StRefControlBlock ref_control;
 
-    void *first_vmm_node;
-    void *last_vmm_node;
+    void *first_vmm_reservation;
+    void *last_vmm_reservation;
     St_PageCount page_usage_count;
     St_PageCount page_usage_peak_count;
 };

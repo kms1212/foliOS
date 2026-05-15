@@ -73,7 +73,7 @@ static StStatus init_load_segment(
     segment->data_offset = data_offset;
     segment->file_size = file_size;
     segment->mem_size = mem_size;
-    segment->map_flags = MF_USER_DEFAULT | MF_ZERO_FILL;
+    segment->map_flags = MF_USER_DEFAULT;
 
     if (!(segment_flags & PF_X)) {
         segment->map_flags |= MF_NO_EXECUTE;

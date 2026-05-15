@@ -792,7 +792,7 @@ StStatus StMmP_MapLocalContiguousMemory(
 {
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    return map_memory(asp, pfn, vpn, count, mapflags);
+    return map_memory(asp, pfn, vpn, count, mapflags | MF_ZERO_FILL);
 }
 
 static StStatus set_managed_memory(
@@ -972,9 +972,8 @@ StStatus StMmP_MapLocalSparseMemory(
 
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
     if (mapflags & MF_IMMEDIATE) return STATUS_SUCCESS;
-    if (!(mapflags & MF_ZERO_FILL)) return STATUS_NOT_SUPPORTED;
 
-    status = set_managed_memory(asp, vpn, count, mapflags);
+    status = set_managed_memory(asp, vpn, count, mapflags | MF_ZERO_FILL);
     if (!CHECK_SUCCESS(status)) {
         clear_managed_memory(asp, vpn, count);
     }

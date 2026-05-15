@@ -231,7 +231,7 @@ static struct subpool_header *find_subpool_header_from_ptr(
     if (!CHECK_SUCCESS(status)) return NULL;
     if (!(map_flags & MF_POOL_SUBPOOL)) return NULL;
 
-    status = StVmm_GetGlobalAllocationRange(VMM_DOMAIN_KERNEL_SLOW, vpn, &begin_vpn, &end_vpn);
+    status = StVmm_GetGlobalReservedRange(VMM_DOMAIN_KERNEL_SLOW, vpn, &begin_vpn, &end_vpn);
     if (!CHECK_SUCCESS(status)) return NULL;
     if (end_vpn <= begin_vpn) return NULL;
     if ((end_vpn - begin_vpn) != STRATA_MM_POOL_SUBPOOL_PAGE_COUNT) return NULL;
@@ -260,7 +260,7 @@ static int find_large_allocation_range_from_ptr(
     if (!CHECK_SUCCESS(status)) return 0;
     if (!(map_flags & MF_POOL_LARGE_ALLOC)) return 0;
 
-    status = StVmm_GetGlobalAllocationRange(VMM_DOMAIN_KERNEL_SLOW, vpn, &begin_vpn, &end_vpn);
+    status = StVmm_GetGlobalReservedRange(VMM_DOMAIN_KERNEL_SLOW, vpn, &begin_vpn, &end_vpn);
     if (!CHECK_SUCCESS(status)) return 0;
 
     if ((uintptr_t)ptr != PAGE_TO_ADDR(begin_vpn)) return 0;

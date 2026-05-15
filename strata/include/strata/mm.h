@@ -71,6 +71,7 @@ StStatus StMm_MapLocal(
     StMm_MapFlags map_flags __in
 );
 StStatus StMm_MapGlobalTo(
+    enum StVmm_Domain domain __in,
     St_VirtPage vpn __in,
     St_PhysFrame pfn __in,
     St_PageCount count __in,
@@ -122,6 +123,7 @@ StStatus StMm_AllocateLocalSparse(
     StMm_MapFlags map_flags __in
 );
 StStatus StMm_AllocateGlobalContiguousTo(
+    enum StVmm_Domain domain __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
     StAllocationOwner_StrongRef owner __in,
@@ -154,9 +156,76 @@ StStatus StMm_AllocateLocalImageTo(
     StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
-    const struct StMm_ImageBacking *backing __in,
+    const struct StMm_ImageBacking *image_backing __in,
     StMm_AllocFlags alloc_flags __in,
     StMm_MapFlags map_flags __in
+);
+
+StStatus StMm_ReserveGlobalContiguous(
+    enum StVmm_Domain domain __in,
+    St_VirtPage *vpn __out,
+    St_PageCount count __in,
+    StAllocationOwner_StrongRef owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_ReserveLocalContiguous(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage *vpn __out,
+    St_PageCount count __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_ReserveGlobalSparse(
+    enum StVmm_Domain domain __in,
+    St_VirtPage *vpn __out,
+    St_PageCount count __in,
+    StAllocationOwner_StrongRef owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_ReserveLocalSparse(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage *vpn __out,
+    St_PageCount count __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_ReserveGlobalContiguousTo(
+    enum StVmm_Domain domain __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StAllocationOwner_StrongRef owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_ReserveLocalContiguousTo(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_ReserveGlobalSparseTo(
+    enum StVmm_Domain domain __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StAllocationOwner_StrongRef owner __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_ReserveLocalSparseTo(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_AllocFlags alloc_flags __in,
+    StMm_MapFlags map_flags __in
+);
+StStatus StMm_CommitGlobal(
+    enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in
+);
+StStatus StMm_CommitLocal(
+    StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 
 void StMm_FreeGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_PageCount count __in);

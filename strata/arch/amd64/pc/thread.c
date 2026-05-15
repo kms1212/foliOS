@@ -265,7 +265,7 @@ StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in)
         th->kmode_stack_page_count,
         NULL,
         AF_DEFAULT,
-        MF_KERNEL_DEFAULT
+        MF_KERNEL_DEFAULT | MF_GUARD
     );
     if (!CHECK_SUCCESS(status)) return status;
 
@@ -362,7 +362,7 @@ StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
         ustack_base_vpn,
         th->umode_stack_page_count,
         AF_DEFAULT,
-        MF_USER_DEFAULT | MF_ZERO_FILL
+        MF_USER_DEFAULT | MF_GUARD | MF_GUARD_GROW_DOWN
     );
     if (!CHECK_SUCCESS(status)) return status;
 

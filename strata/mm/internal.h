@@ -34,29 +34,33 @@ _Static_assert(
     "pmm metadata struct size mismatch (sizeof(struct pmm_metadata) != 64)"
 );
 
-#define AF_VMM_HIDDEN_AT_MAP ((StMm_MapFlags)0x10000000)
+#define AF_VMM_RESERVATION_MAP       ((StMm_AllocFlags)0x10000000)
+#define AF_VMM_RESERVATION_SPARSE    ((StMm_AllocFlags)0x20000000)
+#define AF_VMM_RESERVATION_ON_DEMAND ((StMm_AllocFlags)0x40000000)
+#define AF_VMM_RESERVATION_MASK                                                                  \
+    (AF_VMM_RESERVATION_MAP | AF_VMM_RESERVATION_SPARSE | AF_VMM_RESERVATION_ON_DEMAND)
 
-struct vmm_alloc_domain {
-    struct vmm_alloc_node *head;
+struct vmm_reservation_domain {
+    struct vmm_reservation_node *head;
     St_VirtPage base_vpn, limit_vpn;
     St_PageCount free_count;
     int initialized;
 };
 
-#define AT_ALLOC 0
-#define AT_MAP   1
+#define VMM_RESERVATION_ALLOC 0
+#define VMM_RESERVATION_MAP   1
 
-struct vmm_alloc_node {
+struct vmm_reservation_node {
     St_VirtPage base_vpn, limit_vpn;
     StAllocationOwner_StrongRef owner;
-    struct vmm_alloc_node *owner_prev, *owner_next;
-    struct vmm_alloc_node *domain_prev, *domain_next;
+    struct vmm_reservation_node *owner_prev, *owner_next;
+    struct vmm_reservation_node *domain_prev, *domain_next;
     StAddressSpace_InternalRef asp;
-    uint32_t alloc_type;
-    enum StVmm_BackingType backing_type;
+    uint32_t reservation_type;
+    St_PageCount guard_page_count;
     StMm_AllocFlags alloc_flags;
     StMm_MapFlags map_flags;
-    struct StMm_ImageBacking image_backing;
+    struct StVmm_PageMappingPolicy mapping_policy;
     enum StVmm_Domain domain;
     uint8_t is_live;
 };

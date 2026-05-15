@@ -18,7 +18,7 @@ struct StAddressSpace {
 
     struct StAddressSpaceP_PlatformData platform_data;
 
-    void *user_alloc_head;
+    void *user_reservation_head;
     St_VirtPage user_base_vpn, user_limit_vpn;
     St_PageCount user_free_count;
 };
