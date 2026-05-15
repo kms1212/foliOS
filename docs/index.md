@@ -1,9 +1,5 @@
 # foliOS Documentation {#mainpage}
 
-This tree is the human-written documentation source for foliOS. It is included
-in the Doxygen input set so conceptual design notes and generated API reference
-can be browsed from the same documentation build.
-
 foliOS is an experimental operating system built around Strata, a kernel that
 explores the Ambikernel model: conventional process isolation where it is still
 the right tool, combined with hardware-assisted low-overhead domains for kernel
@@ -35,8 +31,11 @@ targets include their corresponding headers and component-local markdown.
 
 ## Policy
 
-Write design intent and operational contracts here. Generated reference output
-belongs under the build directory, normally under `build/docs/doxygen`.
+Write design intent and operational contracts in this tree. The markdown files
+are included in the Doxygen input set so conceptual design notes and generated
+API reference can be browsed from the same documentation build. Generated
+reference output belongs under the build directory, normally under
+`build/docs/doxygen`.
 
 Avoid documenting aspirational features as if they are already complete. When a
 feature is still a research direction, say so directly and point readers to the
