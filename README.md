@@ -201,7 +201,7 @@ cmake --build build
 # Generate disk image and run 
 # Note: option "-a ia32" is correct because the bootloader is still built for IA-32
 scripts/mkdisk.sh -a ia32 disk.img
-scripts/run.sh pc-amd64
+scripts/run.sh --disk disk.img pc-amd64
 ```
 
 ## 📁 Directory Structure

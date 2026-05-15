@@ -1,6 +1,6 @@
-# foliOS Coding Style
+# foliOS Coding Style {#development_coding_style}
 
-This document summarizes the coding style used by handwritten FoliOS code after
+This document summarizes the coding style used by handwritten foliOS code after
 reviewing the current `strata`, `vellum`, `common`, and SDK integration code.
 It is the single source of truth for both naming and day-to-day C style.
 
@@ -11,10 +11,10 @@ global macro, or type name that is too broad for the concept it represents.
 ## Scope
 
 These rules apply to handwritten kernel, bootloader, common loader, SIDL glue,
-and FoliOS SDK glue code.
+and foliOS SDK glue code.
 
 Vendored or upstream-derived code, especially most of `folisdk/musl-strata`, may
-keep its upstream style. FoliOS-specific edits inside such code should still
+keep its upstream style. foliOS-specific edits inside such code should still
 respect the semantic rules here when practical, but do not churn unrelated
 upstream formatting.
 
@@ -55,7 +55,7 @@ Do not introduce a private helper whose name only hides a condition:
 
 ```c
 // Prefer this when the condition is local policy.
-if (!node || node->parent != g_gnt_system_processes) return STATUS_INVALID_HANDLE;
+if (!node || node->type != expected_type) return STATUS_INVALID_HANDLE;
 
 // Avoid this unless "process node" has a reusable, non-trivial contract.
 if (!is_process_node(node)) return STATUS_INVALID_HANDLE;
@@ -151,6 +151,20 @@ including scalar values:
 
 Function definitions should repeat the annotations so custom clang-tidy checks
 can validate the implementation, not only the declaration.
+
+Range parameters use two fixed shapes:
+
+- `base` and `limit` describe an inclusive range: `[base, limit]`.
+- any position parameter paired with `count` describes a half-open range from
+  that position: `[position, position + count)`.
+
+The position parameter does not need to be named `start`, `begin`, or `base`.
+For example, `StMm_FreeGlobal(domain, vpn, count)` describes the virtual page
+range `[vpn, vpn + count)`.
+
+Do not use `limit` for an exclusive end. If a lower-level ABI or external format
+already uses a different convention, convert at the boundary and document that
+conversion locally.
 
 For required outputs and in/out parameters, assert at entry:
 
@@ -421,6 +435,24 @@ Comments should explain invariants, ownership, memory ordering, ABI contracts,
 hardware behavior, or non-obvious cleanup. Avoid comments that restate the next
 line of code.
 
+Public or cross-component declarations in headers should use Doxygen comments
+as the canonical reference text. Keep generated reference documentation thin:
+the contract should live next to the declaration it describes.
+
+Header comments should cover the details a caller cannot infer from the type
+alone:
+
+- ownership, reference type, and release responsibility;
+- nullability that is not already obvious from annotations;
+- locking, preemption, interrupt, or panic-path constraints;
+- status codes and expected failure modes;
+- resource lifetime and cleanup responsibilities;
+- struct field invariants when fields are visible outside the owning file.
+
+Do not document every trivial scalar field. For internal structs, document the
+groups of fields that carry an invariant, such as intrusive list links, refcount
+state, stack ownership, mapping policy, or hardware-visible layout.
+
 Good comments in this codebase usually explain why a path exists:
 
 - panic/interrupt/symbol lookup constraints;
@@ -451,7 +483,8 @@ Use typed page/frame/count values:
 
 - `St_PhysFrame` for physical frame numbers;
 - `St_VirtPage` for virtual page numbers;
-- `St_PageCount` for page counts;
+- `St_PageCount` for page-sized counts. PMM code may use it as a frame count,
+  while VMM/MM code usually uses it as a page count;
 - `uintptr_t` for byte addresses and address arithmetic.
 
 Use the provided conversion macros such as `ADDR_TO_PAGE`, `PAGE_TO_ADDR`,
@@ -512,7 +545,7 @@ ninja -C build vellum -j 4
 git diff --check
 ```
 
-For the FoliOS-specific clang-tidy plugin, the important checks are:
+For the foliOS-specific clang-tidy plugin, the important checks are:
 
 - `folios-api-annotations`: public API parameters need annotations;
 - `folios-api-nullability`: annotation contracts must match null handling;

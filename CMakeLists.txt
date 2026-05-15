@@ -30,6 +30,8 @@ else()
     set(VELLUM_TARGET_ARCH "${TARGET_ARCH}")
 endif()
 
+add_subdirectory(docs)
+
 if (ENABLE_CLANG_TIDY)
     if ("${TARGET_ARCH}" STREQUAL "amd64")
         set(VELLUM_C_CLANG_TIDY "clang-tidy;--config-file=${CMAKE_SOURCE_DIR}/.clang-tidy;--extra-arg=-D__CLANG_TIDY__;--extra-arg=--target=i686-elf")
@@ -114,3 +116,29 @@ add_custom_target(
     USES_TERMINAL
     COMMENT "Running clang-tidy for all components"
 )
+
+if (TARGET FoliosClangTidyPlugin)
+    add_custom_target(
+        tidy-folios-strata
+        COMMAND "${CMAKE_SOURCE_DIR}/scripts/clang_tidy.sh" --build-dir "${CMAKE_BINARY_DIR}" --component strata --folios
+        DEPENDS strata FoliosClangTidyPlugin
+        USES_TERMINAL
+        COMMENT "Running foliOS clang-tidy checks for strata"
+    )
+
+    add_custom_target(
+        tidy-folios-vellum
+        COMMAND "${CMAKE_SOURCE_DIR}/scripts/clang_tidy.sh" --build-dir "${CMAKE_BINARY_DIR}" --component vellum --folios
+        DEPENDS vellum FoliosClangTidyPlugin
+        USES_TERMINAL
+        COMMENT "Running foliOS clang-tidy checks for vellum"
+    )
+
+    add_custom_target(
+        tidy-folios-all
+        COMMAND "${CMAKE_SOURCE_DIR}/scripts/clang_tidy.sh" --build-dir "${CMAKE_BINARY_DIR}" --component all --folios
+        DEPENDS strata vellum FoliosClangTidyPlugin
+        USES_TERMINAL
+        COMMENT "Running foliOS clang-tidy checks for all components"
+    )
+endif()

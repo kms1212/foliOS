@@ -11,16 +11,30 @@
 #define REFCTL_BLOCK_DYING       ((uint32_t)0x00000001)
 #define REFCTL_BLOCK_REAP_QUEUED ((uint32_t)0x00000002)
 
+/** Finalizer called when the last strong reference is released. */
 typedef void (*StRefControlBlock_FinalizeFunc)(void *object __in);
 
+/**
+ * Intrusive reference-control block for first-class Strata objects.
+ *
+ * Ref-counted object bodies embed this as their first field. Object-specific
+ * Acquire/Release wrappers should be used outside the owning implementation so
+ * reference meaning remains visible in the API.
+ */
 struct StRefControlBlock {
+    /** Strong reference count. */
     atomic_uint_fast32_t ref_count;
+    /** REFCTL_BLOCK_* lifetime/reap flags. */
     uint32_t flags;
+    /** Page cleanup budget recorded for deferred reap paths. */
     St_PageCount deferred_reap_page_count;
+    /** Owning object passed back to finalize. */
     void *object;
+    /** Optional finalizer run on last release. */
     StRefControlBlock_FinalizeFunc finalize;
 };
 
+/** Initialize an embedded reference-control block. */
 static inline void StRefControlBlock_Init(
     struct StRefControlBlock *ref_control __out,
     uint32_t ref_count __in,
@@ -37,6 +51,7 @@ static inline void StRefControlBlock_Init(
     ref_control->finalize = finalize;
 }
 
+/** Increment the strong reference count. */
 static inline void StRefControlBlock_Acquire(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);
@@ -44,6 +59,7 @@ static inline void StRefControlBlock_Acquire(struct StRefControlBlock *ref_contr
     atomic_fetch_add_explicit(&ref_control->ref_count, 1, memory_order_relaxed);
 }
 
+/** Release one strong reference and run finalize on the last release. */
 static inline int StRefControlBlock_Release(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);
@@ -59,6 +75,7 @@ static inline int StRefControlBlock_Release(struct StRefControlBlock *ref_contro
     return 1;
 }
 
+/** Return nonzero after public removal has marked the object dying. */
 static inline int StRefControlBlock_IsDying(const struct StRefControlBlock *ref_control __in)
 {
     assert(ref_control);
@@ -66,6 +83,7 @@ static inline int StRefControlBlock_IsDying(const struct StRefControlBlock *ref_
     return (ref_control->flags & REFCTL_BLOCK_DYING) != 0;
 }
 
+/** Mark an object dying so new public acquisition/lookup can reject it. */
 static inline void StRefControlBlock_MarkDying(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);
@@ -73,6 +91,7 @@ static inline void StRefControlBlock_MarkDying(struct StRefControlBlock *ref_con
     ref_control->flags |= REFCTL_BLOCK_DYING;
 }
 
+/** Return nonzero if the object is already queued for deferred reap. */
 static inline int StRefControlBlock_IsReapQueued(const struct StRefControlBlock *ref_control __in)
 {
     assert(ref_control);
@@ -80,6 +99,7 @@ static inline int StRefControlBlock_IsReapQueued(const struct StRefControlBlock 
     return (ref_control->flags & REFCTL_BLOCK_REAP_QUEUED) != 0;
 }
 
+/** Mark an object queued for deferred reap. */
 static inline void StRefControlBlock_MarkReapQueued(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);
@@ -87,6 +107,7 @@ static inline void StRefControlBlock_MarkReapQueued(struct StRefControlBlock *re
     ref_control->flags |= REFCTL_BLOCK_REAP_QUEUED;
 }
 
+/** Clear the deferred reap marker after the object is actually reaped. */
 static inline void StRefControlBlock_ClearReapQueued(struct StRefControlBlock *ref_control __inout)
 {
     assert(ref_control);

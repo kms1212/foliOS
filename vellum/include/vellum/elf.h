@@ -500,36 +500,91 @@ struct elf64_note {
 } __packed;
 
 struct elf_file {
+    /** Backing file handle used for lazy program and section reads. */
     FILE *fp;
+
+    /** Cached ELF identity and native-width executable header. */
     union {
         struct elf_ident ident;
         struct elf32_ehdr ehdr32;
         struct elf64_ehdr ehdr64;
     };
+
+    /** Cached section-header string table. */
     char *shstrtab;
+
+    /** Cached symbol string table, if the ELF file has one. */
     char *strtab;
+
+    /** Cached symbol table in the file's native ELF class. */
     union {
         struct elf32_sym *symtab32;
         struct elf64_sym *symtab64;
     };
+
+    /** Size in bytes of the cached native symbol table. */
     size_t symtab_size;
 };
 
+/**
+ * Opens and validates an ELF file from the active filesystem.
+ */
 VlStatus VlElf_Open(const char *path, struct elf_file **elf);
+
+/**
+ * Closes an ELF file and releases all cached tables.
+ */
 void VlElf_Close(struct elf_file *elf);
 
+/**
+ * Copies the native ELF executable header into `buf`.
+ */
 VlStatus VlElf_GetHeader(struct elf_file *elf, void *buf, size_t len);
 
+/**
+ * Copies one native program header into `buf`.
+ */
 VlStatus VlElf_GetProgramHeader(struct elf_file *elf, unsigned int index, void *buf, size_t lne);
+
+/**
+ * Loads one program segment to the physical or virtual address selected by the
+ * active loader mode.
+ */
 VlStatus VlElf_LoadProgram(struct elf_file *elf, unsigned int index, void *paddr);
 
+/**
+ * Copies one native section header into `buf`.
+ */
 VlStatus VlElf_GetSectionHeader(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+
+/**
+ * Returns the cached name for one section header.
+ */
 VlStatus VlElf_GetSectionName(struct elf_file *elf, unsigned int index, const char **name);
+
+/**
+ * Finds a section by name and returns its section index.
+ */
 VlStatus VlElf_FindSection(struct elf_file *elf, const char *name, unsigned int *idx);
+
+/**
+ * Loads section contents into a caller-provided buffer.
+ */
 VlStatus VlElf_LoadSection(struct elf_file *elf, unsigned int index, void *buf, size_t len);
 
+/**
+ * Finds a symbol by name and returns its symbol table index.
+ */
 VlStatus VlElf_FindSymbol(struct elf_file *elf, const char *name, unsigned int *index);
+
+/**
+ * Copies one native symbol table entry into `buf`.
+ */
 VlStatus VlElf_GetSymbol(struct elf_file *elf, unsigned int index, void *buf, size_t len);
+
+/**
+ * Returns the number of native symbol table entries available for lookup.
+ */
 VlStatus VlElf_GetSymbolCount(struct elf_file *elf, unsigned int *count);
 
 #endif  // __VELLUM_ELF_H__

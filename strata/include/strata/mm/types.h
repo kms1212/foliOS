@@ -59,14 +59,35 @@
 #define MF_KERNEL_DEFAULT (MF_WRITABLE)
 #define MF_USER_DEFAULT   (MF_WRITABLE | MF_USER | MF_ZERO_FILL)
 
+/**
+ * Allocation placement and alignment flags.
+ *
+ * These flags describe how virtual or physical space should be chosen. They do
+ * not describe page-table permissions; use StMm_MapFlags for that domain.
+ */
 typedef uint32_t StMm_AllocFlags __nocast;
+/**
+ * Mapping protection and mapping-behavior flags.
+ *
+ * These flags describe page permissions, cache policy, eager/lazy
+ * materialization, zero-fill policy, and guard-page behavior.
+ */
 typedef uint32_t StMm_MapFlags __nocast;
 
+/** Convenience wrapper for APIs that carry both allocation and mapping flags. */
 struct StMm_CompoundFlags {
     StMm_AllocFlags alloc_flags;
     StMm_MapFlags map_flags;
 };
 
+/**
+ * Image-backed local memory policy.
+ *
+ * The byte range [base, base + size) describes the full in-memory image view.
+ * content_addr/content_offset/content_size describe the initialized content to
+ * copy into a newly materialized page; bytes outside the content range are
+ * zero-filled.
+ */
 struct StMm_ImageBacking {
     const void *base;
     size_t size;
@@ -75,8 +96,17 @@ struct StMm_ImageBacking {
     size_t content_size;
 };
 
+/**
+ * Count of page-sized units.
+ *
+ * PMM APIs interpret this as a physical frame count. VMM/MM APIs interpret it
+ * as a virtual page count. Use the surrounding API name and typed page/frame
+ * values to keep the unit clear.
+ */
 typedef size_t St_PageCount __nocast;
+/** Physical frame number, not a byte address. */
 typedef uintptr_t St_PhysFrame __nocast;
+/** Virtual page number, not a byte address. */
 typedef uintptr_t St_VirtPage __nocast;
 
 #endif  // __STRATA_MM_TYPES_H__
