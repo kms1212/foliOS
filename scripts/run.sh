@@ -33,7 +33,7 @@ print_machines() {
     echo "  mac99-ppc64"
 }
 
-while getopts "cfhu" arg; do
+while getopts "cfhm:u" arg; do
     case $arg in
         c)
             CDBOOT=true
@@ -44,6 +44,9 @@ while getopts "cfhu" arg; do
         h)
             print_usage
             exit 0
+            ;;
+        m)
+            MEM_SIZE="$OPTARG"
             ;;
         u)
             BOOT_TYPE=uefi
