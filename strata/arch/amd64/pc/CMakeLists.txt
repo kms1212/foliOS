@@ -51,6 +51,7 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E touch
             "${CMAKE_CURRENT_BINARY_DIR}/trampoline.incbin.S.stamp"
     DEPENDS
+            trampoline_cvt
             "${CMAKE_CURRENT_SOURCE_DIR}/trampoline.S"
             "${CMAKE_CURRENT_BINARY_DIR}/trampoline/trampoline.bin"
     BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/trampoline.incbin.S"
