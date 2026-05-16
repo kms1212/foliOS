@@ -3,6 +3,10 @@ cmake_minimum_required(VERSION 3.13)
 add_subdirectory("${TARGET_FIRMWARE}")
 add_subdirectory(trampoline)
 
+if(NOT STRATA_USEREXEC_APP)
+    message(FATAL_ERROR "STRATA_USEREXEC_APP must point to the user executable embedded by userexec.S")
+endif()
+
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/userexec.S"
     "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S"
@@ -13,12 +17,17 @@ add_custom_command(
     COMMAND ${CMAKE_COMMAND} -E copy
             "${CMAKE_CURRENT_SOURCE_DIR}/userexec.S"
             "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${STRATA_USEREXEC_APP}"
+            "${CMAKE_CURRENT_BINARY_DIR}/main.app"
     COMMAND ${CMAKE_COMMAND} -E touch
             "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S.stamp"
     DEPENDS
             "${CMAKE_CURRENT_SOURCE_DIR}/userexec.S"
-            "${CMAKE_CURRENT_SOURCE_DIR}/main.app"
-    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S"
+            "${STRATA_USEREXEC_APP}"
+    BYPRODUCTS
+            "${CMAKE_CURRENT_BINARY_DIR}/userexec.incbin.S"
+            "${CMAKE_CURRENT_BINARY_DIR}/main.app"
     VERBATIM
 )
 set_source_files_properties(
@@ -65,4 +74,5 @@ set_target_properties(strata PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 
 target_include_directories(strata PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(strata PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+target_include_directories(strata PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(strata PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/trampoline")

@@ -56,7 +56,7 @@ case $1 in
                 OBJECTS=(
                     "build/strata/arch/amd64/pc/trampoline/trampoline.elf"
                     "build/strata/arch/amd64/pc/krt/krt.elf"
-                    "strata/arch/amd64/pc/main.app"
+                    "build/syspkgs_temp/SystemManager/main.app"
                 )
                 ;;
         esac

@@ -74,14 +74,12 @@ struct StProcess {
     /** Backing module for module processes, NULL for ordinary user processes. */
     struct StModule *module;
 
-    /** TLS image virtual address in the process image. */
-    uintptr_t tls_image_addr;
-    /** TLS initialized byte count. */
-    size_t tls_file_size;
-    /** TLS total memory byte count. */
-    size_t tls_mem_size;
-    /** TLS alignment requirement. */
-    size_t tls_align;
+    /** User image program header table virtual address for AT_PHDR. */
+    uintptr_t program_header_addr;
+    /** User image program header entry byte size for AT_PHENT. */
+    size_t program_header_entry_size;
+    /** User image program header count for AT_PHNUM. */
+    unsigned int program_header_count;
 
     /** Memory accounting and cleanup owner for process allocations. */
     StAllocationOwner_StrongRef alloc_owner;

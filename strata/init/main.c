@@ -508,10 +508,12 @@ static int setup_user_process(
     StStatus status;
     StProcess_StrongRef process;
     struct StElf_Object *elf;
+    struct StElf64_Ehdr ehdr;
     struct StElf64_Phdr ph;
     struct StElf_LoadOptions elf_load_options;
     unsigned int ph_count;
     size_t userexec_size = (uintptr_t)_userexec_end - (uintptr_t)_userexec_start;
+    uintptr_t program_header_addr = 0;
     uintptr_t entry_point;
     StThread_StrongRef main_thread;
     uint32_t process_count;
@@ -530,10 +532,18 @@ static int setup_user_process(
         St_Panic(status, "failed to create user process");
     }
 
+    status = StElf_GetHeader(elf, &ehdr, sizeof(ehdr));
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "failed to get elf header");
+    }
+
     status = StElf_GetProgramHeaderCount(elf, &ph_count);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to get program header count");
     }
+
+    process->program_header_entry_size = (size_t)ehdr.phentsize;
+    process->program_header_count = ph_count;
 
     elf_load_options.asp = process->address_space;
     elf_load_options.alloc_flags = AF_DEFAULT;
@@ -545,20 +555,28 @@ static int setup_user_process(
             St_Panic(status, "failed to get program header");
         }
 
-        if (ph.type == PT_TLS) {
-            process->tls_image_addr = (uintptr_t)ph.vaddr;
-            process->tls_file_size = (size_t)ph.filesz;
-            process->tls_mem_size = (size_t)ph.memsz;
-            process->tls_align = (size_t)ph.addralign;
+        if (ph.type == PT_PHDR) {
+            program_header_addr = (uintptr_t)ph.vaddr;
         }
 
         if (ph.type != PT_LOAD) continue;
+
+        if (!program_header_addr && ehdr.phoff >= ph.offset &&
+            ehdr.phoff - ph.offset < ph.filesz) {
+            program_header_addr = (uintptr_t)ph.vaddr + (uintptr_t)(ehdr.phoff - ph.offset);
+        }
 
         status = StElf_LoadProgram(elf, i, &elf_load_options);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to load program");
         }
     }
+
+    if (!program_header_addr || !process->program_header_entry_size ||
+        !process->program_header_count) {
+        St_Panic(STATUS_INVALID_VALUE, "failed to locate user program headers");
+    }
+    process->program_header_addr = program_header_addr;
 
     status = StElf_GetEntryPoint(elf, &entry_point);
     if (!CHECK_SUCCESS(status)) {

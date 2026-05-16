@@ -430,6 +430,9 @@ StStatus StThreadP_SetupThreadUserStack(
 
     // auxv
     struct StElf64_Auxv auxv[] = {
+        {AT_PHDR, th->process->program_header_addr},
+        {AT_PHENT, th->process->program_header_entry_size},
+        {AT_PHNUM, th->process->program_header_count},
         {AT_ENTRY, th->umode_entry},
         {AT_PAGESZ, PAGE_SIZE},
         {AT_UID, 0},

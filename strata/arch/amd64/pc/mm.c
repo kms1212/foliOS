@@ -1083,7 +1083,10 @@ static StStatus remap_memory(
         }
 
         for (size_t i = 0; i < chunk_size; i++) {
-            if (!(pt[pte_idx + i] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
+            if (!(pt[pte_idx + i] & PTE_P)) {
+                if (pt[pte_idx + i] & PTE_MANAGED) continue;
+                return STATUS_PAGE_NOT_PRESENT;
+            }
             pfn = ((pt[pte_idx + i]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT;
             pt[pte_idx + i] = pte_template;
             pt[pte_idx + i] =

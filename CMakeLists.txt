@@ -31,6 +31,7 @@ else()
 endif()
 
 add_subdirectory(docs)
+add_subdirectory(syspkgs_temp)
 
 if (ENABLE_CLANG_TIDY)
     if ("${TARGET_ARCH}" STREQUAL "amd64")
@@ -87,10 +88,12 @@ ExternalProject_Add(strata
         -DTARGET_FIRMWARE=${TARGET_FIRMWARE}
         -DROOT_SOURCE_DIR=${CMAKE_SOURCE_DIR}
         -DROOT_BINARY_DIR=${CMAKE_BINARY_DIR}
+        -DSTRATA_USEREXEC_APP=${FOLIOS_SYSTEM_MANAGER_APP}
         -DBUILD_TESTING=${BUILD_TESTING}
     BUILD_ALWAYS 1
     INSTALL_COMMAND ""
 )
+ExternalProject_Add_StepDependencies(strata build system_manager)
 
 # Static Analysis (clang-tidy)
 add_custom_target(

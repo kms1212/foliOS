@@ -1668,6 +1668,9 @@ StStatus StMm_SetLocalPageFlags(
 
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
+    status = StVmm_SetLocalPageFlags(asp, vpn, count, mapflags);
+    if (!CHECK_SUCCESS(status)) return status;
+
     status = StMmP_RemapLocalContiguousMemory(asp, vpn, count, mapflags);
     if (!CHECK_SUCCESS(status)) return status;
 

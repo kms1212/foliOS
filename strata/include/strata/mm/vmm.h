@@ -157,6 +157,13 @@ StStatus StVmm_GetGlobalPageInfo(
 StStatus StVmm_GetLocalPageInfo(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, struct StVmm_PageInfo *info __out
 );
+/** Update local reservation mapping flags for a reserved range. */
+StStatus StVmm_SetLocalPageFlags(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_MapFlags map_flags __in
+);
 /** Resolve local reservation policy before MM materializes a faulting page. */
 StStatus StVmm_ResolveLocalPage(StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in);
 

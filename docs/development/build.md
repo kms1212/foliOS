@@ -22,6 +22,41 @@ Use `folisdk/build/folisdk-host/bin/cmake` for configure and build commands.
 This keeps the kernel, bootloader, SDK runtime, and user-space programs on the
 same toolchain path.
 
+## Rebuilding SDK Runtime Pieces
+
+Do not rebuild SDK internals by entering `folisdk/build/*` directories and
+running `make` or `cmake --build` directly. The SDK build script owns the order,
+stamps, install destinations, and build-directory layout. Bypassing it can leave
+the sysroot, startup objects, or user-space programs linked against stale
+runtime objects.
+
+After changing `folisdk/musl-strata`, rerun the musl pass through `build.py`:
+
+```sh
+(cd folisdk && python3 build.py --arch=x86_64 --builddir-layout --rerun-step build-musl-pass2-x86_64)
+```
+
+After changing `folisdk/libstrata`, rerun libstrata and the musl passes that
+consume its installed headers and libraries:
+
+```sh
+(cd folisdk && python3 build.py \
+    --arch=x86_64 \
+    --builddir-layout \
+    --rerun-step build-libstrata-x86_64 \
+    --rerun-step build-musl-pass1-x86_64 \
+    --rerun-step build-musl-pass2-x86_64)
+```
+
+Then relink any user-space programs that may have pulled in the changed runtime
+objects before rebuilding Strata. For the temporary SystemManager package:
+
+```sh
+rm -f build/syspkgs_temp/SystemManager/main.app
+folisdk/build/folisdk-host/bin/cmake --build build --target system_manager --parallel=18
+folisdk/build/folisdk-host/bin/cmake --build build --target strata --parallel=18
+```
+
 ## Configure
 
 The common development target is BIOS-based AMD64:

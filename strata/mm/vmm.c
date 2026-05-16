@@ -1531,7 +1531,7 @@ StStatus StVmm_GetGlobalReservedRange(
     struct vmm_reservation_domain *ad;
     struct vmm_reservation_node *node;
     uint32_t irq_state;
-    StStatus status = STATUS_SUCCESS;
+    StStatus status;
 
     if (domain >= VMM_DOMAIN_MAX) return STATUS_INVALID_VALUE;
 
@@ -1678,6 +1678,73 @@ StStatus StVmm_GetLocalPageInfo(
     fill_page_info_from_node(node, vpn, info);
 
 done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return status;
+}
+
+StStatus StVmm_SetLocalPageFlags(
+    StAddressSpace_StrongRef asp __in,
+    St_VirtPage vpn __in,
+    St_PageCount count __in,
+    StMm_MapFlags map_flags __in
+)
+{
+    struct vmm_reservation_node **head_slot;
+    struct vmm_reservation_node *node;
+    St_VirtPage limit_vpn;
+    St_VirtPage cursor_vpn;
+    uint32_t irq_state;
+    StStatus status = STATUS_SUCCESS;
+
+    if (!asp) return STATUS_INVALID_VALUE;
+    if (count == 0) return STATUS_INVALID_VALUE;
+    if (vpn < asp->user_base_vpn) return STATUS_INVALID_VALUE;
+    if ((St_VirtPage)(count - 1) > asp->user_limit_vpn - vpn) return STATUS_INVALID_VALUE;
+    if (map_flags & MF_GUARD) return STATUS_INVALID_VALUE;
+
+    status = make_limit_exclusive(vpn, count, &limit_vpn);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    head_slot = get_local_head_slot(asp);
+
+    irq_state = StA_SaveInterrupt();
+    StA_DisableInterrupt();
+    StThread_LockPreemption();
+
+    if (!validate_domain_list(*head_slot, "set-local-page-flags")) {
+        status = STATUS_SYSTEM_CORRUPTED;
+        goto has_error;
+    }
+
+    cursor_vpn = vpn;
+    while (cursor_vpn < limit_vpn) {
+        St_VirtPage usable_base_vpn;
+
+        node = find_overlap(*head_slot, cursor_vpn, (St_PageCount)1);
+        if (!node) {
+            status = STATUS_NOT_ALLOCATED;
+            goto has_error;
+        }
+
+        usable_base_vpn = node_usable_base_vpn(node);
+        if (cursor_vpn < usable_base_vpn) {
+            status = STATUS_NOT_PERMITTED;
+            goto has_error;
+        }
+
+        node->map_flags = map_flags;
+        cursor_vpn = node->limit_vpn;
+        if (cursor_vpn > limit_vpn) {
+            cursor_vpn = limit_vpn;
+        }
+    }
+
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return STATUS_SUCCESS;
+
+has_error:
     StThread_UnlockPreemption();
     StA_RestoreInterrupt(irq_state);
     return status;

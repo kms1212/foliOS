@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <strata/arch/intrinsics/io.h>
+
 #include <strata/gnt.h>
 #include <strata/gnt_refs.h>
 #include <strata/status.h>
@@ -53,6 +55,7 @@ extern struct print_state pstate;
 static void stdio_debugcon_write(const uint8_t *buf, uint64_t size)
 {
     for (uint64_t i = 0; i < size; i++) {
+        StIoA_Out8(STDIO_DEBUGCON_PORT, buf[i]);
         early_print_char(&pstate, (char)buf[i]);
     }
 }
