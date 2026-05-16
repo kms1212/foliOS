@@ -12,11 +12,11 @@ struct __capability("mutex") StMutex {
     StThread_InternalRef blocking_threads;
 };
 
-void StMutex_Init(struct StMutex *mtx);
+void StMutex_Init(struct StMutex *mtx __in);
 
-StStatus StMutex_Lock(struct StMutex *mtx) __acquires(mtx);
-StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms);
-StStatus StMutex_TryLock(struct StMutex *mtx, int *locked);
-void StMutex_Unlock(struct StMutex *mtx) __releases(mtx);
+StStatus StMutex_Lock(struct StMutex *mtx __in) __acquires(mtx);
+StStatus StMutex_LockWithTimeout(struct StMutex *mtx __in, int timeout_ms __in);
+StStatus StMutex_TryLock(struct StMutex *mtx __in, int *locked __out_optional);
+void StMutex_Unlock(struct StMutex *mtx __in) __releases(mtx);
 
 #endif  // __STRATA_MUTEX_H__

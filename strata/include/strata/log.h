@@ -36,25 +36,33 @@
 
 #define LM_SUBCAT_TASK_SWITCH ((uint32_t)0x00000001)
 
-void StLog_EarlyInit(int (*print_func)(void *, char), void *print_state);
+void StLog_EarlyInit(int (*print_func)(void *, char) __in, void *print_state __in);
 
-void StLog_SetLevel(int level);
+void StLog_SetLevel(int level __in);
 
-StStatus StLog_GetMask(uint32_t category, uint16_t *mask);
-StStatus StLog_SetMask(uint32_t mask);
+StStatus StLog_GetMask(uint32_t category __in, uint16_t *mask __out);
+StStatus StLog_SetMask(uint32_t mask __in);
 
 __format_printf(4, 5) void StLog_Print(
-    int level, uint32_t mask, const char *module_name, const char *fmt, ...
+    int level __in, uint32_t mask __in, const char *module_name __in, const char *fmt __in, ...
 );
 __format_printf(4, 5) void StLog_IntSafePrint(
-    int level, uint32_t mask, const char *module_name, const char *fmt, ...
+    int level __in, uint32_t mask __in, const char *module_name __in, const char *fmt __in, ...
 );
 
 void StLog_PrintValist(
-    int level, uint32_t mask, const char *module_name, const char *fmt, va_list args
+    int level __in,
+    uint32_t mask __in,
+    const char *module_name __in,
+    const char *fmt __in,
+    va_list args __in
 );
 void StLog_IntSafePrintValist(
-    int level, uint32_t mask, const char *module_name, const char *fmt, va_list args
+    int level __in,
+    uint32_t mask __in,
+    const char *module_name __in,
+    const char *fmt __in,
+    va_list args __in
 );
 
 #define LOG(level, mask, ...)         StLog_Print(level, mask, MODULE_NAME, __VA_ARGS__)

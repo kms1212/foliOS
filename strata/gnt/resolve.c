@@ -80,6 +80,7 @@ StStatus StGnt_ResolvePath(
     StGnt_Node_StrongRef *node __out
 )
 {
+    assert(path);
     assert(node);
 
     StStatus status;

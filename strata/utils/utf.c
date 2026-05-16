@@ -20,6 +20,7 @@ StStatus StUtf_CountUtf8Chars(
     const St_Utf8Char *src __in, size_t src_size __in, size_t *countout __out
 )
 {
+    assert(src);
     assert(countout);
 
     size_t i = 0;
@@ -77,6 +78,7 @@ StStatus StUtf_CountUtf32Chars(
     const St_Utf32Char *str __in, size_t bufsize __in, size_t *countout __out
 )
 {
+    assert(str);
     assert(countout);
 
     size_t s = 0;
@@ -93,6 +95,9 @@ int StUtf_CompareUtf32Chars(
     size_t str2_bufsize __in
 )
 {
+    assert(str1);
+    assert(str2);
+
     size_t i = 0;
     size_t j = 0;
     int result_val = 0;
@@ -120,11 +125,14 @@ int StUtf_CompareUtf32Chars(
 StStatus StUtf_Utf8ToUtf32(
     const St_Utf8Char *src __in,
     size_t src_size __in,
-    St_Utf32Char *dest __in,
+    St_Utf32Char *dest __out __buf,
     size_t dest_size __in,
     size_t *countout __out_optional
 )
 {
+    assert(src);
+    assert(dest);
+
     size_t i = 0;
     size_t count = 0;
 
@@ -189,11 +197,14 @@ StStatus StUtf_Utf8ToUtf32(
 StStatus StUtf_Utf32ToUtf8(
     const St_Utf32Char *src __in,
     size_t src_size __in,
-    St_Utf8Char *dest __in,
+    St_Utf8Char *dest __out __buf,
     size_t dest_size __in,
     size_t *countout __out_optional
 )
 {
+    assert(src);
+    assert(dest);
+
     size_t i = 0;
     size_t b = 0;
 

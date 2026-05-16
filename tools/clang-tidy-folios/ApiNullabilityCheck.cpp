@@ -10,6 +10,7 @@
 #include <llvm/ADT/StringRef.h>
 
 #include <algorithm>
+#include <cctype>
 #include <string>
 #include <vector>
 
@@ -95,7 +96,16 @@ bool isNullCheckExpr(const Expr *Expr, const ParmVarDecl *Param, ASTContext &Ctx
     }
 
     const auto *Binary = dyn_cast<BinaryOperator>(Expr);
-    if (!Binary || !(Binary->getOpcode() == BO_EQ || Binary->getOpcode() == BO_NE)) {
+    if (!Binary) {
+        return false;
+    }
+
+    if (Binary->getOpcode() == BO_LAnd || Binary->getOpcode() == BO_LOr) {
+        return isNullCheckExpr(Binary->getLHS(), Param, Ctx) ||
+            isNullCheckExpr(Binary->getRHS(), Param, Ctx);
+    }
+
+    if (!(Binary->getOpcode() == BO_EQ || Binary->getOpcode() == BO_NE)) {
         return false;
     }
 
@@ -126,6 +136,44 @@ private:
     std::vector<SourceLocation> NullChecks;
 };
 
+class ParamDerefVisitor : public RecursiveASTVisitor<ParamDerefVisitor> {
+public:
+    explicit ParamDerefVisitor(const ParmVarDecl *Param) : Param(Param) {}
+
+    bool VisitUnaryOperator(UnaryOperator *Expr)
+    {
+        if (Expr->getOpcode() == UO_Deref && isParamRef(Expr->getSubExpr(), Param)) {
+            Derefs.push_back(Expr->getOperatorLoc());
+        }
+        return true;
+    }
+
+    bool VisitMemberExpr(MemberExpr *Expr)
+    {
+        if (Expr->isArrow() && isParamRef(Expr->getBase(), Param)) {
+            Derefs.push_back(Expr->getOperatorLoc());
+        }
+        return true;
+    }
+
+    bool VisitArraySubscriptExpr(ArraySubscriptExpr *Expr)
+    {
+        if (isParamRef(Expr->getBase(), Param)) {
+            Derefs.push_back(Expr->getExprLoc());
+        }
+        return true;
+    }
+
+    const std::vector<SourceLocation> &getDerefs() const
+    {
+        return Derefs;
+    }
+
+private:
+    const ParmVarDecl *Param;
+    std::vector<SourceLocation> Derefs;
+};
+
 std::string getStatementText(const Stmt *Stmt, const SourceManager &SM, const LangOptions &LangOpts)
 {
     if (!Stmt) {
@@ -148,8 +196,28 @@ bool statementLooksLikeAssertForParam(
     }
 
     const std::string Text = getStatementText(Stmt, SM, LangOpts);
-    return Text.find("assert") != std::string::npos &&
-        Text.find(ParamName.str()) != std::string::npos;
+    const std::string Name = ParamName.str();
+    if (Text.find("assert") == std::string::npos) {
+        return false;
+    }
+
+    size_t Pos = Text.find(Name);
+    while (Pos != std::string::npos) {
+        const bool StartsAtIdentifierBoundary =
+            Pos == 0 ||
+            (!std::isalnum(static_cast<unsigned char>(Text[Pos - 1])) && Text[Pos - 1] != '_');
+        const size_t End = Pos + Name.size();
+        const bool EndsAtIdentifierBoundary =
+            End >= Text.size() ||
+            (!std::isalnum(static_cast<unsigned char>(Text[End])) && Text[End] != '_');
+        if (StartsAtIdentifierBoundary && EndsAtIdentifierBoundary) {
+            return true;
+        }
+
+        Pos = Text.find(Name, Pos + 1);
+    }
+
+    return false;
 }
 
 bool hasEntryAssert(
@@ -232,6 +300,27 @@ bool delegatesRequiredOutputParam(const CompoundStmt *Body, const ParmVarDecl *P
     return false;
 }
 
+bool isPointerLikeParameter(const ParmVarDecl &Param)
+{
+    QualType Type = Param.getType();
+    if (Type.isNull()) {
+        return false;
+    }
+
+    return Type.getCanonicalType()->isPointerType();
+}
+
+bool isFoliosPublicFunction(const FunctionDecl &Func)
+{
+    const IdentifierInfo *Identifier = Func.getIdentifier();
+    if (!Identifier || !Func.isExternallyVisible()) {
+        return false;
+    }
+
+    const llvm::StringRef Name = Identifier->getName();
+    return Name.starts_with("St") || Name.starts_with("Vl");
+}
+
 }  // namespace
 
 ApiNullabilityCheck::ApiNullabilityCheck(llvm::StringRef Name, ClangTidyContext *Context)
@@ -273,12 +362,37 @@ void ApiNullabilityCheck::check(const ast_matchers::MatchFinder::MatchResult &Re
         }
 
         const Direction Dir = getDirection(*Param);
-        if (Dir != Direction::Out && Dir != Direction::InOut && Dir != Direction::OutOptional) {
+        if (Dir != Direction::In && Dir != Direction::Out && Dir != Direction::InOut &&
+            Dir != Direction::OutOptional) {
             continue;
         }
 
         const llvm::StringRef ParamName = Param->getName();
-        if (Dir == Direction::Out || Dir == Direction::InOut) {
+        if (Dir == Direction::In) {
+            if (!isFoliosPublicFunction(*Func)) {
+                continue;
+            }
+            if (!isPointerLikeParameter(*Param)) {
+                continue;
+            }
+
+            ParamDerefVisitor DerefVisitor(Param);
+            DerefVisitor.TraverseStmt(Func->getBody());
+            if (DerefVisitor.getDerefs().empty()) {
+                continue;
+            }
+
+            NullCheckVisitor NullVisitor(Param, Ctx);
+            NullVisitor.TraverseStmt(Func->getBody());
+            if (!hasEntryAssert(Body, ParamName, EntryStatementLimit, SM, LangOpts) &&
+                NullVisitor.getNullChecks().empty()) {
+                diag(
+                    Param->getLocation(),
+                    "input pointer parameter %0 is dereferenced and should be asserted at "
+                    "function entry or handled with an explicit NULL check"
+                ) << ParamName;
+            }
+        } else if (Dir == Direction::Out || Dir == Direction::InOut) {
             if (!hasEntryAssert(Body, ParamName, EntryStatementLimit, SM, LangOpts) &&
                 !delegatesRequiredOutputParam(Body, Param)) {
                 diag(

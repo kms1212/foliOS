@@ -1,9 +1,11 @@
 #include <strata/interrupt.h>
 
+#include <assert.h>
 #include <stdio.h>
 
 #include <strata/plat/interrupt.h>
 
+#include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/mm/pool.h>
 #include <strata/status.h>
@@ -11,7 +13,10 @@
 #define MODULE_NAME "irq"
 
 StStatus StInt_CreateHandler(
-    int num, void *data, StInt_HandlerFunction func, struct StInt_Handler **handler
+    int num __in,
+    void *data __in,
+    StInt_HandlerFunction func __in,
+    struct StInt_Handler **handler __out_optional
 )
 {
     StStatus status;
@@ -57,8 +62,10 @@ has_error:
     return status;
 }
 
-void StInt_RemoveHandler(struct StInt_Handler *handler)
+void StInt_RemoveHandler(struct StInt_Handler *handler __in)
 {
+    assert(handler);
+
     StStatus status;
     struct StInt_Handler *prev = NULL;
     struct StInt_Handler *current;

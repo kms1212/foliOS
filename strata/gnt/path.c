@@ -42,6 +42,8 @@ int StGntPath_Next(struct StGnt_PathCursor *cursor __inout)
 
 const St_Utf32Char *StGntPath_Remaining(const struct StGnt_PathCursor *cursor __in)
 {
+    assert(cursor);
+
     return cursor->path;
 }
 
@@ -49,6 +51,8 @@ int StGntPath_IsToken(
     const struct StGnt_PathCursor *cursor __in, const St_Utf32Char *name __in, size_t name_len __in
 )
 {
+    assert(name);
+
     if (!cursor || !cursor->token) return 0;
     if (cursor->token_len != name_len) return 0;
 

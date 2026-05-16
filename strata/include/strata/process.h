@@ -106,6 +106,6 @@ void StProcess_GetCount(uint32_t *count __out);
 /** Return the borrowed head of the process list. Caller must provide stability. */
 StProcess_BorrowedRef StProcess_GetListHead(void);
 /** Find a process by id and return a borrowed view if it is still visible. */
-StProcess_BorrowedRef StProcess_FindById(StProcess_Id id);
+StProcess_BorrowedRef StProcess_FindById(StProcess_Id id __in);
 
 #endif  // __STRATA_PROCESS_H__

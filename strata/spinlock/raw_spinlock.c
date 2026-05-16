@@ -11,11 +11,14 @@
 
 void StRawSpinlock_Init(struct StRawSpinlock *lock __in)
 {
+    assert(lock);
+
     atomic_flag_clear(&lock->locked);
 }
 
 void StRawSpinlock_LockAndSaveIrq(struct StRawSpinlock *lock __in, uint32_t *irqstate __out)
 {
+    assert(lock);
     assert(irqstate);
 
     *irqstate = StA_SaveInterrupt();
@@ -30,6 +33,7 @@ void StRawSpinlock_TryLockAndSaveIrq(
     struct StRawSpinlock *lock __in, uint32_t *irqstate __out, int *locked __out
 )
 {
+    assert(lock);
     assert(irqstate);
     assert(locked);
 
@@ -47,6 +51,8 @@ void StRawSpinlock_TryLockAndSaveIrq(
 
 void StRawSpinlock_UnlockAndRestoreIrq(struct StRawSpinlock *lock __in, uint32_t irqstate __in)
 {
+    assert(lock);
+
     atomic_flag_clear_explicit(&lock->locked, memory_order_release);
 
     StA_RestoreInterrupt(irqstate);

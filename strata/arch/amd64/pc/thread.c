@@ -236,6 +236,8 @@ St_PageCount StThreadP_ReclaimCachedKernelStacks(St_PageCount page_budget)
 
 StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in)
 {
+    assert(th);
+
     StStatus status;
     St_VirtPage kmode_stack_base_vpn;
     struct cached_kernel_stack *cached_stack;
@@ -278,6 +280,8 @@ StStatus StThreadP_AllocateThreadKernelStack(struct StThread *th __in)
 
 StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in)
 {
+    assert(th);
+
     uintptr_t rsp;
     struct StIntP_Context *iregs;
     struct StA_InterruptFrame *iframe;
@@ -323,6 +327,8 @@ StStatus StThreadP_SetupThreadKernelStack(struct StThread *th __in)
 
 void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
 {
+    assert(th);
+
     St_PageCount free_frames = 0;
 
     if (should_use_kernel_stack_cache(th)) {
@@ -352,8 +358,10 @@ void StThreadP_FreeThreadKernelStack(struct StThread *th __in)
     StMm_FreeGlobal(VMM_DOMAIN_KERNEL_SLOW, th->kmode_stack_base_vpn, th->kmode_stack_page_count);
 }
 
-StStatus StThreadP_AllocateThreadUserStack(struct StThread *th)
+StStatus StThreadP_AllocateThreadUserStack(struct StThread *th __in)
 {
+    assert(th);
+
     StStatus status;
     St_VirtPage ustack_base_vpn = MEMMAP_USER_VPN_LIMIT + 1 - th->umode_stack_page_count;
 
@@ -389,12 +397,16 @@ static inline void push_u64(
 
 StStatus StThreadP_SetupThreadUserStack(
     struct StThread *th __in,
-    int arg_count,
-    const char *const *args,
-    int env_count,
-    const char *const *envs
+    int arg_count __in,
+    const char *const *args __in,
+    int env_count __in,
+    const char *const *envs __in
 )
 {
+    assert(th);
+    assert(args || arg_count == 0);
+    assert(envs || env_count == 0);
+
     StStatus status;
     StAddressSpace_StrongRef asp = th->process->address_space;
     uintptr_t rsp = th->umode_stack_ptr;
@@ -501,6 +513,8 @@ has_error:
 
 void StThreadP_FreeThreadUserStack(struct StThread *th __in)
 {
+    assert(th);
+
     LOG_DEBUG(LM_CAT_UNCLASSIFIED, "freeing thread user stack...\n");
 
     StMm_FreeLocal(
@@ -512,6 +526,8 @@ void StThreadP_FreeThreadUserStack(struct StThread *th __in)
 
 StStatus StThreadP_SetFsBase(struct StThread *th __in, uintptr_t fs_base __in)
 {
+    assert(th);
+
     StStatus status;
     StThread_InternalRef current;
 
@@ -529,6 +545,8 @@ StStatus StThreadP_SetFsBase(struct StThread *th __in, uintptr_t fs_base __in)
 
 StStatus StThreadP_SetGsBase(struct StThread *th __in, uintptr_t gs_base __in)
 {
+    assert(th);
+
     StStatus status;
     StThread_InternalRef current;
 
@@ -548,6 +566,7 @@ StStatus StThreadP_Switch(
     struct StThread *next __in, struct StIntP_Context *ctx __in, void **next_stack_ptr __out
 )
 {
+    assert(next);
     assert(next_stack_ptr);
 
     StStatus status;

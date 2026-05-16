@@ -30,7 +30,7 @@ int StUtf_CompareUtf32Chars(
 StStatus StUtf_Utf8ToUtf32(
     const St_Utf8Char *src __in,
     size_t src_size __in,
-    St_Utf32Char *dest __buf,
+    St_Utf32Char *dest __out __buf,
     size_t dest_size __in,
     size_t *count __out_optional
 );
@@ -38,7 +38,7 @@ StStatus StUtf_Utf8ToUtf32(
 StStatus StUtf_Utf32ToUtf8(
     const St_Utf32Char *src __in,
     size_t src_size __in,
-    St_Utf8Char *dest __buf,
+    St_Utf8Char *dest __out __buf,
     size_t dest_size __in,
     size_t *count __out_optional
 );

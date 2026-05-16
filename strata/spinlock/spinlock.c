@@ -15,12 +15,16 @@
 
 void StSpinlock_Init(struct StSpinlock *lock __in)
 {
+    assert(lock);
+
     atomic_flag_clear(&lock->locked);
     lock->owner = NULL;
 }
 
 StStatus StSpinlock_Lock(struct StSpinlock *lock __in)
 {
+    assert(lock);
+
     StStatus status;
     StThread_InternalRef th;
 
@@ -41,6 +45,7 @@ StStatus StSpinlock_Lock(struct StSpinlock *lock __in)
 
 StStatus StSpinlock_TryLock(struct StSpinlock *lock __in, int *locked __out)
 {
+    assert(lock);
     assert(locked);
 
     StStatus status;
@@ -66,6 +71,8 @@ StStatus StSpinlock_TryLock(struct StSpinlock *lock __in, int *locked __out)
 
 void StSpinlock_Unlock(struct StSpinlock *lock __in)
 {
+    assert(lock);
+
     StStatus status;
     StThread_InternalRef th;
 
@@ -85,6 +92,7 @@ void StSpinlock_Unlock(struct StSpinlock *lock __in)
 
 StStatus StSpinlock_LockAndSaveIrq(struct StSpinlock *lock __in, uint32_t *irqstate __out)
 {
+    assert(lock);
     assert(irqstate);
 
     StStatus status;
@@ -112,6 +120,7 @@ StStatus StSpinlock_TryLockAndSaveIrq(
     struct StSpinlock *lock __in, uint32_t *irqstate __out, int *locked __out
 )
 {
+    assert(lock);
     assert(irqstate);
     assert(locked);
 
@@ -141,6 +150,8 @@ StStatus StSpinlock_TryLockAndSaveIrq(
 
 void StSpinlock_UnlockAndRestoreIrq(struct StSpinlock *lock __in, uint32_t irqstate __in)
 {
+    assert(lock);
+
     StStatus status;
     StThread_InternalRef th;
 

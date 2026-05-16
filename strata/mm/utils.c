@@ -24,7 +24,7 @@ StStatus StMm_WriteLocal(
 }
 
 StStatus StMm_SetLocal(
-    StAddressSpace_StrongRef asp __in, uintptr_t addr __in, int value, size_t len __in
+    StAddressSpace_StrongRef asp __in, uintptr_t addr __in, int value __in, size_t len __in
 )
 {
     return StMmP_SetLocal(asp, addr, value, len);

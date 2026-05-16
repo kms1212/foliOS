@@ -168,8 +168,10 @@ static StThread_InternalRef select_next_runnable_thread(
     return best;
 }
 
-StStatus StScheduler_AddThread(StThread_InternalRef th)
+StStatus StScheduler_AddThread(StThread_InternalRef th __in)
 {
+    assert(th);
+
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
     uint64_t initial_pass = 0;
 
@@ -198,7 +200,7 @@ StStatus StScheduler_AddThread(StThread_InternalRef th)
     return STATUS_SUCCESS;
 }
 
-void StScheduler_RemoveThread(StThread_InternalRef th)
+void StScheduler_RemoveThread(StThread_InternalRef th __in)
 {
     struct StScheduler_Data *scheduler = &StCpuLocalP_GetData()->scheduler;
 

@@ -20,7 +20,7 @@ StStatus StMm_WriteLocal(
 
 /* Local (memset) */
 StStatus StMm_SetLocal(
-    StAddressSpace_StrongRef asp __in, uintptr_t addr __in, int value, size_t len __in
+    StAddressSpace_StrongRef asp __in, uintptr_t addr __in, int value __in, size_t len __in
 );
 
 /* Local -> Local (memcpy) */

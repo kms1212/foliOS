@@ -7,8 +7,17 @@ contracts.
 
 ### `folios-api-annotations`
 
-Warns when a parameter in a public `strata` or `vellum` header lacks an API
+Warns when a parameter in a public `strata` or `vellum` API header lacks an API
 annotation such as `__in`, `__out`, `__inout`, `__out_optional`, or `__buf`.
+The default header scope is `include/strata/...` and `include/vellum/...`, so C
+standard library and external library headers are left alone.
+
+It also checks redeclarations and definitions in source files. If a function
+definition drops or changes the annotation from an earlier declaration, the
+check reports the mismatch at the definition parameter.
+When a public header is included as a system header, the check reports missing
+public declaration annotations through the corresponding source definition so the
+diagnostic is still visible in the normal clang-tidy log.
 
 The first version intentionally treats `__buf` as sufficient. This keeps the
 initial signal practical while the codebase is still converging on direction
@@ -18,6 +27,11 @@ annotations.
 
 Checks the nullability contract implied by direction annotations on function
 definitions.
+
+`__in` pointer parameters on public `St*` and `Vl*` functions may be nullable
+only when the implementation treats them that way. If such a pointer is
+dereferenced, the check requires an entry assert or an explicit NULL-handling
+branch.
 
 `__out` and `__inout` parameters are non-optional output parameters. They should
 be asserted at function entry, and `if`-based NULL checks on them are reported.

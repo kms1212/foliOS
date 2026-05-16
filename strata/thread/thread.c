@@ -561,6 +561,7 @@ StStatus StThread_CreateUserMain(
 )
 {
     assert(threadout);
+    assert(process);
 
     static StThread_Id new_thread_id = (StThread_Id)16384;
 
@@ -572,7 +573,6 @@ StStatus StThread_CreateUserMain(
     int assigned_main_thread = 0;
     uint32_t prev_thread_count;
 
-    assert(process);
     relieve_deferred_reap_pressure(STRATA_KSTACK_PAGE_COUNT + STRATA_USTACK_PAGE_COUNT);
 
     StThread_LockPreemption();
@@ -670,8 +670,10 @@ has_error:
     return status;
 }
 
-StStatus StThread_Remove(StThread_StrongRef th)
+StStatus StThread_Remove(StThread_StrongRef th __in)
 {
+    assert(th);
+
     uint32_t prev_thread_count;
     int release_join_ref;
 

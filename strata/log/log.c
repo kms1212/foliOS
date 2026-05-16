@@ -1,5 +1,6 @@
 #include <strata/log.h>
 
+#include <assert.h>
 #include <inttypes.h>
 #include <stdarg.h>
 #include <stdint.h>
@@ -8,6 +9,7 @@
 #include <strata/plat/cpulocal.h>
 #include <strata/plat/time.h>
 
+#include <strata/compiler.h>
 #include <strata/process.h>
 #include <strata/status.h>
 #include <strata/thread.h>
@@ -20,13 +22,13 @@ static void *log_print_state;
 
 static uint16_t log_mask_list[LM_CAT_MAX >> 16];
 
-void StLog_EarlyInit(int (*print_func)(void *, char), void *print_state)
+void StLog_EarlyInit(int (*print_func)(void *, char) __in, void *print_state __in)
 {
     log_print_func = print_func;
     log_print_state = print_state;
 }
 
-void StLog_SetLevel(int level)
+void StLog_SetLevel(int level __in)
 {
     if (level < -1) level = -1;
     if (level > LL_MAX) level = LL_MAX;
@@ -34,8 +36,10 @@ void StLog_SetLevel(int level)
     log_level = level;
 }
 
-StStatus StLog_GetMask(uint32_t category, uint16_t *mask)
+StStatus StLog_GetMask(uint32_t category __in, uint16_t *mask __out)
 {
+    assert(mask);
+
     if ((category & LM_CATEGORY_MASK) > LM_CAT_MAX) return STATUS_INVALID_VALUE;
 
     *mask = log_mask_list[category >> 16];
@@ -43,7 +47,7 @@ StStatus StLog_GetMask(uint32_t category, uint16_t *mask)
     return STATUS_SUCCESS;
 }
 
-StStatus StLog_SetMask(uint32_t mask)
+StStatus StLog_SetMask(uint32_t mask __in)
 {
     if ((mask & LM_CATEGORY_MASK) > LM_CAT_MAX) return STATUS_INVALID_VALUE;
 
@@ -52,7 +56,9 @@ StStatus StLog_SetMask(uint32_t mask)
     return STATUS_SUCCESS;
 }
 
-void StLog_Print(int level, uint32_t mask, const char *module_name, const char *fmt, ...)
+void StLog_Print(
+    int level __in, uint32_t mask __in, const char *module_name __in, const char *fmt __in, ...
+)
 {
     va_list args;
 
@@ -61,7 +67,9 @@ void StLog_Print(int level, uint32_t mask, const char *module_name, const char *
     va_end(args);
 }
 
-void StLog_IntSafePrint(int level, uint32_t mask, const char *module_name, const char *fmt, ...)
+void StLog_IntSafePrint(
+    int level __in, uint32_t mask __in, const char *module_name __in, const char *fmt __in, ...
+)
 {
     va_list args;
 
@@ -124,7 +132,11 @@ static void print_log_header(int level, const char *module_name)
 }
 
 void StLog_PrintValist(
-    int level, uint32_t mask, const char *module_name, const char *fmt, va_list args
+    int level __in,
+    uint32_t mask __in,
+    const char *module_name __in,
+    const char *fmt __in,
+    va_list args __in
 )
 {
     if (log_level < level) return;
@@ -134,7 +146,11 @@ void StLog_PrintValist(
 }
 
 void StLog_IntSafePrintValist(
-    int level, uint32_t mask, const char *module_name, const char *fmt, va_list args
+    int level __in,
+    uint32_t mask __in,
+    const char *module_name __in,
+    const char *fmt __in,
+    va_list args __in
 )
 {
     if (log_level < level) return;

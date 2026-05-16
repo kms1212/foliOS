@@ -147,6 +147,8 @@ __always_inline void StA_FXSave(union StA_FXSaveBuffer *buf __out)
 
 __always_inline void StA_FXRestore(union StA_FXSaveBuffer *buf __in)
 {
+    assert(buf);
+
     __asm__ volatile("fxrstor64 %0" : : "m"(*buf));
 }
 
@@ -162,6 +164,8 @@ __always_inline void StA_XSave(union StA_XStateBuffer *buf __out, uint64_t mask 
 
 __always_inline void StA_XRestore(const union StA_XStateBuffer *buf __in, uint64_t mask __in)
 {
+    assert(buf);
+
     uint32_t eax = (uint32_t)mask;
     uint32_t edx = (uint32_t)(mask >> 32);
 

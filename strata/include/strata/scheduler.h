@@ -20,8 +20,8 @@ struct StScheduler_Data {
     int maintain_requested;
 };
 
-StStatus StScheduler_AddThread(StThread_InternalRef th);
-void StScheduler_RemoveThread(StThread_InternalRef th);
+StStatus StScheduler_AddThread(StThread_InternalRef th __in);
+void StScheduler_RemoveThread(StThread_InternalRef th __in);
 
 StStatus StScheduler_GetCurrentThread(StThread_InternalRef *current __out_optional);
 StStatus StScheduler_GetNextThread(StThread_InternalRef *next __out_optional);

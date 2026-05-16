@@ -163,6 +163,8 @@ void StElf_Close(struct StElf_Object *elf __in)
 
 StStatus StElf_GetHeader(struct StElf_Object *elf __in, void *buf __buf, size_t len __in)
 {
+    assert(elf);
+
     if (elf->ident.class == ELFCLASS32) {
         memcpy(buf, &elf->ehdr32, MIN(len, sizeof(elf->ehdr32)));
     } else if (elf->ident.class == ELFCLASS64) {
@@ -176,6 +178,7 @@ StStatus StElf_GetHeader(struct StElf_Object *elf __in, void *buf __buf, size_t 
 
 StStatus StElf_GetEntryPoint(struct StElf_Object *elf __in, uintptr_t *entry_point __out)
 {
+    assert(elf);
     assert(entry_point);
 
     if (elf->ident.class == ELFCLASS32) {
@@ -191,6 +194,7 @@ StStatus StElf_GetEntryPoint(struct StElf_Object *elf __in, uintptr_t *entry_poi
 
 StStatus StElf_GetProgramHeaderCount(struct StElf_Object *elf __in, unsigned int *count __out)
 {
+    assert(elf);
     assert(count);
 
     if (elf->ident.class == ELFCLASS32) {
@@ -208,6 +212,8 @@ StStatus StElf_GetProgramHeader(
     struct StElf_Object *elf __in, unsigned int index __in, void *buf __buf, size_t len __in
 )
 {
+    assert(elf);
+
     StStatus status;
     uint64_t phent_offset;
     size_t phent_size;

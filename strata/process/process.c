@@ -246,7 +246,7 @@ StProcess_BorrowedRef StProcess_GetListHead(void)
     return (StProcess_BorrowedRef)process_list_head;
 }
 
-StProcess_BorrowedRef StProcess_FindById(StProcess_Id id)
+StProcess_BorrowedRef StProcess_FindById(StProcess_Id id __in)
 {
     StProcess_InternalRef current = process_list_head;
 

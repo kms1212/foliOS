@@ -5,6 +5,7 @@
 
 #include <strata/plat/interrupt.h>
 
+#include <strata/compiler.h>
 #include <strata/status.h>
 
 struct StIntP_Context;
@@ -22,9 +23,12 @@ struct StInt_Handler {
 };
 
 StStatus StInt_CreateHandler(
-    int num, void *data, StInt_HandlerFunction func, struct StInt_Handler **handler
+    int num __in,
+    void *data __in,
+    StInt_HandlerFunction func __in,
+    struct StInt_Handler **handler __out_optional
 );
-void StInt_RemoveHandler(struct StInt_Handler *handler);
+void StInt_RemoveHandler(struct StInt_Handler *handler __in);
 
 #define StInt_MaskInterrupt   StIntP_MaskInterrupt
 #define StInt_UnmaskInterrupt StIntP_UnmaskInterrupt

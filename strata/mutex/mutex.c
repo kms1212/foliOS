@@ -5,6 +5,7 @@
 
 #include <strata/plat/time.h>
 
+#include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/raw_spinlock.h>
 #include <strata/scheduler.h>
@@ -14,8 +15,10 @@
 
 #define MODULE_NAME "mutex"
 
-void StMutex_Init(struct StMutex *mtx)
+void StMutex_Init(struct StMutex *mtx __in)
 {
+    assert(mtx);
+
     StRawSpinlock_Init(&mtx->state_lock);
     mtx->locked = 0;
     mtx->owner = NULL;
@@ -92,8 +95,10 @@ static void remove_blocking_thread(struct StMutex *mtx, StThread_InternalRef th)
     }
 }
 
-StStatus StMutex_Lock(struct StMutex *mtx)
+StStatus StMutex_Lock(struct StMutex *mtx __in)
 {
+    assert(mtx);
+
     StStatus status;
     StThread_InternalRef th;
 
@@ -125,8 +130,10 @@ StStatus StMutex_Lock(struct StMutex *mtx)
     }
 }
 
-StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
+StStatus StMutex_LockWithTimeout(struct StMutex *mtx __in, int timeout_ms __in)
 {
+    assert(mtx);
+
     StStatus status;
     StThread_InternalRef th;
     uint64_t deadline_ns;
@@ -192,8 +199,10 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
     }
 }
 
-StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)
+StStatus StMutex_TryLock(struct StMutex *mtx __in, int *locked __out_optional)
 {
+    assert(mtx);
+
     StStatus status;
     StThread_InternalRef th;
     uint32_t irqstate;
@@ -224,8 +233,10 @@ StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)
     return STATUS_SUCCESS;
 }
 
-void StMutex_Unlock(struct StMutex *mtx)
+void StMutex_Unlock(struct StMutex *mtx __in)
 {
+    assert(mtx);
+
     StStatus status;
     StThread_InternalRef th;
     uint32_t irqstate;

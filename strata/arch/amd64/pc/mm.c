@@ -267,6 +267,8 @@ StStatus StMmP_CleanupTempMapping(void)
 
 StStatus StAddressSpaceP_Create(StAddressSpace_StrongRef asp __in)
 {
+    assert(asp);
+
     StStatus status;
     St_PhysFrame root_table_pfn = (St_PhysFrame)-1;
     StA_PageMapLevel4Entry *base_pml4 =
@@ -291,6 +293,8 @@ has_error:
 
 void StAddressSpaceP_Remove(StAddressSpace_StrongRef asp __in)
 {
+    assert(asp);
+
     St_PhysFrame root_table_pfn = asp->platform_data.root_table_pfn;
     StA_PageMapLevel4Entry *pml4 = PHYS_TO_VIRT(FRAME_TO_VPTR(root_table_pfn));
 
@@ -332,6 +336,8 @@ void StAddressSpaceP_Remove(StAddressSpace_StrongRef asp __in)
 
 StStatus StAddressSpaceP_Switch(StAddressSpace_StrongRef asp __in)
 {
+    assert(asp);
+
     StA_WriteCr3(FRAME_TO_ADDR(asp->platform_data.root_table_pfn));
     release_quarantined_page_table_frames();
 
