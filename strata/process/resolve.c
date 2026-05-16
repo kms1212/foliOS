@@ -80,7 +80,7 @@ static StStatus get_current_process(struct StProcess **process_out)
 }
 
 static StStatus format_id_name(
-    int id, St_Utf32Char *name_out, size_t name_out_size, size_t *name_len_out
+    StProcess_Id id, St_Utf32Char *name_out, size_t name_out_size, size_t *name_len_out
 )
 {
     char name_utf8[32];
@@ -116,51 +116,9 @@ static StGnt_Node_InternalRef find_registered_child(
     return NULL;
 }
 
-static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, int *value_out)
-{
-    int value = 0;
-
-    if (!token_len) return STATUS_INVALID_VALUE;
-
-    for (size_t i = 0; i < token_len; i++) {
-        if (token[i] < U'0' || token[i] > U'9') return STATUS_INVALID_VALUE;
-        value = (value * 10) + (int)(token[i] - U'0');
-    }
-
-    if (value_out) *value_out = value;
-
-    return STATUS_SUCCESS;
-}
-
-static StStatus get_process_id_from_process_node(
-    StGnt_Node_StrongRef node, StProcess_Id *process_id_out
+static StStatus register_process_node(
+    StGnt_Node_StrongRef root_node, StProcess_BorrowedRef process, StGnt_Node_StrongRef *node_out
 )
-{
-    if (!node) return STATUS_INVALID_VALUE;
-
-    return parse_decimal_id(node->name, node->name_len, process_id_out);
-}
-
-static StStatus get_process_from_process_node(
-    StGnt_Node_StrongRef node, StProcess_BorrowedRef *process_out
-)
-{
-    StStatus status;
-    StProcess_Id process_id;
-    StProcess_BorrowedRef process;
-
-    status = get_process_id_from_process_node(node, &process_id);
-    if (!CHECK_SUCCESS(status)) return status;
-
-    process = StProcess_FindById(process_id);
-    if (!process) return STATUS_ENTRY_NOT_FOUND;
-
-    if (process_out) *process_out = process;
-
-    return STATUS_SUCCESS;
-}
-
-static StStatus register_process_node(StProcess_BorrowedRef process, StGnt_Node_StrongRef *node_out)
 {
     StStatus status;
     St_Utf32Char process_name[NODENAME_MAX];
@@ -168,6 +126,9 @@ static StStatus register_process_node(StProcess_BorrowedRef process, StGnt_Node_
     StGnt_Node_StrongRef node;
 
     if (!process) return STATUS_INVALID_VALUE;
+    if (!StProcessGnt_IsProcessRootNode((StGnt_Node_InternalRef)root_node)) {
+        return STATUS_INVALID_HANDLE;
+    }
 
     if (process->gnt_node) {
         status = register_process_directory_interfaces(process->gnt_node);
@@ -180,11 +141,11 @@ static StStatus register_process_node(StProcess_BorrowedRef process, StGnt_Node_
     status = format_id_name(process->id, process_name, sizeof(process_name), &process_name_len);
     if (!CHECK_SUCCESS(status)) return status;
 
-    node = (StGnt_Node_StrongRef)
-        find_registered_child(g_gnt_system_processes, process_name, process_name_len);
+    node = (StGnt_Node_StrongRef)find_registered_child(root_node, process_name, process_name_len);
     if (node) {
         node->type = GNT_NODETYPE_DIRECTORY;
         node->handler_module = StProcess_Module;
+        node->private_data = NULL;
 
         status = register_process_directory_interfaces(node);
         if (!CHECK_SUCCESS(status)) return status;
@@ -194,11 +155,12 @@ static StStatus register_process_node(StProcess_BorrowedRef process, StGnt_Node_
         return STATUS_SUCCESS;
     }
 
-    status = StGnt_AddNode(g_gnt_system_processes, process_name, &node);
+    status = StGnt_AddNode(root_node, process_name, &node);
     if (!CHECK_SUCCESS(status)) return status;
 
     node->type = GNT_NODETYPE_DIRECTORY;
     node->handler_module = StProcess_Module;
+    node->private_data = NULL;
 
     status = register_process_directory_interfaces(node);
     if (!CHECK_SUCCESS(status)) return status;
@@ -224,6 +186,7 @@ static StStatus register_directory_child(
     if (node) {
         node->type = GNT_NODETYPE_DIRECTORY;
         node->handler_module = StProcess_Module;
+        node->private_data = NULL;
 
         status = register_threads_directory_interfaces(node);
         if (!CHECK_SUCCESS(status)) return status;
@@ -237,6 +200,7 @@ static StStatus register_directory_child(
 
     node->type = GNT_NODETYPE_DIRECTORY;
     node->handler_module = StProcess_Module;
+    node->private_data = NULL;
 
     status = register_threads_directory_interfaces(node);
     if (!CHECK_SUCCESS(status)) return status;
@@ -250,16 +214,13 @@ static StStatus register_leaf_child(
     StGnt_Node_StrongRef parent,
     const St_Utf32Char *name,
     size_t name_len,
+    void *private_data,
+    int is_thread_leaf,
     StGnt_Node_StrongRef *node_out
 )
 {
     StStatus status;
     StGnt_Node_StrongRef node;
-    int is_main_thread_leaf;
-
-    is_main_thread_leaf = parent && parent->parent && parent->name_len == 7 &&
-        StUtf_CompareUtf32Chars(parent->name, parent->name_len, U"Threads", 7) == 0 &&
-        name_len == 4 && StUtf_CompareUtf32Chars(name, name_len, U"Main", 4) == 0;
 
     node = (StGnt_Node_StrongRef)find_registered_child(parent, name, name_len);
     if (!node) {
@@ -269,8 +230,9 @@ static StStatus register_leaf_child(
 
     node->type = GNT_NODETYPE_LEAF;
     node->handler_module = StProcess_Module;
+    node->private_data = private_data;
 
-    if (is_main_thread_leaf) {
+    if (is_thread_leaf) {
         status = register_thread_interfaces(node);
     } else {
         status = register_stdio_interfaces(node);
@@ -283,28 +245,31 @@ static StStatus register_leaf_child(
 }
 
 static StStatus resolve_process_root(
-    const St_Utf32Char *token, size_t token_len, StGnt_Node_StrongRef *next_node
+    StGnt_Node_StrongRef root_node,
+    const St_Utf32Char *token,
+    size_t token_len,
+    StGnt_Node_StrongRef *next_node
 )
 {
     StStatus status;
     StProcess_BorrowedRef process;
-    int process_id;
+    StProcess_Id process_id;
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Current", 7) == 0) {
         status = get_current_process(&process);
         if (!CHECK_SUCCESS(status)) return status;
 
         LOG_DEBUG(LM_CAT_UNCLASSIFIED, "Process GNT resolve Current\n");
-        return register_process_node(process, next_node);
+        return register_process_node(root_node, process, next_node);
     }
 
-    status = parse_decimal_id(token, token_len, &process_id);
+    status = StProcessGnt_ParseProcessId(token, token_len, &process_id);
     if (!CHECK_SUCCESS(status)) return STATUS_ENTRY_NOT_FOUND;
 
     process = StProcess_FindById(process_id);
     if (!process) return STATUS_ENTRY_NOT_FOUND;
 
-    return register_process_node(process, next_node);
+    return register_process_node(root_node, process, next_node);
 }
 
 static StStatus resolve_process_directory(
@@ -317,7 +282,7 @@ static StStatus resolve_process_directory(
     StStatus status;
     StProcess_BorrowedRef process;
 
-    status = get_process_from_process_node(base_node, &process);
+    status = StProcessGnt_GetProcessFromNode(base_node, &process);
     if (!CHECK_SUCCESS(status)) return status;
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Threads", 7) == 0) {
@@ -325,15 +290,36 @@ static StStatus resolve_process_directory(
     }
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Stdin", 5) == 0) {
-        return register_leaf_child(base_node, U"Stdin", 5, next_node);
+        return register_leaf_child(
+            base_node,
+            U"Stdin",
+            5,
+            &StProcessGnt_StdinNodeData,
+            0,
+            next_node
+        );
     }
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Stdout", 6) == 0) {
-        return register_leaf_child(base_node, U"Stdout", 6, next_node);
+        return register_leaf_child(
+            base_node,
+            U"Stdout",
+            6,
+            &StProcessGnt_StdoutNodeData,
+            0,
+            next_node
+        );
     }
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Stderr", 6) == 0) {
-        return register_leaf_child(base_node, U"Stderr", 6, next_node);
+        return register_leaf_child(
+            base_node,
+            U"Stderr",
+            6,
+            &StProcessGnt_StderrNodeData,
+            0,
+            next_node
+        );
     }
 
     (void)process;
@@ -352,7 +338,7 @@ static StStatus resolve_threads_directory(
 
     if (!base_node || !base_node->parent) return STATUS_INVALID_VALUE;
 
-    status = get_process_from_process_node((StGnt_Node_StrongRef)base_node->parent, &process);
+    status = StProcessGnt_GetProcessFromNode((StGnt_Node_StrongRef)base_node->parent, &process);
     if (!CHECK_SUCCESS(status)) return status;
 
     if (StUtf_CompareUtf32Chars(token, token_len, U"Main", 4) == 0) {
@@ -361,7 +347,7 @@ static StStatus resolve_threads_directory(
             return STATUS_ENTRY_NOT_FOUND;
         }
 
-        return register_leaf_child(base_node, U"Main", 4, next_node);
+        return register_leaf_child(base_node, U"Main", 4, NULL, 1, next_node);
     }
 
     return STATUS_ENTRY_NOT_FOUND;
@@ -386,9 +372,9 @@ StStatus StProcessGnt_Resolve(
     StGntPath_Begin(&cursor, path);
     if (StGntPath_Next(&cursor)) return STATUS_INVALID_VALUE;
 
-    if (base_node == g_gnt_system_processes) {
-        status = resolve_process_root(cursor.token, cursor.token_len, next_node);
-    } else if (base_node->parent == g_gnt_system_processes) {
+    if (StProcessGnt_IsProcessRootNode((StGnt_Node_InternalRef)base_node)) {
+        status = resolve_process_root(base_node, cursor.token, cursor.token_len, next_node);
+    } else if (CHECK_SUCCESS(StProcessGnt_GetProcessFromNode(base_node, NULL))) {
         status = resolve_process_directory(base_node, cursor.token, cursor.token_len, next_node);
     } else if (
         base_node->parent && base_node->name_len == 7 &&

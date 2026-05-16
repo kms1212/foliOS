@@ -119,7 +119,6 @@ typedef StStatus (*StGnt_IterateFunc)(
 
 extern StGnt_Node_StrongRef g_gnt_root_network;  // "//"
 extern StGnt_Node_StrongRef g_gnt_root_local;    // "/"
-extern StGnt_Node_StrongRef g_gnt_system_processes;
 
 /** Initialize the global node tree roots and core system nodes. */
 StStatus StGnt_Init(void);

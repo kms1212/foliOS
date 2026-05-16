@@ -1,11 +1,13 @@
 #ifndef __STRATA_MUTEX_H__
 #define __STRATA_MUTEX_H__
 
+#include <strata/raw_spinlock.h>
 #include <strata/status.h>
 #include <strata/thread_refs.h>
 
 struct __capability("mutex") StMutex {
-    volatile int locked;
+    struct StRawSpinlock state_lock;
+    int locked;
     StThread_InternalRef owner;
     StThread_InternalRef blocking_threads;
 };

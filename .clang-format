@@ -59,15 +59,20 @@ AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakBeforeMultilineStrings: false
 AttributeMacros:
   - __always_inline
+  - __always_unused
   - __unused
   - __noreturn
   - __naked
   - __packed
   - __format_printf
+  - __format_scanf
+  - __malloc_like
   - __aligned
   - __constructor
   - __destructor
   - __section
+  - __optimize
+  - __target
   - __weak
   - __hot
   - __cold
@@ -76,8 +81,21 @@ AttributeMacros:
   - __externally_visible
   - __sentinel
   - __warn_unused_result
+  - __nonnull
+  - __arg_nonnull
+  - __returns_nonnull
+  - __alloc_size
+  - __alloc_align
+  - __assume_aligned
+  - __access_read_only
+  - __access_write_only
+  - __access_read_write
   - __annotate
   - __annotate_v
+  - __ref_annotate
+  - __unit_count
+  - __unit_index
+  - __flagset
   - __in
   - __out
   - __out_optional
@@ -88,12 +106,25 @@ AttributeMacros:
   - __iomem
   - __module
   - __user
+  - __capability
+  - __guarded_by
+  - __pt_guarded_by
+  - __requires_capability
+  - __acquire_capability
+  - __try_acquire_capability
+  - __release_capability
+  - __no_thread_safety_analysis
   - __must_hold
   - __acquires
   - __cond_acquires
   - __releases
   - __bitwise
   - __nocast
+  - __ref_strong
+  - __ref_weak
+  - __ref_borrowed
+  - __ref_internal
+  - __ref_locked
 BinPackArguments: false
 BinPackLongBracedList: true
 BinPackParameters: OnePerLine
@@ -131,7 +162,7 @@ DisableFormat: false
 EnumTrailingComma: Insert
 ExperimentalAutoDetectBinPacking: false
 # ForEachMacros:
-# IfMacros:
+IfMacros: ["if_likely", "if_unlikely"]
 IncludeBlocks: Preserve
 IncludeCategories:
   - Regex: ^"(llvm|llvm-c|clang|clang-c)/
@@ -232,7 +263,8 @@ SpacesInParensOptions:
   Other: false
 SpacesInSquareBrackets: false
 Standard: Latest
-# StatementAttributeLikeMacros:
+StatementAttributeLikeMacros:
+  - __fallthrough
 # StatementMacros:
 TabWidth: 4
 UseTab: Never

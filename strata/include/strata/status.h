@@ -17,7 +17,7 @@ typedef uint32_t StStatus __nocast;
 
 #define MAKE_BASE_STATUS(error, area, code)                                                        \
     (((error) ? STATUS_FAILURE_MASK : 0) | (area) | ((StStatus)(code)))
-#define MAKE_STATUS(base_status, attr) ((base_status) | (attr))
+#define MAKE_STATUS(base_status, attr) ((StStatus)((base_status) | (attr)))
 
 #define STATUS_ATTR_NONE              ((StStatus)0x00000000)
 #define STATUS_ATTR_DEPRECATED        ((StStatus)0x01000000)

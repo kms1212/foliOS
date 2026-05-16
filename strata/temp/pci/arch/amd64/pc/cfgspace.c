@@ -167,7 +167,7 @@ static StStatus init_ecam_from_mcfg(void)
     handle_opened = 1;
 
     status = StIfAcpiTblMcfg_GetEntryCount(mcfg_handle, &entry_count);
-    if (!CHECK_SUCCESS(status)) goto done;
+    if (!CHECK_SUCCESS(status)) goto has_error;
 
     LOG_DEBUG(LM_CAT_PCI, "ACPI MCFG entry count: %u\n", entry_count);
 
@@ -175,7 +175,7 @@ static StStatus init_ecam_from_mcfg(void)
         StIfAcpiTblMcfg_Entry entry;
 
         status = StIfAcpiTblMcfg_GetEntry(mcfg_handle, index, &entry);
-        if (!CHECK_SUCCESS(status)) goto done;
+        if (!CHECK_SUCCESS(status)) goto has_error;
 
         LOG_DEBUG(
             LM_CAT_PCI,
@@ -205,16 +205,23 @@ static StStatus init_ecam_from_mcfg(void)
         status = map_mcfg_entry(&entry);
         if (!CHECK_SUCCESS(status)) {
             LOG_WARN(LM_CAT_PCI, "failed to map MCFG[%u] (status=%08X)\n", index, status);
-            status = STATUS_SUCCESS;
         }
     }
 
-    if (ecam_entry_count == 0) status = STATUS_NOT_SUPPORTED;
+    if (ecam_entry_count == 0) {
+        status = STATUS_NOT_SUPPORTED;
+        goto has_error;
+    }
 
-done:
+    close_status = StHandle_Close(mcfg_handle);
+    if (!CHECK_SUCCESS(close_status)) return close_status;
+
+    return STATUS_SUCCESS;
+
+has_error:
     if (handle_opened) {
         close_status = StHandle_Close(mcfg_handle);
-        if (CHECK_SUCCESS(status) && !CHECK_SUCCESS(close_status)) status = close_status;
+        (void)close_status;
     }
 
     return status;

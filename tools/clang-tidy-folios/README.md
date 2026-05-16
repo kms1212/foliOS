@@ -42,9 +42,22 @@ tagged typedef domains. Explicit casts are treated as intentional boundary
 crossings.
 
 By default, `__bitwise` is strict even when the other side is a plain integer
-type. `__nocast` is domain-to-domain by default, so plain integer constants and
-existing numeric helper macros do not drown out the higher-signal mistakes. Set
-`StrictNocast=true` to also report plain integer conversions.
+type. `__nocast` is domain-to-domain by default, so existing numeric helper
+macros do not drown out the higher-signal mistakes. Set `StrictNocast=true` to
+also report plain integer conversions. Integer constant expressions are still
+allowed as `__nocast` values so common literals and numeric constants remain
+usable without casts.
+
+`__unit_count(unit)` and `__unit_index(unit, domain)` describe `__nocast`
+numeric domains that can participate in constrained arithmetic. A page index may
+be added to or subtracted from a page count, and subtracting two indexes in the
+same unit/domain produces a count. Index arithmetic does not cross domains:
+`St_VirtPage` and `St_PhysFrame` both use page units, but their virtual and
+physical index domains are distinct.
+
+`__flagset(domain)` describes `__nocast` bitmask domains. Bitwise operations
+preserve the flagset only when both operands belong to the same flag domain, or
+when the other operand is an integer constant expression.
 
 Reference typedefs use the plain annotation names `ref_strong`, `ref_weak`,
 `ref_borrowed`, `ref_internal`, and `ref_locked`. They are domain-to-domain by default:

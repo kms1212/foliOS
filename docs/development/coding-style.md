@@ -502,13 +502,20 @@ Use typed page/frame/count values:
 - `St_VirtPage` for virtual page numbers;
 - `St_PageCount` for page-sized counts. PMM code may use it as a frame count,
   while VMM/MM code usually uses it as a page count;
-- `uintptr_t` for byte addresses and address arithmetic.
+- `size_t`, `uintptr_t`, and `intptr_t` for byte sizes, byte addresses, byte
+  offsets, and address arithmetic.
+
+`St_PhysFrame` and `St_VirtPage` are page-unit indexes in separate physical and
+virtual domains. They may be advanced by `St_PageCount`, and subtracting two
+indexes in the same domain produces a page count. Do not mix virtual page
+indexes with physical frame indexes.
 
 Use the provided conversion macros such as `ADDR_TO_PAGE`, `PAGE_TO_ADDR`,
 `ADDR_TO_FRAME`, and `FRAME_TO_ADDR`.
 
 Allocation flags and mapping flags are separate typed domains. Do not mix
 `StMm_AllocFlags` and `StMm_MapFlags` without an explicit boundary conversion.
+Flag domains may use bitwise operators within the same domain.
 
 Demand paging policy belongs in MM/VMM and platform mapping paths. Call sites
 should express desired mapping semantics with typed flags such as `MF_IMMEDIATE`

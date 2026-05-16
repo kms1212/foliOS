@@ -3,8 +3,10 @@
 #include <assert.h>
 #include <stdint.h>
 
-#include <strata/log.h>
 #include <strata/plat/time.h>
+
+#include <strata/log.h>
+#include <strata/raw_spinlock.h>
 #include <strata/scheduler.h>
 #include <strata/status.h>
 #include <strata/thread.h>
@@ -14,6 +16,7 @@
 
 void StMutex_Init(struct StMutex *mtx)
 {
+    StRawSpinlock_Init(&mtx->state_lock);
     mtx->locked = 0;
     mtx->owner = NULL;
     mtx->blocking_threads = NULL;
@@ -98,12 +101,17 @@ StStatus StMutex_Lock(struct StMutex *mtx)
     if (!CHECK_SUCCESS(status)) return status;
 
     for (;;) {
+        uint32_t irqstate;
+
         StThread_LockPreemption();
+        StRawSpinlock_LockAndSaveIrq(&mtx->state_lock, &irqstate);
 
         if (!mtx->locked) {
+            remove_blocking_thread(mtx, th);
             mtx->locked = 1;
             mtx->owner = th;
 
+            StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
             StThread_UnlockPreemption();
             return STATUS_SUCCESS;
         }
@@ -111,6 +119,7 @@ StStatus StMutex_Lock(struct StMutex *mtx)
         th->state = THREAD_STATE_BLOCKING;
         add_blocking_thread(mtx, th);
 
+        StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
         StThread_UnlockPreemption();
         StThread_Yield();
     }
@@ -143,26 +152,32 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
 
     for (;;) {
         uint64_t now_ns;
+        uint32_t irqstate;
+
+        StTimeP_GetUptimeNanoseconds(&now_ns);
 
         StThread_LockPreemption();
+        StRawSpinlock_LockAndSaveIrq(&mtx->state_lock, &irqstate);
 
         if (!mtx->locked) {
+            remove_blocking_thread(mtx, th);
             mtx->locked = 1;
             mtx->owner = th;
             th->mutex_blocking_next = NULL;
             th->sleep_until_uptime_ns = 0;
 
+            StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
             StThread_UnlockPreemption();
             return STATUS_SUCCESS;
         }
 
-        StTimeP_GetUptimeNanoseconds(&now_ns);
         if (now_ns >= deadline_ns) {
             remove_blocking_thread(mtx, th);
             th->mutex_blocking_next = NULL;
             th->sleep_until_uptime_ns = 0;
             th->state = THREAD_STATE_RUNNING;
 
+            StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
             StThread_UnlockPreemption();
             return STATUS_TIMER_EXPIRED;
         }
@@ -171,6 +186,7 @@ StStatus StMutex_LockWithTimeout(struct StMutex *mtx, int timeout_ms)
         th->state = THREAD_STATE_SLEEPING;
         add_blocking_thread(mtx, th);
 
+        StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
         StThread_UnlockPreemption();
         StThread_Yield();
     }
@@ -180,13 +196,16 @@ StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)
 {
     StStatus status;
     StThread_InternalRef th;
+    uint32_t irqstate;
 
     status = StScheduler_GetCurrentThread(&th);
     if (!CHECK_SUCCESS(status)) return status;
 
     StThread_LockPreemption();
+    StRawSpinlock_LockAndSaveIrq(&mtx->state_lock, &irqstate);
 
     if (mtx->locked) {
+        StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
         StThread_UnlockPreemption();
 
         if (locked) *locked = 0;
@@ -197,6 +216,7 @@ StStatus StMutex_TryLock(struct StMutex *mtx, int *locked)
     mtx->locked = 1;
     mtx->owner = th;
 
+    StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
     StThread_UnlockPreemption();
 
     if (locked) *locked = 1;
@@ -208,6 +228,7 @@ void StMutex_Unlock(struct StMutex *mtx)
 {
     StStatus status;
     StThread_InternalRef th;
+    uint32_t irqstate;
 
     status = StScheduler_GetCurrentThread(&th);
     assert(CHECK_SUCCESS(status));
@@ -215,6 +236,7 @@ void StMutex_Unlock(struct StMutex *mtx)
     (void)status;
 
     StThread_LockPreemption();
+    StRawSpinlock_LockAndSaveIrq(&mtx->state_lock, &irqstate);
 
     assert(mtx->owner == th);
 
@@ -223,5 +245,6 @@ void StMutex_Unlock(struct StMutex *mtx)
 
     unblock_blocking_thread(mtx);
 
+    StRawSpinlock_UnlockAndRestoreIrq(&mtx->state_lock, irqstate);
     StThread_UnlockPreemption();
 }

@@ -7,10 +7,10 @@
 
 #include <strata/compiler.h>
 
-typedef uintptr_t St_PhysFrame __nocast;
-typedef uintptr_t St_VirtPage __nocast;
+typedef uintptr_t St_PhysFrame __nocast __unit_index(page, phys);
+typedef uintptr_t St_VirtPage __nocast __unit_index(page, virt);
 
-typedef size_t St_PageCount __nocast;
+typedef size_t St_PageCount __nocast __unit_count(page);
 
 typedef uint16_t uint_be16_t __bitwise;
 typedef uint32_t uint_be32_t __bitwise;

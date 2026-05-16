@@ -10,7 +10,7 @@ set_source_files_properties(
 )
 
 target_sources(strata PUBLIC apic.c cpufeatures.c setjmp.S)
-target_sources(strata PRIVATE syscall/call.c krt.S syscall_stdio.c)
+target_sources(strata PRIVATE syscall/call.c krt.S)
 add_dependencies(strata krt_cvt)
 
 target_include_directories(strata PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

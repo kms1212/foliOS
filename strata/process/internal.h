@@ -29,6 +29,30 @@ StStatus StProcessGnt_DispatchCallArgs(
     const long args[4]
 );
 
+StStatus StProcessGnt_ParseProcessId(
+    const St_Utf32Char *name __in, size_t name_len __in, StProcess_Id *process_id __out
+);
+
+enum StProcessGnt_NodeKind {
+    PROCESS_GNT_NODE_STDIO_STDIN,
+    PROCESS_GNT_NODE_STDIO_STDOUT,
+    PROCESS_GNT_NODE_STDIO_STDERR,
+};
+
+struct StProcessGnt_NodeData {
+    enum StProcessGnt_NodeKind kind;
+};
+
+extern struct StProcessGnt_NodeData StProcessGnt_StdinNodeData;
+extern struct StProcessGnt_NodeData StProcessGnt_StdoutNodeData;
+extern struct StProcessGnt_NodeData StProcessGnt_StderrNodeData;
+
+int StProcessGnt_IsProcessRootNode(StGnt_Node_InternalRef node __in);
+
+StStatus StProcessGnt_GetProcessFromNode(
+    StGnt_Node_StrongRef process_node __in, StProcess_BorrowedRef *process_out __out_optional
+);
+
 StStatus StProcessIf_DispatchCallArgs(
     StGnt_Node_StrongRef node __in,
     StHandle_Id handle __in,
@@ -37,6 +61,13 @@ StStatus StProcessIf_DispatchCallArgs(
 );
 
 StStatus StThreadIf_DispatchCallArgs(
+    StGnt_Node_StrongRef node __in,
+    StHandle_Id handle __in,
+    uint32_t funcid __in,
+    const long args[4]
+);
+
+StStatus StStdioIf_DispatchCallArgs(
     StGnt_Node_StrongRef node __in,
     StHandle_Id handle __in,
     uint32_t funcid __in,

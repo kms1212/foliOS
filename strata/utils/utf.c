@@ -26,7 +26,7 @@ StStatus StUtf_CountUtf8Chars(
     size_t count = 0;
 
     while (i < src_size) {
-        uint8_t c = (uint8_t)src[i];
+        St_Utf8Char c = (uint8_t)src[i];
         int len = get_seq_len(c);
         int valid = 1;
 
@@ -129,7 +129,7 @@ StStatus StUtf_Utf8ToUtf32(
     size_t count = 0;
 
     while (i < src_size && count < dest_size) {
-        uint8_t c = (uint8_t)src[i];
+        St_Utf8Char c = src[i];
         uint32_t wc = UTF_REPLACEMENT_CODEPOINT;
         int len = get_seq_len(c);
 
@@ -141,7 +141,7 @@ StStatus StUtf_Utf8ToUtf32(
             int valid = 1;
 
             if (len == 1) {
-                wc = c;
+                wc = (uint8_t)c;
             } else if (len == 2) {
                 if (((uint8_t)src[i + 1] & 0xC0) != 0x80) {
                     valid = 0;

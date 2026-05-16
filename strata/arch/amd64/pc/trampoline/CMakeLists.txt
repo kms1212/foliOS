@@ -64,10 +64,16 @@ target_include_directories(trampoline SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/includ
 target_include_directories(trampoline PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 target_include_directories(trampoline PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 
-add_custom_target(trampoline_cvt ALL
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:trampoline> trampoline.bin
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/trampoline.bin"
+    COMMAND ${CMAKE_OBJCOPY} -O binary
+            $<TARGET_FILE:trampoline>
+            "${CMAKE_CURRENT_BINARY_DIR}/trampoline.bin"
     DEPENDS trampoline
-    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/trampoline.bin"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Converting trampoline binary"
+    VERBATIM
+)
+
+add_custom_target(trampoline_cvt
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/trampoline.bin"
 )

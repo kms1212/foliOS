@@ -31,6 +31,9 @@ WarningsAsErrors: ''
 #   -fno-store-merging
 
 CheckOptions:
+  - key: folios-distinct-typedefs.StrictNocast
+    value: true
+
   - key: readability-identifier-naming.GlobalVariableCase
     value: aNy_CasE
 

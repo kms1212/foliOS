@@ -349,6 +349,7 @@ static uacpi_interrupt_ret power_button_handler(uacpi_handle handle)
 StStatus acpi_module_main(uint64_t rsdp_base __in)
 {
     StStatus status;
+    uacpi_status uacpi_status;
     struct StGnt_Node *gnt_system_hardware_node;
     struct StGnt_Node *gnt_system_firmware_node;
 
@@ -372,16 +373,16 @@ StStatus acpi_module_main(uint64_t rsdp_base __in)
     status = register_gnt_nodes(gnt_system_firmware_node);
     if (!CHECK_SUCCESS(status)) return status;
 
-    status = uacpi_install_fixed_event_handler(
+    uacpi_status = uacpi_install_fixed_event_handler(
         UACPI_FIXED_EVENT_POWER_BUTTON,
         power_button_handler,
         NULL
     );
-    if (uacpi_unlikely_error(status)) {
+    if (uacpi_unlikely_error(uacpi_status)) {
         LOG_ERROR(
             LM_CAT_ACPI,
             "Failed to install power button handler: %s\n",
-            uacpi_status_to_string(status)
+            uacpi_status_to_string(uacpi_status)
         );
     }
 

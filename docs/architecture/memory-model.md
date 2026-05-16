@@ -55,6 +55,12 @@ The code uses typed domains for units that must not be mixed accidentally:
 - `StMm_AllocFlags`: allocation placement and alignment policy;
 - `StMm_MapFlags`: mapping protection and mapping behavior.
 
+The clang-tidy annotations model `St_PhysFrame` and `St_VirtPage` as page-unit
+indexes in separate physical and virtual domains, and `St_PageCount` as the
+matching page-unit distance. Indexes can move by counts, and subtracting indexes
+within the same domain yields a count; virtual and physical index domains do not
+mix implicitly.
+
 Use conversion helpers such as `ADDR_TO_PAGE`, `PAGE_TO_ADDR`,
 `ADDR_TO_FRAME`, and `FRAME_TO_ADDR` at boundaries. Do not smuggle virtual page
 numbers, physical frame numbers, page/frame counts, and byte addresses through

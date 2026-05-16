@@ -20,6 +20,7 @@
 #include <strata/plat/tss.h>
 
 #include <strata/arch/cpufeatures.h>
+#include <strata/bitops.h>
 #include <strata/compiler.h>
 #include <strata/elf.h>
 #include <strata/interrupt.h>
@@ -69,7 +70,7 @@ static StStatus allocate_xstate_buffer(union StA_XStateBuffer **bufferout)
 {
     return StPool_AllocateClearAligned(
         sizeof(union StA_XStateBuffer),
-        __builtin_ctzll((unsigned long long)__alignof__(union StA_XStateBuffer)),
+        St_CountTrailingZeros64((uint64_t)__alignof__(union StA_XStateBuffer)),
         (void **)bufferout
     );
 }

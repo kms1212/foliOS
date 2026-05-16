@@ -68,6 +68,7 @@ uacpi_status uacpi_kernel_install_interrupt_handler(
 )
 {
     StStatus status;
+    uacpi_status uacpi_status;
     struct acpi_irq_handle *irq_handle;
     int vector;
 
@@ -95,11 +96,11 @@ uacpi_status uacpi_kernel_install_interrupt_handler(
         return UACPI_STATUS_INTERNAL_ERROR;
     }
 
-    status = uacpi_kernel_ensure_work_thread();
-    if (status != UACPI_STATUS_OK) {
+    uacpi_status = uacpi_kernel_ensure_work_thread();
+    if (uacpi_unlikely_error(uacpi_status)) {
         StInt_RemoveHandler(irq_handle->interrupt_handler);
         StPool_Free(irq_handle);
-        return status;
+        return uacpi_status;
     }
 
     status = StIntP_Unmask(vector);

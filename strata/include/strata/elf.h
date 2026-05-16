@@ -370,7 +370,7 @@ struct StElf_Object {
     size_t symtab_size;
 };
 
-typedef uint32_t StElf_LoadFlags __nocast;
+typedef uint32_t StElf_LoadFlags __nocast __flagset(elf_load);
 
 #define ELF_LOAD_DEFAULT   ((StElf_LoadFlags)0x00000000)
 #define ELF_LOAD_IMMEDIATE ((StElf_LoadFlags)0x00000001)

@@ -26,45 +26,6 @@ struct thread_dispatch_context {
     StThread_InternalRef thread;
 };
 
-static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, int *value_out)
-{
-    int value = 0;
-
-    if (!token || !token_len) return STATUS_INVALID_VALUE;
-
-    for (size_t i = 0; i < token_len; i++) {
-        if (token[i] < U'0' || token[i] > U'9') return STATUS_INVALID_VALUE;
-        value = (value * 10) + (int)(token[i] - U'0');
-    }
-
-    if (value_out) *value_out = value;
-
-    return STATUS_SUCCESS;
-}
-
-static StStatus get_process_from_process_node(
-    StGnt_Node_StrongRef process_node, StProcess_BorrowedRef *process_out
-)
-{
-    StStatus status;
-    int process_id;
-    StProcess_BorrowedRef process;
-
-    if (!process_node || process_node->parent != g_gnt_system_processes) {
-        return STATUS_INVALID_HANDLE;
-    }
-
-    status = parse_decimal_id(process_node->name, process_node->name_len, &process_id);
-    if (!CHECK_SUCCESS(status)) return status;
-
-    process = StProcess_FindById(process_id);
-    if (!process) return STATUS_ENTRY_NOT_FOUND;
-
-    if (process_out) *process_out = process;
-
-    return STATUS_SUCCESS;
-}
-
 static StStatus get_thread_from_thread_node(
     StGnt_Node_StrongRef thread_node, StThread_InternalRef *thread_out
 )
@@ -92,8 +53,10 @@ static StStatus get_thread_from_thread_node(
         return STATUS_INVALID_HANDLE;
     }
 
-    status =
-        get_process_from_process_node((StGnt_Node_StrongRef)thread_node->parent->parent, &process);
+    status = StProcessGnt_GetProcessFromNode(
+        (StGnt_Node_StrongRef)thread_node->parent->parent,
+        &process
+    );
     if (!CHECK_SUCCESS(status)) return status;
 
     thread = process->main_thread;

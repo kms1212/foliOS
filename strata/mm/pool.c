@@ -9,6 +9,7 @@
 
 #include <strata/arch/mmu_constants.h>
 
+#include <strata/bitops.h>
 #include <strata/compiler.h>
 #include <strata/macros.h>
 #include <strata/mm.h>
@@ -16,6 +17,15 @@
 #include <strata/mm/vmm.h>
 #include <strata/status.h>
 #include <strata/thread.h>
+
+enum {
+    PAGE_SIZE_ALIGNMENT_BITS = __builtin_ctz(PAGE_SIZE),
+    SUBPOOL_SIZE_CLASS_COUNT =
+        ((PAGE_SIZE_ALIGNMENT_BITS - STRATA_MM_POOL_MIN_ALIGN_BITS - STRATA_MM_POOL_MANTISSA_BITS +
+          2)
+         << (STRATA_MM_POOL_MANTISSA_BITS - 1)),
+    SUBPOOL_ALIGNMENT_CLASS_COUNT = (PAGE_SIZE_ALIGNMENT_BITS - STRATA_MM_POOL_MIN_ALIGN_BITS + 1),
+};
 
 struct subpool_header {
     struct subpool_header *prev, *next, *prev_free, *next_free;
@@ -35,14 +45,6 @@ struct subpool_entry {
     uint8_t alignment_bits;
     RESERVE_1BYTE;
     struct subpool_header *first, *last, *next_free;
-};
-
-enum {
-    SUBPOOL_SIZE_CLASS_COUNT =
-        ((__builtin_ctz(PAGE_SIZE) - STRATA_MM_POOL_MIN_ALIGN_BITS - STRATA_MM_POOL_MANTISSA_BITS +
-          2)
-         << (STRATA_MM_POOL_MANTISSA_BITS - 1)),
-    SUBPOOL_ALIGNMENT_CLASS_COUNT = (__builtin_ctz(PAGE_SIZE) - STRATA_MM_POOL_MIN_ALIGN_BITS + 1),
 };
 
 static struct subpool_entry subpool_table[SUBPOOL_SIZE_CLASS_COUNT * SUBPOOL_ALIGNMENT_CLASS_COUNT];
@@ -76,7 +78,7 @@ static uint16_t normalize_object_size(uint16_t object_size __in, uint8_t alignme
         return (uint16_t)(1 << minimum_alignment_bits);
     }
 
-    uint32_t msb = 31 - __builtin_clz(object_size);
+    uint32_t msb = 31 - St_CountLeadingZeros32(object_size);
 
     quantum_bits =
         (msb + 1 > STRATA_MM_POOL_MANTISSA_BITS) ? (msb + 1 - STRATA_MM_POOL_MANTISSA_BITS) : 0;
@@ -166,7 +168,7 @@ static int validate_subpool_header_metadata(const struct subpool_header *header)
     if (!header->object_size || !header->object_count) return 0;
     if (header->used_count > header->object_count) return 0;
     if (header->alignment_bits < STRATA_MM_POOL_MIN_ALIGN_BITS) return 0;
-    if (header->alignment_bits > __builtin_ctz(PAGE_SIZE)) return 0;
+    if (header->alignment_bits > PAGE_SIZE_ALIGNMENT_BITS) return 0;
 
     span_size = get_subpool_span_size();
     bitmap_bytes = get_subpool_bitmap_word_count(header->object_count) * sizeof(uint64_t);
@@ -417,8 +419,8 @@ static StStatus allocate_large(size_t size __in, uint8_t alignment_bits __in, vo
     St_PageCount page_count;
     StMm_AllocFlags alloc_flags = AF_DEFAULT;
 
-    page_count = ALIGN_DIV(size, PAGE_SIZE);
-    if (alignment_bits > __builtin_ctz(PAGE_SIZE)) {
+    page_count = (St_PageCount)ALIGN_DIV(size, PAGE_SIZE);
+    if (alignment_bits > PAGE_SIZE_ALIGNMENT_BITS) {
         alloc_flags |= AF_ALIGN(1ULL << alignment_bits);
     }
 
@@ -456,7 +458,7 @@ static StStatus allocate_internal(size_t size __in, int alignment_bits __in, voi
     }
 
     normalized_alignment_bits = normalize_alignment_bits(alignment_bits);
-    if (size > PAGE_SIZE || normalized_alignment_bits > __builtin_ctz(PAGE_SIZE)) {
+    if (size > PAGE_SIZE || normalized_alignment_bits > PAGE_SIZE_ALIGNMENT_BITS) {
         return allocate_large(size, normalized_alignment_bits, ptr);
     }
 
@@ -482,7 +484,7 @@ static StStatus allocate_internal(size_t size __in, int alignment_bits __in, voi
         int bit_idx;
         if (header->bitmap[i] == UINT64_MAX) continue;
 
-        bit_idx = __builtin_ctzll(~header->bitmap[i]);
+        bit_idx = St_CountTrailingZeros64(~header->bitmap[i]);
         header->bitmap[i] |= (1ULL << bit_idx);
         header->used_count++;
 
@@ -579,7 +581,7 @@ StStatus StPool_Reallocate(void *ptr __in, size_t size __in, void **new_ptr __ou
             return STATUS_SUCCESS;
         }
 
-        current_alignment_bits = __builtin_ctzll((unsigned long long)(uintptr_t)ptr);
+        current_alignment_bits = St_CountTrailingZeros64((uint64_t)(uintptr_t)ptr);
         status = StPool_AllocateAligned(size, current_alignment_bits, &allocated_ptr);
         if (!CHECK_SUCCESS(status)) return status;
 

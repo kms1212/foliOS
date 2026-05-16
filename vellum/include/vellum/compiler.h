@@ -14,12 +14,35 @@
 #define __destructor              __attribute__((destructor))
 #define __pure                    __attribute__((pure))
 
+#ifndef likely
+#    define likely(cond) __builtin_expect(!!(cond), 1)
+
+#endif
+
+#ifndef unlikely
+#    define unlikely(cond) __builtin_expect(!!(cond), 0)
+
+#endif
+
+#define if_likely(cond)   if (likely(cond))
+#define if_unlikely(cond) if (unlikely(cond))
+
+#define __unreachable()    __builtin_unreachable()
+#define __fallthrough      __attribute__((fallthrough))
+#define compiler_barrier() __asm__ volatile("" ::: "memory")
+
 #ifdef __clang__
-#    define __annotate(name)      __attribute__((annotate("vl_" #name)))
-#    define __annotate_v(name, v) __attribute__((annotate("vl_" #name "=" #v)))
+#    define __annotate(name)           __attribute__((annotate("vl_" #name)))
+#    define __annotate_v(name, v)      __attribute__((annotate("vl_" #name "=" #v)))
+#    define __unit_count(unit)         __attribute__((annotate("vl_unit_count=" #unit)))
+#    define __unit_index(unit, domain) __attribute__((annotate("vl_unit_index=" #unit ":" #domain)))
+#    define __flagset(domain)          __attribute__((annotate("vl_flagset=" #domain)))
 #else
 #    define __annotate(name)
 #    define __annotate_v(name, v)
+#    define __unit_count(unit)
+#    define __unit_index(unit, domain)
+#    define __flagset(domain)
 #endif
 
 #define __in           __annotate("in")

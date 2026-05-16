@@ -69,7 +69,7 @@ static StStatus init_load_segment(
     if (mem_size > SIZE_MAX - page_offset) return STATUS_INVALID_VALUE;
 
     segment->load_addr = load_addr;
-    segment->page_count = ALIGN_DIV(page_offset + mem_size, PAGE_SIZE);
+    segment->page_count = (St_PageCount)ALIGN_DIV(page_offset + mem_size, PAGE_SIZE);
     segment->data_offset = data_offset;
     segment->file_size = file_size;
     segment->mem_size = mem_size;

@@ -561,8 +561,7 @@ static int setup_user_process(
 
         if (ph.type != PT_LOAD) continue;
 
-        if (!program_header_addr && ehdr.phoff >= ph.offset &&
-            ehdr.phoff - ph.offset < ph.filesz) {
+        if (!program_header_addr && ehdr.phoff >= ph.offset && ehdr.phoff - ph.offset < ph.filesz) {
             program_header_addr = (uintptr_t)ph.vaddr + (uintptr_t)(ehdr.phoff - ph.offset);
         }
 

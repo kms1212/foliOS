@@ -14,6 +14,7 @@
 #include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
 
+#include <strata/bitops.h>
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/macros.h>
@@ -138,17 +139,14 @@
 #define ATPA_ORDER_BMP_CLR(b, o)                                                                   \
     ((b) &= ~((ATPA_ORDER_BMP_MASK) & ~((1ULL << ATPA_ORDER_BMP_IDX(o)) - 1)))
 
-#define ATPA_INDEX_LIMIT_4G  (ALIGN_DIV(1LL << 32, PAGE_SIZE * ALLOC_TABLE_COVERAGE_PAGES))
-#define ATPA_INDEX_LIMIT_16M (ALIGN_DIV(1LL << 24, PAGE_SIZE * ALLOC_TABLE_COVERAGE_PAGES))
-#define ATPA_INDEX_LIMIT_1M  (ALIGN_DIV(1LL << 20, PAGE_SIZE * ALLOC_TABLE_COVERAGE_PAGES))
+#define ATPA_INDEX_LIMIT_4G  (ALIGN_DIV(1LL << 32, PAGE_SIZE * (size_t)ALLOC_TABLE_COVERAGE_PAGES))
+#define ATPA_INDEX_LIMIT_16M (ALIGN_DIV(1LL << 24, PAGE_SIZE * (size_t)ALLOC_TABLE_COVERAGE_PAGES))
+#define ATPA_INDEX_LIMIT_1M  (ALIGN_DIV(1LL << 20, PAGE_SIZE * (size_t)ALLOC_TABLE_COVERAGE_PAGES))
 
 #define ALLOC_TABLE_ENTRY_INDEX_LIMIT_16M                                                          \
-    (ALIGN_DIV(1LL << 24, PAGE_SIZE * ALLOCENT_COVERAGE_PAGES))
-#define ALLOC_TABLE_ENTRY_INDEX_LIMIT_1M (ALIGN_DIV(1LL << 20, PAGE_SIZE * ALLOCENT_COVERAGE_PAGES))
-
-#define CTZ64(x)    __builtin_ctzll(x)
-#define CLZ64(x)    __builtin_clzll(x)
-#define POPCNT64(x) __builtin_popcountll(x)
+    (ALIGN_DIV(1LL << 24, PAGE_SIZE * (size_t)ALLOCENT_COVERAGE_PAGES))
+#define ALLOC_TABLE_ENTRY_INDEX_LIMIT_1M                                                           \
+    (ALIGN_DIV(1LL << 20, PAGE_SIZE * (size_t)ALLOCENT_COVERAGE_PAGES))
 
 #define EE_FREE     0
 #define EE_USED     1
@@ -237,8 +235,8 @@ static int is_topping_up_alloctbl_pool = 0;
 static int is_topping_up_extentry_pool = 0;
 
 /* statistics */
-static size_t total_frames = 0;
-static size_t free_frames = 0;
+static St_PageCount total_frames = 0;
+static St_PageCount free_frames = 0;
 
 /* status flags */
 static int allocation_available = 0;
@@ -406,15 +404,15 @@ static void maybe_topup_management_pools(void)
     }
 }
 
-static int get_order(size_t count)
+static int get_order(St_PageCount count)
 {
     size_t temp;
 
     if (count == 0) return -1;
     if (count <= 1) return 0;
 
-    temp = count - 1;
-    return 64 - CLZ64(temp);
+    temp = (size_t)count - 1;
+    return 64 - St_CountLeadingZeros64((uint64_t)temp);
 }
 
 static const uint64_t alloc_masks[63] = {
@@ -512,7 +510,7 @@ static inline int find_free_frame_idx_bitmap_entry(uint64_t entry, int align_ord
     inverted = ~entry & mask;
     if (!inverted) return -1;
 
-    return (CTZ64(inverted) - pos) * (1 << align_order);
+    return (St_CountTrailingZeros64(inverted) - pos) * (1 << align_order);
 }
 
 static inline void allocate_from_bitmap_entry(uint64_t *entry, unsigned index, int order)
@@ -702,8 +700,8 @@ static struct pmm_metadata *get_metadata(St_PhysFrame pfn)
 
 static __always_inline St_PhysFrame get_pfn_from_metadata(struct pmm_metadata *metadata)
 {
-    return (St_PhysFrame)((uintptr_t)metadata - PAGE_TO_ADDR(MEMMAP_MFMAREA_VPN_BASE)) /
-        sizeof(struct pmm_metadata);
+    return (St_PhysFrame)(((uintptr_t)metadata - PAGE_TO_ADDR(MEMMAP_MFMAREA_VPN_BASE)) /
+                          sizeof(struct pmm_metadata));
 }
 
 static StStatus create_metadata(St_PhysFrame pfn, StAllocationOwner_StrongRef owner, int order)
@@ -1101,15 +1099,21 @@ StStatus StPmm_LateInit(void)
         if (alloc_table_ptr_array[i] == ATPA_UNUSABLE) continue;
 
         if (alloc_table_ptr_array[i] == ATPA_FREE) {
+            St_PageCount metadata_page_offset =
+                (St_PageCount)(i * (size_t)ALLOC_TABLE_COVERAGE_PAGES /
+                               (size_t)METADATA_BLOCK_COVERAGE_PAGES);
+            St_PageCount metadata_page_count =
+                (St_PageCount)((size_t)ALLOC_TABLE_COVERAGE_PAGES /
+                               (size_t)METADATA_BLOCK_COVERAGE_PAGES);
+
             status = StMmP_MapGlobalContiguousMemory(
                 metadata_area_begin,
-                MEMMAP_MFMAREA_VPN_BASE +
-                    (i * ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES),
-                ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES,
+                MEMMAP_MFMAREA_VPN_BASE + metadata_page_offset,
+                metadata_page_count,
                 MF_KERNEL_DEFAULT
             );
             if (!CHECK_SUCCESS(status)) return status;
-            metadata_area_begin += ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES;
+            metadata_area_begin += metadata_page_count;
 
             continue;
         }
@@ -1123,7 +1127,7 @@ StStatus StPmm_LateInit(void)
                 continue;
             }
 
-            size_t batch_count = 0;
+            St_PageCount batch_count = 0;
             for (size_t k = j; k < ARRAY_SIZE(table->entries); k += 2) {
                 if (table->entries[k].bitmap == ALLOCENT_EXT_UNUSABLE &&
                     table->entries[k + 1].bitmap == ALLOCENT_EXT_UNUSABLE) {
@@ -1136,7 +1140,9 @@ StStatus StPmm_LateInit(void)
             status = StMmP_MapGlobalContiguousMemory(
                 metadata_area_begin,
                 MEMMAP_MFMAREA_VPN_BASE +
-                    (i * ALLOC_TABLE_COVERAGE_PAGES / METADATA_BLOCK_COVERAGE_PAGES) + (j / 2),
+                    (St_PageCount)(i * (size_t)ALLOC_TABLE_COVERAGE_PAGES /
+                                   (size_t)METADATA_BLOCK_COVERAGE_PAGES) +
+                    (St_PageCount)(j / 2),
                 batch_count,
                 MF_KERNEL_DEFAULT
             );
@@ -1182,7 +1188,7 @@ StStatus StPmm_AllocateContiguousFrame(
     StStatus status;
     St_PhysFrame allocated_pfn = 0;
     int order;
-    uint32_t below_value;
+    StMm_AllocFlags below_value;
     int align_order;
     ssize_t atpa_search_start;
     ssize_t atpa_align_jump;
@@ -1359,8 +1365,8 @@ StStatus StPmm_AllocateContiguousFrame(
                     table->entries[table_start + j].bitmap = ALLOCENT_BMP_FULL_ALLOC;
                 }
 
-                allocated_pfn =
-                    (i * ALLOC_TABLE_COVERAGE_PAGES) + (table_start * ALLOCENT_COVERAGE_PAGES);
+                allocated_pfn = (St_PhysFrame)((i * (size_t)ALLOC_TABLE_COVERAGE_PAGES) +
+                                               (table_start * (size_t)ALLOCENT_COVERAGE_PAGES));
 
                 // allocate and fill metadata directory & metadata
                 status = create_metadata(allocated_pfn, owner, order);

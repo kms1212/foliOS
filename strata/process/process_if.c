@@ -16,7 +16,6 @@
 #include <strata/status.h>
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
-#include <strata/utf.h>
 
 #include "sidl/process.server.h"
 #include "sidl/process.types.h"
@@ -51,22 +50,6 @@ static StStatus write_user_u64(
     return StMm_WriteLocal(ctx->process->address_space, (uintptr_t)user_ptr, &value, sizeof(value));
 }
 
-static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, int *value_out)
-{
-    int value = 0;
-
-    if (!token || !token_len) return STATUS_INVALID_VALUE;
-
-    for (size_t i = 0; i < token_len; i++) {
-        if (token[i] < U'0' || token[i] > U'9') return STATUS_INVALID_VALUE;
-        value = (value * 10) + (int)(token[i] - U'0');
-    }
-
-    if (value_out) *value_out = value;
-
-    return STATUS_SUCCESS;
-}
-
 static StStatus get_current_process(StProcess_BorrowedRef *process_out)
 {
     StStatus status;
@@ -77,29 +60,6 @@ static StStatus get_current_process(StProcess_BorrowedRef *process_out)
     if (!thread || !thread->process) return STATUS_INVALID_THREAD;
 
     if (process_out) *process_out = (StProcess_BorrowedRef)thread->process;
-
-    return STATUS_SUCCESS;
-}
-
-static StStatus get_process_from_process_node(
-    StGnt_Node_StrongRef process_node, StProcess_BorrowedRef *process_out
-)
-{
-    StStatus status;
-    int process_id;
-    StProcess_BorrowedRef process;
-
-    if (!process_node || process_node->parent != g_gnt_system_processes) {
-        return STATUS_INVALID_HANDLE;
-    }
-
-    status = parse_decimal_id(process_node->name, process_node->name_len, &process_id);
-    if (!CHECK_SUCCESS(status)) return status;
-
-    process = StProcess_FindById(process_id);
-    if (!process) return STATUS_ENTRY_NOT_FOUND;
-
-    if (process_out) *process_out = process;
 
     return STATUS_SUCCESS;
 }
@@ -192,7 +152,7 @@ static StStatus prc_terminate(void *context, StHandle handle, StStatus exit_code
      */
     StGnt_ReleaseNode(ctx->node);
     StThread_Exit();
-    __builtin_unreachable();
+    __unreachable();
 }
 
 static StStatus prc_spawn_child(
@@ -490,7 +450,7 @@ StStatus StProcessIf_DispatchCallArgs(
 
     if (!node || !args) return STATUS_INVALID_VALUE;
 
-    status = get_process_from_process_node(node, &ctx.process);
+    status = StProcessGnt_GetProcessFromNode(node, &ctx.process);
     if (status == STATUS_INVALID_HANDLE) return STATUS_NOT_SUPPORTED;
     if (!CHECK_SUCCESS(status)) return status;
 

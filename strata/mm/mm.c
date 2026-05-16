@@ -11,6 +11,7 @@
 #include <strata/plat/memmap.h>
 #include <strata/plat/mm.h>
 
+#include <strata/bitops.h>
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/mm/address_space.h>
@@ -44,8 +45,7 @@ static St_PageCount get_sparse_alloc_batch_count(St_PageCount remaining_count)
 {
     if (remaining_count == 0) return 0;
 
-    return (St_PageCount)1ULL
-        << ((sizeof(unsigned long long) * 8) - 1 - __builtin_clzll(remaining_count));
+    return (St_PageCount)1ULL << (63 - St_CountLeadingZeros64((uint64_t)remaining_count));
 }
 
 static void *phys_frame_to_directmap_ptr(St_PhysFrame pfn __in)
@@ -180,8 +180,8 @@ static void rollback_global_sparse_allocation(
     StStatus status;
     St_PhysFrame pfn;
     StPmm_AllocationMetadata_BorrowedRef metadata;
-    size_t page_count_to_free;
-    size_t i = 0;
+    St_PageCount page_count_to_free;
+    St_PageCount i = 0;
 
     while (i < allocated_count) {
         status = StMm_GlobalVirtPageToPhysFrame(vpn + i, &pfn);
@@ -197,7 +197,7 @@ static void rollback_global_sparse_allocation(
             continue;
         }
 
-        page_count_to_free = (size_t)1 << metadata->order;
+        page_count_to_free = (St_PageCount)((size_t)1 << metadata->order);
         StPmm_FreeContiguousFrame(pfn);
         i += page_count_to_free;
     }
@@ -210,8 +210,8 @@ static void rollback_local_sparse_allocation(
     StStatus status;
     St_PhysFrame pfn;
     StPmm_AllocationMetadata_BorrowedRef metadata;
-    size_t page_count_to_free;
-    size_t i = 0;
+    St_PageCount page_count_to_free;
+    St_PageCount i = 0;
 
     while (i < allocated_count) {
         status = StMm_LocalVirtPageToPhysFrame(asp, vpn + i, &pfn);
@@ -227,7 +227,7 @@ static void rollback_local_sparse_allocation(
             continue;
         }
 
-        page_count_to_free = (size_t)1 << metadata->order;
+        page_count_to_free = (St_PageCount)((size_t)1 << metadata->order);
         StPmm_FreeContiguousFrame(pfn);
         i += page_count_to_free;
     }
@@ -536,7 +536,7 @@ StStatus StMm_AllocateGlobalSparse(
     StStatus status;
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
-    size_t allocated_count = 0;
+    St_PageCount allocated_count = 0;
     St_PageCount batch_count = 0;
 
     /* reserve virtual memory pages first */
@@ -559,17 +559,14 @@ StStatus StMm_AllocateGlobalSparse(
     while (allocated_count < count) {
         batch_count = get_sparse_alloc_batch_count(count - allocated_count);
 
-        for (size_t i = 0; i < batch_count; i++) {
-            status = StMm_GlobalVirtPageToPhysFrame(
-                allocated_vpn + (St_VirtPage)allocated_count + (St_VirtPage)i,
-                NULL
-            );
+        for (St_PageCount i = 0; i < batch_count; i++) {
+            status = StMm_GlobalVirtPageToPhysFrame(allocated_vpn + allocated_count + i, NULL);
             if (status != STATUS_PAGE_NOT_PRESENT) {
                 LOG_ERROR(
                     LM_CAT_UNCLASSIFIED,
                     "StMm_AllocateGlobalSparse: expected page-not-present at vpn=%013zX but got "
                     "%08X\n",
-                    (uintptr_t)(allocated_vpn + (St_VirtPage)allocated_count + (St_VirtPage)i),
+                    (uintptr_t)(allocated_vpn + allocated_count + i),
                     status
                 );
                 goto has_error;
@@ -596,7 +593,7 @@ StStatus StMm_AllocateGlobalSparse(
 
         status = StMmP_MapGlobalContiguousMemory(
             allocated_pfn,
-            allocated_vpn + (St_VirtPage)allocated_count,
+            allocated_vpn + allocated_count,
             batch_count,
             map_flags
         );
@@ -606,7 +603,7 @@ StStatus StMm_AllocateGlobalSparse(
                 "StMm_AllocateGlobalSparse: StMmP_MapGlobalContiguousMemory failed (status=%08X, "
                 "vpn=%013zX, pfn=%013zX, count=%zu)\n",
                 status,
-                (uintptr_t)(allocated_vpn + (St_VirtPage)allocated_count),
+                (uintptr_t)(allocated_vpn + allocated_count),
                 (uintptr_t)allocated_pfn,
                 batch_count
             );
@@ -654,7 +651,7 @@ StStatus StMm_AllocateLocalSparse(
     StStatus status;
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
     St_VirtPage allocated_vpn = (St_VirtPage)-1;
-    size_t allocated_count = 0;
+    St_PageCount allocated_count = 0;
     St_PageCount batch_count = 0;
     StAllocationOwner_StrongRef owner;
 
@@ -703,12 +700,8 @@ StStatus StMm_AllocateLocalSparse(
     while (allocated_count < count) {
         batch_count = get_sparse_alloc_batch_count(count - allocated_count);
 
-        for (size_t i = 0; i < batch_count; i++) {
-            status = StMm_LocalVirtPageToPhysFrame(
-                asp,
-                allocated_vpn + (St_VirtPage)allocated_count + (St_VirtPage)i,
-                NULL
-            );
+        for (St_PageCount i = 0; i < batch_count; i++) {
+            status = StMm_LocalVirtPageToPhysFrame(asp, allocated_vpn + allocated_count + i, NULL);
             if (status != STATUS_PAGE_NOT_PRESENT) goto has_error;
         }
 
@@ -724,7 +717,7 @@ StStatus StMm_AllocateLocalSparse(
         status = StMmP_MapLocalContiguousMemory(
             asp,
             allocated_pfn,
-            allocated_vpn + (St_VirtPage)allocated_count,
+            allocated_vpn + allocated_count,
             batch_count,
             map_flags
         );
@@ -861,7 +854,7 @@ StStatus StMm_AllocateGlobalSparseTo(
 {
     StStatus status;
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
-    size_t allocated_count = 0;
+    St_PageCount allocated_count = 0;
     St_PageCount batch_count = 0;
     int vpn_allocated = 0;
 
@@ -874,11 +867,8 @@ StStatus StMm_AllocateGlobalSparseTo(
     while (allocated_count < count) {
         batch_count = get_sparse_alloc_batch_count(count - allocated_count);
 
-        for (size_t i = 0; i < batch_count; i++) {
-            status = StMm_GlobalVirtPageToPhysFrame(
-                vpn + (St_VirtPage)allocated_count + (St_VirtPage)i,
-                NULL
-            );
+        for (St_PageCount i = 0; i < batch_count; i++) {
+            status = StMm_GlobalVirtPageToPhysFrame(vpn + allocated_count + i, NULL);
             if (status != STATUS_PAGE_NOT_PRESENT) goto has_error;
         }
 
@@ -893,7 +883,7 @@ StStatus StMm_AllocateGlobalSparseTo(
 
         status = StMmP_MapGlobalContiguousMemory(
             allocated_pfn,
-            vpn + (St_VirtPage)allocated_count,
+            vpn + allocated_count,
             batch_count,
             map_flags
         );
@@ -932,7 +922,7 @@ StStatus StMm_AllocateLocalSparseTo(
 {
     StStatus status;
     St_PhysFrame allocated_pfn = (St_PhysFrame)-1;
-    size_t allocated_count = 0;
+    St_PageCount allocated_count = 0;
     St_PageCount batch_count = 0;
     StAllocationOwner_StrongRef owner;
     int vpn_allocated = 0;
@@ -982,12 +972,8 @@ StStatus StMm_AllocateLocalSparseTo(
     while (allocated_count < count) {
         batch_count = get_sparse_alloc_batch_count(count - allocated_count);
 
-        for (size_t i = 0; i < batch_count; i++) {
-            status = StMm_LocalVirtPageToPhysFrame(
-                asp,
-                vpn + (St_VirtPage)allocated_count + (St_VirtPage)i,
-                NULL
-            );
+        for (St_PageCount i = 0; i < batch_count; i++) {
+            status = StMm_LocalVirtPageToPhysFrame(asp, vpn + allocated_count + i, NULL);
             if (status != STATUS_PAGE_NOT_PRESENT) goto has_error;
         }
 
@@ -1003,7 +989,7 @@ StStatus StMm_AllocateLocalSparseTo(
         status = StMmP_MapLocalContiguousMemory(
             asp,
             allocated_pfn,
-            vpn + (St_VirtPage)allocated_count,
+            vpn + allocated_count,
             batch_count,
             map_flags
         );
@@ -1527,8 +1513,8 @@ void StMm_FreeGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_Pag
     St_PhysFrame pfn;
     StPmm_AllocationMetadata_BorrowedRef metadata;
     struct StVmm_PageInfo page_info;
-    size_t page_count_to_free;
-    size_t i = 0;
+    St_PageCount page_count_to_free;
+    St_PageCount i = 0;
     int allow_unmapped_pages = 0;
 
     if (!IS_GLOBAL_VPN(vpn)) return;
@@ -1556,11 +1542,11 @@ void StMm_FreeGlobal(enum StVmm_Domain domain __in, St_VirtPage vpn __in, St_Pag
             St_Panic(STATUS_CONFLICTING_STATE, "pmm allocation metadata unavailable");
         }
 
-        page_count_to_free = (size_t)1 << metadata->order;
+        page_count_to_free = (St_PageCount)((size_t)1 << metadata->order);
         if (page_count_to_free > count - i) page_count_to_free = count - i;
         StPmm_FreeContiguousFrame(pfn);
         if (allow_unmapped_pages) {
-            StMmP_UnmapGlobalContiguousMemory(vpn + i, (St_PageCount)page_count_to_free);
+            StMmP_UnmapGlobalContiguousMemory(vpn + i, page_count_to_free);
         }
 
         i += page_count_to_free;
@@ -1581,12 +1567,12 @@ void StMm_FreeLocal(
     St_PhysFrame pfn;
     StPmm_AllocationMetadata_BorrowedRef metadata;
     struct StVmm_PageInfo page_info;
-    size_t page_count_to_free;
+    St_PageCount page_count_to_free;
     St_VirtPage free_vpn = vpn;
     St_PageCount free_count = count;
     St_VirtPage reserved_begin_vpn;
     St_VirtPage reserved_end_vpn;
-    size_t i = 0;
+    St_PageCount i = 0;
     int allow_unmapped_pages = 0;
 
     if (!IS_LOCAL_VPN(vpn)) return;
@@ -1628,10 +1614,10 @@ void StMm_FreeLocal(
             St_Panic(STATUS_CONFLICTING_STATE, "pmm allocation metadata unavailable");
         }
 
-        page_count_to_free = (size_t)1 << metadata->order;
+        page_count_to_free = (St_PageCount)((size_t)1 << metadata->order);
         if (page_count_to_free > free_count - i) page_count_to_free = free_count - i;
         StPmm_FreeContiguousFrame(pfn);
-        StMmP_UnmapLocalContiguousMemory(asp, free_vpn + i, (St_PageCount)page_count_to_free);
+        StMmP_UnmapLocalContiguousMemory(asp, free_vpn + i, page_count_to_free);
 
         i += page_count_to_free;
     }

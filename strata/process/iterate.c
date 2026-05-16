@@ -18,7 +18,7 @@
 #include <strata/utf.h>
 
 static StStatus format_id_name(
-    int id, St_Utf32Char *name_out, size_t name_out_size, size_t *name_len_out
+    StProcess_Id id, St_Utf32Char *name_out, size_t name_out_size, size_t *name_len_out
 )
 {
     char name_utf8[32];
@@ -52,22 +52,6 @@ static StGnt_Node_InternalRef find_registered_child(
     }
 
     return NULL;
-}
-
-static StStatus parse_decimal_id(const St_Utf32Char *token, size_t token_len, int *value_out)
-{
-    int value = 0;
-
-    if (!token_len) return STATUS_INVALID_VALUE;
-
-    for (size_t i = 0; i < token_len; i++) {
-        if (token[i] < U'0' || token[i] > U'9') return STATUS_INVALID_VALUE;
-        value = (value * 10) + (int)(token[i] - U'0');
-    }
-
-    if (value_out) *value_out = value;
-
-    return STATUS_SUCCESS;
 }
 
 static StStatus append_entry(
@@ -286,7 +270,7 @@ StStatus StProcessGnt_Iterate(
     if (!parent) return STATUS_INVALID_VALUE;
     if (!buffer && buffer_size != 0) return STATUS_INVALID_VALUE;
 
-    if (parent == g_gnt_system_processes) {
+    if (StProcessGnt_IsProcessRootNode((StGnt_Node_InternalRef)parent)) {
         return iterate_process_root(
             cookie,
             (uint8_t *)buffer,
@@ -296,14 +280,8 @@ StStatus StProcessGnt_Iterate(
         );
     }
 
-    if (parent->parent == g_gnt_system_processes) {
-        int process_id;
-
-        status = parse_decimal_id(parent->name, parent->name_len, &process_id);
-        if (!CHECK_SUCCESS(status)) return STATUS_ENTRY_NOT_FOUND;
-
-        process = StProcess_FindById(process_id);
-
+    status = StProcessGnt_GetProcessFromNode(parent, &process);
+    if (CHECK_SUCCESS(status)) {
         return iterate_process_directory(
             parent,
             process,
@@ -314,6 +292,7 @@ StStatus StProcessGnt_Iterate(
             next_cookie
         );
     }
+    if (status != STATUS_INVALID_HANDLE) return status;
 
     if (!parent->parent || parent->name_len != 7 ||
         memcmp(parent->name, U"Threads", 7 * sizeof(St_Utf32Char)) != 0) {
@@ -323,13 +302,8 @@ StStatus StProcessGnt_Iterate(
     }
 
     {
-        int process_id;
-
-        status = parse_decimal_id(parent->parent->name, parent->parent->name_len, &process_id);
-        if (!CHECK_SUCCESS(status)) return STATUS_ENTRY_NOT_FOUND;
-
-        process = StProcess_FindById(process_id);
-        if (!process) return STATUS_ENTRY_NOT_FOUND;
+        status = StProcessGnt_GetProcessFromNode((StGnt_Node_StrongRef)parent->parent, &process);
+        if (!CHECK_SUCCESS(status)) return status;
     }
 
     return iterate_threads_directory(

@@ -65,14 +65,14 @@
  * These flags describe how virtual or physical space should be chosen. They do
  * not describe page-table permissions; use StMm_MapFlags for that domain.
  */
-typedef uint32_t StMm_AllocFlags __nocast;
+typedef uint32_t StMm_AllocFlags __nocast __flagset(mm_alloc);
 /**
  * Mapping protection and mapping-behavior flags.
  *
  * These flags describe page permissions, cache policy, eager/lazy
  * materialization, zero-fill policy, and guard-page behavior.
  */
-typedef uint32_t StMm_MapFlags __nocast;
+typedef uint32_t StMm_MapFlags __nocast __flagset(mm_map);
 
 /** Convenience wrapper for APIs that carry both allocation and mapping flags. */
 struct StMm_CompoundFlags {
@@ -103,10 +103,10 @@ struct StMm_ImageBacking {
  * as a virtual page count. Use the surrounding API name and typed page/frame
  * values to keep the unit clear.
  */
-typedef size_t St_PageCount __nocast;
+typedef size_t St_PageCount __nocast __unit_count(page);
 /** Physical frame number, not a byte address. */
-typedef uintptr_t St_PhysFrame __nocast;
+typedef uintptr_t St_PhysFrame __nocast __unit_index(page, phys);
 /** Virtual page number, not a byte address. */
-typedef uintptr_t St_VirtPage __nocast;
+typedef uintptr_t St_VirtPage __nocast __unit_index(page, virt);
 
 #endif  // __STRATA_MM_TYPES_H__

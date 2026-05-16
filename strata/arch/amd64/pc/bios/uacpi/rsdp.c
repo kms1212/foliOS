@@ -35,7 +35,7 @@ uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr *rsdp_paddr_out)
     }
 
     status = StMmP_MapConventionalMemory(&cvmem_vpn);
-    if (!CHECK_SUCCESS(status)) return status;
+    if (!CHECK_SUCCESS(status)) return UACPI_STATUS_INTERNAL_ERROR;
 
     bda = PAGE_TO_VPTR(cvmem_vpn);
     if (!bda->ebda_segment) goto skip_ebda;
@@ -74,7 +74,7 @@ skip_ebda:
     if (!rsdp_found) return UACPI_STATUS_NOT_FOUND;
 
     status = StMm_GlobalVirtAddrToPhysAddr((uintptr_t)rsdp_addr, &rsdp_paddr);
-    if (!CHECK_SUCCESS(status)) return status;
+    if (!CHECK_SUCCESS(status)) return UACPI_STATUS_INTERNAL_ERROR;
 
     rsdp_paddr_found = 1;
 

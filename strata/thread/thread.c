@@ -12,6 +12,7 @@
 #include <strata/plat/thread.h>
 #include <strata/plat/time.h>
 
+#include <strata/bitops.h>
 #include <strata/compiler.h>
 #include <strata/log.h>
 #include <strata/mm/pmm.h>
@@ -41,7 +42,7 @@ static StStatus allocate_thread_object(StThread_StrongRef *threadout)
 {
     return StPool_AllocateClearAligned(
         sizeof(struct StThread),
-        __builtin_ctzll((unsigned long long)__alignof__(struct StThread)),
+        St_CountTrailingZeros64((uint64_t)__alignof__(struct StThread)),
         (void **)threadout
     );
 }

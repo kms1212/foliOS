@@ -28,10 +28,16 @@ target_include_directories(krt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_include_directories(krt SYSTEM PRIVATE "${CMAKE_SOURCE_DIR}/include")
 target_include_directories(krt PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 
-add_custom_target(krt_cvt ALL
-    COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:krt> krt.bin
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/krt.bin"
+    COMMAND ${CMAKE_OBJCOPY} -O binary
+            $<TARGET_FILE:krt>
+            "${CMAKE_CURRENT_BINARY_DIR}/krt.bin"
     DEPENDS krt
-    BYPRODUCTS "${CMAKE_CURRENT_BINARY_DIR}/krt.bin"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Converting krt binary"
+    VERBATIM
+)
+
+add_custom_target(krt_cvt
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/krt.bin"
 )

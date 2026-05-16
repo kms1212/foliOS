@@ -5,7 +5,6 @@
 
 struct StGnt_Node *g_gnt_root_network;
 struct StGnt_Node *g_gnt_root_local;
-struct StGnt_Node *g_gnt_system_processes;
 
 static StStatus register_directory_interfaces(struct StGnt_Node *node)
 {
@@ -62,7 +61,6 @@ StStatus StGnt_Init(void)
 
     processes_node->type = GNT_NODETYPE_DIRECTORY;
     processes_node->handler_module = StProcess_Module;
-    g_gnt_system_processes = processes_node;
 
     status = StGnt_AddNode(system_node, U"Threads", &threads_node);
     if (!CHECK_SUCCESS(status)) goto has_error;

@@ -114,7 +114,7 @@ static void *compat_syscall_handler(
     StStatus status;
 
     status = StSyscallA_Handler(frame, ctx);
-    ctx->rax = status;
+    ctx->rax = (unsigned long)status;
 
     return NULL;
 }

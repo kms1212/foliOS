@@ -39,10 +39,10 @@
 #define VIRT_PAGE_PD_MASK   ((St_VirtPage)0x000000000003FE00UL)
 #define VIRT_PAGE_PT_MASK   ((St_VirtPage)0x00000000000001FFUL)
 
-#define PML4_INDEX(vpn) (((vpn) & VIRT_PAGE_PML4_MASK) >> 27)
-#define PDPT_INDEX(vpn) (((vpn) & VIRT_PAGE_PDPT_MASK) >> 18)
-#define PD_INDEX(vpn)   (((vpn) & VIRT_PAGE_PD_MASK) >> 9)
-#define PT_INDEX(vpn)   ((vpn) & VIRT_PAGE_PT_MASK)
+#define PML4_INDEX(vpn) ((PAGE_TO_UINT(vpn) & PAGE_TO_UINT(VIRT_PAGE_PML4_MASK)) >> 27)
+#define PDPT_INDEX(vpn) ((PAGE_TO_UINT(vpn) & PAGE_TO_UINT(VIRT_PAGE_PDPT_MASK)) >> 18)
+#define PD_INDEX(vpn)   ((PAGE_TO_UINT(vpn) & PAGE_TO_UINT(VIRT_PAGE_PD_MASK)) >> 9)
+#define PT_INDEX(vpn)   (PAGE_TO_UINT(vpn) & PAGE_TO_UINT(VIRT_PAGE_PT_MASK))
 
 extern struct StAddressSpace base_asp;
 
@@ -229,7 +229,7 @@ St_PageCount StMmP_ReclaimCachedPageTableFrames(St_PageCount page_budget)
 
 StStatus StAddressSpaceP_InitBase(void)
 {
-    base_asp.platform_data.root_table_pfn = StA_ReadCr3() >> 12;
+    base_asp.platform_data.root_table_pfn = ADDR_TO_FRAME(StA_ReadCr3());
 
     return STATUS_SUCCESS;
 }
@@ -332,7 +332,7 @@ void StAddressSpaceP_Remove(StAddressSpace_StrongRef asp __in)
 
 StStatus StAddressSpaceP_Switch(StAddressSpace_StrongRef asp __in)
 {
-    StA_WriteCr3(asp->platform_data.root_table_pfn << 12);
+    StA_WriteCr3(FRAME_TO_ADDR(asp->platform_data.root_table_pfn));
     release_quarantined_page_table_frames();
 
     StCpuLocalP_GetData()->current_asp = (StAddressSpace_InternalRef)asp;
@@ -364,7 +364,10 @@ static StStatus vpn_to_pfn(
     pdpte_idx = PDPT_INDEX(vpn);
     if (!(pdpt[pdpte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
     if ((pdpt[pdpte_idx] & PTE_PS)) {
-        if (pfn) *pfn = ((pdpt[pdpte_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x3FFFF);
+        if (pfn) {
+            *pfn = (St_PhysFrame)(((pdpt[pdpte_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) +
+                                  (PAGE_TO_UINT(vpn) & 0x3FFFF));
+        }
         return STATUS_SUCCESS;
     }
 
@@ -372,7 +375,10 @@ static StStatus vpn_to_pfn(
     pde_idx = PD_INDEX(vpn);
     if (!(pd[pde_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
     if ((pd[pde_idx] & PTE_PS)) {
-        if (pfn) *pfn = ((pd[pde_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x1FF);
+        if (pfn) {
+            *pfn = (St_PhysFrame)(((pd[pde_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) +
+                                  (PAGE_TO_UINT(vpn) & 0x1FF));
+        }
         return STATUS_SUCCESS;
     }
 
@@ -476,8 +482,9 @@ static StStatus local_addr_to_directmap_span(
     pdpte_idx = PDPT_INDEX(vpn);
     if (!(pdpt[pdpte_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
     if ((pdpt[pdpte_idx] & PTE_PS)) {
-        pfn = ((pdpt[pdpte_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x3FFFF);
-        contiguous_pages = ((St_PageCount)1 << 18) - (vpn & 0x3FFFF);
+        pfn = (St_PhysFrame)(((pdpt[pdpte_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) +
+                             (PAGE_TO_UINT(vpn) & 0x3FFFF));
+        contiguous_pages = (St_PageCount)((1ULL << 18) - (PAGE_TO_UINT(vpn) & 0x3FFFF));
         goto has_span;
     }
 
@@ -485,8 +492,9 @@ static StStatus local_addr_to_directmap_span(
     pde_idx = PD_INDEX(vpn);
     if (!(pd[pde_idx] & PTE_P)) return STATUS_PAGE_NOT_PRESENT;
     if ((pd[pde_idx] & PTE_PS)) {
-        pfn = ((pd[pde_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) + (vpn & 0x1FF);
-        contiguous_pages = ((St_PageCount)1 << 9) - (vpn & 0x1FF);
+        pfn = (St_PhysFrame)(((pd[pde_idx] & PTE_BASE_MASK) >> PTE_BASE_SHIFT) +
+                             (PAGE_TO_UINT(vpn) & 0x1FF));
+        contiguous_pages = (St_PageCount)((1ULL << 9) - (PAGE_TO_UINT(vpn) & 0x1FF));
         goto has_span;
     }
 
@@ -572,7 +580,7 @@ static StStatus map_memory(
     uint64_t pdpte_idx;
     uint64_t pde_idx;
     uint64_t pte_idx;
-    size_t chunk_size;
+    St_PageCount chunk_size;
     St_PhysFrame alloc_pfn;
     StA_PaePageTableEntry pte_template;
 
@@ -726,12 +734,12 @@ static StStatus map_memory(
         /* 4. PT */
         pte_idx = PT_INDEX(vpn);
 
-        chunk_size = 512 - pte_idx;
+        chunk_size = (St_PageCount)(512 - pte_idx);
         if (count < chunk_size) {
             chunk_size = count;
         }
 
-        for (size_t i = 0; i < chunk_size; i++) {
+        for (St_PageCount i = 0; i < chunk_size; i++) {
             if ((pt[pte_idx + i] & PTE_P)) {
                 status = STATUS_DUPLICATE_ENTRY;
                 goto has_error;
@@ -811,7 +819,7 @@ static StStatus set_managed_memory(
     uint64_t pdpte_idx;
     uint64_t pde_idx;
     uint64_t pte_idx;
-    size_t chunk_size;
+    St_PageCount chunk_size;
     St_PhysFrame alloc_pfn;
 
     if (count == 0) return STATUS_INVALID_VALUE;
@@ -883,12 +891,12 @@ static StStatus set_managed_memory(
 
         /* 4. PT */
         pte_idx = PT_INDEX(vpn);
-        chunk_size = 512 - pte_idx;
+        chunk_size = (St_PageCount)(512 - pte_idx);
         if (count < chunk_size) {
             chunk_size = count;
         }
 
-        for (size_t i = 0; i < chunk_size; i++) {
+        for (St_PageCount i = 0; i < chunk_size; i++) {
             if (pt[pte_idx + i] & PTE_P) return STATUS_DUPLICATE_ENTRY;
             if (pt[pte_idx + i] && !(pt[pte_idx + i] & PTE_MANAGED)) {
                 return STATUS_CONFLICTING_STATE;
@@ -996,7 +1004,7 @@ static StStatus remap_memory(
     uint64_t pdpte_idx;
     uint64_t pde_idx;
     uint64_t pte_idx;
-    size_t chunk_size;
+    St_PageCount chunk_size;
     StA_PaePageTableEntry pte_template;
     St_PhysFrame pfn;
     int do_invlpg;
@@ -1075,14 +1083,14 @@ static StStatus remap_memory(
         pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 4. PT */
-        pte_idx = vpn & VIRT_PAGE_PT_MASK;
+        pte_idx = PT_INDEX(vpn);
 
-        chunk_size = 512 - pte_idx;
+        chunk_size = (St_PageCount)(512 - pte_idx);
         if (count < chunk_size) {
             chunk_size = count;
         }
 
-        for (size_t i = 0; i < chunk_size; i++) {
+        for (St_PageCount i = 0; i < chunk_size; i++) {
             if (!(pt[pte_idx + i] & PTE_P)) {
                 if (pt[pte_idx + i] & PTE_MANAGED) continue;
                 return STATUS_PAGE_NOT_PRESENT;
@@ -1146,7 +1154,7 @@ static void unmap_memory(
     uint64_t pdpte_idx;
     uint64_t pde_idx;
     uint64_t pte_idx;
-    size_t chunk_size;
+    St_PageCount chunk_size;
     int do_invlpg;
 
     if (vpn > VIRT_PAGE_MAX) return;
@@ -1190,14 +1198,14 @@ static void unmap_memory(
         pt = PHYS_TO_VIRT(FRAME_TO_VPTR(((pd[pde_idx]) & PTE_BASE_MASK) >> PTE_BASE_SHIFT));
 
         /* 4. PT */
-        pte_idx = vpn & VIRT_PAGE_PT_MASK;
+        pte_idx = PT_INDEX(vpn);
 
-        chunk_size = 512 - pte_idx;
+        chunk_size = (St_PageCount)(512 - pte_idx);
         if (count < chunk_size) {
             chunk_size = count;
         }
 
-        for (size_t i = 0; i < chunk_size; i++) {
+        for (St_PageCount i = 0; i < chunk_size; i++) {
             if (!(pt[pte_idx + i] & PTE_P)) {
                 St_Panic(STATUS_PAGE_NOT_PRESENT, "UnmapMemory: PT entry not present");
             }

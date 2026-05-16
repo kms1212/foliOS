@@ -24,5 +24,8 @@ StStatus StProcessGnt_DispatchCallArgs(
     status = StThreadIf_DispatchCallArgs(node, handle, funcid, args);
     if (status != STATUS_NOT_SUPPORTED) return status;
 
+    status = StStdioIf_DispatchCallArgs(node, handle, funcid, args);
+    if (status != STATUS_NOT_SUPPORTED) return status;
+
     return STATUS_NOT_SUPPORTED;
 }

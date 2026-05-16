@@ -59,6 +59,23 @@
 #define __sentinel           __attribute__((sentinel))
 #define __warn_unused_result __attribute__((warn_unused_result))
 
+#ifndef likely
+#    define likely(cond) __builtin_expect(!!(cond), 1)
+
+#endif
+
+#ifndef unlikely
+#    define unlikely(cond) __builtin_expect(!!(cond), 0)
+
+#endif
+
+#define if_likely(cond)   if (likely(cond))
+#define if_unlikely(cond) if (unlikely(cond))
+
+#define __unreachable()    __builtin_unreachable()
+#define __fallthrough      __attribute__((fallthrough))
+#define compiler_barrier() __asm__ volatile("" ::: "memory")
+
 #if __has_attribute(nonnull)
 #    define __nonnull(...) __attribute__((nonnull(__VA_ARGS__)))
 #    define __arg_nonnull  __attribute__((nonnull))
@@ -119,14 +136,20 @@
 /* macros for static analysis & source annotation */
 
 #ifdef __clang__
-#    define __annotate(name)      __attribute__((annotate("st_" #name)))
-#    define __annotate_v(name, v) __attribute__((annotate("st_" #name "=" #v)))
-#    define __ref_annotate(name)  __attribute__((annotate(#name)))
+#    define __annotate(name)           __attribute__((annotate("st_" #name)))
+#    define __annotate_v(name, v)      __attribute__((annotate("st_" #name "=" #v)))
+#    define __ref_annotate(name)       __attribute__((annotate(#name)))
+#    define __unit_count(unit)         __attribute__((annotate("st_unit_count=" #unit)))
+#    define __unit_index(unit, domain) __attribute__((annotate("st_unit_index=" #unit ":" #domain)))
+#    define __flagset(domain)          __attribute__((annotate("st_flagset=" #domain)))
 
 #else
 #    define __annotate(name)
 #    define __annotate_v(name, v)
 #    define __ref_annotate(name)
+#    define __unit_count(unit)
+#    define __unit_index(unit, domain)
+#    define __flagset(domain)
 
 #endif
 

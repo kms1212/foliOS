@@ -60,6 +60,7 @@ sidl_generate_c(
     SRCS_VAR SIDL_SRCS
     HDRS_VAR SIDL_HDRS
     FILES
+        "${CMAKE_SOURCE_DIR}/sidl/byte_stream.sidl"
         "${CMAKE_SOURCE_DIR}/sidl/process.sidl"
         "${CMAKE_SOURCE_DIR}/sidl/thread.sidl"
 )

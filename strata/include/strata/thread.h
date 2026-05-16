@@ -49,7 +49,7 @@ enum StThread_Type {
 };
 
 typedef int StThread_Id __nocast;
-typedef uint32_t StThread_CreateFlags __nocast;
+typedef uint32_t StThread_CreateFlags __nocast __flagset(thread_create);
 
 /** Normal joinable thread creation. */
 #define TCF_DEFAULT ((StThread_CreateFlags)0x00000000)
@@ -91,7 +91,7 @@ struct StThread {
     struct StThreadP_PlatformData platform_data;
 
     /** Kernel stack size in pages. */
-    size_t kmode_stack_page_count;
+    St_PageCount kmode_stack_page_count;
     /** Base VPN of the kernel stack reservation. */
     St_VirtPage kmode_stack_base_vpn;
     /** Saved kernel stack pointer used by platform context switching. */
@@ -100,7 +100,7 @@ struct StThread {
     StThread_EntryFunction kmode_entry;
 
     /** User stack size in pages; zero for non-user threads. */
-    size_t umode_stack_page_count;
+    St_PageCount umode_stack_page_count;
     /** Base VPN of the user stack reservation. */
     St_VirtPage umode_stack_base_vpn;
     /** User stack pointer passed to the initial user-mode frame. */

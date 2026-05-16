@@ -1545,19 +1545,23 @@ StStatus StVmm_GetGlobalReservedRange(
 
     if (!validate_domain_list(ad->head, "get-global-reserved-range")) {
         status = STATUS_SYSTEM_CORRUPTED;
-        goto done;
+        goto has_error;
     }
 
     node = find_overlap(ad->head, vpn, 1);
     if (!node) {
         status = STATUS_NOT_ALLOCATED;
-        goto done;
+        goto has_error;
     }
 
     if (begin_vpn) *begin_vpn = node->base_vpn;
     if (end_vpn) *end_vpn = node->limit_vpn;
 
-done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return STATUS_SUCCESS;
+
+has_error:
     StThread_UnlockPreemption();
     StA_RestoreInterrupt(irq_state);
     return status;
@@ -1573,7 +1577,7 @@ StStatus StVmm_GetLocalReservedRange(
     struct vmm_reservation_node **head_slot;
     struct vmm_reservation_node *node;
     uint32_t irq_state;
-    StStatus status = STATUS_SUCCESS;
+    StStatus status;
 
     if (!asp) return STATUS_INVALID_VALUE;
     if (vpn < asp->user_base_vpn || vpn > asp->user_limit_vpn) return STATUS_INVALID_VALUE;
@@ -1586,19 +1590,23 @@ StStatus StVmm_GetLocalReservedRange(
 
     if (!validate_domain_list(*head_slot, "get-local-reserved-range")) {
         status = STATUS_SYSTEM_CORRUPTED;
-        goto done;
+        goto has_error;
     }
 
     node = find_overlap(*head_slot, vpn, 1);
     if (!node) {
         status = STATUS_NOT_ALLOCATED;
-        goto done;
+        goto has_error;
     }
 
     if (begin_vpn) *begin_vpn = node->base_vpn;
     if (end_vpn) *end_vpn = node->limit_vpn;
 
-done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return STATUS_SUCCESS;
+
+has_error:
     StThread_UnlockPreemption();
     StA_RestoreInterrupt(irq_state);
     return status;
@@ -1613,7 +1621,7 @@ StStatus StVmm_GetGlobalPageInfo(
     struct vmm_reservation_domain *ad;
     struct vmm_reservation_node *node;
     uint32_t irq_state;
-    StStatus status = STATUS_SUCCESS;
+    StStatus status;
 
     if (domain >= VMM_DOMAIN_MAX) return STATUS_INVALID_VALUE;
 
@@ -1627,18 +1635,22 @@ StStatus StVmm_GetGlobalPageInfo(
 
     if (!validate_domain_list(ad->head, "get-global-page-info")) {
         status = STATUS_SYSTEM_CORRUPTED;
-        goto done;
+        goto has_error;
     }
 
     node = find_overlap(ad->head, vpn, 1);
     if (!node) {
         status = STATUS_NOT_ALLOCATED;
-        goto done;
+        goto has_error;
     }
 
     fill_page_info_from_node(node, vpn, info);
 
-done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return STATUS_SUCCESS;
+
+has_error:
     StThread_UnlockPreemption();
     StA_RestoreInterrupt(irq_state);
     return status;
@@ -1653,7 +1665,7 @@ StStatus StVmm_GetLocalPageInfo(
     struct vmm_reservation_node **head_slot;
     struct vmm_reservation_node *node;
     uint32_t irq_state;
-    StStatus status = STATUS_SUCCESS;
+    StStatus status;
 
     if (!asp) return STATUS_INVALID_VALUE;
     if (vpn < asp->user_base_vpn || vpn > asp->user_limit_vpn) return STATUS_INVALID_VALUE;
@@ -1666,18 +1678,22 @@ StStatus StVmm_GetLocalPageInfo(
 
     if (!validate_domain_list(*head_slot, "get-local-page-info")) {
         status = STATUS_SYSTEM_CORRUPTED;
-        goto done;
+        goto has_error;
     }
 
     node = find_overlap(*head_slot, vpn, 1);
     if (!node) {
         status = STATUS_NOT_ALLOCATED;
-        goto done;
+        goto has_error;
     }
 
     fill_page_info_from_node(node, vpn, info);
 
-done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return STATUS_SUCCESS;
+
+has_error:
     StThread_UnlockPreemption();
     StA_RestoreInterrupt(irq_state);
     return status;
@@ -1757,7 +1773,7 @@ StStatus StVmm_ResolveLocalPage(StAddressSpace_StrongRef asp __in, St_VirtPage v
     St_VirtPage usable_base_vpn;
     St_VirtPage new_base_vpn;
     uint32_t irq_state;
-    StStatus status = STATUS_SUCCESS;
+    StStatus status;
 
     if (!asp) return STATUS_INVALID_VALUE;
     if (vpn < asp->user_base_vpn || vpn > asp->user_limit_vpn) {
@@ -1772,53 +1788,57 @@ StStatus StVmm_ResolveLocalPage(StAddressSpace_StrongRef asp __in, St_VirtPage v
 
     if (!validate_domain_list(*head_slot, "resolve-local-page")) {
         status = STATUS_SYSTEM_CORRUPTED;
-        goto done;
+        goto has_error;
     }
 
     node = find_overlap(*head_slot, vpn, 1);
     if (!node) {
         status = STATUS_NOT_ALLOCATED;
-        goto done;
+        goto has_error;
     }
 
     usable_base_vpn = node_usable_base_vpn(node);
     if (vpn >= usable_base_vpn) {
-        status = STATUS_SUCCESS;
-        goto done;
+        StThread_UnlockPreemption();
+        StA_RestoreInterrupt(irq_state);
+        return STATUS_SUCCESS;
     }
 
     if (node->guard_page_count == 0 || usable_base_vpn == 0 ||
         vpn != usable_base_vpn - (St_VirtPage)1) {
         status = STATUS_NOT_PERMITTED;
-        goto done;
+        goto has_error;
     }
 
     if (!(node->map_flags & MF_GUARD_GROW_DOWN) ||
         node->mapping_policy.type != VMM_PAGE_MAPPING_DEMAND_ZERO) {
         status = STATUS_NOT_PERMITTED;
-        goto done;
+        goto has_error;
     }
 
     if (node->base_vpn == asp->user_base_vpn || asp->user_free_count == 0) {
         status = STATUS_INSUFFICIENT_SPACE;
-        goto done;
+        goto has_error;
     }
 
     new_base_vpn = node->base_vpn - (St_VirtPage)1;
     if (node->domain_prev && node->domain_prev->limit_vpn > new_base_vpn) {
         status = STATUS_INSUFFICIENT_SPACE;
-        goto done;
+        goto has_error;
     }
     if (!is_local_range_unmapped(asp, new_base_vpn, (St_PageCount)1)) {
         status = STATUS_CONFLICTING_STATE;
-        goto done;
+        goto has_error;
     }
 
     node->base_vpn = new_base_vpn;
     asp->user_free_count--;
-    status = STATUS_SUCCESS;
 
-done:
+    StThread_UnlockPreemption();
+    StA_RestoreInterrupt(irq_state);
+    return STATUS_SUCCESS;
+
+has_error:
     StThread_UnlockPreemption();
     StA_RestoreInterrupt(irq_state);
     return status;
