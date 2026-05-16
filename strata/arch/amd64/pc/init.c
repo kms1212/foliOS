@@ -224,7 +224,7 @@ static StStatus init_krt(void)
 
     memcpy(PAGE_TO_VPTR(MEMMAP_KRT_VPN_BASE), &_krt_start, krt_size);
 
-    status = StMm_SetGlobalPageFlags(
+    status = StMm_SetGlobalPageMapFlags(
         MEMMAP_KRT_VPN_BASE,
         ALIGN_DIV(krt_size, PAGE_SIZE),
         MF_USER_DEFAULT & ~MF_WRITABLE

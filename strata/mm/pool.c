@@ -227,7 +227,7 @@ static struct subpool_header *find_subpool_header_from_ptr(
 
     vpn = VPTR_TO_PAGE(ptr);
 
-    status = StMm_GetGlobalPageFlags(vpn, &map_flags);
+    status = StMm_GetGlobalPageMapFlags(vpn, &map_flags);
     if (!CHECK_SUCCESS(status)) return NULL;
     if (!(map_flags & MF_POOL_SUBPOOL)) return NULL;
 
@@ -256,7 +256,7 @@ static int find_large_allocation_range_from_ptr(
 
     vpn = VPTR_TO_PAGE(ptr);
 
-    status = StMm_GetGlobalPageFlags(vpn, &map_flags);
+    status = StMm_GetGlobalPageMapFlags(vpn, &map_flags);
     if (!CHECK_SUCCESS(status)) return 0;
     if (!(map_flags & MF_POOL_LARGE_ALLOC)) return 0;
 

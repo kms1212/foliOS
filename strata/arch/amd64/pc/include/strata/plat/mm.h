@@ -26,8 +26,8 @@ StStatus StMmP_GlobalVirtPageToPhysFrame(St_VirtPage vpn __in, St_PhysFrame *pfn
 StStatus StMmP_LocalVirtPageToPhysFrame(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PhysFrame *pfn __out_optional
 );
-StStatus StMmP_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
-StStatus StMmP_GetLocalPageFlags(
+StStatus StMmP_GetGlobalPageMapFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
+StStatus StMmP_GetLocalPageMapFlags(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 );
 

@@ -39,6 +39,14 @@ allocation and local image allocation may remain non-present until first access.
 whether the page is backed immediately or on demand. For user defaults,
 `MF_USER_DEFAULT` includes `MF_ZERO_FILL`.
 
+## Protection Changes
+
+When userspace changes protections through the process remap path, MM must
+update both existing PTEs and the reservation metadata. Pages that are still
+non-present will later be materialized from the reservation's current
+`StMm_MapFlags`; updating only present PTEs would leave future faulted pages
+with stale protections.
+
 ## Failure Semantics
 
 If resolving or materializing a page fails, the user fault path should terminate

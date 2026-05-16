@@ -1683,7 +1683,7 @@ done:
     return status;
 }
 
-StStatus StVmm_SetLocalPageFlags(
+StStatus StVmm_SetLocalPageReservationMapFlags(
     StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
@@ -1695,7 +1695,7 @@ StStatus StVmm_SetLocalPageFlags(
     St_VirtPage limit_vpn;
     St_VirtPage cursor_vpn;
     uint32_t irq_state;
-    StStatus status = STATUS_SUCCESS;
+    StStatus status;
 
     if (!asp) return STATUS_INVALID_VALUE;
     if (count == 0) return STATUS_INVALID_VALUE;
@@ -1712,7 +1712,7 @@ StStatus StVmm_SetLocalPageFlags(
     StA_DisableInterrupt();
     StThread_LockPreemption();
 
-    if (!validate_domain_list(*head_slot, "set-local-page-flags")) {
+    if (!validate_domain_list(*head_slot, "set-local-page-reservation-map-flags")) {
         status = STATUS_SYSTEM_CORRUPTED;
         goto has_error;
     }

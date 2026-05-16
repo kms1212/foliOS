@@ -1643,7 +1643,7 @@ void StMm_FreeLocal(
     StVmm_ReleaseLocalPage(asp, free_vpn, free_count);
 }
 
-StStatus StMm_SetGlobalPageFlags(
+StStatus StMm_SetGlobalPageMapFlags(
     St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in
 )
 {
@@ -1657,7 +1657,7 @@ StStatus StMm_SetGlobalPageFlags(
     return STATUS_SUCCESS;
 }
 
-StStatus StMm_SetLocalPageFlags(
+StStatus StMm_SetLocalPageMapFlags(
     StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
@@ -1668,7 +1668,7 @@ StStatus StMm_SetLocalPageFlags(
 
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    status = StVmm_SetLocalPageFlags(asp, vpn, count, mapflags);
+    status = StVmm_SetLocalPageReservationMapFlags(asp, vpn, count, mapflags);
     if (!CHECK_SUCCESS(status)) return status;
 
     status = StMmP_RemapLocalContiguousMemory(asp, vpn, count, mapflags);
@@ -1677,16 +1677,16 @@ StStatus StMm_SetLocalPageFlags(
     return STATUS_SUCCESS;
 }
 
-StStatus StMm_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out)
+StStatus StMm_GetGlobalPageMapFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out)
 {
     assert(map_flags);
 
     if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    return StMmP_GetGlobalPageFlags(vpn, map_flags);
+    return StMmP_GetGlobalPageMapFlags(vpn, map_flags);
 }
 
-StStatus StMm_GetLocalPageFlags(
+StStatus StMm_GetLocalPageMapFlags(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 )
 {
@@ -1694,7 +1694,7 @@ StStatus StMm_GetLocalPageFlags(
 
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    return StMmP_GetLocalPageFlags(asp, vpn, map_flags);
+    return StMmP_GetLocalPageMapFlags(asp, vpn, map_flags);
 }
 
 StStatus StAllocationOwner_Create(StAllocationOwner_StrongRef *owner __out)

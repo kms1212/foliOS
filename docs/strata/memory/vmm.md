@@ -33,6 +33,11 @@ VMM records ranges as reservation nodes. A node stores:
 The list is sorted by virtual page range. VMM validates list structure in
 critical paths so corruption is caught close to the metadata owner.
 
+For local ranges, reservation map flags are the source of truth for pages that
+have not been materialized yet. `StVmm_SetLocalPageReservationMapFlags` updates
+that reservation metadata; the MM layer pairs it with platform remapping of any
+present PTEs.
+
 ## Mapping Policy
 
 `struct StVmm_PageMappingPolicy` currently distinguishes:

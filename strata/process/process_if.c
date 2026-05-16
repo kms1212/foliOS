@@ -338,7 +338,7 @@ static StStatus prc_remap_memory(
     status = read_user_u64(ctx, vpn, &target_vpn);
     if (!CHECK_SUCCESS(status)) return status;
 
-    return StMm_SetLocalPageFlags(
+    return StMm_SetLocalPageMapFlags(
         ctx->process->address_space,
         (St_VirtPage)target_vpn,
         (St_PageCount)old_page_count,

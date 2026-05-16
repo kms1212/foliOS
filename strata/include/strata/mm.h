@@ -282,22 +282,22 @@ void StMm_FreeLocal(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, St_PageCount count __in
 );
 
-/** Update mapping flags for present global pages. */
-StStatus StMm_SetGlobalPageFlags(
+/** Update map flags for present global pages. */
+StStatus StMm_SetGlobalPageMapFlags(
     St_VirtPage vpn __in, St_PageCount count __in, StMm_MapFlags mapflags __in
 );
-/** Update mapping flags for present local pages. */
-StStatus StMm_SetLocalPageFlags(
+/** Update map flags for local pages and their reservation metadata. */
+StStatus StMm_SetLocalPageMapFlags(
     StAddressSpace_StrongRef asp __in,
     St_VirtPage vpn __in,
     St_PageCount count __in,
     StMm_MapFlags map_flags __in
 );
 
-/** Read mapping flags for a present global page. */
-StStatus StMm_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
-/** Read mapping flags for a present local page. */
-StStatus StMm_GetLocalPageFlags(
+/** Read map flags for a present global page. */
+StStatus StMm_GetGlobalPageMapFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out);
+/** Read map flags for a present local page. */
+StStatus StMm_GetLocalPageMapFlags(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 );
 

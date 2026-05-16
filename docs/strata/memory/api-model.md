@@ -30,12 +30,18 @@ StMm_Reserve(Global|Local)(Contiguous|Sparse)(To?)
 StMm_Commit(Global|Local)
 StMm_Free(Global|Local)
 StMm_Unmap(Global|Local)
+StMm_Set(Global|Local)PageMapFlags
+StMm_Get(Global|Local)PageMapFlags
 ```
 
 `Map` and `Allocate` both return usable mappings, but they differ in ownership:
 `Map` attaches a physical frame range supplied by the caller; `Allocate`
 acquires physical backing through PMM. `Reserve` records virtual address space
 and policy; `Commit` later materializes physical backing for that reservation.
+
+`Set*PageMapFlags` changes mapping protections after a range exists. For local
+ranges, the MM layer updates both already-present platform PTEs and the VMM
+reservation map flags that future demand faults will use.
 
 ## Flags
 
@@ -55,6 +61,10 @@ Mapping flags describe protection and mapping behavior:
 
 Keep `StMm_AllocFlags` and `StMm_MapFlags` separate. They are both fixed-width
 `__nocast` domains for a reason.
+
+Protection changes must keep the same split: `StMm_MapFlags` controls the PTE
+and reservation mapping behavior, while `StMm_AllocFlags` remains allocation and
+placement policy.
 
 ## Ownership
 

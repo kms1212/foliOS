@@ -385,7 +385,7 @@ static StStatus vpn_to_pfn(
     return STATUS_SUCCESS;
 }
 
-static StStatus vpn_to_page_flags(
+static StStatus vpn_to_page_map_flags(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *mapflags_out __out
 )
 {
@@ -533,16 +533,16 @@ StStatus StMmP_LocalVirtPageToPhysFrame(
     return vpn_to_pfn(asp, vpn, pfn);
 }
 
-StStatus StMmP_GetGlobalPageFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out)
+StStatus StMmP_GetGlobalPageMapFlags(St_VirtPage vpn __in, StMm_MapFlags *map_flags __out)
 {
     assert(map_flags);
 
     if (!IS_GLOBAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    return vpn_to_page_flags(&base_asp, vpn, map_flags);
+    return vpn_to_page_map_flags(&base_asp, vpn, map_flags);
 }
 
-StStatus StMmP_GetLocalPageFlags(
+StStatus StMmP_GetLocalPageMapFlags(
     StAddressSpace_StrongRef asp __in, St_VirtPage vpn __in, StMm_MapFlags *map_flags __out
 )
 {
@@ -550,7 +550,7 @@ StStatus StMmP_GetLocalPageFlags(
 
     if (!IS_LOCAL_VPN(vpn)) return STATUS_INVALID_VALUE;
 
-    return vpn_to_page_flags(asp, vpn, map_flags);
+    return vpn_to_page_map_flags(asp, vpn, map_flags);
 }
 
 static StStatus map_memory(
