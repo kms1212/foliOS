@@ -1,3 +1,9 @@
 [submodule "folisdk"]
 	path = folisdk
 	url = https://github.com/kms1212/foliSDK
+[submodule "strata/sidl"]
+	path = strata/sidl
+	url = https://github.com/kms1212/Strata-sidl.git
+[submodule "sidl"]
+	path = sidl
+	url = https://github.com/kms1212/foliOS-sidl.git
