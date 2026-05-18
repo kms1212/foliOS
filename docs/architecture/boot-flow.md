@@ -8,8 +8,8 @@ This page describes the firmware-to-kernel flow at the architecture level. See
 1. Firmware enters the platform-specific Vellum startup path.
 2. Vellum initializes enough CPU, memory, disk, filesystem, video, and console
    support to read boot configuration and load bootloader modules.
-3. Vellum loads the `loadst` bootloader module through the `loadmodule` command.
-4. The `loadst` module collects bootloader/platform information, builds the
+3. Vellum loads the `load_folios` bootloader module through the `loadmodule` command.
+4. The `load_folios` module collects bootloader/platform information, builds the
    boot information table, loads or finalizes the kernel handoff, and transfers
    control to Strata.
 5. Strata receives the boot information table through the common handoff ABI and
@@ -22,15 +22,15 @@ For the current `amd64-pc-bios` target, the bootloader architecture is still
 IA-32 even though the kernel target is AMD64. This is why disk-image generation
 uses `scripts/mkdisk.sh -a ia32 disk.img`.
 
-## `loadst` Handoff
+## Strata Load Handoff
 
-`loadst` is a Vellum bootloader module, not a pile of code that the Vellum core
+`load_folios` is a Vellum bootloader module, not a pile of code that the Vellum core
 executes inline. Vellum first brings up the environment needed to load modules.
-After that, `loadst` owns the kernel handoff policy: it asks the bootloader for
+After that, `load_folios` owns the kernel handoff policy: it asks the bootloader for
 the information it needs, normalizes that information into the bootinfo table,
 and passes the table to Strata.
 
-The shared `loadst` headers describe the ABI of that table. Important entries
+The shared `strata` headers describe the ABI of that table. Important entries
 include:
 
 - command arguments;
@@ -46,7 +46,7 @@ include:
 Strata should treat this table as a compact boot contract, not as Vellum core
 state. Whether the value came from firmware probing, a Vellum device interface,
 a configuration file, or another bootloader module should be hidden behind the
-`loadst` handoff.
+`load_folios` handoff.
 
 ## Initialization Boundary
 

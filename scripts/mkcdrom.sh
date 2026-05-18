@@ -68,7 +68,7 @@ mkdir ./.mkcdrom.temp/config
 mkdir ./.mkcdrom.temp/modules
 cp "$BOOT_IMAGE" ./.mkcdrom.temp/boot.img
 cp vellum/config/boot.json ./.mkcdrom.temp/config/boot.json
-cp build/vellum/modules/loadst/loadst.mod ./.mkcdrom.temp/modules/loadst.mod
+cp build/vellum/modules/load_folios/load_folios.mod ./.mkcdrom.temp/modules/load_folios.mod
 cp build/vellum/modules/helloworld/helloworld.mod ./.mkcdrom.temp/modules/helowrld.mod
 cp build/vellum/bootloader.map ./.mkcdrom.temp/bootldr.map
 cp build/vellum/unifont.bfn ./.mkcdrom.temp/unifont.bfn

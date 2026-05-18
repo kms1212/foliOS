@@ -39,11 +39,11 @@
 #include <strata/thread_refs.h>
 #include <strata/utf.h>
 
-#include <loadst/bootinfo.h>
+#include <strata/bootinfo.h>
 
 #define MODULE_NAME "main"
 
-extern struct bootinfo_table_header *_pc_bootinfo_table;
+extern struct StLoad_BootInfoTableHeader *_pc_bootinfo_table;
 
 struct print_state {
     uint16_t *framebuffer;
@@ -882,18 +882,18 @@ int do_nothing(void *ctx, char ch)
 __noreturn void main(void)
 {
     StStatus status;
-    struct bootinfo_entry_header *enthdr = NULL;
-    struct bootinfo_entry_command_args *caent = NULL;
-    struct bootinfo_entry_loader_info *lient = NULL;
-    struct bootinfo_entry_memory_map *mment = NULL;
-    struct bootinfo_entry_system_disk *sdent = NULL;
-    struct bootinfo_entry_acpi_rsdp *arent = NULL;
-    struct bootinfo_entry_framebuffer *fbent = NULL;
-    struct bootinfo_entry_default_font *dfent = NULL;
-    struct bootinfo_entry_boot_graphics *bgent = NULL;
-    struct bootinfo_entry_unavailable_frames *ufent = NULL;
-    struct bootinfo_entry_pagetable_vpn *pvent = NULL;
-    struct bootinfo_entry_ramdisk *rdent = NULL;
+    struct StLoad_BootInfoEntryHeader *enthdr = NULL;
+    struct StLoad_BootInfoEntryCommandArgs *caent = NULL;
+    struct StLoad_BootInfoEntryLoaderInfo *lient = NULL;
+    struct StLoad_BootInfoEntryMemoryMap *mment = NULL;
+    struct StLoad_BootInfoEntrySystemDisk *sdent = NULL;
+    struct StLoad_BootInfoEntryAcpiRsdp *arent = NULL;
+    struct StLoad_BootInfoEntryFramebuffer *fbent = NULL;
+    struct StLoad_BootInfoEntryDefaultFont *dfent = NULL;
+    struct StLoad_BootInfoEntryBootGraphics *bgent = NULL;
+    struct StLoad_BootInfoEntryUnavailableFrames *ufent = NULL;
+    struct StLoad_BootInfoEntryPagetableVpn *pvent = NULL;
+    struct StLoad_BootInfoEntryRamdisk *rdent = NULL;
     St_VirtPage earlyfb_vpn;
     St_PageCount total_frames, free_frames;
     StThread_StrongRef main_thread;

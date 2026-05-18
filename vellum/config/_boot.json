@@ -14,9 +14,9 @@
             {
                 "name": "Boot from current device",
                 "script": [
-                    "loadmodule boot:/modules/loadst.mod",
+                    "loadmodule boot:/modules/load_folios.mod",
                     "mount fd0pt0p2 sys",
-                    "loadst sys:/System/Kernel/strata.elf -log.enable=true -log.level=debug -acpi.enable=true -apm.enable=false"
+                    "load_folios sys:/System/Kernel/strata.elf -log.enable=true -log.level=debug -acpi.enable=true -apm.enable=false"
                 ]
             },
             {

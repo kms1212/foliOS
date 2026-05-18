@@ -23,13 +23,13 @@
 #include <vellum/shell.h>
 #include <vellum/status.h>
 
-#include <loadst/bootinfo.h>
+#include <strata/bootinfo.h>
 
-#define MODULE_NAME "loadst"
+#define MODULE_NAME "load_folios"
 
 extern int __stage1_end;
 
-__noreturn static void jump_kernel(void *entry, struct bootinfo_table_header *btblhdr)
+__noreturn static void jump_kernel(void *entry, struct StLoad_BootInfoTableHeader *btblhdr)
 {
     __asm__ volatile("jmp *%1" : : "d"(btblhdr), "r"(entry));
 
@@ -69,7 +69,7 @@ static int count_pagetable_frame(void)
 }
 
 static void fill_pagetable_frame_entries(
-    struct bootinfo_unavailable_frame_entry *entries, uint32_t max_count
+    struct StLoad_BootInfoUnavailableFrameEntry *entries, uint32_t max_count
 )
 {
     uint32_t filled_entries = 0;
@@ -115,7 +115,7 @@ static int count_kernel_ufent(void *load_vaddr, uint32_t max_count)
 }
 
 static VlStatus fill_kernel_frame_entries(
-    struct bootinfo_unavailable_frame_entry *entries, uint32_t max_count, void *load_vaddr
+    struct StLoad_BootInfoUnavailableFrameEntry *entries, uint32_t max_count, void *load_vaddr
 )
 {
     VlStatus status;
@@ -279,7 +279,7 @@ static VlStatus make_bootinfo_table(
     int argc,
     char **argv,
     void *load_paddr,
-    struct bootinfo_table_header **btblhdr_out
+    struct StLoad_BootInfoTableHeader **btblhdr_out
 )
 {
     VlStatus status;
@@ -297,15 +297,15 @@ static VlStatus make_bootinfo_table(
     uint32_t kernel_ufent_count;
     struct smap_entry smap_entry;
     const struct acpi_rsdp *rsdp;
-    struct bootinfo_table_header *btblhdr;
-    struct bootinfo_entry_header *benthdr;
-    struct bootinfo_entry_command_args *entry_command_args;
-    struct bootinfo_entry_loader_info *entry_loader_info;
-    struct bootinfo_entry_memory_map *entry_memory_map;
-    struct bootinfo_entry_acpi_rsdp *entry_acpi_rsdp;
-    struct bootinfo_entry_framebuffer *entry_framebuffer;
-    struct bootinfo_entry_unavailable_frames *entry_unavailable_frames;
-    struct bootinfo_entry_pagetable_vpn *entry_pagetable_vpn;
+    struct StLoad_BootInfoTableHeader *btblhdr;
+    struct StLoad_BootInfoEntryHeader *benthdr;
+    struct StLoad_BootInfoEntryCommandArgs *entry_command_args;
+    struct StLoad_BootInfoEntryLoaderInfo *entry_loader_info;
+    struct StLoad_BootInfoEntryMemoryMap *entry_memory_map;
+    struct StLoad_BootInfoEntryAcpiRsdp *entry_acpi_rsdp;
+    struct StLoad_BootInfoEntryFramebuffer *entry_framebuffer;
+    struct StLoad_BootInfoEntryUnavailableFrames *entry_unavailable_frames;
+    struct StLoad_BootInfoEntryPagetableVpn *entry_pagetable_vpn;
     uint32_t strtab_cursor;
 
     status = VlDev_Find("video0", &fbdev);
@@ -552,13 +552,13 @@ static VlStatus make_bootinfo_table(
     return STATUS_SUCCESS;
 }
 
-static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
+static int load_folios_handler(struct shell_instance *inst, int argc, char **argv)
 {
     VlStatus status;
     struct elf_file *elf = NULL;
     void *load_paddr;
     size_t program_size;
-    struct bootinfo_table_header *btblhdr;
+    struct StLoad_BootInfoTableHeader *btblhdr;
 
     if (argc < 2) {
         fprintf(stderr, "usage: %s path\n", argv[0]);
@@ -595,15 +595,15 @@ static int loadst_handler(struct shell_instance *inst, int argc, char **argv)
     );
 }
 
-static struct command loadst_command = {
-    .name = "loadst",
-    .handler = loadst_handler,
+static struct command load_folios_command = {
+    .name = "load_folios",
+    .handler = load_folios_handler,
     .help_message = "Load Strata kernel",
 };
 
 __constructor static void init()
 {
-    VlShell_RegisterCommand(&loadst_command);
+    VlShell_RegisterCommand(&load_folios_command);
 }
 
 VlStatus _start(int argc, char **argv)
@@ -613,5 +613,5 @@ VlStatus _start(int argc, char **argv)
 
 __destructor static void deinit(void)
 {
-    VlShell_UnregisterCommand(&loadst_command);
+    VlShell_UnregisterCommand(&load_folios_command);
 }

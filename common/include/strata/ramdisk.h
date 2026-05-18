@@ -1,11 +1,11 @@
-#ifndef __LOADST_RAMDISK_H__
-#define __LOADST_RAMDISK_H__
+#ifndef __STRATA_RAMDISK_H__
+#define __STRATA_RAMDISK_H__
 
 #include <stdint.h>
 
-#include <loadst/compiler.h>
+#include <strata/compiler.h>
 
-struct ramdisk_header {
+struct StLoad_RamdiskHeader {
     uint32_t rootdir_offset;
 };
 
@@ -13,7 +13,7 @@ struct ramdisk_header {
 #define RDET_DIRECTORY 1
 #define RDET_FILE      2
 
-struct ramdisk_direntry {
+struct StLoad_RamdiskDirEntry {
     uint8_t type;
     uint8_t name_len;
     uint16_t entry_size;
@@ -35,4 +35,4 @@ struct ramdisk_direntry {
     char name[];
 } __packed;
 
-#endif  // __LOADST_RAMDISK_H__
+#endif  // __STRATA_RAMDISK_H__

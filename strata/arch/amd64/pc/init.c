@@ -47,12 +47,12 @@
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
 
-#include <loadst/bootinfo.h>
+#include <strata/bootinfo.h>
 
 #define MODULE_NAME       "init"
 #define PAGE_FAULT_VECTOR 0x0E
 
-__externally_visible struct bootinfo_table_header *_pc_bootinfo_table;
+__externally_visible struct StLoad_BootInfoTableHeader *_pc_bootinfo_table;
 
 extern char __trampoline_load[];
 
@@ -235,15 +235,15 @@ static StStatus init_krt(void)
 }
 
 // NOLINTNEXTLINE(readability-identifier-naming)
-__externally_visible void _pc_init(struct bootinfo_table_header *btblhdr)
+__externally_visible void _pc_init(struct StLoad_BootInfoTableHeader *btblhdr)
 {
     StStatus status;
-    struct bootinfo_entry_header *enthdr = NULL;
-    struct bootinfo_entry_command_args *caent = NULL;
-    struct bootinfo_entry_memory_map *mment = NULL;
-    struct bootinfo_entry_unavailable_frames *ufent = NULL;
-    struct bootinfo_entry_pagetable_vpn *pvent = NULL;
-    struct bootinfo_table_header *newbtblhdr = NULL;
+    struct StLoad_BootInfoEntryHeader *enthdr = NULL;
+    struct StLoad_BootInfoEntryCommandArgs *caent = NULL;
+    struct StLoad_BootInfoEntryMemoryMap *mment = NULL;
+    struct StLoad_BootInfoEntryUnavailableFrames *ufent = NULL;
+    struct StLoad_BootInfoEntryPagetableVpn *pvent = NULL;
+    struct StLoad_BootInfoTableHeader *newbtblhdr = NULL;
     int use_apic = STRATA_ENABLE_ACPI;
     int use_hpet = STRATA_ENABLE_ACPI;
     // int use_acpi = STRATA_ENABLE_ACPI;

@@ -11,7 +11,7 @@ MPK can eventually enforce them at lower cost than process-style IPC.
 The current tree is organized around three major layers:
 
 - `vellum`: the bootloader. It discovers enough machine state to load Strata and
-  loads the `loadst` bootloader module that builds the boot information table.
+  loads the `load_folios` bootloader module that builds the boot information table.
 - `strata`: the kernel. It owns physical memory, virtual address spaces,
   scheduling, process/thread lifetime, the Global Node Tree, syscall dispatch,
   and early/panic diagnostics.

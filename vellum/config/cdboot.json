@@ -15,8 +15,8 @@
             {
                 "name": "Boot from current device",
                 "script": [
-                    "loadmodule boot:/modules/loadst.mod",
-                    "loadst boot:/system/kernel/strata.elf -v"
+                    "loadmodule boot:/modules/load_folios.mod",
+                    "load_folios boot:/system/kernel/strata.elf -v"
                 ]
             },
             {   

@@ -6,10 +6,10 @@ across bootloader and kernel boundaries.
 The generated Common reference is intentionally separate from Strata and Vellum
 so shared protocol types do not obscure either component's API index.
 
-## `loadst`
+## `strata`
 
-The `loadst` headers describe the normalized bootloader-module-to-kernel ABI.
-The `loadst` Vellum module gathers data from the initialized bootloader
+The `strata` headers describe the normalized bootloader-module-to-kernel ABI.
+The `load_folios` Vellum module gathers data from the initialized bootloader
 environment, builds the boot information table, and hands that table to Strata.
 
 Key boot information entries include:

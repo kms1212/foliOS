@@ -13,8 +13,8 @@ Vellum's boot flow is responsible for:
 - opening the boot filesystem;
 - reading boot configuration;
 - loading bootloader modules and assets;
-- running the `loadmodule` command for `loadst`;
-- providing the initialized environment that lets `loadst` collect handoff data
+- running the `loadmodule` command for `load_folios`;
+- providing the initialized environment that lets `load_folios` collect handoff data
   and jump to Strata.
 
 Platform mechanics belong under the Vellum architecture/platform directories.
@@ -35,7 +35,7 @@ This makes boot diagnostics visible before Strata logging is available.
 
 ## Handoff
 
-The handoff to Strata is owned by the `loadst` bootloader module. Vellum core
+The handoff to Strata is owned by the `load_folios` bootloader module. Vellum core
 should expose the services and device/configuration data needed by that module,
-but the kernel-facing table should use common `loadst` structures rather than
+but the kernel-facing table should use common `strata` structures rather than
 Vellum-private data.

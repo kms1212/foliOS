@@ -33,6 +33,6 @@ belong to different components.
 
 ## Handoff Memory Map
 
-Vellum should expose enough memory information for the `loadst` module to build
+Vellum should expose enough memory information for the `load_folios` module to build
 normalized memory-map and unavailable-frame boot information entries. Strata
 consumes that table to initialize its own PMM and VMM state.

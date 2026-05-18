@@ -356,7 +356,7 @@ Keep include groups separated by one blank line. The intended order is:
    the selected platform/architecture header first.
 5. Kernel or bootloader headers. Within this group, platform/architecture
    headers come before generic subsystem headers.
-6. Common shared headers such as `loadst/*`.
+6. Common shared headers such as `strata/*`.
 7. Internal/private/generated local headers.
 
 Examples:
@@ -374,7 +374,7 @@ Examples:
 #include <strata/compiler.h>
 #include <strata/status.h>
 
-#include <loadst/bootinfo.h>
+#include <strata/bootinfo.h>
 
 #include "internal.h"
 ```
@@ -393,8 +393,7 @@ Examples:
 ```
 
 Headers must be self-contained and guarded. Use existing guard style:
-`__STRATA_..._H__`, `__VELLUM_..._H__`, or `__LOADST_..._H__`. Do not use
-`#pragma once`.
+`__STRATA_..._H__` or `__VELLUM_..._H__`. Do not use `#pragma once`.
 
 Prefer including the narrowest header that owns the declaration. Do not create a
 central refs header for unrelated object families.

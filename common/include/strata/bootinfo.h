@@ -1,15 +1,15 @@
-#ifndef __LOADST_BOOTINFO_H__
-#define __LOADST_BOOTINFO_H__
+#ifndef __STRATA_BOOTINFO_H__
+#define __STRATA_BOOTINFO_H__
 
 #include <stdint.h>
 
-#include <loadst/compiler.h>
+#include <strata/compiler.h>
 
 #define BTV_CURRENT 0
 
 #define BTF_BIGENDIAN 0x0001
 
-struct bootinfo_table_header {
+struct StLoad_BootInfoTableHeader {
     uint16_t flags;
     uint16_t version;
     uint32_t header_size;
@@ -21,7 +21,7 @@ struct bootinfo_table_header {
 
 #define BEF_REQUIRED 0x0001
 
-struct bootinfo_entry_header {
+struct StLoad_BootInfoEntryHeader {
     uint32_t type;
     uint16_t flags;
     uint16_t header_size;
@@ -40,12 +40,12 @@ struct bootinfo_entry_header {
 #define BET_PAGETABLE_VPN      9
 #define BET_RAMDISK            10
 
-struct bootinfo_entry_command_args {
+struct StLoad_BootInfoEntryCommandArgs {
     uint32_t arg_count;
     uint32_t arg_offsets[];
 } __packed;
 
-struct bootinfo_entry_loader_info {
+struct StLoad_BootInfoEntryLoaderInfo {
     uint32_t additional_entry_count;
     uint32_t name_offset;
     uint32_t version_offset;
@@ -59,9 +59,9 @@ struct bootinfo_entry_loader_info {
 #define BEMT_ACPI_NVS         4
 #define BEMT_BAD              5
 
-struct bootinfo_entry_memory_map {
+struct StLoad_BootInfoEntryMemoryMap {
     uint32_t entry_count;
-    struct bootinfo_memory_map_entry {
+    struct StLoad_BootInfoMemoryMapEntry {
         uint64_t base;
         uint64_t size;
         uint32_t type;
@@ -69,16 +69,16 @@ struct bootinfo_entry_memory_map {
     } __packed entries[];
 } __packed;
 
-struct bootinfo_entry_system_disk {
+struct StLoad_BootInfoEntrySystemDisk {
     uint32_t ident_crc32;
     uint32_t entry_count;
-    struct bootinfo_system_disk_entry {
+    struct StLoad_BootInfoSystemDiskEntry {
         uint64_t lba;
         uint32_t crc32;
     } __packed entries[];
 } __packed;
 
-struct bootinfo_entry_acpi_rsdp {
+struct StLoad_BootInfoEntryAcpiRsdp {
     char oemid[6];
     uint8_t revision;
     uint8_t reserved;
@@ -90,7 +90,7 @@ struct bootinfo_entry_acpi_rsdp {
 #define BEFT_TEXT   0
 #define BEFT_DIRECT 1
 
-struct bootinfo_entry_framebuffer {
+struct StLoad_BootInfoEntryFramebuffer {
     uint64_t framebuffer_addr;
     uint32_t width;
     uint32_t pitch;
@@ -99,7 +99,7 @@ struct bootinfo_entry_framebuffer {
     uint8_t type;
     uint16_t reserved;
     union {
-        struct bootinfo_framebuffer_direct_color_info {
+        struct StLoad_BootInfoFramebufferDirectColorInfo {
             uint8_t red_pos;
             uint8_t red_size;
             uint8_t green_pos;
@@ -110,14 +110,14 @@ struct bootinfo_entry_framebuffer {
     } __packed;
 } __packed;
 
-struct bootinfo_entry_default_font {
+struct StLoad_BootInfoEntryDefaultFont {
     uint8_t width;
     uint8_t height;
     uint8_t font_bpp;
     uint64_t data_addr;
 } __packed;
 
-struct bootinfo_entry_boot_graphics {
+struct StLoad_BootInfoEntryBootGraphics {
     uint16_t width;
     uint16_t height;
     uint8_t bpp;
@@ -130,24 +130,24 @@ struct bootinfo_entry_boot_graphics {
 #define BEUT_BOOT_GRAPHICS 3
 #define BEUT_RAMDISK       4
 
-struct bootinfo_entry_unavailable_frames {
+struct StLoad_BootInfoEntryUnavailableFrames {
     uint32_t entry_count;
-    struct bootinfo_unavailable_frame_entry {
+    struct StLoad_BootInfoUnavailableFrameEntry {
         uint64_t pfn_base;
         uint32_t count;
         uint32_t type;
     } __packed entries[];
 } __packed;
 
-struct bootinfo_entry_pagetable_vpn {
+struct StLoad_BootInfoEntryPagetableVpn {
     uint64_t vpn;
 } __packed;
 
-struct bootinfo_entry_ramdisk {
+struct StLoad_BootInfoEntryRamdisk {
     uint8_t version;
     uint8_t reserved[3];
     uint32_t size;
     uint64_t data_addr;
 } __packed;
 
-#endif  // __LOADST_BOOTINFO_H__
+#endif  // __STRATA_BOOTINFO_H__

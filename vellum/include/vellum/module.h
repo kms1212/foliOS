@@ -9,7 +9,7 @@
  * Loaded Vellum module.
  *
  * Modules are ELF files loaded by the bootloader shell and linked into the
- * global module list. `loadst` is one such module: it gathers bootloader state,
+ * global module list. `load_folios` is one such module: it gathers bootloader state,
  * builds the Strata bootinfo table, and transfers control to the kernel.
  */
 struct module {

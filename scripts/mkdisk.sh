@@ -88,7 +88,7 @@ esac
 mmd -i "$CURRENT_PART_IMAGE" ::/CONFIG
 mcopy -i "$CURRENT_PART_IMAGE" vellum/config/boot.json ::/CONFIG/boot.json
 mmd -i "$CURRENT_PART_IMAGE" ::/MODULES
-mcopy -i "$CURRENT_PART_IMAGE" build/vellum/modules/loadst/loadst.mod ::/MODULES/LOADST.MOD
+mcopy -i "$CURRENT_PART_IMAGE" build/vellum/modules/load_folios/load_folios.mod ::/MODULES/LOAD_FOLIOS.MOD
 mcopy -i "$CURRENT_PART_IMAGE" build/vellum/modules/guishell/guishell.mod ::/MODULES/guishell.MOD
 mcopy -i "$CURRENT_PART_IMAGE" build/vellum/modules/helloworld/helloworld.mod ::/MODULES/HELOWRLD.MOD
 mcopy -i "$CURRENT_PART_IMAGE" build/vellum/vellum.map ::/VELLUM.MAP
