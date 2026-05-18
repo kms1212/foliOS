@@ -28,18 +28,23 @@ target_link_libraries(strata_temp_module_acpi gcc)
 target_compile_definitions(strata_temp_module_acpi PRIVATE UACPI_FORMATTED_LOGGING=1 UACPI_NATIVE_ALLOC_ZEROED=1)
 
 # SIDL Files
-sidl_generate_c(
+sidlc_compile(
+    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/sidl"
+    SIFS_VAR SIDL_SIFS
+    FILES
+        "${ROOT_SOURCE_DIR}/sidl/acpi/table/mcfg.sidl"
+)
+sidlc_generate(
     SERVER
     HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/sidl"
     SRCS_VAR SIDL_SRCS
     HDRS_VAR SIDL_HDRS
-    FILES
-        "${ROOT_SOURCE_DIR}/sidl/acpi/table/mcfg.sidl"
+    SIFS ${SIDL_SIFS}
 )
 
 target_sources(strata_temp_module_acpi PRIVATE ${SIDL_SRCS} ${SIDL_HDRS})
 set_source_files_properties(${SIDL_SRCS} ${SIDL_HDRS} PROPERTIES GENERATED TRUE)
-add_custom_target(temp_module_acpi_sidl_gen DEPENDS ${SIDL_SRCS} ${SIDL_HDRS})
+add_custom_target(temp_module_acpi_sidl_gen DEPENDS ${SIDL_SIFS} ${SIDL_SRCS} ${SIDL_HDRS})
 add_dependencies(strata_temp_module_acpi temp_module_acpi_sidl_gen)
 target_include_directories(strata_temp_module_acpi PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
 target_include_directories(strata_temp_module_acpi PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/sidl")

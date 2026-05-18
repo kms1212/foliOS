@@ -54,20 +54,25 @@ target_include_directories(strata PRIVATE "${CMAKE_BINARY_DIR}")
 target_include_directories(strata PRIVATE "${ROOT_SOURCE_DIR}/common/include")
 
 # SIDL Files
-sidl_generate_c(
-    SERVER
-    HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/sidl"
-    SRCS_VAR SIDL_SRCS
-    HDRS_VAR SIDL_HDRS
+sidlc_compile(
+    OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/sidl"
+    SIFS_VAR SIDL_SIFS
     FILES
         "${CMAKE_SOURCE_DIR}/sidl/byte_stream.sidl"
         "${CMAKE_SOURCE_DIR}/sidl/process.sidl"
         "${CMAKE_SOURCE_DIR}/sidl/thread.sidl"
 )
+sidlc_generate(
+    SERVER
+    HEADER_DIR "${CMAKE_CURRENT_BINARY_DIR}/sidl"
+    SRCS_VAR SIDL_SRCS
+    HDRS_VAR SIDL_HDRS
+    SIFS ${SIDL_SIFS}
+)
 
 target_sources(strata PRIVATE ${SIDL_SRCS} ${SIDL_HDRS})
 set_source_files_properties(${SIDL_SRCS} ${SIDL_HDRS} PROPERTIES GENERATED TRUE)
-add_custom_target(sidl_gen DEPENDS ${SIDL_SRCS} ${SIDL_HDRS})
+add_custom_target(sidl_gen DEPENDS ${SIDL_SIFS} ${SIDL_SRCS} ${SIDL_HDRS})
 add_dependencies(strata sidl_gen)
 target_include_directories(strata PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/sidl")
 

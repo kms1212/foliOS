@@ -6,7 +6,7 @@ Date: 2026-05-17
 
 ## Context
 
-FoliOS needs a layered trust model for ordinary applications, module archives,
+foliOS needs a layered trust model for ordinary applications, module archives,
 drivers, runtimes, and future interpreted environments. If executable trust is
 handled separately by each binary format without a shared policy, the system
 will have multiple places where signatures, update policy, rollback policy, and

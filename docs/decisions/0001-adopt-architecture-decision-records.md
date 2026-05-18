@@ -6,7 +6,7 @@ Date: 2026-05-15
 
 ## Context
 
-FoliOS has several design choices that affect API shape, subsystem boundaries,
+foliOS has several design choices that affect API shape, subsystem boundaries,
 and static analysis rules. Some of those choices already exist in the codebase,
 while new decisions are still being made during development.
 
