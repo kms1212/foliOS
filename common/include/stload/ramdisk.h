@@ -1,9 +1,9 @@
-#ifndef __STRATA_RAMDISK_H__
-#define __STRATA_RAMDISK_H__
+#ifndef __STLOAD_RAMDISK_H__
+#define __STLOAD_RAMDISK_H__
 
 #include <stdint.h>
 
-#include <strata/compiler.h>
+#include <stload/compiler.h>
 
 struct StLoad_RamdiskHeader {
     uint32_t rootdir_offset;
@@ -35,4 +35,4 @@ struct StLoad_RamdiskDirEntry {
     char name[];
 } __packed;
 
-#endif  // __STRATA_RAMDISK_H__
+#endif  // __STLOAD_RAMDISK_H__

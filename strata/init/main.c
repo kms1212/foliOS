@@ -16,6 +16,7 @@
 #include <strata/arch/mmu_constants.h>
 
 #include <strata/plat/cpulocal.h>
+#include <strata/plat/memmap.h>
 #include <strata/plat/time.h>
 
 #include <strata/compiler.h>
@@ -39,9 +40,13 @@
 #include <strata/thread_refs.h>
 #include <strata/utf.h>
 
-#include <strata/bootinfo.h>
+#include <stload/bootinfo.h>
+#include <stload/ramdisk.h>
 
 #define MODULE_NAME "main"
+
+#define USEREXEC_APP_PATH        "/SystemManager/SystemManager.app"
+#define RAMDISK_MAX_SEARCH_DEPTH 64
 
 extern struct StLoad_BootInfoTableHeader *_pc_bootinfo_table;
 
@@ -54,6 +59,10 @@ struct print_state {
 };
 
 struct print_state pstate;
+
+static const struct StLoad_BootInfoEntryRamdisk *g_boot_ramdisk;
+static const uint8_t *g_system_manager_app_image;
+static size_t g_system_manager_app_size;
 
 int early_print_char(void *_state, char ch)
 {
@@ -495,15 +504,377 @@ has_error:
 
 static void thread1_main(StThread_BorrowedRef th);
 
+static const void *boot_paddr_to_direct_ptr(uint64_t paddr)
+{
+    return (const void *)((uintptr_t)paddr + PAGE_TO_ADDR(MEMMAP_DIRECTMAP_VPN_BASE));
+}
+
+static int ramdisk_dirent_name_equals(const struct StLoad_RamdiskDirEntry *entry, const char *name)
+{
+    size_t name_len;
+
+    name_len = strlen(name);
+    if (entry->name_len != name_len) return 0;
+
+    return memcmp(entry->name, name, name_len) == 0;
+}
+
+static StStatus ramdisk_validate_dirent(
+    const uint8_t *image,
+    size_t image_size,
+    size_t offset,
+    const struct StLoad_RamdiskDirEntry **entry_out
+)
+{
+    const struct StLoad_RamdiskDirEntry *entry;
+
+    assert(entry_out);
+
+    if (!image || offset > image_size || image_size - offset < sizeof(*entry)) {
+        return STATUS_INVALID_FORMAT;
+    }
+
+    entry = (const void *)(image + offset);
+    if (entry->entry_size < sizeof(*entry) || entry->entry_size > image_size - offset) {
+        return STATUS_INVALID_FORMAT;
+    }
+
+    if (entry->type != RDET_END &&
+        entry->name_len > entry->entry_size - sizeof(struct StLoad_RamdiskDirEntry)) {
+        return STATUS_INVALID_FORMAT;
+    }
+
+    *entry_out = entry;
+    return STATUS_SUCCESS;
+}
+
+static StStatus ramdisk_find_child_in_dir(
+    const uint8_t *image,
+    size_t image_size,
+    uint32_t dir_offset,
+    const char *name,
+    const struct StLoad_RamdiskDirEntry **entry_out
+)
+{
+    StStatus status;
+    size_t offset;
+
+    assert(entry_out);
+
+    if (!image || !name) return STATUS_INVALID_VALUE;
+    if (dir_offset >= image_size) return STATUS_INVALID_FORMAT;
+
+    offset = dir_offset;
+    for (;;) {
+        const struct StLoad_RamdiskDirEntry *entry;
+
+        status = ramdisk_validate_dirent(image, image_size, offset, &entry);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        if (entry->type == RDET_END) return STATUS_ENTRY_NOT_FOUND;
+
+        if (entry->type == RDET_FILE || entry->type == RDET_DIRECTORY) {
+            uint32_t file_offset = entry->file.file_offset;
+            uint32_t file_size = entry->file.file_size;
+
+            if (file_offset > image_size || file_size > image_size - file_offset) {
+                return STATUS_INVALID_FORMAT;
+            }
+
+            if (ramdisk_dirent_name_equals(entry, name)) {
+                *entry_out = entry;
+                return STATUS_SUCCESS;
+            }
+        } else {
+            return STATUS_INVALID_FORMAT;
+        }
+
+        offset += entry->entry_size;
+    }
+}
+
+static StStatus ramdisk_find_file_by_path(
+    const uint8_t *image,
+    size_t image_size,
+    uint32_t rootdir_offset,
+    const char *path,
+    const uint8_t **file_out,
+    size_t *file_size_out
+)
+{
+    StStatus status;
+    uint32_t dir_offset;
+    const char *segment;
+    unsigned int depth;
+
+    assert(file_out);
+    assert(file_size_out);
+
+    if (!image || !path || path[0] != '/') return STATUS_INVALID_VALUE;
+
+    dir_offset = rootdir_offset;
+    segment = path + 1;
+    depth = 0;
+
+    for (;;) {
+        const struct StLoad_RamdiskDirEntry *entry;
+        const char *slash;
+        char name[256];
+        size_t name_len;
+
+        if (depth > RAMDISK_MAX_SEARCH_DEPTH) return STATUS_INVALID_FORMAT;
+
+        slash = strchr(segment, '/');
+        name_len = slash ? (size_t)(slash - segment) : strlen(segment);
+        if (name_len == 0 || name_len >= sizeof(name)) return STATUS_INVALID_VALUE;
+
+        memcpy(name, segment, name_len);
+        name[name_len] = '\0';
+
+        status = ramdisk_find_child_in_dir(image, image_size, dir_offset, name, &entry);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        if (!slash) {
+            uint32_t file_offset;
+            uint32_t file_size;
+
+            if (entry->type != RDET_FILE) return STATUS_INVALID_FORMAT;
+
+            file_offset = entry->file.file_offset;
+            file_size = entry->file.file_size;
+            if (file_offset > image_size || file_size > image_size - file_offset) {
+                return STATUS_INVALID_FORMAT;
+            }
+
+            *file_out = image + file_offset;
+            *file_size_out = file_size;
+            return STATUS_SUCCESS;
+        }
+
+        if (entry->type != RDET_DIRECTORY) return STATUS_INVALID_FORMAT;
+
+        dir_offset = entry->directory.file_offset;
+        segment = slash + 1;
+        depth++;
+    }
+}
+
+static StStatus materialize_boot_ramdisk(uint8_t **image_out, size_t *image_size_out)
+{
+    StStatus status;
+    const struct StLoad_BootInfoEntryRamdisk *ramdisk;
+    uint8_t *image;
+    size_t copied = 0;
+
+    assert(image_out);
+    assert(image_size_out);
+
+    ramdisk = g_boot_ramdisk;
+    if (!ramdisk || ramdisk->size == 0 || ramdisk->extent_count == 0) {
+        return STATUS_ENTRY_NOT_FOUND;
+    }
+
+    status = StPool_Allocate(ramdisk->size, (void **)&image);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    for (uint32_t i = 0; i < ramdisk->extent_count; i++) {
+        const struct StLoad_BootInfoRamdiskExtent *extent = &ramdisk->extents[i];
+        size_t copy_size;
+
+        if (copied >= ramdisk->size) break;
+        if (extent->size > ramdisk->size - copied) {
+            StPool_Free(image);
+            return STATUS_INVALID_FORMAT;
+        }
+
+        copy_size = extent->size;
+        memcpy(image + copied, boot_paddr_to_direct_ptr(extent->paddr), copy_size);
+        copied += copy_size;
+    }
+
+    if (copied != ramdisk->size) {
+        StPool_Free(image);
+        return STATUS_INVALID_FORMAT;
+    }
+
+    *image_out = image;
+    *image_size_out = ramdisk->size;
+    return STATUS_SUCCESS;
+}
+
+static StStatus dump_ramdisk_dir(
+    const uint8_t *image, size_t image_size, uint32_t dir_offset, unsigned int depth
+)
+{
+    StStatus status;
+    size_t offset;
+
+    if (!image) return STATUS_INVALID_VALUE;
+    if (depth > RAMDISK_MAX_SEARCH_DEPTH) return STATUS_INVALID_FORMAT;
+    if (dir_offset >= image_size) return STATUS_INVALID_FORMAT;
+
+    offset = dir_offset;
+    for (;;) {
+        const struct StLoad_RamdiskDirEntry *entry;
+
+        status = ramdisk_validate_dirent(image, image_size, offset, &entry);
+        if (!CHECK_SUCCESS(status)) return status;
+
+        if (entry->type == RDET_END) return STATUS_SUCCESS;
+
+        if (entry->type == RDET_FILE) {
+            uint32_t file_offset = entry->file.file_offset;
+            uint32_t file_size = entry->file.file_size;
+
+            if (file_offset > image_size || file_size > image_size - file_offset) {
+                return STATUS_INVALID_FORMAT;
+            }
+
+            LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
+                "\t%*s- file %.*s size=%" PRIu32 " offset=%08" PRIX32 " crc32=%08" PRIX32 "\n",
+                (int)(depth * 2),
+                "",
+                entry->name_len,
+                entry->name,
+                file_size,
+                file_offset,
+                entry->file.file_crc32
+            );
+        } else if (entry->type == RDET_DIRECTORY) {
+            LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
+                "\t%*s- dir  %.*s offset=%08" PRIX32 "\n",
+                (int)(depth * 2),
+                "",
+                entry->name_len,
+                entry->name,
+                entry->directory.file_offset
+            );
+
+            status = dump_ramdisk_dir(image, image_size, entry->directory.file_offset, depth + 1);
+            if (!CHECK_SUCCESS(status)) return status;
+        } else {
+            return STATUS_INVALID_FORMAT;
+        }
+
+        offset += entry->entry_size;
+    }
+}
+
+static void dump_boot_ramdisk(void)
+{
+    StStatus status;
+    uint8_t *ramdisk_image;
+    size_t ramdisk_size;
+    const struct StLoad_RamdiskHeader *header;
+
+    status = materialize_boot_ramdisk(&ramdisk_image, &ramdisk_size);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_WARN(
+            LM_CAT_UNCLASSIFIED,
+            "\t<failed to materialize boot ramdisk: %08" PRIX32 ">\n",
+            status
+        );
+        return;
+    }
+
+    if (ramdisk_size < sizeof(*header)) {
+        LOG_WARN(LM_CAT_UNCLASSIFIED, "\t<invalid boot ramdisk header>\n");
+        StPool_Free(ramdisk_image);
+        return;
+    }
+
+    header = (const void *)ramdisk_image;
+    LOG_INFO(
+        LM_CAT_UNCLASSIFIED,
+        "\tcontents: image_size=%zu rootdir_offset=%08" PRIX32 "\n",
+        ramdisk_size,
+        header->rootdir_offset
+    );
+
+    status = dump_ramdisk_dir(ramdisk_image, ramdisk_size, header->rootdir_offset, 0);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_WARN(LM_CAT_UNCLASSIFIED, "\t<failed to dump boot ramdisk: %08" PRIX32 ">\n", status);
+    }
+
+    StPool_Free(ramdisk_image);
+}
+
+static StStatus open_system_manager_from_ramdisk(struct StElf_Object **elf_out)
+{
+    StStatus status;
+    uint8_t *ramdisk_image;
+    size_t ramdisk_size;
+    const struct StLoad_RamdiskHeader *header;
+    const uint8_t *app_image;
+    size_t app_size;
+    struct StElf_Object *elf;
+
+    assert(elf_out);
+
+    if (g_system_manager_app_image) {
+        return StElf_Open(g_system_manager_app_image, g_system_manager_app_size, elf_out);
+    }
+
+    status = materialize_boot_ramdisk(&ramdisk_image, &ramdisk_size);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    if (ramdisk_size < sizeof(*header)) {
+        StPool_Free(ramdisk_image);
+        return STATUS_INVALID_FORMAT;
+    }
+
+    header = (const void *)ramdisk_image;
+    status = ramdisk_find_file_by_path(
+        ramdisk_image,
+        ramdisk_size,
+        header->rootdir_offset,
+        USEREXEC_APP_PATH,
+        &app_image,
+        &app_size
+    );
+    if (!CHECK_SUCCESS(status)) {
+        StPool_Free(ramdisk_image);
+        return status;
+    }
+
+    LOG_INFO(
+        LM_CAT_UNCLASSIFIED,
+        "found %s in boot ramdisk: size=%zu magic=%02X %02X %02X %02X\n",
+        USEREXEC_APP_PATH,
+        app_size,
+        app_size > 0 ? app_image[0] : 0,
+        app_size > 1 ? app_image[1] : 0,
+        app_size > 2 ? app_image[2] : 0,
+        app_size > 3 ? app_image[3] : 0
+    );
+
+    status = StElf_Open(app_image, app_size, &elf);
+    if (!CHECK_SUCCESS(status)) {
+        LOG_WARN(
+            LM_CAT_UNCLASSIFIED,
+            "failed to open %s as ELF: %08" PRIX32 "\n",
+            USEREXEC_APP_PATH,
+            status
+        );
+        StPool_Free(ramdisk_image);
+        return status;
+    }
+
+    g_system_manager_app_image = app_image;
+    g_system_manager_app_size = app_size;
+
+    *elf_out = elf;
+    return STATUS_SUCCESS;
+}
+
 static int setup_user_process(
     StProcess_StrongRef *process_out __out, StThread_StrongRef *main_thread_out __out
 )
 {
     assert(process_out);
     assert(main_thread_out);
-
-    extern char _userexec_start[];  // NOLINT(readability-identifier-naming)
-    extern char _userexec_end[];    // NOLINT(readability-identifier-naming)
 
     StStatus status;
     StProcess_StrongRef process;
@@ -512,7 +883,6 @@ static int setup_user_process(
     struct StElf64_Phdr ph;
     struct StElf_LoadOptions elf_load_options;
     unsigned int ph_count;
-    size_t userexec_size = (uintptr_t)_userexec_end - (uintptr_t)_userexec_start;
     uintptr_t program_header_addr = 0;
     uintptr_t entry_point;
     StThread_StrongRef main_thread;
@@ -522,10 +892,11 @@ static int setup_user_process(
 
     if (process_count >= 10) return 1;
 
-    status = StElf_Open(_userexec_start, userexec_size, &elf);
+    status = open_system_manager_from_ramdisk(&elf);
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to open elf");
+        St_Panic(status, "failed to load /SystemManager/SystemManager.app from boot ramdisk");
     }
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "loaded %s from boot ramdisk\n", USEREXEC_APP_PATH);
 
     status = StProcess_CreateUser(&process);
     if (!CHECK_SUCCESS(status)) {
@@ -942,6 +1313,7 @@ __noreturn void main(void)
 
         enthdr = (void *)((uintptr_t)enthdr + enthdr->size);
     }
+    g_boot_ramdisk = rdent;
 
     /* hang if there's no framebuffer or not in text mode */
     if (!fbent || fbent->type != BEFT_TEXT) {
@@ -1087,11 +1459,21 @@ __noreturn void main(void)
         LOG_INFO(LM_CAT_UNCLASSIFIED, "boot ramdisk:\n");
         LOG_INFO(
             LM_CAT_UNCLASSIFIED,
-            "\tversion=%u size=%08" PRIX32 " addr=%016" PRIX64 "\n",
+            "\tversion=%u size=%08" PRIX32 " extent_count=%" PRIu32 "\n",
             rdent->version,
             rdent->size,
-            rdent->data_addr
+            rdent->extent_count
         );
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\tpaddr            size\n");
+        for (uint32_t j = 0; j < rdent->extent_count; j++) {
+            LOG_INFO(
+                LM_CAT_UNCLASSIFIED,
+                "\t%016" PRIX64 " %08" PRIX32 "\n",
+                rdent->extents[j].paddr,
+                rdent->extents[j].size
+            );
+        }
+        dump_boot_ramdisk();
     }
 
     LOG_INFO(LM_CAT_UNCLASSIFIED, "### bootinfo table end ###\n");

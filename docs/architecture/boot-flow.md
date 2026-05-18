@@ -30,7 +30,7 @@ After that, `load_folios` owns the kernel handoff policy: it asks the bootloader
 the information it needs, normalizes that information into the bootinfo table,
 and passes the table to Strata.
 
-The shared `strata` headers describe the ABI of that table. Important entries
+The shared `stload` headers describe the ABI of that table. Important entries
 include:
 
 - command arguments;

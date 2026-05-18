@@ -47,7 +47,7 @@
 #include <strata/thread.h>
 #include <strata/thread_refs.h>
 
-#include <strata/bootinfo.h>
+#include <stload/bootinfo.h>
 
 #define MODULE_NAME       "init"
 #define PAGE_FAULT_VECTOR 0x0E

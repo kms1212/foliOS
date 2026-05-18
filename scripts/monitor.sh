@@ -13,9 +13,11 @@ ENABLE_GDB=1
 ENABLE_PLOTS=1
 TEE_PID=
 
-declare -a EXTRA_QEMU_ARGS
-declare -a GDB_RUN_CMD
-declare -a RUN_CMD
+declare -a EXTRA_QEMU_ARGS=()
+declare -a GDB_RUN_CMD=()
+declare -a RUN_CMD=()
+VGA_PANE=
+RIGHT_PANE=
 
 print_usage() {
     echo "usage: $0 [options] [machine] [qemu-args...]"
@@ -136,8 +138,10 @@ RUN_CMD=(
     -cpu max
     -display curses
     -S
-    "${EXTRA_QEMU_ARGS[@]}"
 )
+if ((${#EXTRA_QEMU_ARGS[@]})); then
+    RUN_CMD+=("${EXTRA_QEMU_ARGS[@]}")
+fi
 GDB_RUN_CMD=(
     scripts/gdb.sh
     -t strata
@@ -152,18 +156,40 @@ CPU_CMD="cat $(printf "%q" "${CPU_PIPE}") | awk '/cpu usage:/ { gsub(/%/, \"\", 
 MEM_CMD="cat $(printf "%q" "${MEM_PIPE}") | awk '/used memory:/ { print \$NF / 1024; fflush() }' | ttyplot -u kiB -t 'Mem (kiB)' -m 131072"
 
 tmux new-session -d -s "${SESSION_NAME}" -n "VGA" "${RUN_CMD_STR}"
-tmux split-window -h -t "${SESSION_NAME}:0" -p 55 "${LOG_CMD}"
+VGA_PANE="$(tmux display-message -p -t "${SESSION_NAME}:0.0" "#{pane_id}")"
 
 if [[ "${ENABLE_GDB}" -ne 0 ]]; then
-    tmux split-window -v -t "${SESSION_NAME}:0.1" -p 55 "${GDB_CMD}; tmux kill-session -t $(printf "%q" "${SESSION_NAME}")"
+    RIGHT_PANE="$(
+        tmux split-window \
+            -h \
+            -t "${VGA_PANE}" \
+            -p 45 \
+            -P \
+            -F "#{pane_id}" \
+            "${GDB_CMD}; tmux kill-session -t $(printf "%q" "${SESSION_NAME}")"
+    )"
+elif [[ "${ENABLE_PLOTS}" -ne 0 ]]; then
+    RIGHT_PANE="$(
+        tmux split-window \
+            -h \
+            -t "${VGA_PANE}" \
+            -p 45 \
+            -P \
+            -F "#{pane_id}" \
+            "${CPU_CMD}"
+    )"
 fi
+
+tmux split-window -v -t "${VGA_PANE}" -p 35 "${LOG_CMD}"
 
 if [[ "${ENABLE_PLOTS}" -ne 0 ]]; then
-    tmux split-window -v -t "${SESSION_NAME}:0.1" -p 50 "${CPU_CMD}"
-    tmux split-window -v -t "${SESSION_NAME}:0.2" -p 50 "${MEM_CMD}"
+    if [[ "${ENABLE_GDB}" -ne 0 ]]; then
+        RIGHT_PANE="$(tmux split-window -v -t "${RIGHT_PANE}" -p 50 -P -F "#{pane_id}" "${CPU_CMD}")"
+    fi
+    tmux split-window -v -t "${RIGHT_PANE}" -p 50 "${MEM_CMD}"
 fi
 
-tmux select-pane -t "${SESSION_NAME}:0.0"
+tmux select-pane -t "${VGA_PANE}"
 
 if [[ "${ENABLE_PLOTS}" -ne 0 ]]; then
     tee "${LOG_PIPE}" "${CPU_PIPE}" "${MEM_PIPE}" < "${DEBUG_FIFO}" > /dev/null &

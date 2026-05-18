@@ -4,6 +4,6 @@
     "start_script": [
         "loadmodule boot:/modules/load_folios.mod",
         "mount fd0pt0p2 sys",
-        "load_folios sys:/System/Kernel/strata.elf -log.enable=true -log.level=debug -log.mask.thread=lifecycle,task_switch -power.method=acpi"
+        "load_folios sys:/System/Kernel/strata.elf -ramdisk sys:/packages -log.enable=true -log.level=debug -log.mask.thread=lifecycle,task_switch -power.method=acpi"
     ]
 }

@@ -37,5 +37,5 @@ This makes boot diagnostics visible before Strata logging is available.
 
 The handoff to Strata is owned by the `load_folios` bootloader module. Vellum core
 should expose the services and device/configuration data needed by that module,
-but the kernel-facing table should use common `strata` structures rather than
+but the kernel-facing table should use common `stload` structures rather than
 Vellum-private data.

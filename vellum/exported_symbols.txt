@@ -63,6 +63,7 @@ mm_allocate_pages_to
 mm_free_pages
 mm_init
 mm_map
+mm_pma_allocate_frame
 mm_unmap
 mm_vaddr_to_paddr
 mm_vpn_to_pfn
@@ -172,6 +173,7 @@ VlFont_GetGlyphDimension
 VlFont_Use
 VlFs_Create
 VlFs_CreateDriver
+VlFs_Find
 VlFs_FindDriver
 VlFs_GetFirst
 VlFs_MountAuto

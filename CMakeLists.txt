@@ -93,7 +93,6 @@ ExternalProject_Add(strata
     BUILD_ALWAYS 1
     INSTALL_COMMAND ""
 )
-ExternalProject_Add_StepDependencies(strata build system_manager)
 
 # Static Analysis (clang-tidy)
 add_custom_target(

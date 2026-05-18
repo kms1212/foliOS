@@ -12,7 +12,6 @@ option(BUILD_TESTING "Build tests" OFF)
 # Target Configurations
 add_executable(SystemManager)
 target_sources(SystemManager PRIVATE main.c)
-set_target_properties(SystemManager PROPERTIES OUTPUT_NAME "main.app" SUFFIX "")
 
 # Compile Options
 target_compile_features(SystemManager PUBLIC c_std_11)

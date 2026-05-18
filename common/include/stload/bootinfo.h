@@ -1,9 +1,9 @@
-#ifndef __STRATA_BOOTINFO_H__
-#define __STRATA_BOOTINFO_H__
+#ifndef __STLOAD_BOOTINFO_H__
+#define __STLOAD_BOOTINFO_H__
 
 #include <stdint.h>
 
-#include <strata/compiler.h>
+#include <stload/compiler.h>
 
 #define BTV_CURRENT 0
 
@@ -129,6 +129,7 @@ struct StLoad_BootInfoEntryBootGraphics {
 #define BEUT_DEFAULT_FONT  2
 #define BEUT_BOOT_GRAPHICS 3
 #define BEUT_RAMDISK       4
+#define BEUT_BOOTINFO      5
 
 struct StLoad_BootInfoEntryUnavailableFrames {
     uint32_t entry_count;
@@ -147,7 +148,13 @@ struct StLoad_BootInfoEntryRamdisk {
     uint8_t version;
     uint8_t reserved[3];
     uint32_t size;
-    uint64_t data_addr;
+    uint32_t extent_count;
+    uint32_t reserved2;
+    struct StLoad_BootInfoRamdiskExtent {
+        uint64_t paddr;
+        uint32_t size;
+        uint32_t reserved;
+    } __packed extents[];
 } __packed;
 
-#endif  // __STRATA_BOOTINFO_H__
+#endif  // __STLOAD_BOOTINFO_H__

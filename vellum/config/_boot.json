@@ -16,7 +16,7 @@
                 "script": [
                     "loadmodule boot:/modules/load_folios.mod",
                     "mount fd0pt0p2 sys",
-                    "load_folios sys:/System/Kernel/strata.elf -log.enable=true -log.level=debug -acpi.enable=true -apm.enable=false"
+                    "load_folios sys:/System/Kernel/strata.elf -ramdisk sys:/packages -log.enable=true -log.level=debug -acpi.enable=true -apm.enable=false"
                 ]
             },
             {

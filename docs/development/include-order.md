@@ -9,7 +9,7 @@ Keep include groups separated by one blank line. The order is:
    include the selected platform/architecture header before the generic header.
 5. Kernel or bootloader headers. Within this group, platform/architecture
    headers come before generic subsystem headers.
-6. Common shared headers such as `strata/*`.
+6. Common shared headers such as `stload/*`.
 7. Internal, private, or generated local headers.
 
 Example:
@@ -27,7 +27,7 @@ Example:
 #include <strata/compiler.h>
 #include <strata/status.h>
 
-#include <strata/bootinfo.h>
+#include <stload/bootinfo.h>
 
 #include "internal.h"
 ```
@@ -39,6 +39,7 @@ about ownership of declarations.
 Use existing guard style:
 
 - `__STRATA_..._H__`;
-- `__VELLUM_..._H__`.
+- `__VELLUM_..._H__`;
+- `__STLOAD_..._H__`.
 
 Do not use `#pragma once`.
