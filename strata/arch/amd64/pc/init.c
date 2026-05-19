@@ -242,6 +242,7 @@ __externally_visible void _pc_init(struct StLoad_BootInfoTableHeader *btblhdr)
     struct StLoad_BootInfoEntryHeader *enthdr = NULL;
     struct StLoad_BootInfoEntryCommandArgs *caent = NULL;
     struct StLoad_BootInfoEntryMemoryMap *mment = NULL;
+    struct StLoad_BootInfoEntryAcpiRsdp *arent = NULL;
     struct StLoad_BootInfoEntryUnavailableFrames *ufent = NULL;
     struct StLoad_BootInfoEntryPagetableVpn *pvent = NULL;
     struct StLoad_BootInfoTableHeader *newbtblhdr = NULL;
@@ -249,6 +250,7 @@ __externally_visible void _pc_init(struct StLoad_BootInfoTableHeader *btblhdr)
     int use_hpet = STRATA_ENABLE_ACPI;
     // int use_acpi = STRATA_ENABLE_ACPI;
     // int use_apm = STRATA_ENABLE_APM;
+    uint64_t acpi_rsdp_addr = 0;
 
     StLog_EarlyInit(early_print_char, NULL);
 
@@ -262,6 +264,9 @@ __externally_visible void _pc_init(struct StLoad_BootInfoTableHeader *btblhdr)
             break;
         case BET_MEMORY_MAP:
             mment = (void *)((uintptr_t)enthdr + enthdr->header_size);
+            break;
+        case BET_ACPI_RSDP:
+            arent = (void *)((uintptr_t)enthdr + enthdr->header_size);
             break;
         case BET_UNAVAILABLE_FRAMES:
             ufent = (void *)((uintptr_t)enthdr + enthdr->header_size);
@@ -278,6 +283,9 @@ __externally_visible void _pc_init(struct StLoad_BootInfoTableHeader *btblhdr)
 
     if (!mment || !ufent || !pvent) {
         St_Panic(STATUS_ENTRY_NOT_FOUND, "required entry not found");
+    }
+    if (arent) {
+        acpi_rsdp_addr = arent->rsdp_addr;
     }
 
     if (caent) {
@@ -448,7 +456,14 @@ __externally_visible void _pc_init(struct StLoad_BootInfoTableHeader *btblhdr)
 
 #if STRATA_ENABLE_ACPI
     LOG_INFO(LM_CAT_UNCLASSIFIED, "initializing ACPI...\n");
-    status = init_acpi();
+    if (!acpi_rsdp_addr) {
+        status = STATUS_ENTRY_NOT_FOUND;
+    } else {
+        extern uacpi_phys_addr g_rsdp_base;
+
+        g_rsdp_base = (uacpi_phys_addr)acpi_rsdp_addr;
+        status = init_acpi();
+    }
     if (!CHECK_SUCCESS(status)) {
         LOG_ERROR(LM_CAT_UNCLASSIFIED, "failed to initialize ACPI\n");
         // use_acpi = 0;

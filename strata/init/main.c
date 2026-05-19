@@ -11,7 +11,6 @@
 
 #include <zstd.h>
 
-#include <uacpi/kernel_api.h>
 #include <uacpi/types.h>
 
 #include <strata/arch/interrupt.h>
@@ -1510,11 +1509,7 @@ __noreturn void main(void)
 
     if (arent) {
         LOG_INFO(LM_CAT_UNCLASSIFIED, "acpi rsdp entry:\n");
-        LOG_INFO(LM_CAT_UNCLASSIFIED, "\toemid: %.6s\n", arent->oemid);
-        LOG_INFO(LM_CAT_UNCLASSIFIED, "\trevision: %02X\n", arent->revision);
-        LOG_INFO(LM_CAT_UNCLASSIFIED, "\tsize: %08" PRIX32 "\n", arent->size);
-        LOG_INFO(LM_CAT_UNCLASSIFIED, "\trsdt: %08" PRIX32 "\n", arent->rsdt_addr);
-        LOG_INFO(LM_CAT_UNCLASSIFIED, "\txsdt: %016" PRIX64 "\n", arent->xsdt_addr);
+        LOG_INFO(LM_CAT_UNCLASSIFIED, "\trsdp: %016" PRIX64 "\n", arent->rsdp_addr);
     }
 
     if (dfent) {
@@ -1586,10 +1581,11 @@ __noreturn void main(void)
         St_Panic(status, "failed to initialize thread system");
     }
 
-    uacpi_phys_addr rsdp_base;
     extern StStatus acpi_module_main(uint64_t rsdp_base);
-    uacpi_kernel_get_rsdp(&rsdp_base);
-    status = acpi_module_main(rsdp_base);
+    if (!arent || !arent->rsdp_addr) {
+        St_Panic(STATUS_ENTRY_NOT_FOUND, "ACPI RSDP bootinfo entry not found");
+    }
+    status = acpi_module_main(arent->rsdp_addr);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to initialize ACPI module");
     }

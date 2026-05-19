@@ -1047,15 +1047,7 @@ static VlStatus make_bootinfo_table(
     benthdr->flags = BEF_REQUIRED;
 
     entry_acpi_rsdp = (void *)((uintptr_t)benthdr + benthdr->header_size);
-    strncpy(entry_acpi_rsdp->oemid, rsdp->oemid, sizeof(entry_acpi_rsdp->oemid));
-    entry_acpi_rsdp->revision = rsdp->revision;
-    entry_acpi_rsdp->size = rsdp->revision >= 2 ? rsdp->length : 20;
-    entry_acpi_rsdp->rsdt_addr = rsdp->rsdt_addr;
-    if (rsdp->revision >= 2) {
-        entry_acpi_rsdp->xsdt_addr = rsdp->xsdt_addr;
-    } else {
-        entry_acpi_rsdp->xsdt_addr = 0;
-    }
+    entry_acpi_rsdp->rsdp_addr = (uintptr_t)rsdp;
 
     /* fill framebuffer entry */
     benthdr = (void *)((uintptr_t)benthdr + benthdr->size);

@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.13)
 
-add_subdirectory("${TARGET_FIRMWARE}")
 add_subdirectory(trampoline)
 
 configure_file(

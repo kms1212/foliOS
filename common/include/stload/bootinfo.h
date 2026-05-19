@@ -79,12 +79,7 @@ struct StLoad_BootInfoEntrySystemDisk {
 } __packed;
 
 struct StLoad_BootInfoEntryAcpiRsdp {
-    char oemid[6];
-    uint8_t revision;
-    uint8_t reserved;
-    uint32_t size;
-    uint32_t rsdt_addr;
-    uint64_t xsdt_addr;
+    uint64_t rsdp_addr;
 } __packed;
 
 #define BEFT_TEXT   0

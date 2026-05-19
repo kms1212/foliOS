@@ -1364,31 +1364,3 @@ StStatus StMmP_CopyLocal(
     // TODO: implement
     return STATUS_NOT_IMPLEMENTED;
 }
-
-StStatus StMmP_MapConventionalMemory(St_VirtPage *vpn __out)
-{
-    assert(vpn);
-
-    static int mapped = 0;
-    static St_VirtPage mapped_vpn;
-
-    if (!mapped) {
-        StStatus status;
-
-        status = StMm_MapGlobal(
-            VMM_DOMAIN_IO,
-            &mapped_vpn,
-            0,
-            256,
-            NULL,
-            (struct StMm_CompoundFlags){AF_DEFAULT, MF_KERNEL_DEFAULT}
-        );
-        if (!CHECK_SUCCESS(status)) return status;
-
-        mapped = 1;
-    }
-
-    *vpn = mapped_vpn;
-
-    return STATUS_SUCCESS;
-}
