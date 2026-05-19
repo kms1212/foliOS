@@ -1,21 +1,21 @@
 # foliOS: Next-Generation OS Built on Strata
 
-**foliOS** is a high-performance operating system built on **Strata**, a kernel that implements the **Ambikernel** architecture. By internalizing modern hardware primitives, it bridges the gap between the isolation of Microkernels and the raw performance of monolithic kernels, creating a hybrid environment for the next generation of computing.
+**foliOS** is an experimental operating system built on **Strata**, a kernel that explores the **Ambikernel** architecture. The project studies whether selected driver and service logic can run in explicit module domains with lower overhead than process-style IPC while still preserving auditable kernel boundaries and operational fault containment.
 
 ## tl;dr
 
-foliOS is an experimental operating system that explores an **Ambikernel** architecture: a unified address space combined with architecture-local module protection primitives.
+foliOS is an experimental operating system that explores an **Ambikernel** architecture: explicit user, module, and kernel memory regions combined with architecture-local module protection primitives.
 One focus is moving selected driver and service logic into fault-contained Ring 3 modules to evaluate whether kernel transition overhead can be reduced without giving up operational containment.
 The system is intentionally designed as a research platform, making explicit performance, fault-containment, and security trade-offs while mapping architecture-specific hardware features onto generic kernel concepts.
 It does not claim to provide universal safety or general-purpose robustness.
 
 ## 🧠 What is the Ambikernel?
 
-Traditional architectures either place most functionality in a single privilege layer(**monolithic**), or push functionality to external servers(**Microkernel**). The **Ambikernel** philosophy, as realized in **Strata**, takes a third path: it brings hardware-assisted primitives *into* the kernel's core to create a hardware-enforced "stratum" where modules execute with reduced overhead.
+Traditional architectures either place most functionality in a single privilege layer(**monolithic**), or push functionality to external servers(**Microkernel**). The **Ambikernel** philosophy, as explored in **Strata**, takes a third path: it brings hardware-assisted primitives *into* the kernel's core to create an explicit module stratum where selected services can execute with reduced overhead.
 
-Unlike an **Exokernel** that merely exports hardware to user space, an **Ambikernel** internalizes hardware features to enforce a **Unified Address Space**. In **Strata**, protection is not achieved only by simple address space separation, but by architecture-local permission domains that can be changed by the runtime. This allows for:
+Unlike an **Exokernel** that merely exports hardware to user space, an **Ambikernel** internalizes hardware features so the kernel can coordinate conventional process isolation, module memory regions, and runtime-managed protection state. In **Strata**, protection is not achieved only by simple address space separation, but by architecture-local permission domains that can be changed by the runtime. This allows for:
 
-* **Copy-free Data Access:** Seamless data sharing between domains (User ↔ Module ↔ Kernel) without the need for heavy IPC or context switching.
+* **Descriptor-Mediated Fast Data Paths:** Module interfaces can use handles, generated bindings, validated descriptors, or explicit page remapping to avoid unnecessary IPC copies where the module ABI permits it. Raw cross-domain pointers are not the ABI.
 * **Hardware-Assisted Module Containment:** Assigning module memory to protection shards so trusted-but-buggy modules can be contained without forcing every interaction through a separate address space.
 * **Architecture-Specific Backends:** On amd64, Strata plans to implement protection shards with MPK/PKRU and PCID-aware page-table views. Other architectures may use different primitives or a page-table-only fallback.
 
@@ -25,16 +25,16 @@ Unlike an **Exokernel** that merely exports hardware to user space, an **Ambiker
 
 foliOS views traditional memory views not as a burden to be removed, but as a **Heritage** that enables safety. By maintaining a traditional memory model view for user processes while providing a high-speed "fast-path" for modules, Strata achieves a high degree of POSIX compatibility alongside next-generation I/O throughput.
 
-* **Linux Driver Parity:** By emulating Linux kernel headers, foliOS allows for a **seamless porting path** for existing drivers.
-  * **Unified Memory:** `copy_from_user` can be reduced to a direct pointer access under controlled module-protection conditions.
-  * **Sync Mapping:** Traditional `cli/sti` or spinlocks are transparently mapped to **VIF (Virtual Interrupt Flag)** operations.
-  * **MMIO/IOPB Directness:** High-performance drivers (NVMe, NIC) interact with hardware registers without leaving Ring 3.
+* **Linux Driver Porting Profile:** A future compatibility profile may emulate selected Linux driver helper APIs on top of the native module runtime.
+  * **User Buffer Access:** `copy_from_user`-style helpers must translate to validated module-runtime operations such as bounded copies, temporary mapping windows, page loans, or descriptor-mediated access. Module code must not assume it can freely dereference arbitrary user pointers.
+  * **Sync Mapping:** Traditional `cli/sti` or spinlock-shaped helpers may map to **VIF (Virtual Interrupt Flag)** and late-masking operations where the module runtime defines equivalent semantics.
+  * **MMIO/IOPB Directness:** High-performance drivers may receive carefully scoped MMIO or IOPB authority, but that authority is granted by the loader/runtime contract rather than by ambient Ring 3 access.
 
 ### Trust Model: Operational vs. Security
 
 Strata separates trust into security authorization and operational reliability. Module protection is primarily a fault-containment mechanism for signed, trusted code that may still contain bugs. It is not presented as a complete sandbox for hostile code:
 
-* **Security-Authorized Modules:** Drivers and system modules are cryptographically signed and verified at load-time. To achieve raw performance, foliOS prioritizes hardware-assisted mitigations where available, and applies software barriers selectively at trust boundaries:
+* **Security-Authorized Modules:** Drivers and system modules are cryptographically signed and verified at load-time. To keep fast paths low-overhead, foliOS prioritizes hardware-assisted mitigations where available, and applies software barriers selectively at trust boundaries:
   * **Control Flow Integrity (Spectre v2):** Instead of costly software trampolines (Retpoline), foliOS utilizes **Intel CET (Control-flow Enforcement Technology)** and **eIBRS**. This enforces strict Indirect Branch Tracking (IBT) at the hardware level with reduced overhead.
   * **Data Sanctity (Spectre v1):** Mitigation is applied strategically rather than indiscriminately. The SDK provides **`GUARD` macros** (selective `LFENCE` or arithmetic masking). Developers are required to apply these barriers only at critical boundaries where untrusted data (e.g., from User Space or Network) is ingested, preserving the pipeline performance for internal logic.
 * **Operational Fault Containment:** The Micro-Core remains the ultimate guardian. While modules are trusted not to *attack*, they are not trusted to be *crash-free*. The kernel protects system integrity from module failures through **Ring 3 execution**, module protection shards, and strict loader/runtime contracts that prevent faulty modules from directly corrupting core kernel regions or unrelated module state.
@@ -43,68 +43,68 @@ Strata separates trust into security authorization and operational reliability. 
 
 ### 🛡️ Hardware-Assisted Domain Isolation
 
-Strata moves away from software-heavy isolation, relying instead on hardware primitives to define the **3-Layer Memory Model (User-Module-Kernel)**:
+Strata's architecture direction is to use hardware primitives to support a **3-Layer Memory Model (User-Module-Kernel)** while keeping conventional process isolation as the baseline:
 
 * **User Area:** Adheres to the traditional **Page-Table-Based Isolation**. Each user process possesses a private Virtual Memory Area (VMA), ensuring standard POSIX isolation guarantees. Context switching between user processes involves a standard page table transition.
-* **Module Area:** A shared global address space where modules are assigned to module protection shards. On amd64, same-shard transitions can be implemented with MPK/PKRU, while cross-shard transitions use PCID-aware page-table views.
-  * **Direct I/O Access (IOPB):** Unlike traditional Microkernels that require a syscall for every port I/O, Strata leverages the **I/O Permission Bitmap (IOPB)** to grant specific modules direct access to hardware ports. This allows Ring 3 drivers to provide I/O performance closer to bare-metal execution for supported port-mapped devices.
-* **Kernel Area:** The privileged core utilizes a **Converged Isolation Model**. Instead of viewing KPTI solely as a mitigation, Strata integrates strict page table separation with the module protection shard mechanism.
-  * **Dynamic Mapping:** In ordinary user mode, Kernel and Module areas are strictly **unmapped**, protecting against speculative attacks and leaving architecture-local protection resources available to the user process.
-  * **Atomic Context Transition:** The transition to Kernel/Module mode involves a strategic architecture-context switch that simultaneously maps the privileged areas and loads the target module protection shard.
+* **Module Area:** A global module virtual-memory region where module images and module-owned memory are placed into ABI-defined slots and assigned to module protection shards. It is not ordinary user memory, and cross-domain data exchange must go through the module runtime contract.
+  * **Scoped I/O Authority:** For supported port-mapped devices, the module runtime may eventually use mechanisms such as the **I/O Permission Bitmap (IOPB)** to grant narrowly scoped port access. This remains a loader/runtime contract, not ambient hardware authority.
+* **Kernel Area:** The privileged core remains responsible for page-table updates, frame ownership, process/thread lifetime, handle tables, scheduling, and module-runtime authority.
+  * **View Separation:** The intended protection model keeps ordinary user execution from treating kernel or module memory as directly usable address space. Exact mapping and protection behavior is backend-specific and must be expressed through the module ABI.
+  * **Context Transition:** Transitions into kernel or module execution install ABI-defined runtime state such as the target module context, stack, protection binding, and shard generation.
 
 ### 🔑 Module Protection Shards: Scalable Logical Isolation Domains
 
 Many fast in-address-space protection primitives have small hardware limits. Strata treats those limits as backend details by using **module protection shards**, enabling scalable logical isolation domains without making one architecture's key numbers part of the kernel ABI:
 
-* **Shard Multiplexing:** Modules are grouped into logical shards, each with its own page-table view and architecture-local protection binding table. On amd64, this means shard-local pkey assignments backed by PCID contexts.
-* **Fast Same-Shard Transitions:** Calls between modules in the same shard can change only the architecture-local protection state. On amd64, KRT performs this with PKRU updates.
+* **Shard Multiplexing:** Modules are grouped into logical shards, each with its own page-table view and architecture-local protection binding table. On amd64, the intended backend uses shard-local pkey assignments backed by PCID contexts.
+* **Fast Same-Shard Transitions:** Calls between modules in the same shard can change only the architecture-local protection state. On amd64, the intended KRT path would use PKRU updates for this case.
 * **Cross-Shard Transitions:** Calls between shards switch to the target shard's page-table and architecture context. This is more expensive than a same-shard transition but allows protection bindings to be reused across shards.
-* **Scalability:** The kernel can host more module protection domains than a single hardware binding table would allow, while a shard planner uses module metadata to improve locality over time.
+* **Scalability:** The kernel should be able to host more module protection domains than a single hardware binding table would allow, while a shard planner uses module metadata to improve locality over time.
 
 ### 🔌 KRT (Kernel RunTime): The Living Interface
 
-foliOS replaces static system call wrappers with the **KRT (Kernel RunTime)**, a dynamic kernel component mapped directly into every user process's address space:
+foliOS uses the **KRT (Kernel RunTime)** as the user-visible runtime entry table for Strata services. KRT provides stable stubs and metadata that user runtimes such as `libstrata` can call before entering the kernel or, in future module paths, before switching module protection state:
 
-* **Virtual Kernel Adapter:** Acts as a user-space proxy for the kernel, handling architecture-local protection switching and module dispatching transparently. On amd64, approved KRT code performs the required PKRU updates.
-* **State Arena:** Manages stateful resources (e.g., file descriptors, socket states) within a protected user-memory region, accessible only via KRT functions.
-* **A low-latency kernel entry mechanism:** Replaces traditional `syscall` instructions with direct function calls (C FFI), avoiding full privilege-level context switches for supported operations.
+* **Runtime Entry Table:** Exposes versioned entry points for node open, query, and call operations. The current amd64 implementation uses KRT stubs that enter the kernel through the syscall path.
+* **Module Transition Coordinator:** Future module calls should pass through KRT-defined gates so stack switching, protection binding, call-frame lifetime, and fault attribution remain explicit.
+* **Runtime Caches:** User runtimes may maintain handle or interface caches around KRT calls, but cached state is an optimization and not a replacement for kernel authority.
 
 ### 🌐 User-Level Networking: Shared Code, Private Data
 
-The network stack is implemented as a shared, read-only library mapped into user space, enabling copy-free data paths in supported DMA configurations:
+The long-term networking direction is a module-runtime stack that can share verified code while keeping packet ownership and DMA authority explicit:
 
-* **Code Sharing:** All processes use the same verified TCP/IP logic through protected module code.
-* **Data Privacy:** Packet buffers reside in the user's private heap. The NIC DMAs directly to user memory, and the shared code processes packet headers in-place.
-* **Safety:** While data is local, the logic is mediated by the kernel-provided KRT, enforcing protocol constraints through a shared, verified network stack implementation.
+* **Code Sharing:** Processes may use common verified TCP/IP logic through protected module code or runtime libraries.
+* **Buffer Ownership:** Packet buffers should be represented by descriptors, loans, or mapped windows whose ownership and lifetime are visible to the kernel and module runtime.
+* **Safety:** Any copy reduction must preserve DMA isolation, buffer lifetime, and module fault attribution. Direct NIC DMA into arbitrary user heap memory is not a baseline guarantee.
 
-### 🎲 Hyper-Entropy KASLR via Structural Decoupling
+### 🎲 Large Module Address Space
 
-foliOS leverages the full 48-bit canonical address space to implement a KASLR strategy that is structurally more flexible to monolithic counterparts:
+Strata reserves a large module virtual-memory region so module placement can be decoupled from the kernel core and, later, used for sparse placement and layout randomization:
 
 * **Liberation from the 2GB Limit:** Unlike traditional kernels that must cluster modules near the core code to satisfy x86 `RIP-relative` addressing constraints, Strata structurally decouples the Micro-Core from the Module Area.
-* **Massive Entropy Pool:** Modules reside in a vast, contiguous region (Module Area) separate from the kernel core. This allows the loader to scatter drivers and services across terabytes of virtual space without requiring performance-heavy trampolines or PLTs.
-* **Statistical Immunity:** By combining this spatial freedom with fine-grained function reordering, foliOS significantly increases the entropy and unpredictability of kernel and module layout, because the layout of system components is non-deterministic and sparse.
+* **Large Slot Space:** Modules reside in a vast, contiguous region (Module Area) separate from the kernel core. The module ABI should define slot size, guard placement, sparse mapping, and loader relocation rules.
+* **Future Layout Randomization:** Sparse module placement and function-level layout randomization are design options, not current security guarantees.
 
 ### ⚡ VIF (Virtual Interrupt Flag) & Late-Masking
 
-foliOS eliminates the "Syscall-for-Sync" bottleneck. Instead of requesting the kernel to `cli/sti` (mask interrupts), modules use a **Virtual Interrupt Flag (VIF)** in shared memory:
+The module runtime is expected to define a **Virtual Interrupt Flag (VIF)** and late-masking model for direct interrupt entry. The goal is to avoid unnecessary synchronization syscalls on fast paths without letting modules own hardware interrupt state directly:
 
-* **Shared Masking:** Modules set a software flag in a dedicated memory slot.
-* **Late-Masking Logic:** When a hardware IRQ occurs, the kernel checks the VIF before dispatching. If the flag is set, the kernel performs a **Late-mask** at the hardware level.
-* **Performance:** Synchronization latency is reduced by avoiding privilege transitions, as no privilege transition is required to "mask" interrupts.
+* **Shared Masking State:** Modules may update ABI-defined runtime state to defer direct interrupt entry.
+* **Late-Masking Logic:** When a hardware IRQ occurs, the kernel can consult the runtime state before dispatching and perform host-side masking or replay as needed.
+* **Performance Goal:** Synchronization latency can be reduced when the common case avoids a privilege transition.
 
 ### 📦 Heterogeneous Module Loading
 
 foliOS modules are packaged in **Strata Module Archives (SMA)** that bridge the Ring 3/Ring 0 divide.
 
-* **Split Loading:** The loader places the **Control Logic** in the Ring 3 Module Area and the **Fast-path ISR** in the Ring 0 Kernel Area.
-* **Dynamic Binding:** System calls are not static constants; they are dynamically assigned IDs at load-time and "hot-patched" into the module code or resolved via a high-speed Dispatcher, allowing for modular ABI evolution.
+* **Split Images:** A module archive may contain a primary Ring 3 user image and an optional, narrow kernel-side interrupt capsule. The user image owns the main driver or service policy.
+* **Interface Binding:** Module ABI evolution is expressed through archive metadata, SIDL/SIF interface records, KRT entry tables, and generated bindings. Module code should not rely on load-time syscall ID hot-patching as the primary ABI mechanism.
 
-To ensure modules follow the runtime and protection-domain contract, the loader enforces strict prerequisites alongside cryptographic verification:
+To ensure modules follow the runtime and protection-domain contract, the intended loader path should enforce strict prerequisites alongside cryptographic verification:
 
-* **Mandatory Code Signing & Static Verification:** All modules must be signed by a trusted authority. Before loading, the kernel performs a conservative static verification pass enforcing an instruction allowlist:
-  * **Instruction Blacklist:** The use of privilege-altering or context-sensitive instructions is strictly prohibited. On amd64, if a binary contains `WRPKRU`/`RDPKRU` (protection-state manipulation), `XRSTOR`/`XSAVE` (CPU state manipulation), or `SYSCALL`/`SYSENTER` (privilege transition), loading is immediately rejected outside approved runtime code.
-  * **Immutable Executable Mapping:** Modules are subjected to strict **W^X (Write XOR Execute)** enforcement. The loader maps module code sections as Read-Only/Executable (`RX`) and data sections as Read-Write (`RW`). Crucially, modules are **stripped of the capability** to re-map their own memory as executable or allocate new executable pages at runtime, effectively neutralizing JIT-based attacks or self-modifying code.
+* **Code Signing & Static Verification:** Normal module loading should require trusted module-domain authorization. Before loading, the kernel should perform conservative validation of the archive, executable images, and approved runtime code:
+  * **Instruction Policy:** Privilege-altering or context-sensitive instructions such as `WRPKRU`/`RDPKRU`, `XRSTOR`/`XSAVE`, or `SYSCALL`/`SYSENTER` should be rejected outside approved runtime code.
+  * **Immutable Executable Mapping:** Module code should be mapped with strict **W^X (Write XOR Execute)** policy. Module code sections should be `RX`, data sections should be `RW`, and module code should not be allowed to allocate or remap executable pages unless a future ABI profile explicitly permits it.
 
 ### 🌲 Global Node Tree (GNT) & Namespace Polymorphism
 
@@ -140,47 +140,21 @@ Subsequent operations relative to this handle can often be resolved entirely wit
 
 This mechanism reduces the overhead associated with repeated dynamic namespace interpretation.
 
-#### Reverse Reference Tracking
+#### Planned Reverse Reference Tracking
 
-GNT nodes maintain metadata about active references to the resource they represent.  
-When a node is removed or invalidated, the kernel can propagate invalidation events to dependent objects or handles.
+GNT nodes should eventually maintain metadata about active references to the resource they represent.
+When a node is removed or invalidated, the kernel should be able to propagate invalidation events to dependent objects, links, or handles.
 
 This reference tracking mechanism helps mitigate classes of errors related to stale or invalid resource references in shared environments.
 
 ### 📂 Package-Based Executable Management
 
-foliOS abandons the cluttered `/bin` and `/lib` hierarchy in favor of a strictly versioned **Package System**:
+foliOS plans to move away from the cluttered `/bin` and `/lib` hierarchy in favor of a strictly versioned **Package System**:
 
 * **Atomic Updates:** Applications and their dependencies are managed as atomic units.
 * **ABI Projection:** The OS "projects" the required ABI version into the process's view at load-time, allowing multiple versions of the same library to coexist without conflict.
 
 ## 🛠 Build & Run
-
-## 🧭 Development Contracts
-
-Strata uses source-level annotations to make kernel API contracts visible to
-both reviewers and local clang-tidy checks.
-
-* Public API parameters should carry direction annotations such as `__in`,
-  `__out`, `__inout`, `__out_optional`, or `__buf`.
-* `StStatus` return values must be checked, returned, or intentionally discarded
-  with an explicit `(void)` cast.
-* Distinct integer and pointer domains use `__bitwise`, `__nocast`, and
-  reference annotations to catch accidental conversions.
-* Ref-counted kernel objects declare their own `StrongRef`, `WeakRef`,
-  `BorrowedRef`, `InternalRef`, and, when needed, `LockedRef` typedefs in a
-  type-specific `*_refs.h` header. Intrusive links and scheduler-private
-  references use `InternalRef`; APIs that transfer or require ownership use
-  `StrongRef`.
-* Ref-counted objects embed `struct StRefControlBlock ref_control` as their first
-  field and should go through the object-specific acquire/release API rather than
-  manipulating the control block from unrelated code.
-* MM allocation ownership is modeled as a first-class ref-counted object:
-  `StAllocationOwner` tracks allocation charge and cleanup, while VMM/PMM
-  records hold owner refs for as long as the allocation they describe can remain
-  live.
-* PMM metadata distinguishes unlocked borrowed views from locked views in the
-  type system; locked metadata must be released through the matching unlock API.
 
 ### Prerequisites
 
@@ -213,31 +187,6 @@ folisdk/build/folisdk-host/bin/cmake --build build --parallel=18
 scripts/mkdisk.sh -a ia32 disk.img
 scripts/run.sh --disk disk.img pc-amd64
 ```
-
-## 📁 Directory Structure
-
-| Directory | Description |
-| --- | --- |
-| `docs` | Technical specifications, API documentation, and architecture whitepapers. |
-| `scripts` | Automation tools for disk imaging, debugging, and QEMU orchestration. |
-| `cmake` | Modular CMake build scripts and toolchain configurations. |
-| `config` | Target-specific presets (e.g., amd64-pc-bios, i686-pc-bios). |
-| `vellum` | The **Vellum Bootloader**: Performs generic bootloader functions. |
-| `strata` | The **Strata Ambikernel**: Core PMM, VMM, and hardware-accelerated domain manager. |
-
-### 📦 System Packages
-
-* **`foligui`**: The foliOS Graphical User Interface stack.
-  * `foligui`: High-performance drawing engine module with window compositor.
-  * `libfoligui`: System call wrappers for foliGUI module
-
-* **`folisdk`**: General Application SDK.
-  * `libfoliimm`: Input Method Module (IMM) for multi-language support.
-  * `libfoliutil`: OS-independent utility and data structure library.
-
-* **`stratasdk`**: The Kernel Module Development Kit.
-  * `libstmod`: Provides more privileged system calls for modules.
-  * `libsidl`: The Strata Interface Definition Language (SIDL) runtime library.
 
 ## ⚖️ License
 
