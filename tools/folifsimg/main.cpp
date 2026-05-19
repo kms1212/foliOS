@@ -1,6 +1,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cinttypes>
+
+#include <memory>
 
 #include "folifs.hpp"
 #include "image.hpp"
@@ -25,8 +28,8 @@ int main(int argc, char **argv)
 
     Afs folifs(image, offset);
 
-    printf("total sector count: %llu\n", folifs.getTotalSectorCount());
-    printf("total block count: %llu\n", folifs.getTotalBlockCount());
+    printf("total sector count: %" PRIu64 "\n", folifs.getTotalSectorCount());
+    printf("total block count: %" PRIu64 "\n", folifs.getTotalBlockCount());
     printf("rdb copy count: %u\n", folifs.getRdbCopyCount());
     printf("bytes per sector: %u\n", folifs.getBytesPerSector());
     printf("sectors per block: %u\n", folifs.getSectorsPerBlock());

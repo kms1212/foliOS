@@ -6,6 +6,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <inttypes.h>
 
 #include "folifs.h"
 
@@ -216,7 +217,7 @@ static int make_fs(
     }
 
     printf(
-        "Creating FOLIFS Volume (%llu sectors, %llu blocks, %llu block groups)\n",
+        "Creating FOLIFS Volume (%" PRIu64 " sectors, %" PRIu64 " blocks, %" PRIu64 " block groups)\n",
         total_sector_count,
         total_block_count,
         total_block_group_count
@@ -387,7 +388,7 @@ static int make_fs(
     fclose(image_fp);
 
     printf(
-        "Filesystem used %llu blocks out of %llu blocks (%.2f%%)\n",
+        "Filesystem used %" PRIu64 " blocks out of %" PRIu64 " blocks (%.2f%%)\n",
         rdb_count + 2 + rbb_count,
         total_block_count,
         (float)5 / total_block_count

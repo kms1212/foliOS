@@ -1,6 +1,9 @@
 #include "folifs.hpp"
 
+#include <cstdint>
 #include <cstring>
+#include <cinttypes>
+#include <memory>
 
 #include "crc32.h"
 #include "folifs.h"
@@ -16,13 +19,13 @@ static void hexdump(const void *data, long len, uint32_t offset)
 
         memcpy(buf, addr, sizeof(buf));
 
-        for (int i = 0; i < sizeof(buf) && count + i < len; i++) {
+        for (unsigned i = 0; i < sizeof(buf) && count + i < len; i++) {
             printf("%02X ", buf[i]);
         }
 
         printf("│ ");
 
-        for (int i = 0; i < sizeof(buf) && count + i < len; i++) {
+        for (unsigned i = 0; i < sizeof(buf) && count + i < len; i++) {
             printf("%c", buf[i] >= 0x20 && buf[i] < 0x80 ? (char)buf[i] : '.');
         }
 
@@ -98,7 +101,7 @@ long Afs::readBlock(void *buf, block_t blk, long count, bool check_crc)
                 *(uint32_t *)(read_buf.get() + this->bytes_per_block - sizeof(uint32_t))) {
             fprintf(
                 stderr,
-                "crc32 error: lba %08llX, block %08llX\n",
+                "crc32 error: lba %08" PRIX64 ", block %08" PRIX64 " \n",
                 this->offset + this->reserved_sectors + blk * this->sectors_per_block,
                 blk
             );
