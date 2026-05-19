@@ -31,6 +31,7 @@
 #include <strata/plat/thread.h>
 #include <strata/plat/time.h>
 
+#include <strata/boot/args.h>
 #include <strata/compiler.h>
 #include <strata/interrupt.h>
 #include <strata/log.h>
@@ -280,16 +281,15 @@ __externally_visible void _pc_init(struct StLoad_BootInfoTableHeader *btblhdr)
     }
 
     if (caent) {
-        for (uint32_t i = 0; i < caent->arg_count; i++) {
+        struct StBootArgs boot_args;
+
+        StBootArgs_Init(&boot_args, btblhdr, caent);
+        if (StBootArgs_HasFlag(&boot_args, "-v")) {
 #ifdef NDEBUG
-            if (strcmp(&btblhdr->strtab[caent->arg_offsets[i]], "-v") == 0) {
-                StLog_SetLevel(LL_DEBUG);
-            }
+            StLog_SetLevel(LL_DEBUG);
 
 #else
-            if (strcmp(&btblhdr->strtab[caent->arg_offsets[i]], "-v") == 0) {
-                StLog_SetLevel(LL_TRACE);
-            }
+            StLog_SetLevel(LL_TRACE);
 
 #endif
         }

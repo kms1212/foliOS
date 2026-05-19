@@ -138,9 +138,11 @@ mmd -i "$CURRENT_PART_IMAGE" ::/users
 mmd -i "$CURRENT_PART_IMAGE" ::/users/root
 mmd -i "$CURRENT_PART_IMAGE" ::/packages
 mmd -i "$CURRENT_PART_IMAGE" ::/packages/SystemManager
+mmd -i "$CURRENT_PART_IMAGE" ::/packages/TestModule
 mmd -i "$CURRENT_PART_IMAGE" ::/temp
 mcopy -i "$CURRENT_PART_IMAGE" build/strata/strata.elf ::/system/kernel/strata.elf
 mcopy -i "$CURRENT_PART_IMAGE" build/syspkgs_temp/SystemManager/SystemManager.app ::/packages/SystemManager/SystemManager.app
+mcopy -i "$CURRENT_PART_IMAGE" build/syspkgs_temp/TestModule/TestModule.sma ::/packages/TestModule/TestModule.sma
 
 if [ "${PRESERVE_TEMP}" = true ]; then
     cp "$CURRENT_PART_IMAGE" "${OUTPUT%.*}.part2.img";

@@ -34,6 +34,12 @@ folios_build_config_set(
     "^[1-9][0-9]*$"
     "Kernel timer tick rate in Hz"
 )
+folios_build_config_set(
+    CONFIG_DEFAULT_SYSTEM_MANAGER_PATH
+    "/SystemManager/SystemManager.app"
+    "^/.*$"
+    "Default SystemManager path in the boot ramdisk"
+)
 folios_build_config_set(CONFIG_ENABLE_APM "0" "^[01]$" "Enable APM")
 folios_build_config_set(CONFIG_ENABLE_ACPI "0" "^[01]$" "Enable ACPI")
 folios_build_config_set(CONFIG_ENABLE_MPTABLE "0" "^[01]$" "Enable MP table")

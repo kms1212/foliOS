@@ -1,3 +1,5 @@
+#include "config.h"
+
 #include <assert.h>
 #include <inttypes.h>
 #include <stdatomic.h>
@@ -19,9 +21,11 @@
 #include <strata/plat/memmap.h>
 #include <strata/plat/time.h>
 
+#include <strata/boot/args.h>
 #include <strata/compiler.h>
 #include <strata/elf.h>
 #include <strata/gnt.h>
+#include <strata/gnt/path.h>
 #include <strata/limits.h>
 #include <strata/log.h>
 #include <strata/macros.h>
@@ -45,9 +49,6 @@
 
 #define MODULE_NAME "main"
 
-#define USEREXEC_APP_PATH        "/SystemManager/SystemManager.app"
-#define RAMDISK_MAX_SEARCH_DEPTH 64
-
 extern struct StLoad_BootInfoTableHeader *_pc_bootinfo_table;
 
 struct print_state {
@@ -61,6 +62,7 @@ struct print_state {
 struct print_state pstate;
 
 static const struct StLoad_BootInfoEntryRamdisk *g_boot_ramdisk;
+static const char *g_system_manager_app_path = STRATA_DEFAULT_SYSTEM_MANAGER_PATH;
 static const uint8_t *g_system_manager_app_image;
 static size_t g_system_manager_app_size;
 
@@ -509,14 +511,21 @@ static const void *boot_paddr_to_direct_ptr(uint64_t paddr)
     return (const void *)((uintptr_t)paddr + PAGE_TO_ADDR(MEMMAP_DIRECTMAP_VPN_BASE));
 }
 
-static int ramdisk_dirent_name_equals(const struct StLoad_RamdiskDirEntry *entry, const char *name)
+static int ramdisk_dirent_name_equals_path_token(
+    const struct StLoad_RamdiskDirEntry *entry, const St_Utf32Char *token, size_t token_len
+)
 {
-    size_t name_len;
+    StStatus status;
+    St_Utf8Char token_utf8[NODENAME_UTF8_MAX + 1];
+    size_t token_utf8_len;
 
-    name_len = strlen(name);
-    if (entry->name_len != name_len) return 0;
+    if (!entry || !token || token_len > NODENAME_MAX) return 0;
 
-    return memcmp(entry->name, name, name_len) == 0;
+    status = StUtf_Utf32ToUtf8(token, token_len, token_utf8, sizeof(token_utf8), &token_utf8_len);
+    if (!CHECK_SUCCESS(status)) return 0;
+    if (token_utf8_len != entry->name_len) return 0;
+
+    return memcmp(entry->name, token_utf8, token_utf8_len) == 0;
 }
 
 static StStatus ramdisk_validate_dirent(
@@ -552,7 +561,8 @@ static StStatus ramdisk_find_child_in_dir(
     const uint8_t *image,
     size_t image_size,
     uint32_t dir_offset,
-    const char *name,
+    const St_Utf32Char *token,
+    size_t token_len,
     const struct StLoad_RamdiskDirEntry **entry_out
 )
 {
@@ -561,7 +571,7 @@ static StStatus ramdisk_find_child_in_dir(
 
     assert(entry_out);
 
-    if (!image || !name) return STATUS_INVALID_VALUE;
+    if (!image || !token) return STATUS_INVALID_VALUE;
     if (dir_offset >= image_size) return STATUS_INVALID_FORMAT;
 
     offset = dir_offset;
@@ -581,7 +591,7 @@ static StStatus ramdisk_find_child_in_dir(
                 return STATUS_INVALID_FORMAT;
             }
 
-            if (ramdisk_dirent_name_equals(entry, name)) {
+            if (ramdisk_dirent_name_equals_path_token(entry, token, token_len)) {
                 *entry_out = entry;
                 return STATUS_SUCCESS;
             }
@@ -603,38 +613,52 @@ static StStatus ramdisk_find_file_by_path(
 )
 {
     StStatus status;
+    St_Utf32Char path_utf32[PATH_MAX];
+    struct StGnt_PathCursor cursor;
     uint32_t dir_offset;
-    const char *segment;
-    unsigned int depth;
+    size_t path_len;
+    size_t path_char_count;
 
     assert(file_out);
     assert(file_size_out);
 
     if (!image || !path || path[0] != '/') return STATUS_INVALID_VALUE;
 
+    path_len = strnlen(path, PATH_UTF8_MAX);
+    if (path_len == PATH_UTF8_MAX) return STATUS_INVALID_VALUE;
+
+    status = StUtf_Utf8ToUtf32(
+        (const St_Utf8Char *)path,
+        path_len,
+        path_utf32,
+        PATH_MAX,
+        &path_char_count
+    );
+    if (!CHECK_SUCCESS(status)) return status;
+    if (path_char_count >= PATH_MAX) return STATUS_INVALID_VALUE;
+
     dir_offset = rootdir_offset;
-    segment = path + 1;
-    depth = 0;
+    StGntPath_Begin(&cursor, path_utf32);
 
     for (;;) {
         const struct StLoad_RamdiskDirEntry *entry;
-        const char *slash;
-        char name[256];
-        size_t name_len;
 
-        if (depth > RAMDISK_MAX_SEARCH_DEPTH) return STATUS_INVALID_FORMAT;
+        if (StGntPath_Next(&cursor)) return STATUS_INVALID_VALUE;
+        if (StGntPath_IsDot(&cursor) || StGntPath_IsDotDot(&cursor)) {
+            return STATUS_INVALID_VALUE;
+        }
 
-        slash = strchr(segment, '/');
-        name_len = slash ? (size_t)(slash - segment) : strlen(segment);
-        if (name_len == 0 || name_len >= sizeof(name)) return STATUS_INVALID_VALUE;
-
-        memcpy(name, segment, name_len);
-        name[name_len] = '\0';
-
-        status = ramdisk_find_child_in_dir(image, image_size, dir_offset, name, &entry);
+        status = ramdisk_find_child_in_dir(
+            image,
+            image_size,
+            dir_offset,
+            cursor.token,
+            cursor.token_len,
+            &entry
+        );
         if (!CHECK_SUCCESS(status)) return status;
 
-        if (!slash) {
+        if (*StGntPath_Remaining(&cursor) == U'\0') {
             uint32_t file_offset;
             uint32_t file_size;
 
@@ -654,8 +678,6 @@ static StStatus ramdisk_find_file_by_path(
         if (entry->type != RDET_DIRECTORY) return STATUS_INVALID_FORMAT;
 
         dir_offset = entry->directory.file_offset;
-        segment = slash + 1;
-        depth++;
     }
 }
 
@@ -702,6 +724,68 @@ static StStatus materialize_boot_ramdisk(uint8_t **image_out, size_t *image_size
     return STATUS_SUCCESS;
 }
 
+static StStatus validate_system_manager_path(const char *path)
+{
+    StStatus status;
+    St_Utf32Char path_utf32[PATH_MAX];
+    struct StGnt_PathCursor cursor;
+    size_t path_len;
+    size_t path_char_count;
+    unsigned int token_count = 0;
+
+    if (!path || path[0] != '/') return STATUS_INVALID_VALUE;
+
+    path_len = strnlen(path, PATH_UTF8_MAX);
+    if (path_len == 0 || path_len == PATH_UTF8_MAX) return STATUS_INVALID_VALUE;
+
+    status = StUtf_Utf8ToUtf32(
+        (const St_Utf8Char *)path,
+        path_len,
+        path_utf32,
+        PATH_MAX,
+        &path_char_count
+    );
+    if (!CHECK_SUCCESS(status)) return status;
+    if (path_char_count >= PATH_MAX) return STATUS_INVALID_VALUE;
+
+    StGntPath_Begin(&cursor, path_utf32);
+    for (;;) {
+        if (StGntPath_Next(&cursor)) break;
+        if (StGntPath_IsDot(&cursor) || StGntPath_IsDotDot(&cursor)) {
+            return STATUS_INVALID_VALUE;
+        }
+        token_count++;
+    }
+
+    return token_count > 0 ? STATUS_SUCCESS : STATUS_INVALID_VALUE;
+}
+
+static StStatus parse_system_manager_arg(
+    const struct StLoad_BootInfoEntryCommandArgs *caent, const char **path_out
+)
+{
+    StStatus status;
+    const char *path = STRATA_DEFAULT_SYSTEM_MANAGER_PATH;
+
+    assert(path_out);
+
+    if (caent) {
+        struct StBootArgs boot_args;
+
+        StBootArgs_Init(&boot_args, _pc_bootinfo_table, caent);
+        status = StBootArgs_GetOptionValue(&boot_args, "-sysman", &path);
+        if (!CHECK_SUCCESS(status) && status != STATUS_ENTRY_NOT_FOUND) {
+            return status;
+        }
+    }
+
+    status = validate_system_manager_path(path);
+    if (!CHECK_SUCCESS(status)) return status;
+
+    *path_out = path;
+    return STATUS_SUCCESS;
+}
+
 static StStatus dump_ramdisk_dir(
     const uint8_t *image, size_t image_size, uint32_t dir_offset, unsigned int depth
 )
@@ -710,7 +794,7 @@ static StStatus dump_ramdisk_dir(
     size_t offset;
 
     if (!image) return STATUS_INVALID_VALUE;
-    if (depth > RAMDISK_MAX_SEARCH_DEPTH) return STATUS_INVALID_FORMAT;
+    if (depth > PATH_MAX) return STATUS_INVALID_FORMAT;
     if (dir_offset >= image_size) return STATUS_INVALID_FORMAT;
 
     offset = dir_offset;
@@ -830,7 +914,7 @@ static StStatus open_system_manager_from_ramdisk(struct StElf_Object **elf_out)
         ramdisk_image,
         ramdisk_size,
         header->rootdir_offset,
-        USEREXEC_APP_PATH,
+        g_system_manager_app_path,
         &app_image,
         &app_size
     );
@@ -842,7 +926,7 @@ static StStatus open_system_manager_from_ramdisk(struct StElf_Object **elf_out)
     LOG_INFO(
         LM_CAT_UNCLASSIFIED,
         "found %s in boot ramdisk: size=%zu magic=%02X %02X %02X %02X\n",
-        USEREXEC_APP_PATH,
+        g_system_manager_app_path,
         app_size,
         app_size > 0 ? app_image[0] : 0,
         app_size > 1 ? app_image[1] : 0,
@@ -855,7 +939,7 @@ static StStatus open_system_manager_from_ramdisk(struct StElf_Object **elf_out)
         LOG_WARN(
             LM_CAT_UNCLASSIFIED,
             "failed to open %s as ELF: %08" PRIX32 "\n",
-            USEREXEC_APP_PATH,
+            g_system_manager_app_path,
             status
         );
         StPool_Free(ramdisk_image);
@@ -894,9 +978,9 @@ static int setup_user_process(
 
     status = open_system_manager_from_ramdisk(&elf);
     if (!CHECK_SUCCESS(status)) {
-        St_Panic(status, "failed to load /SystemManager/SystemManager.app from boot ramdisk");
+        St_Panic(status, "failed to load %s from boot ramdisk", g_system_manager_app_path);
     }
-    LOG_INFO(LM_CAT_UNCLASSIFIED, "loaded %s from boot ramdisk\n", USEREXEC_APP_PATH);
+    LOG_INFO(LM_CAT_UNCLASSIFIED, "loaded %s from boot ramdisk\n", g_system_manager_app_path);
 
     status = StProcess_CreateUser(&process);
     if (!CHECK_SUCCESS(status)) {
@@ -1314,6 +1398,11 @@ __noreturn void main(void)
         enthdr = (void *)((uintptr_t)enthdr + enthdr->size);
     }
     g_boot_ramdisk = rdent;
+
+    status = parse_system_manager_arg(caent, &g_system_manager_app_path);
+    if (!CHECK_SUCCESS(status)) {
+        St_Panic(status, "invalid -sysman boot argument");
+    }
 
     /* hang if there's no framebuffer or not in text mode */
     if (!fbent || fbent->type != BEFT_TEXT) {

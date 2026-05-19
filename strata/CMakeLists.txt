@@ -79,6 +79,7 @@ target_include_directories(strata PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/sidl")
 # Subdirectories
 add_subdirectory(lib)
 add_subdirectory(arch)
+add_subdirectory(boot)
 add_subdirectory(elf)
 add_subdirectory(gnt)
 add_subdirectory(handle)
