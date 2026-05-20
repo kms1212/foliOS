@@ -9,12 +9,11 @@ This page describes the firmware-to-kernel flow at the architecture level. See
 2. Vellum initializes enough CPU, memory, disk, filesystem, video, and console
    support to read boot configuration and load bootloader modules.
 3. Vellum loads the `load_folios` bootloader module through the `loadmodule` command.
-4. The `load_folios` module collects bootloader/platform information, builds the
-   boot information table, loads or finalizes the kernel handoff, and transfers
-   control to Strata.
-5. Strata receives the boot information table through the common handoff ABI and
-   initializes platform state, memory management, interrupts, timers,
-   process/thread infrastructure, and diagnostics.
+4. The `load_folios` module acts as the current `stload` producer: it collects
+   bootloader/platform information, builds the boot information table, loads the
+   kernel image, and transfers control to the kernel entry point.
+5. Strata consumes the boot information table through the common handoff ABI and
+   begins kernel initialization.
 6. Once a runnable thread exists, scheduler dispatch becomes the normal
    execution path.
 
@@ -22,13 +21,13 @@ For the current `amd64-pc-bios` target, the bootloader architecture is still
 IA-32 even though the kernel target is AMD64. This is why disk-image generation
 uses `scripts/mkdisk.sh -a ia32 disk.img`.
 
-## Strata Load Handoff
+## `stload` Handoff
 
-`load_folios` is a Vellum bootloader module, not a pile of code that the Vellum core
-executes inline. Vellum first brings up the environment needed to load modules.
-After that, `load_folios` owns the kernel handoff policy: it asks the bootloader for
-the information it needs, normalizes that information into the bootinfo table,
-and passes the table to Strata.
+`load_folios` is a Vellum bootloader module, not code that Vellum core executes
+inline. Vellum first brings up the environment needed to load modules. After
+that, `load_folios` owns the current loader-side handoff policy: it asks the
+bootloader for the information it needs, normalizes that information into the
+boot information table, and enters the kernel through the `stload` ABI.
 
 The shared `stload` headers describe the ABI of that table. Important entries
 include:
@@ -44,13 +43,10 @@ include:
 - RAM disk location.
 
 The detailed contract is documented in
-[stload Handoff ABI](../common/stload-abi.md). Strata should consume that
-contract rather than Vellum-private loader state.
-
-Strata should treat this table as a compact boot contract, not as Vellum core
-state. Whether the value came from firmware probing, a Vellum device interface,
-a configuration file, or another bootloader module should be hidden behind the
-`load_folios` handoff.
+[stload Handoff ABI](../common/stload-abi.md). Consumers should use that
+contract rather than Vellum-private loader state. Whether a value came from
+firmware probing, a Vellum device interface, a configuration file, or another
+bootloader module is hidden behind the producer boundary.
 
 ## Initialization Boundary
 

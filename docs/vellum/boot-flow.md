@@ -1,7 +1,7 @@
 # Vellum Boot Flow {#vellum_boot_flow}
 
-This page describes Vellum stages, firmware interaction, disk loading, and
-handoff to the kernel.
+This page describes Vellum core stages, firmware interaction, disk loading, and
+bootloader module execution.
 
 ## Responsibilities
 
@@ -13,9 +13,8 @@ Vellum's boot flow is responsible for:
 - opening the boot filesystem;
 - reading boot configuration;
 - loading bootloader modules and assets;
-- running the `loadmodule` command for `load_folios`;
-- providing the initialized environment that lets `load_folios` collect handoff data
-  and jump to Strata.
+- running configured bootloader commands;
+- providing the initialized environment that lets modules perform policy work.
 
 Platform mechanics belong under the Vellum architecture/platform directories.
 This document describes the cross-component contract.
@@ -31,15 +30,15 @@ blocking the loader unnecessarily.
 
 Vellum sets up a usable terminal by composing device interfaces: video,
 framebuffer, virtual console, ANSI terminal, keyboard, and standard streams.
-This makes boot diagnostics visible before Strata logging is available.
+This makes loader diagnostics visible before handoff.
 
-## Handoff
+## Module Boundary
 
-The handoff to Strata is owned by the `load_folios` bootloader module. Vellum core
-should expose the services and device/configuration data needed by that module,
-but the kernel-facing table should use common `stload` structures rather than
-Vellum-private data.
+Some bootloader modules may perform kernel handoff. Vellum core should expose
+the services and device/configuration data needed by such modules, but any
+handoff table should use common `stload` structures rather than Vellum-private
+data.
 
 The current contract is documented in
-[stload Handoff ABI](../common/stload-abi.md). Changes to `load_folios` handoff
+[stload Handoff ABI](../common/stload-abi.md). Changes to producer handoff
 behavior should keep that ABI document and the shared `stload` headers in sync.

@@ -1,7 +1,7 @@
 # Vellum Memory {#vellum_memory}
 
 This page describes boot-time memory discovery, temporary mappings, allocation,
-and the memory map passed to Strata.
+and the memory information used to produce handoff data.
 
 ## Physical Memory Allocator
 
@@ -13,8 +13,8 @@ The Vellum PMA tracks physical frame availability during boot:
 - `mm_pma_allocate_frame` and `mm_pma_free_frame` provide frame runs for loader
   needs.
 
-This allocator exists so Vellum can load the kernel and build handoff data. It
-does not replace Strata PMM after the kernel starts.
+This allocator exists so Vellum core and bootloader modules can reserve and
+stage boot-time data. It does not define ownership after handoff.
 
 ## Virtual Mapping
 
@@ -33,6 +33,6 @@ belong to different components.
 
 ## Handoff Memory Map
 
-Vellum should expose enough memory information for the `load_folios` module to build
-normalized memory-map and unavailable-frame boot information entries. Strata
-consumes that table to initialize its own PMM and VMM state.
+Vellum should expose enough memory information for producer modules to build
+normalized memory-map and unavailable-frame boot information entries. The
+consumer receives those entries through the `stload` ABI.

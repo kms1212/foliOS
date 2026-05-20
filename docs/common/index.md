@@ -1,16 +1,17 @@
 # Common {#common}
 
 Common headers describe shared data structures and boot protocol interfaces used
-across bootloader and kernel boundaries.
+across loader and kernel boundaries.
 
 The generated Common reference is intentionally separate from Strata and Vellum
 so shared protocol types do not obscure either component's API index.
 
 ## `stload`
 
-The `stload` headers describe the normalized bootloader-module-to-kernel ABI.
-The `load_folios` Vellum module gathers data from the initialized bootloader
-environment, builds the boot information table, and hands that table to Strata.
+The `stload` headers describe the normalized loader-to-kernel ABI. The current
+`load_folios` module is one producer of that ABI: it gathers data from the
+initialized bootloader environment, builds the boot information table, and
+enters the kernel through the documented entry-state profile.
 
 See @subpage common_stload_abi for the current handoff contract, including
 control-transfer state, table layout rules, address semantics, required entries,
@@ -30,4 +31,4 @@ Key boot information entries include:
 - RAM disk location.
 
 These structures are packed ABI data. Keep changes conservative and versioned,
-and do not expose Vellum-core-private discovery state through this boundary.
+and do not expose producer-private discovery state through this boundary.

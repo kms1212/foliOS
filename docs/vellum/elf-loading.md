@@ -1,7 +1,6 @@
 # Vellum ELF Loading {#vellum_elf_loading}
 
-This page describes how Vellum loads ELF images and constructs module/kernel
-handoff metadata.
+This page describes how Vellum loads ELF images and records loader-side metadata.
 
 ## ELF API
 
@@ -19,10 +18,10 @@ architecture-specific ELF boundary where possible.
 
 ## Kernel Loading
 
-When loading Strata, Vellum should validate the ELF identity, class,
+When loading a kernel image, Vellum should validate the ELF identity, class,
 endianness, machine, and program headers before mapping segments. Loaded ranges
-must be reflected in unavailable-frame boot information so Strata does not
-reuse memory occupied by the kernel image, page tables, boot assets, or ramdisk.
+that must survive handoff must be reflected in unavailable-frame boot
+information.
 
 ## Symbol Data
 

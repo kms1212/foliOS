@@ -1,7 +1,7 @@
 # Vellum Modules {#vellum_modules}
 
-This page describes module discovery, loading order, dependency metadata, and
-handoff records.
+This page describes Vellum module discovery, loading order, and dependency
+metadata.
 
 ## Module Object
 
@@ -19,10 +19,10 @@ name.
 
 ## Loading Contract
 
-Module loading is a bootloader concern until Strata takes ownership. Vellum
-should load module bytes, record where they were placed, and describe them in
-handoff metadata. Kernel policy about module trust, runtime isolation, GNT
-registration, or process/module object creation belongs in Strata.
+Module loading is a bootloader concern until handoff. Vellum should load module
+bytes and record where they were placed. Runtime policy about module trust,
+isolation, GNT registration, or process/module object creation belongs on the
+consumer side of the handoff boundary.
 
 ## Ordering
 
