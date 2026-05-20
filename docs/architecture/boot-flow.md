@@ -43,6 +43,10 @@ include:
 - boot page-table information;
 - RAM disk location.
 
+The detailed contract is documented in
+[stload Handoff ABI](../common/stload-abi.md). Strata should consume that
+contract rather than Vellum-private loader state.
+
 Strata should treat this table as a compact boot contract, not as Vellum core
 state. Whether the value came from firmware probing, a Vellum device interface,
 a configuration file, or another bootloader module should be hidden behind the

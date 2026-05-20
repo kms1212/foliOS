@@ -6,7 +6,13 @@ set(MODULE_NAME load_folios)
 # Compiler Tests
 
 # Target Configurations
-add_library(vellum_module_${MODULE_NAME} OBJECT main.c)
+add_library(vellum_module_${MODULE_NAME} OBJECT
+    bootinfo.c
+    handoff.c
+    kernel.c
+    main.c
+    ramdisk.c
+)
 add_custom_target(vellum_module_${MODULE_NAME}_mod ALL
     COMMAND
         ${CMAKE_LD}
@@ -28,7 +34,7 @@ add_custom_target(vellum_module_${MODULE_NAME}_mod ALL
 
 # Compile Options
 target_compile_features(vellum_module_${MODULE_NAME} PUBLIC c_std_11)
-target_compile_options(vellum_module_${MODULE_NAME} PUBLIC 
+target_compile_options(vellum_module_${MODULE_NAME} PUBLIC
     $<$<COMPILE_LANGUAGE:C,ASM>:
         -fpic
         -fno-plt

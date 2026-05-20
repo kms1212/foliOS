@@ -39,3 +39,7 @@ The handoff to Strata is owned by the `load_folios` bootloader module. Vellum co
 should expose the services and device/configuration data needed by that module,
 but the kernel-facing table should use common `stload` structures rather than
 Vellum-private data.
+
+The current contract is documented in
+[stload Handoff ABI](../common/stload-abi.md). Changes to `load_folios` handoff
+behavior should keep that ABI document and the shared `stload` headers in sync.

@@ -3,9 +3,13 @@ OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
 
 ENTRY(_start)
 
+KERNEL_LOAD_BASE = 0x00000000C0000000;
+KERNEL_VMA_BASE = 0xFFFFFFFF80000000;
+KERNEL_VMA_TO_LOAD = KERNEL_VMA_BASE - KERNEL_LOAD_BASE;
+
 SECTIONS
 {
-    . = 0x00000000C0000000;  /* trampoline area */
+    . = KERNEL_LOAD_BASE;  /* trampoline area */
 
     .trampoline :
     {
@@ -25,9 +29,9 @@ SECTIONS
     }
 
     /* kernel area */
-    . = 0xFFFFFFFF80000000 + ADDR(.text.startup) + SIZEOF(.text.startup) - ADDR(.trampoline);
+    . = KERNEL_VMA_BASE + ADDR(.text.startup) + SIZEOF(.text.startup) - ADDR(.trampoline);
 
-    .text : AT(ADDR(.text) - ADDR(.trampoline))
+    .text : AT(ADDR(.text) - KERNEL_VMA_TO_LOAD)
     {
         PROVIDE_HIDDEN(___text_start = .);
         *(.text .text.*)
@@ -35,7 +39,7 @@ SECTIONS
     }
 
     . = ALIGN(4096);
-    .rodata :
+    .rodata : AT(ADDR(.rodata) - KERNEL_VMA_TO_LOAD)
     {
         PROVIDE_HIDDEN(__rodata_start = .);
         *(.rodata .rodata.*)
@@ -43,7 +47,7 @@ SECTIONS
     }
 
     . = ALIGN(4096);
-    .data :
+    .data : AT(ADDR(.data) - KERNEL_VMA_TO_LOAD)
     {
         PROVIDE_HIDDEN(__data_start = .);
         *(.data .data.*)
@@ -75,7 +79,7 @@ SECTIONS
     }
 
     . = ALIGN(4096);
-    .bss :
+    .bss : AT(ADDR(.bss) - KERNEL_VMA_TO_LOAD)
     {
         PROVIDE_HIDDEN(___bss_start = .);
         *(.bss .bss.*)

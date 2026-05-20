@@ -41,25 +41,25 @@ CheckOptions:
     value: '^_?_[a-z0-9_]+$'
 
   - key: readability-identifier-naming.FunctionIgnoredRegexp
-    value: '^_?(Vl|St)([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
+    value: '^_?(Vl|St|Lf)([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
 
   - key: readability-identifier-naming.FunctionCase
     value: lower_case
 
   - key: readability-identifier-naming.TypedefIgnoredRegexp
-    value: '^(Vl|St)([A-Z][a-zA-Z0-9]*)?(_[A-Z][a-zA-Z0-9]*)+$'
+    value: '^(Vl|St|Lf)([A-Z][a-zA-Z0-9]*)?(_[A-Z][a-zA-Z0-9]*)+$'
 
   - key: readability-identifier-naming.TypedefCase
     value: lower_case
 
   - key: readability-identifier-naming.StructIgnoredRegexp
-    value: '^(Vl|St)([A-Z][a-zA-Z0-9]*)?(_[A-Z][a-zA-Z0-9]*)?$'
+    value: '^(Vl|St|Lf)([A-Z][a-zA-Z0-9]*)?(_[A-Z][a-zA-Z0-9]*)?$'
 
   - key: readability-identifier-naming.StructCase
     value: lower_case
 
   - key: readability-identifier-naming.EnumIgnoredRegexp
-    value: '^(Vl|St)([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
+    value: '^(Vl|St|Lf)([A-Z][a-zA-Z0-9]*)?_[A-Z][a-zA-Z0-9]*$'
 
   - key: readability-identifier-naming.EnumCase
     value: lower_case

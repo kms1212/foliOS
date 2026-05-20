@@ -12,6 +12,10 @@ The `stload` headers describe the normalized bootloader-module-to-kernel ABI.
 The `load_folios` Vellum module gathers data from the initialized bootloader
 environment, builds the boot information table, and hands that table to Strata.
 
+See @subpage common_stload_abi for the current handoff contract, including
+control-transfer state, table layout rules, address semantics, required entries,
+and evolution policy.
+
 Key boot information entries include:
 
 - command arguments;

@@ -191,6 +191,7 @@ VlLog_SetLevel
 VlP_Panic
 VlP_Poweroff
 VlP_Reboot
+VlPicP_Mask
 VlPath_AdvanceIter
 VlPath_GetBasename
 VlPath_GetDirname
