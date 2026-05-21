@@ -7,24 +7,7 @@ set(MODULE_NAME helloworld)
 
 # Target Configurations
 add_library(vellum_module_${MODULE_NAME} OBJECT main.c)
-add_custom_target(vellum_module_${MODULE_NAME}_mod ALL
-    COMMAND
-        ${CMAKE_LD}
-            -shared -fno-plt -z now -Bsymbolic
-            --emit-relocs --export-dynamic --allow-shlib-undefined
-            $<TARGET_OBJECTS:vellum_module_${MODULE_NAME}>
-            -o ${MODULE_NAME}.elf
-    COMMAND
-        ${CMAKE_OBJCOPY}
-            --add-section .note.vellum=${CMAKE_CURRENT_SOURCE_DIR}/module_info.bin
-            --set-section-flags .note.vellum=contents,noload,readonly
-            ${MODULE_NAME}.elf ${MODULE_NAME}.mod
-    COMMAND_EXPAND_LISTS
-    DEPENDS vellum_module_${MODULE_NAME}
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Linking target vellum_module_${MODULE_NAME}"
-    VERBATIM
-)
+vellum_add_module_artifact(${MODULE_NAME})
 
 # Compile Options
 target_compile_features(vellum_module_${MODULE_NAME} PUBLIC c_std_11)

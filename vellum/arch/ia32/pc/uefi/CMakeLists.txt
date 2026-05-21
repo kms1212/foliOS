@@ -37,8 +37,27 @@ set_target_properties(vellum PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR
 target_link_directories(vellum PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../../../lib/gnu-efi/ia32/lib" "${CMAKE_CURRENT_SOURCE_DIR}/../../../../lib/gnu-efi/ia32/gnuefi")
 target_link_libraries(vellum gnuefi efi)
 
-add_custom_target(vellum_efibin ALL
-    COMMAND objcopy -j .text -j .sdata -j .data -j .rodata -j .dynamic -j .dynsym -j .rel -j .rela -j .rel.* -j .rela.* -j .reloc -j .areloc --target efi-app-ia32 --subsystem=10 "${CMAKE_CURRENT_BINARY_DIR}/../../../../vellum.elf" vellum.efi
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vellum.efi"
+    COMMAND objcopy
+            -j .text
+            -j .sdata
+            -j .data
+            -j .rodata
+            -j .dynamic
+            -j .dynsym
+            -j .rel
+            -j .rela
+            -j .rel.*
+            -j .rela.*
+            -j .reloc
+            -j .areloc
+            --target efi-app-ia32
+            --subsystem=10
+            "$<TARGET_FILE:vellum>"
+            "${CMAKE_CURRENT_BINARY_DIR}/vellum.efi"
     DEPENDS vellum
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Creating vellum EFI binary")
+    COMMENT "Creating vellum EFI binary"
+    VERBATIM
+)
+add_custom_target(vellum_efibin ALL DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/vellum.efi")

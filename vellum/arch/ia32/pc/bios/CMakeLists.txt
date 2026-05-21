@@ -16,11 +16,11 @@ target_link_options(fdboot PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_vbr.l
 set_target_properties(fdboot PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_vbr.lds")
 target_sources(fdboot PRIVATE fdboot.S)
 
-add_custom_target(fdboot_execbin ALL
-    COMMAND ${CMAKE_OBJCOPY} -O binary "$<TARGET_FILE:fdboot>" fdboot.bin
-    DEPENDS fdboot
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Creating floppy VBR"
+vellum_add_binary_artifact(
+    fdboot_execbin
+    fdboot
+    "${CMAKE_CURRENT_BINARY_DIR}/fdboot.bin"
+    "Creating floppy VBR"
 )
 
 
@@ -40,11 +40,11 @@ target_link_options(mbrboot PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_vbr.
 set_target_properties(mbrboot PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_vbr.lds")
 target_sources(mbrboot PRIVATE mbrboot.S)
 
-add_custom_target(mbrboot_execbin ALL
-    COMMAND ${CMAKE_OBJCOPY} -O binary "$<TARGET_FILE:mbrboot>" mbrboot.bin
-    DEPENDS mbrboot
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Creating floppy VBR"
+vellum_add_binary_artifact(
+    mbrboot_execbin
+    mbrboot
+    "${CMAKE_CURRENT_BINARY_DIR}/mbrboot.bin"
+    "Creating MBR boot sector"
 )
 
 add_executable(stage1)
@@ -84,11 +84,11 @@ target_link_options(stage1 PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_stage
 set_target_properties(stage1 PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_stage1.lds")
 target_compile_options(stage1 PUBLIC -Wno-array-bounds -fno-delete-null-pointer-checks)
 
-add_custom_target(stage1_execbin ALL
-    COMMAND ${CMAKE_OBJCOPY} -O binary "$<TARGET_FILE:stage1>" stage1.bin
-    DEPENDS stage1
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Creating stage1 binary"
+vellum_add_binary_artifact(
+    stage1_execbin
+    stage1
+    "${CMAKE_CURRENT_BINARY_DIR}/stage1.bin"
+    "Creating stage1 binary"
 )
 
 set(I686_EXCLUDE_CPU_MODE TRUE PARENT_SCOPE)
@@ -110,9 +110,9 @@ add_subdirectory(bios)
 add_subdirectory(device)
 add_subdirectory(shell)
 
-add_custom_target(vellum_execbin ALL
-    COMMAND ${CMAKE_OBJCOPY} -O binary "$<TARGET_FILE:vellum>" vellum.bin
-    DEPENDS vellum
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-    COMMENT "Creating vellum executable binary"
+vellum_add_binary_artifact(
+    vellum_execbin
+    vellum
+    "${CMAKE_CURRENT_BINARY_DIR}/vellum.bin"
+    "Creating vellum executable binary"
 )

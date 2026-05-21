@@ -51,12 +51,12 @@ target_compile_options(trampoline PUBLIC
         -mgeneral-regs-only
     >
 )
+
 target_link_options(trampoline PUBLIC
     -m32
     -Wl,-m,${TRAMPOLINE_LINK_EMULATION}
-    -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_trampoline.lds"
 )
-set_target_properties(trampoline PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_trampoline.lds")
+strata_target_linker_script(trampoline "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_trampoline.lds")
 
 target_include_directories(trampoline PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_include_directories(trampoline PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../../include")

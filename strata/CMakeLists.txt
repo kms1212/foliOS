@@ -8,6 +8,9 @@ include(ExternalProject)
 
 project("strata" LANGUAGES C ASM)
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StrataLinkerScript.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/StrataGeneratedSource.cmake")
+
 # SIDLC configurations
 get_filename_component(SIDLC_BASE_DIR "${SIDLC_EXECUTABLE}" DIRECTORY)
 file(GLOB VERSION_DIRS RELATIVE "${SIDLC_BASE_DIR}/../share" "${SIDLC_BASE_DIR}/../share/cmake-*")

@@ -4,13 +4,16 @@ add_subdirectory(krt)
 add_subdirectory(syscall)
 add_subdirectory("${TARGET_PLATFORM}")
 
-set_source_files_properties(
-    krt.S
-    PROPERTIES OBJECT_DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/krt/krt.bin"
+strata_target_dependent_source(
+    strata
+    KRT_INCBIN_ASM
+    "${CMAKE_CURRENT_BINARY_DIR}/krt.incbin.S"
+    "${CMAKE_CURRENT_SOURCE_DIR}/krt.S"
+    "${CMAKE_CURRENT_BINARY_DIR}/krt/krt.bin"
 )
 
 target_sources(strata PUBLIC apic.c cpufeatures.c setjmp.S)
-target_sources(strata PRIVATE syscall/call.c krt.S)
+target_sources(strata PRIVATE syscall/call.c "${KRT_INCBIN_ASM}")
 add_dependencies(strata krt_cvt)
 
 target_include_directories(strata PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

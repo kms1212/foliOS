@@ -3,6 +3,8 @@ cmake_policy(SET CMP0076 NEW)
 
 project("vellum" LANGUAGES C ASM)
 
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VellumArtifacts.cmake")
+
 # Compiler Tests
 
 # config.h
@@ -43,32 +45,50 @@ target_include_directories(vellum PRIVATE "${CMAKE_BINARY_DIR}")
 target_compile_definitions(vellum PRIVATE CRC32_FAST=1)
 
 # Additional Targets
-add_custom_target(vellum_symbol_table ALL
-    COMMAND ${CMAKE_NM} "$<TARGET_FILE:vellum>" > vellum.map
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/vellum.map"
+    COMMAND /bin/sh -c "\"${CMAKE_NM}\" \"$<TARGET_FILE:vellum>\" > \"${CMAKE_CURRENT_BINARY_DIR}/vellum.map\""
     DEPENDS vellum
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
     COMMENT "Creating symbol table"
+    VERBATIM
+)
+add_custom_target(vellum_symbol_table ALL
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/vellum.map"
 )
 
 add_custom_command(
-    OUTPUT vellum_exported_symbol_table.stamp
-    COMMAND ${CMAKE_COMMAND} -E touch vellum_exported_symbol_table.stamp
-    COMMAND ${Python3_EXECUTABLE} "${ROOT_SOURCE_DIR}/tools/mksymtab/mksymtab.py" "${CMAKE_CURRENT_SOURCE_DIR}/exported_symbols.txt" "exported_symbols.c"
-    DEPENDS exported_symbols.txt
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/exported_symbols.c"
+    COMMAND ${Python3_EXECUTABLE}
+            "${ROOT_SOURCE_DIR}/tools/mksymtab/mksymtab.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/exported_symbols.txt"
+            "${CMAKE_CURRENT_BINARY_DIR}/exported_symbols.c"
+    DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/exported_symbols.txt"
+            "${ROOT_SOURCE_DIR}/tools/mksymtab/mksymtab.py"
+    VERBATIM
 )
 add_custom_target(vellum_exported_symbol_table ALL
-    DEPENDS vellum_exported_symbol_table.stamp
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/exported_symbols.c"
     COMMENT "Creating exported symbol table"
 )
 add_dependencies(vellum vellum_exported_symbol_table)
 target_sources(vellum PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/exported_symbols.c")
 set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/exported_symbols.c" PROPERTIES GENERATED TRUE)
 
-add_custom_target(vellum_font ALL
-    COMMAND ${Python3_EXECUTABLE} "${ROOT_SOURCE_DIR}/tools/hex2bfn/hex2bfn.py" "${CMAKE_CURRENT_SOURCE_DIR}/unifont.hex" "unifont.bfn"
-    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+add_custom_command(
+    OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/unifont.bfn"
+    COMMAND ${Python3_EXECUTABLE}
+            "${ROOT_SOURCE_DIR}/tools/hex2bfn/hex2bfn.py"
+            "${CMAKE_CURRENT_SOURCE_DIR}/unifont.hex"
+            "${CMAKE_CURRENT_BINARY_DIR}/unifont.bfn"
+    DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/unifont.hex"
+            "${ROOT_SOURCE_DIR}/tools/hex2bfn/hex2bfn.py"
     COMMENT "Generating font data"
+    VERBATIM
+)
+add_custom_target(vellum_font ALL
+    DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/unifont.bfn"
 )
 
 # libraries

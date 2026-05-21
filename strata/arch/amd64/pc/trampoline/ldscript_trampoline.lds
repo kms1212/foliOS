@@ -3,9 +3,11 @@ OUTPUT_FORMAT("elf32-i386", "elf32-i386", "elf32-i386")
 
 ENTRY(_start)
 
+#include <strata/plat/image_layout.h>
+
 SECTIONS
 {
-    . = 0x0000000000100000;
+    . = STRATA_TRAMPOLINE_LOAD_ADDR_BASE;
 
     .text :
     {

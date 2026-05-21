@@ -20,8 +20,7 @@ target_compile_options(krt PUBLIC
         -mgeneral-regs-only
     >
 )
-target_link_options(krt PUBLIC -T "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_krt.lds")
-set_target_properties(krt PROPERTIES LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_krt.lds")
+strata_target_linker_script(krt "${CMAKE_CURRENT_SOURCE_DIR}/ldscript_krt.lds")
 
 target_include_directories(krt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../${TARGET_PLATFORM}/include")
 target_include_directories(krt PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../include")

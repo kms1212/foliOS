@@ -3,8 +3,11 @@ OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
 
 ENTRY(_start)
 
-KERNEL_LOAD_BASE = 0x00000000C0000000;
-KERNEL_VMA_BASE = 0xFFFFFFFF80000000;
+#include <strata/plat/image_layout.h>
+#include <strata/plat/memmap.h>
+
+KERNEL_LOAD_BASE = STRATA_KERNEL_LOAD_ADDR_BASE;
+KERNEL_VMA_BASE = MEMMAP_KERNEL_FAST_ADDR_BASE;
 KERNEL_VMA_TO_LOAD = KERNEL_VMA_BASE - KERNEL_LOAD_BASE;
 
 SECTIONS
@@ -18,7 +21,7 @@ SECTIONS
         PROVIDE_HIDDEN(__trampoline_end = .);
     }
 
-    __trampoline_load = 0x0000000000100000;
+    __trampoline_load = STRATA_TRAMPOLINE_LOAD_ADDR_BASE;
     __trampoline_size = SIZEOF(.trampoline);
 
     .text.startup :

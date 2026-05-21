@@ -1,5 +1,5 @@
     .org    0
-    # NOTE: this source depends on generated krt.bin (see CMake OBJECT_DEPENDS).
+    # NOTE: CMake copies this source into the build tree when krt.bin changes.
 
     .section .rodata
     .align  4096

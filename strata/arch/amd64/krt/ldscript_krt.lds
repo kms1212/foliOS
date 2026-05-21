@@ -1,11 +1,13 @@
 OUTPUT_ARCH(i386:x86-64)
 OUTPUT_FORMAT("elf64-x86-64", "elf64-x86-64", "elf64-x86-64")
 
-ENTRY(_start)
+ENTRY(g_entries)
+
+#include <strata/plat/memmap.h>
 
 SECTIONS
 {
-    . = 0x00007FFF80000000;  /* module area */
+    . = MEMMAP_KRT_DATA_ADDR_BASE;
 
     . = ALIGN(4096);
     .data :
@@ -23,7 +25,7 @@ SECTIONS
         PROVIDE_HIDDEN(___bss_end = .);
     }
 
-    . = 0xFFFF800000000000;  /* module area */
+    . = MEMMAP_KRT_TEXT_ADDR_BASE;
 
     .rodata :
     {

@@ -454,7 +454,7 @@ StStatus StThreadP_SetupThreadUserStack(
         {AT_EGID, 0},
         {AT_RANDOM, (uintptr_t)random_start},
         {AT_EXECFN, (uintptr_t)execfn_start},
-        {AT_SYSINFO, (uintptr_t)0xFFFF800000000000},
+        {AT_SYSINFO, (uintptr_t)MEMMAP_KRT_TEXT_ADDR_BASE},
         {AT_NULL, 0},
     };
     data_size += sizeof(auxv);
