@@ -182,7 +182,7 @@ bce7d2e7-c1d5-573f-a5d8-7a8b40081b81
 w
 y
 EOF
-        elif [ "$OS_TYPE" = "Linux" ]; then
+        elif [ "$OS_TYPE" = "Linux" ] || [ "$OS_TYPE" = "FreeBSD" ]; then
             sfdisk "$OUTPUT" <<EOF
 label: gpt
 first-lba: 63
@@ -219,7 +219,7 @@ n
 131040
 q
 EOF
-        elif [ "$OS_TYPE" = "Linux" ]; then
+        elif [ "$OS_TYPE" = "Linux" ] || [ "$OS_TYPE" = "FreeBSD" ]; then
             sfdisk "$OUTPUT" <<EOF
 label: dos
 unit: sectors
