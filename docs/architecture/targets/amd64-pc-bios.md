@@ -52,6 +52,8 @@ canonical address constraints, interrupt frame layout, syscall entry mechanics,
 and the KRT mapping shape. Conceptual memory rules remain in
 [Memory Model](../memory-model.md) and [Strata Memory](../../strata/memory/index.md).
 
+- @subpage architecture_target_amd64_la48_memory_map "AMD64 LA48 Memory Map"
+
 ## Interrupts And Time
 
 The PC platform layer owns legacy and modern PC interrupt/timer plumbing for
