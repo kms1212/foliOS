@@ -32,3 +32,7 @@ Key boot information entries include:
 
 These structures are packed ABI data. Keep changes conservative and versioned,
 and do not expose producer-private discovery state through this boundary.
+
+## Registries
+
+- @subpage common_guids "GUID Registry"
