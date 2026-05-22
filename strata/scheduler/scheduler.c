@@ -56,21 +56,16 @@ static void catch_up_runnable_pass(struct StScheduler_Data *scheduler, StThread_
 
 static int waiting_thread_is_ready(StThread_InternalRef thread)
 {
-    int ready = 1;
-
     if (!thread->wait_list) return 1;
 
     for (int i = 0; i < thread->wait_count; i++) {
         if (!thread->wait_list[i]) continue;
         if (thread->wait_list[i]->state != THREAD_STATE_FINISHED) {
-            ready = 0;
-            continue;
+            return 0;
         }
-
-        thread->wait_list[i] = NULL;
     }
 
-    return ready;
+    return 1;
 }
 
 static void finish_waiting_thread(

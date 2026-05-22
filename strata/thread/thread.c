@@ -110,19 +110,14 @@ static void remove_thread_from_process(StThread_InternalRef thread)
 
 static int wait_list_is_ready(StThread_StrongRef *list, int count)
 {
-    int ready = 1;
-
     for (int i = 0; i < count; i++) {
         if (!list[i]) continue;
         if (list[i]->state != THREAD_STATE_FINISHED) {
-            ready = 0;
-            continue;
+            return 0;
         }
-
-        list[i] = NULL;
     }
 
-    return ready;
+    return 1;
 }
 
 static uint64_t get_timeout_deadline_ns(uint64_t now_ns, uint64_t timeout_ms)
@@ -289,8 +284,16 @@ static void enqueue_thread_for_reap(StThread_StrongRef thread)
 
 static void enqueue_process_for_reap(StProcess_StrongRef process)
 {
-    if (!process || StRefControlBlock_IsReapQueued(&process->ref_control)) return;
+    if (!process) return;
 
+    StThread_LockPreemption();
+
+    if (StRefControlBlock_IsReapQueued(&process->ref_control)) {
+        StThread_UnlockPreemption();
+        return;
+    }
+
+    StProcess_Acquire(process);
     process->next = NULL;
     StRefControlBlock_MarkReapQueued(&process->ref_control);
     process->ref_control.deferred_reap_page_count =
@@ -298,8 +301,6 @@ static void enqueue_process_for_reap(StProcess_StrongRef process)
     if (process->main_thread) {
         StRefControlBlock_MarkReapQueued(&process->main_thread->ref_control);
     }
-
-    StThread_LockPreemption();
 
     if (!deferred_process_reap_head) {
         deferred_process_reap_head = deferred_process_reap_tail = (StProcess_InternalRef)process;
@@ -775,18 +776,31 @@ StStatus StThread_GetRuntime(StThread_StrongRef thread __in, uint64_t *runtime_n
 
 StStatus StThread_Detach(StThread_StrongRef thread)
 {
+    StThread_Id thread_id;
+    int request_maintain;
+
     if (!thread) return STATUS_INVALID_VALUE;
 
-    if (thread->is_detached) return STATUS_SUCCESS;
+    StThread_LockPreemption();
+
+    if (thread->is_detached) {
+        StThread_UnlockPreemption();
+        return STATUS_SUCCESS;
+    }
 
     thread->is_detached = 1;
-    release_thread(thread);
+    thread_id = thread->id;
+    request_maintain = thread->state == THREAD_STATE_FINISHED;
 
-    if (thread->state == THREAD_STATE_FINISHED) {
+    if (request_maintain) {
         StScheduler_RequestMaintain();
     }
 
-    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "detaching thread #%d\n", thread->id);
+    StThread_UnlockPreemption();
+
+    LOG_DEBUG(LM_CAT_UNCLASSIFIED, "detaching thread #%d\n", thread_id);
+
+    release_thread(thread);
 
     return STATUS_SUCCESS;
 }

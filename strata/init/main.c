@@ -1088,6 +1088,8 @@ static void thread3_main(StThread_BorrowedRef th)
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to detach user process main thread");
     }
+    StProcess_Release(process);
+    process = NULL;
 
     cprintf(early_print_char2, &pstate, "KTHR3E#%d\n", th->id);
 }
@@ -1179,6 +1181,8 @@ static void thread1_main(StThread_BorrowedRef th)
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to detach user process main thread");
         }
+        StProcess_Release(process);
+        process = NULL;
     }
 
     waitlist[0] = new_thread1;
@@ -1310,6 +1314,9 @@ static void thread5_main(StThread_BorrowedRef th)
 
     for (;; StThread_Sleep(250)) {
         if (setup_user_process(&process, &main_thread)) continue;
+        StProcess_Release(process);
+        process = NULL;
+
         waitlist[0] = main_thread;
         status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), THREAD_WAIT_INFINITE);
         if (!CHECK_SUCCESS(status)) {
