@@ -93,8 +93,8 @@ StStatus StProcess_CreateUser(StProcess_StrongRef *process __out);
 StStatus StProcess_CreateModule(StProcess_StrongRef *process __out);
 /** Acquire another strong reference to a live process object. */
 void StProcess_Acquire(StProcess_StrongRef process __inout);
-/** Release a strong process reference. May finalize if this was the last ref. */
-void StProcess_Release(StProcess_StrongRef process __inout);
+/** Release a strong process reference and clear the caller slot. */
+void StProcess_Release(StProcess_StrongRef *process __inout __nullized);
 /** Mark a process dying and remove it from public lookup/list state. */
 void StProcess_BeginRemove(StProcess_StrongRef process __in);
 /** Release process-owned subresources after public removal has begun. */

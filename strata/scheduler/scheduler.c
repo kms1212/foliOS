@@ -368,7 +368,8 @@ StStatus StScheduler_Maintain(void)
         }
 
         if (current->state == THREAD_STATE_FINISHED && current->is_detached) {
-            StStatus status = StThread_Remove((StThread_StrongRef)current);
+            StThread_StrongRef thread = (StThread_StrongRef)current;
+            StStatus status = StThread_Remove(&thread);
             if (!CHECK_SUCCESS(status)) {
                 St_Panic(status, "failed to remove detached finished thread");
             }

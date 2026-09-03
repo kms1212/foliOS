@@ -176,10 +176,10 @@ StStatus StThread_Acquire(StThread_WeakRef thread __in, StThread_StrongRef *thre
 StStatus StThread_AcquireInternal(
     StThread_InternalRef thread __in, StThread_StrongRef *threadout __out
 );
-/** Release a strong thread reference. May finalize if this was the last ref. */
-void StThread_Release(StThread_StrongRef thread __inout);
+/** Release a strong thread reference and clear the caller slot. */
+void StThread_Release(StThread_StrongRef *thread __inout __nullized);
 /** Remove a finished thread from scheduler/process ownership and queue reap. */
-StStatus StThread_Remove(StThread_StrongRef thread __in);
+StStatus StThread_Remove(StThread_StrongRef *thread __inout __success_nullized);
 
 /** Write the current live thread count. */
 void StThread_GetCount(uint32_t *count __out);
@@ -189,7 +189,7 @@ StStatus StThread_GetRuntime(StThread_StrongRef thread __in, uint64_t *runtime_n
 void StThread_RunDeferredReap(St_PageCount page_budget __in);
 
 /** Detach a joinable thread and release the join reference. */
-StStatus StThread_Detach(StThread_StrongRef thread __in);
+StStatus StThread_Detach(StThread_StrongRef *thread __inout __success_nullized);
 /** Wait until every thread in list finishes or timeout_ms expires. */
 StStatus StThread_Wait(StThread_StrongRef *list __in, int count __in, uint64_t timeout_ms __in);
 

@@ -202,8 +202,7 @@ static void finalize_thread_storage(void *object)
     }
 
     if (thread->process) {
-        StProcess_Release(thread->process);
-        thread->process = NULL;
+        StProcess_Release(&thread->process);
     }
 
     free_thread_object(thread);
@@ -252,11 +251,15 @@ StStatus StThread_AcquireInternal(
     return acquire_thread_ref(thread, threadout);
 }
 
-void StThread_Release(StThread_StrongRef thread __inout)
+void StThread_Release(StThread_StrongRef *thread __inout __nullized)
 {
     assert(thread);
 
-    release_thread(thread);
+    StThread_StrongRef ref = *thread;
+    if (!ref) return;
+
+    *thread = NULL;
+    release_thread(ref);
 }
 
 static void enqueue_thread_for_reap(StThread_StrongRef thread)
@@ -362,7 +365,8 @@ static St_PageCount reap_one_deferred_item(void)
             release_thread((StThread_StrongRef)main_thread);
         }
 
-        StProcess_Release((StProcess_StrongRef)process);
+        StProcess_StrongRef process_ref = (StProcess_StrongRef)process;
+        StProcess_Release(&process_ref);
         return reclaimed_pages;
     }
 
@@ -651,7 +655,7 @@ has_error:
     }
 
     if (acquired_process) {
-        StProcess_Release(process);
+        StProcess_Release(&process);
     }
 
     if (th && ustack_allocated) {
@@ -671,12 +675,15 @@ has_error:
     return status;
 }
 
-StStatus StThread_Remove(StThread_StrongRef th __in)
+StStatus StThread_Remove(StThread_StrongRef *thread __inout __success_nullized)
 {
-    assert(th);
+    assert(thread);
 
     uint32_t prev_thread_count;
     int release_join_ref;
+    StThread_StrongRef th = *thread;
+
+    if (!th) return STATUS_INVALID_VALUE;
 
     StThread_LockPreemption();
 
@@ -685,6 +692,7 @@ StStatus StThread_Remove(StThread_StrongRef th __in)
         return STATUS_INVALID_THREAD;
     }
     if (StRefControlBlock_IsReapQueued(&th->ref_control)) {
+        *thread = NULL;
         StThread_UnlockPreemption();
         return STATUS_SUCCESS;
     }
@@ -718,6 +726,7 @@ StStatus StThread_Remove(StThread_StrongRef th __in)
         if (th->process) {
             enqueue_process_for_reap(th->process);
             relieve_deferred_reap_pressure(0);
+            *thread = NULL;
             if (release_join_ref) {
                 release_thread(th);
             }
@@ -727,6 +736,7 @@ StStatus StThread_Remove(StThread_StrongRef th __in)
 
     enqueue_thread_for_reap(th);
     relieve_deferred_reap_pressure(0);
+    *thread = NULL;
     if (release_join_ref) {
         release_thread(th);
     }
@@ -774,17 +784,23 @@ StStatus StThread_GetRuntime(StThread_StrongRef thread __in, uint64_t *runtime_n
     return STATUS_SUCCESS;
 }
 
-StStatus StThread_Detach(StThread_StrongRef thread)
+StStatus StThread_Detach(StThread_StrongRef *thread_ref __inout __success_nullized)
 {
+    assert(thread_ref);
+
     StThread_Id thread_id;
     int request_maintain;
+    StThread_StrongRef thread;
 
+    thread = *thread_ref;
     if (!thread) return STATUS_INVALID_VALUE;
 
     StThread_LockPreemption();
 
     if (thread->is_detached) {
+        *thread_ref = NULL;
         StThread_UnlockPreemption();
+        release_thread(thread);
         return STATUS_SUCCESS;
     }
 
@@ -795,6 +811,8 @@ StStatus StThread_Detach(StThread_StrongRef thread)
     if (request_maintain) {
         StScheduler_RequestMaintain();
     }
+
+    *thread_ref = NULL;
 
     StThread_UnlockPreemption();
 

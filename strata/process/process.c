@@ -162,11 +162,15 @@ void StProcess_Acquire(StProcess_StrongRef process __inout)
     StRefControlBlock_Acquire(&process->ref_control);
 }
 
-void StProcess_Release(StProcess_StrongRef process __inout)
+void StProcess_Release(StProcess_StrongRef *process __inout __nullized)
 {
     assert(process);
 
-    (void)StRefControlBlock_Release(&process->ref_control);
+    StProcess_StrongRef ref = *process;
+    if (!ref) return;
+
+    *process = NULL;
+    (void)StRefControlBlock_Release(&ref->ref_control);
 }
 
 void StProcess_FinalizeRemove(StProcess_StrongRef process)
@@ -197,8 +201,9 @@ void StProcess_FinalizeRemove(StProcess_StrongRef process)
 
     status = StThread_AcquireInternal(process->main_thread, &main_thread);
     if (CHECK_SUCCESS(status)) {
-        status = StThread_Remove(main_thread);
-        StThread_Release(main_thread);
+        StThread_StrongRef remove_thread = main_thread;
+        status = StThread_Remove(&remove_thread);
+        StThread_Release(&main_thread);
         if (!CHECK_SUCCESS(status) && status != STATUS_THREAD_NOT_FINISHED) {
             St_Panic(status, "failed to remove process main thread");
         }
@@ -223,15 +228,16 @@ void StProcess_Remove(StProcess_StrongRef process)
 
     status = StThread_AcquireInternal(process->main_thread, &main_thread);
     if (CHECK_SUCCESS(status)) {
-        status = StThread_Remove(main_thread);
-        StThread_Release(main_thread);
+        StThread_StrongRef remove_thread = main_thread;
+        status = StThread_Remove(&remove_thread);
+        StThread_Release(&main_thread);
         if (!CHECK_SUCCESS(status) && status != STATUS_THREAD_NOT_FINISHED) {
             St_Panic(status, "failed to remove process main thread");
         }
         return;
     }
 
-    StProcess_Release(process);
+    StProcess_Release(&process);
 }
 
 void StProcess_GetCount(uint32_t *count __out)

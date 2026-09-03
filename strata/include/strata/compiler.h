@@ -158,6 +158,8 @@
 #define __out_optional __annotate("out_optional")
 #define __inout        __annotate("inout")
 #define __buf          __annotate("buf")
+#define __nullized         __annotate("nullized")
+#define __success_nullized __annotate("success_nullized")
 
 #define __kernel __annotate("kernel")
 #define __percpu __annotate("percpu")

@@ -1084,12 +1084,11 @@ static void thread3_main(StThread_BorrowedRef th)
 
     if (setup_user_process(&process, &main_thread)) return;
 
-    StStatus status = StThread_Detach(main_thread);
+    StStatus status = StThread_Detach(&main_thread);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to detach user process main thread");
     }
-    StProcess_Release(process);
-    process = NULL;
+    StProcess_Release(&process);
 
     cprintf(early_print_char2, &pstate, "KTHR3E#%d\n", th->id);
 }
@@ -1169,7 +1168,7 @@ static void thread1_main(StThread_BorrowedRef th)
             "thread1_main: failed to create thread3 (status=%08X)\n",
             status
         );
-        status = StThread_Detach(new_thread1);
+        status = StThread_Detach(&new_thread1);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to detach thread2 after thread3 creation failure");
         }
@@ -1177,12 +1176,11 @@ static void thread1_main(StThread_BorrowedRef th)
     }
 
     if (!setup_user_process(&process, &main_thread)) {
-        status = StThread_Detach(main_thread);
+        status = StThread_Detach(&main_thread);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to detach user process main thread");
         }
-        StProcess_Release(process);
-        process = NULL;
+        StProcess_Release(&process);
     }
 
     waitlist[0] = new_thread1;
@@ -1192,12 +1190,12 @@ static void thread1_main(StThread_BorrowedRef th)
         St_Panic(status, "failed to wait for kernel test threads");
     }
 
-    status = StThread_Remove(new_thread1);
+    status = StThread_Remove(&new_thread1);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to remove thread2");
     }
 
-    status = StThread_Remove(new_thread2);
+    status = StThread_Remove(&new_thread2);
     if (!CHECK_SUCCESS(status)) {
         St_Panic(status, "failed to remove thread3");
     }
@@ -1314,8 +1312,7 @@ static void thread5_main(StThread_BorrowedRef th)
 
     for (;; StThread_Sleep(250)) {
         if (setup_user_process(&process, &main_thread)) continue;
-        StProcess_Release(process);
-        process = NULL;
+        StProcess_Release(&process);
 
         waitlist[0] = main_thread;
         status = StThread_Wait(waitlist, ARRAY_SIZE(waitlist), THREAD_WAIT_INFINITE);
@@ -1323,7 +1320,7 @@ static void thread5_main(StThread_BorrowedRef th)
             St_Panic(status, "failed to wait for user process main thread");
         }
 
-        status = StThread_Remove(main_thread);
+        status = StThread_Remove(&main_thread);
         if (!CHECK_SUCCESS(status)) {
             St_Panic(status, "failed to remove user process main thread");
         }
