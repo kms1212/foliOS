@@ -20,6 +20,7 @@ add_library(FoliosClangTidyPlugin MODULE
     ApiAnnotationsCheck.cpp
     ApiNullabilityCheck.cpp
     DistinctTypedefCheck.cpp
+    NullizedParamCheck.cpp
     StatusMustCheckCheck.cpp
     FoliosTidyModule.cpp
 )

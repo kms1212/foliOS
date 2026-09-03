@@ -50,6 +50,8 @@
 #define __out_optional __annotate("out_optional")
 #define __inout        __annotate("inout")
 #define __buf          __annotate("buf")
+#define __nullized         __annotate("nullized")
+#define __success_nullized __annotate("success_nullized")
 
 #define __bitwise __annotate("bitwise")
 #define __nocast  __annotate("nocast")

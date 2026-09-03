@@ -116,6 +116,19 @@ Warns when a `StStatus` return value is silently discarded. Assign the result,
 return it, use it in a condition, or write an explicit `(void)call()` when the
 status is intentionally ignored.
 
+### `folios-nullized-params`
+
+Checks ownership-consuming pointer-slot annotations:
+
+* `__nullized` means the callee always clears the pointed-to slot before return.
+* `__success_nullized` means the callee clears the pointed-to slot on successful
+  completion.
+
+Annotated parameters must also be `__inout`, must be pointer-to-pointer slots,
+and function definitions must contain a direct `*param = NULL` or
+`param[0] = NULL` write. The check also rejects passing `NULL` as the slot
+argument because the callee would have nowhere to write the cleared value.
+
 ## Usage
 
 Build the plugin:

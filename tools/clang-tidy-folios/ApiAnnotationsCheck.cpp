@@ -15,11 +15,12 @@ namespace {
 
 struct ApiAnnotationSet {
     std::string direction;
+    std::string nullized;
     bool has_buf = false;
 
     bool hasAny() const
     {
-        return !direction.empty() || has_buf;
+        return !direction.empty() || !nullized.empty() || has_buf;
     }
 };
 
@@ -60,6 +61,19 @@ bool isBufferAnnotation(llvm::StringRef Annotation)
     return Normalized == "buf" || Normalized == "st_buf" || Normalized == "vl_buf";
 }
 
+std::string getNullizedName(llvm::StringRef Annotation)
+{
+    const std::string Normalized = normalizeAnnotation(Annotation);
+    if (Normalized == "nullized" || Normalized == "st_nullized" || Normalized == "vl_nullized") {
+        return "nullized";
+    }
+    if (Normalized == "success_nullized" || Normalized == "st_success_nullized" ||
+        Normalized == "vl_success_nullized") {
+        return "success_nullized";
+    }
+    return {};
+}
+
 ApiAnnotationSet getApiAnnotations(const ParmVarDecl &Param)
 {
     ApiAnnotationSet Result;
@@ -71,6 +85,11 @@ ApiAnnotationSet getApiAnnotations(const ParmVarDecl &Param)
         }
         if (isBufferAnnotation(Attr->getAnnotation())) {
             Result.has_buf = true;
+            continue;
+        }
+        const std::string Nullized = getNullizedName(Attr->getAnnotation());
+        if (!Nullized.empty()) {
+            Result.nullized = Nullized;
         }
     }
     return Result;
@@ -120,12 +139,20 @@ std::string formatAnnotations(const ApiAnnotationSet &Annotations)
         }
         Result += "__buf";
     }
+    if (!Annotations.nullized.empty()) {
+        if (!Result.empty()) {
+            Result += " ";
+        }
+        Result += "__";
+        Result += Annotations.nullized;
+    }
     return Result;
 }
 
 bool annotationsEqual(const ApiAnnotationSet &Left, const ApiAnnotationSet &Right)
 {
-    return Left.direction == Right.direction && Left.has_buf == Right.has_buf;
+    return Left.direction == Right.direction && Left.nullized == Right.nullized &&
+        Left.has_buf == Right.has_buf;
 }
 
 bool hasAnyParameterAnnotation(const FunctionDecl &Func)

@@ -1,6 +1,7 @@
 #include "ApiAnnotationsCheck.h"
 #include "ApiNullabilityCheck.h"
 #include "DistinctTypedefCheck.h"
+#include "NullizedParamCheck.h"
 #include "StatusMustCheckCheck.h"
 
 #include <clang-tidy/ClangTidyModule.h>
@@ -15,6 +16,7 @@ public:
         Factories.registerCheck<ApiAnnotationsCheck>("folios-api-annotations");
         Factories.registerCheck<ApiNullabilityCheck>("folios-api-nullability");
         Factories.registerCheck<DistinctTypedefCheck>("folios-distinct-typedefs");
+        Factories.registerCheck<NullizedParamCheck>("folios-nullized-params");
         Factories.registerCheck<StatusMustCheckCheck>("folios-status-must-check");
     }
 };
