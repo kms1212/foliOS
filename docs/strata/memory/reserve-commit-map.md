@@ -11,7 +11,7 @@ reserved ranges that were never committed.
 
 ## Why The Split Exists
 
-At MM level, "allocate memory" can mean several different things:
+At the MM level, "allocate memory" can mean several different things:
 
 - choose a virtual address range;
 - charge an owner;
@@ -19,7 +19,7 @@ At MM level, "allocate memory" can mean several different things:
 - install present page-table entries;
 - record a lazy policy for future page faults.
 
-Keeping those steps separate gives the API vocabulary enough precision:
+The public API names each step explicitly:
 
 - `Reserve` means virtual address space and policy are recorded.
 - `Commit` means physical backing is attached to a previous reservation.
@@ -52,9 +52,9 @@ StStatus StMm_CommitLocal(...);
 void StMm_FreeLocal(...);
 ```
 
-`Free` is `void` because the useful caller policy is already over by the time
-the kernel is tearing down memory. If it finds an impossible state, it should
-assert or panic rather than hand a mostly-unrecoverable error to the caller.
+`Free` is `void` because callers have no meaningful recovery action once memory
+teardown begins. An impossible state violates a kernel invariant and should
+trigger an assertion or panic.
 
 ## Lazy Local Allocations
 

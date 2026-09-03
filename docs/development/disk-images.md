@@ -22,8 +22,9 @@ scripts/mkdisk.sh -a ia32 disk.img
 scripts/run.sh --disk disk.img pc-amd64
 ```
 
-The `-a` option names the bootloader architecture, not the kernel architecture.
-For `amd64-pc-bios`, Strata is AMD64 while the BIOS Vellum path is IA-32.
+The `-a` option selects the bootloader architecture, not the kernel
+architecture. For `amd64-pc-bios`, Strata targets AMD64 while the Vellum BIOS
+loader is built for IA-32.
 
 ## Running A Specific Image
 

@@ -21,8 +21,8 @@ name.
 
 Module loading is a bootloader concern until handoff. Vellum should load module
 bytes and record where they were placed. Runtime policy about module trust,
-isolation, GNT registration, or process/module object creation belongs on the
-consumer side of the handoff boundary.
+isolation, GNT registration, or process/module object creation belongs to the
+consumer after handoff.
 
 ## Ordering
 

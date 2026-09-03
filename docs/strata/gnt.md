@@ -10,7 +10,7 @@ Nodes may represent directories, leaves, or links. A directory can also have a
 handler module, which lets static kernel children and delegated module-provided
 entries coexist under one path.
 
-Important root nodes include:
+The root nodes include:
 
 - `g_gnt_root_local`: `/`;
 - `g_gnt_root_network`: `//`.
@@ -43,13 +43,15 @@ node returns a function-id base and negotiated ABI version. Handles retain node
 objects for userspace-facing access; handle-table close/clear paths release the
 underlying object according to handle type.
 
-Use `StUuid_IsEqual` for UUID comparison. Do not add local UUID equality helpers.
+Use `StUuid_IsEqual` for UUID comparison. Do not add local UUID equality
+helpers.
 
-## Namespace Shape
+## Namespace Structure
 
-The following tree is an architectural sketch of the intended namespace shape,
-not a promise that every path is implemented today. Code should document the
-current implementation boundary when a node family is still being migrated.
+The following tree is an architectural sketch of the intended namespace
+structure, not a promise that every path is implemented today. Code should
+document the current implementation boundary when a node family is still being
+migrated.
 
 ```text
 /

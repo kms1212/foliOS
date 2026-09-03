@@ -34,9 +34,9 @@ Maintenance runs periodically or when requested. It removes finished detached
 threads that are safe to reap, handles follow-up work after the current thread
 finishes, and coordinates deferred cleanup under page-pressure budgets.
 
-If a thread finishes while another CPU/path still holds a strong reference,
-maintenance should mark or queue the object rather than freeing memory behind
-that reference.
+If a thread finishes while another execution path or CPU still holds a strong
+reference, maintenance should mark or queue the object rather than freeing the
+referenced object.
 
 ## Preemption
 

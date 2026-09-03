@@ -1,6 +1,7 @@
 # Vellum ELF Loading {#vellum_elf_loading}
 
-This page describes how Vellum loads ELF images and records loader-side metadata.
+This page describes how Vellum loads ELF images and records metadata maintained
+by the loader.
 
 ## ELF API
 
@@ -25,8 +26,8 @@ information.
 
 ## Symbol Data
 
-Vellum has historically had ELF symbol-reading code. Strata now also has a
-static symbol-info path for panic-time lookup. The intended split is:
+Vellum contains legacy ELF symbol-reading code. Strata also has a static
+symbol-information path for panic-time lookup. The intended split is:
 
 - early/panic/interrupt-safe Strata lookup uses static symbol information linked
   into the kernel image;

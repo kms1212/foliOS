@@ -33,8 +33,8 @@ Example:
 ```
 
 Headers should be self-contained and include the narrowest header that owns the
-declaration. Do not create broad umbrella headers merely to avoid thinking
-about ownership of declarations.
+declaration. Do not create broad umbrella headers that collect unrelated
+declarations only for convenience.
 
 Use existing guard style:
 

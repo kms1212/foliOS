@@ -12,8 +12,8 @@ The runtime is currently split across:
 - generated or hand-written SIDL bindings for kernel interfaces;
 - the KRT/sysinfo entry table passed to the process by the kernel.
 
-The goal is not to make the kernel speak POSIX. The runtime translates C and
-libc conventions into Strata status and handle operations.
+POSIX semantics remain in the runtime, which translates C and libc conventions
+into Strata status and handle operations.
 
 ## Process Bootstrap
 
@@ -27,7 +27,8 @@ The libc startup path initializes:
 - TLS and stack protector state;
 - init arrays.
 
-Only after those steps does it call the application entry path.
+The startup code calls the application entry point after completing those
+steps.
 
 ## Exit
 

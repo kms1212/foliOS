@@ -1,8 +1,8 @@
 # Architecture {#architecture}
 
-Architecture documents describe the system shape before individual subsystem
-details. They should explain why a boundary exists and which invariants other
-layers rely on.
+Architecture documents describe the system-wide design before individual
+subsystem details. They should explain why a boundary exists and which
+invariants other layers rely on.
 
 - @subpage architecture_ambikernel "Ambikernel"
 - @subpage architecture_boot_flow "Boot Flow"

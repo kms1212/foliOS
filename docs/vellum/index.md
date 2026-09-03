@@ -10,11 +10,11 @@ runtime used before kernel handoff.
 
 ## Scope
 
-Vellum is responsible for doing enough platform work to run bootloader commands
-and modules. Kernel image loading and handoff policy belong to producer modules,
-not to Vellum core.
+Vellum initializes the platform services required to run bootloader commands
+and modules. Producer modules control kernel image loading and handoff policy;
+Vellum core provides the supporting environment.
 
-Vellum is also a migration-in-progress component. Some public functions and
-types still use older lowercase naming such as `mm_map`, `vpn_t`, and
-`struct module`. New or touched code should move toward the shared foliOS style
-without creating large mechanical churn.
+Vellum is undergoing an API migration. Some public functions and types still
+use older lowercase naming such as `mm_map`, `vpn_t`, and `struct module`. New
+or touched code should move toward the shared foliOS style without creating
+large mechanical churn.

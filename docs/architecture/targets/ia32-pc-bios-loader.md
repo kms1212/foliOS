@@ -1,20 +1,20 @@
 # IA-32 PC BIOS Loader {#architecture_target_ia32_pc_bios_loader}
 
-The IA-32 PC BIOS loader profile describes the Vellum side of current BIOS
-boot. It is not a complete Strata kernel architecture profile in this tree;
-Strata's active kernel architecture is AMD64. This profile matters because
-`amd64-pc-bios` uses IA-32 Vellum to reach the AMD64 kernel.
+The IA-32 PC BIOS loader profile describes Vellum's role in the current BIOS
+boot process. Strata's active kernel architecture is AMD64, while this profile
+covers only the loader architecture used by `amd64-pc-bios` to reach the AMD64
+kernel.
 
 ## Role
 
 The loader profile covers firmware entry, early CPU setup, BIOS services,
 disk/filesystem access, console setup, boot configuration, and bootloader module
-execution. Its job is to provide enough initialized environment for modules
-such as `load_folios` to perform policy work.
+execution. It initializes enough of the environment for modules such as
+`load_folios` to perform policy work.
 
-For the current kernel handoff path, Vellum core does not build a kernel-private
-handoff structure directly. It loads `load_folios`, and that module acts as the
-`stload` producer.
+The current kernel handoff delegates table construction to `load_folios` rather
+than Vellum core. Vellum loads the module, which then becomes the `stload`
+producer.
 
 ## Firmware And Platform Constraints
 
@@ -31,7 +31,7 @@ normal AMD64 environment.
 ## Handoff-Owned Data
 
 Only normalized ABI data crosses the Vellum-to-Strata boundary. Loader
-allocations that must survive handoff are represented through `stload` entries,
+allocations that must survive handoff are represented by `stload` entries,
 especially unavailable frame ranges and the boot information table itself.
 
 The current profile also exposes the active loader page-directory location

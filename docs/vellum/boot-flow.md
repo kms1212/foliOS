@@ -5,7 +5,7 @@ bootloader module execution.
 
 ## Responsibilities
 
-Vellum's boot flow is responsible for:
+Vellum's boot flow performs these tasks:
 
 - entering from the firmware-specific startup path;
 - initializing basic console/debug output;

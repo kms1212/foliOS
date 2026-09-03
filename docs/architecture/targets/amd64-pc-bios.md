@@ -16,7 +16,7 @@ Vellum loader path.
 - Disk image bootloader architecture option: `scripts/mkdisk.sh -a ia32
   disk.img`.
 
-The `-a ia32` disk-image option names the bootloader architecture, not the
+The `-a ia32` disk-image option selects the bootloader architecture, not the
 kernel architecture.
 
 ## Boot And Handoff
@@ -29,11 +29,11 @@ bootloader module through the `loadmodule` command.
 information, builds the boot information table, loads the AMD64 kernel image,
 and transfers control to the kernel entry point.
 
-The current handoff enters the kernel ELF entry point in IA-32 protected mode.
-`EDX` points to the `stload` boot information table, paging is already enabled
-in a loader-provided 32-bit address space, and the loader page tables are
-recursively visible at `0xFFC00000..0xFFFFFFFF`. The detailed register, stack,
-table, and required-entry contract is documented in
+The loader transfers control to the kernel ELF entry point in IA-32 protected
+mode. `EDX` points to the `stload` boot information table, paging is already
+enabled in a loader-provided 32-bit address space, and the loader page tables
+are recursively visible at `0xFFC00000..0xFFFFFFFF`. The detailed register,
+stack, table, and required-entry contract is documented in
 [stload Handoff ABI](../../common/stload-abi.md).
 
 After handoff, Strata owns the transition from the loader entry profile into
@@ -49,30 +49,30 @@ memory map and unavailable frame ranges needed to seed PMM and VMM state.
 
 AMD64-specific code is responsible for page-table format, CR3 transitions,
 canonical address constraints, interrupt frame layout, syscall entry mechanics,
-and the KRT mapping shape. Conceptual memory rules remain in
-[Memory Model](../memory-model.md) and [Strata Memory](../../strata/memory/index.md).
+and the KRT memory layout. Conceptual memory rules remain in
+[Memory Model](../memory-model.md) and
+[Strata Memory](../../strata/memory/index.md).
 
 - @subpage architecture_target_amd64_la48_memory_map "AMD64 LA48 Memory Map"
 
 ## Interrupts And Time
 
-The PC platform layer owns legacy and modern PC interrupt/timer plumbing for
-this profile: GDT, IDT, TSS, PIC/APIC setup, PIT/HPET clock setup, interrupt
-entry, and syscall frame handoff. Higher-level interrupt ownership and future
-direct module IRQ entry are architecture-level runtime contracts rather than
-BIOS-specific loader behavior.
+The PC platform layer owns legacy and modern PC interrupt and timer
+infrastructure for this profile: GDT, IDT, TSS, PIC/APIC setup, PIT/HPET clock
+setup, interrupt entry, and syscall frame handoff. Higher-level interrupt
+ownership and future direct module IRQ entry are architecture-level runtime
+contracts rather than BIOS-specific loader behavior.
 
 ## Module Protection Backend
 
-The generic module protection model is expressed in terms of module protection
-shards, not MPK as a public kernel concept. On AMD64, the intended backend uses
-MPK/PKRU and PCID-aware page-table views to implement shard-local protection
-bindings.
+The public module protection abstraction consists of module protection shards.
+On AMD64, the intended backend uses MPK/PKRU and PCID-aware page-table views to
+implement shard-local protection bindings.
 
-Module protection is a fault-containment mechanism for trusted but potentially
-buggy modules. It is not the ordinary user/kernel security boundary, and module
-code must still go through KRT and the module runtime for valid cross-module
-calls or data access. See
+Module protection contains faults in trusted but potentially buggy modules. The
+ordinary user/kernel security boundary remains separate, and module code must
+still go through KRT and the module runtime for valid cross-module calls or data
+access. See
 [Module Protection Shards and Fault Containment](../../decisions/0006-module-protection-shards-and-fault-containment.md).
 
 ## Current Boundaries
@@ -82,8 +82,8 @@ calls or data access. See
   common Vellum or Strata code.
 - Module archive loading, the module runtime, and the protection-shard planner
   are active design and implementation areas.
-- Any code that consumes boot data should depend on `stload`, not on
-  Vellum-private data structures.
+- Any code that consumes boot data should use `stload`; Vellum-private data
+  structures remain behind the producer boundary.
 
 ## Related Pages
 

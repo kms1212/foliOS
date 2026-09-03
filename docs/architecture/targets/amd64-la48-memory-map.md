@@ -2,14 +2,14 @@
 
 This page documents the AMD64 48-bit linear-address layout used by the current
 PC profile. The source of truth for active constants is
-`strata/arch/amd64/pc/include/strata/plat/memmap.h`; this page gives the human
-view of those constants and the reserved layout bands around them.
+`strata/arch/amd64/pc/include/strata/plat/memmap.h`; this page gives a readable
+overview of those constants and the reserved layout bands around them.
 
 All `base` and `limit` ranges in this page are inclusive: `[base, limit]`.
 Ranges described by a `count` elsewhere in the MM/VMM APIs use count semantics,
 for example `[vpn, vpn + count)`.
 
-## Canonical Shape
+## Canonical Address Layout
 
 LA48 has two canonical halves:
 

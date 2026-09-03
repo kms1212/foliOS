@@ -1,11 +1,10 @@
 # foliOS Documentation {#mainpage}
 
 foliOS is an experimental operating system built around Strata, a kernel that
-explores the Ambikernel model: conventional process isolation where it is still
-the right tool, combined with hardware-assisted low-overhead domains for kernel
-modules and privileged runtime paths. The documentation should make a clear
-distinction between implemented contracts, active migration work, and longer
-term architecture goals.
+explores the Ambikernel model. The model retains conventional process isolation
+and introduces hardware-assisted, low-overhead domains for kernel modules and
+privileged runtime paths. The documentation distinguishes implemented
+contracts, active migration work, and longer-term architectural goals.
 
 ## Guide
 

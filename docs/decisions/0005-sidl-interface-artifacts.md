@@ -6,11 +6,11 @@ Date: 2026-05-17
 
 ## Context
 
-SIDL source files are edited by humans and may contain formatting, comments,
-and generation hints that are not themselves ABI authority. Treating the source
-text and an `abirevision` number as the only compatibility record makes it too
-easy for ABI history to fragment or for an old revision to be rewritten without
-a clear artifact-level signal.
+SIDL source files are edited by humans. Their formatting, comments, and
+generation hints are authoring data rather than authoritative ABI data. Treating
+the source text and an `abirevision` number as the only compatibility record
+makes it too easy for ABI history to fragment or for an old revision to be
+rewritten without a clear artifact-level signal.
 
 Modules and packages also need to depend on interface identity in a way that is
 stable without requiring the old `.sidl` source files to be present forever.
@@ -21,24 +21,23 @@ Keep `.sidl` as a source format and introduce a compiled SIDL interface
 artifact, `.sif`, as the format used for distribution, dependency resolution,
 code generation, and ABI history extension.
 
-The `.sif` artifact is a Strata InterFace binary tree representation of the
-parsed interface, not a container for the original `.sidl` source text. It uses
-the `SIF\0` magic value and stores interface metadata, mandatory interface UUID
-identity, mandatory generated-code prefix metadata, ABI revisions,
-declarations, parameter/type trees, and revision hash links in a form that
+The `.sif` artifact stores the parsed interface as a Strata InterFace binary
+tree and omits the original `.sidl` source text. It uses the `SIF\0` magic value
+and stores interface metadata, a required interface UUID and generated-code
+prefix, ABI revisions, declarations, parameter and type trees, and revision
+hash links in a form that
 tools can validate and consume directly. Strings in the artifact are padded so
 the next field starts on a 4-byte boundary.
 
-The interface UUID identity is artifact metadata, not a normal annotation. The
-namespace UUID is stored as 16 binary bytes and the name is stored as a string
-in the artifact header. The generated-code prefix is also stored in the header
-instead of the generic annotation list.
+The artifact header stores the interface UUID identity separately from normal
+annotations. It stores the namespace UUID as 16 binary bytes, the name as a
+string, and the generated-code prefix outside the generic annotation list.
 
 `sidlc compile` takes a `.sidl` source file and, when extending an existing
 interface, the previous `.sif` artifact. It emits a new `.sif` that contains the
 previous ABI revision chain plus the newly compiled revisions from source.
-Previous revisions are taken from the `.sif` artifact, not reconstructed from
-old source files.
+Previous revisions come directly from the `.sif` artifact instead of being
+reconstructed from old source files.
 
 Each ABI revision is chained to the previous revision by hash. The revision hash
 domain uses the `strata.` prefix, includes the UUIDv5 result derived from the
@@ -60,8 +59,8 @@ Generated headers and sources must not depend on reparsing `.sidl` source or on
 recovering embedded source text from the artifact.
 
 `sidlc decompile` converts a `.sif` artifact back into canonical `.sidl` source
-for inspection, review, or source recovery. The decompiled output is a source
-view of the artifact, not the authority for already published revisions.
+for inspection, review, or source recovery. The decompiled output provides a
+source view; the artifact remains authoritative for published revisions.
 
 ## SIF File Format
 
@@ -238,14 +237,14 @@ required in order to preserve ABI history.
 
 Interface dependencies in packages and module manifests can refer to `.sif`
 identity rather than raw source text. This gives package and module signing
-policy a stable object to approve.
+policy a stable artifact to authorize.
 
 The `.sif` format can later add authority signatures and dependency metadata
-without changing the authoring role of `.sidl`.
+while preserving the role of `.sidl` as a source format.
 
-Code generation becomes a pure projection from the compiled interface artifact
-to a target language and architecture. That separation makes generated code
-less sensitive to source formatting and parser evolution.
+Code generation becomes a deterministic transformation from the compiled
+interface artifact to a target language and architecture. That separation makes
+generated code less sensitive to source formatting and parser evolution.
 
 ## Related Docs
 

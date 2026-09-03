@@ -10,18 +10,18 @@ The kernel syscall surface currently covers node/handle-oriented operations:
 - open a GNT path;
 - close a handle;
 - query a node interface by UUID and ABI version;
-- call a function by register arguments;
+- call a function using register arguments;
 - call a function with pointer/result arguments.
 
-The kernel side returns `StStatus`. Successful calls may also write output
+The kernel returns `StStatus`. Successful calls may also write output
 registers or output buffers according to the specific operation.
 
 ## SDK Handles
 
-`libstrata` represents a userspace handle as an opaque `StHandle`. Internally it
-stores the kernel handle number and a small interface-query cache. `StHandle_Open`
-allocates a local handle object after the kernel open succeeds; `StHandle_Close`
-closes the kernel handle and releases the local object.
+`libstrata` represents a user-space handle as an opaque `StHandle`. Internally,
+it stores the kernel handle number and a small interface-query cache.
+`StHandle_Open` allocates a local handle object after the kernel open succeeds;
+`StHandle_Close` closes the kernel handle and releases the local object.
 
 `StHandle_Query` negotiates an interface UUID and ABI version. Successful query
 results provide a function-id base, so generated bindings can call the correct
@@ -39,7 +39,7 @@ bindings rather than issuing syscalls directly.
 
 ## Status Discipline
 
-Every SDK wrapper returning `StStatus` should preserve the same rule as kernel
+Every SDK wrapper returning `StStatus` should follow the same rule as kernel
 code: check, return, or explicitly ignore the status. Compatibility functions
 that must expose POSIX `errno`-style results should perform the conversion at
 the wrapper boundary.

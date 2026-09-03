@@ -25,26 +25,28 @@ intrusive links use `StThread_InternalRef`.
 Thread creation uses `StThread_CreateFlags`:
 
 - `TCF_DEFAULT`: normal joinable thread.
-- `TCF_DETACHED`: thread is born detached, so the creator does not receive or
-  hold the join reference.
+- `TCF_DETACHED`: the thread is created in the detached state, so the creator
+  does not receive or hold the join reference.
 
 The detached-at-creation path avoids the race where a thread can finish and be
 reaped before the creator calls a separate detach operation.
 
 ## Wait, Detach, Remove
 
-`StThread_Detach` transfers away the join reference. It is valid for a thread
-that has already finished; if cleanup is needed, it requests scheduler
-maintenance instead of treating "already finished" as a caller error.
+`StThread_Detach` takes a `StThread_StrongRef *` join-reference slot and clears
+it on success. It is valid for a thread that has already finished; if cleanup is
+needed, it requests scheduler maintenance instead of treating "already finished"
+as a caller error.
 
-`StThread_Wait` waits for every joinable thread in the wait list to finish, or
-for the timeout path to set `STATUS_TIMER_EXPIRED`. Use
+`StThread_Wait` waits for every joinable thread in the wait list to finish. It
+returns `STATUS_TIMER_EXPIRED` if the timeout expires. Use
 `THREAD_WAIT_INFINITE` for an unbounded wait; callers should not pass `-1`
 directly.
 
-`StThread_Remove` is stricter: the thread must be finished unless the caller is
-on a path that explicitly owns the teardown invariant. Finished detached
-threads are normally reaped by scheduler maintenance or deferred reap.
+`StThread_Remove` is stricter: the thread must be finished unless the caller
+explicitly guarantees the teardown invariant. It clears the supplied slot on
+success. Finished detached threads are normally reaped by scheduler maintenance
+or deferred reap.
 
 ## Stacks
 

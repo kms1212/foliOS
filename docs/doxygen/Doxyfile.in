@@ -43,5 +43,5 @@ HTML_COLORSTYLE        = LIGHT
 GENERATE_XML           = YES
 XML_OUTPUT             = xml
 
-GENERATE_LATEX         = NO
+GENERATE_LATEX         = YES
 HAVE_DOT               = NO

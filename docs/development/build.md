@@ -1,8 +1,8 @@
 # Build {#development_build}
 
-The root CMake project drives host tools, user-space programs, Vellum, and
-Strata from the foliSDK-provided CMake. Build foliSDK first and keep its host
-and target tool directories at the front of `PATH` while configuring foliOS.
+The root CMake project uses foliSDK's CMake to build host tools, user-space
+programs, Vellum, and Strata. Build foliSDK first and keep its host and target
+tool directories at the front of `PATH` while configuring foliOS.
 
 ## SDK Toolchain
 
@@ -20,9 +20,9 @@ export PATH="$(pwd)/folisdk/build/folisdk-host/bin:$(pwd)/folisdk/build/folisdk-
 
 Use `folisdk/build/folisdk-host/bin/cmake` for configure and build commands.
 This keeps the kernel, bootloader, SDK runtime, and user-space programs on the
-same toolchain path.
+same toolchain.
 
-## Rebuilding SDK Runtime Pieces
+## Rebuilding SDK Runtime Components
 
 Do not rebuild SDK internals by entering `folisdk/build/*` directories and
 running `make` or `cmake --build` directly. The SDK build script owns the order,
@@ -70,9 +70,9 @@ folisdk/build/folisdk-host/bin/cmake \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 ```
 
-`TARGET` follows the `arch-platform-firmware` shape. The top-level build derives
+`TARGET` uses the `arch-platform-firmware` format. The top-level build derives
 `TARGET_ARCH`, `TARGET_PLATFORM`, and `TARGET_FIRMWARE` from that value, then
-passes the relevant pieces into the Vellum and Strata external projects.
+passes the relevant settings into the Vellum and Strata external projects.
 
 For AMD64 Strata, Vellum is still built as IA-32:
 
@@ -92,7 +92,7 @@ Build everything:
 folisdk/build/folisdk-host/bin/cmake --build build --parallel=18
 ```
 
-Build one side explicitly:
+Build one component explicitly:
 
 ```sh
 folisdk/build/folisdk-host/bin/cmake --build build --target vellum

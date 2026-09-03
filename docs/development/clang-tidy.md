@@ -26,8 +26,8 @@ folisdk/build/folisdk-host/bin/cmake --build build --target tidy-vellum
 ```
 
 The scripts add the target triple used by the corresponding external project.
-For AMD64 Strata, Vellum still receives an i686-style target because the BIOS
-bootloader side is IA-32.
+For AMD64 Strata, Vellum receives an i686-style target because the BIOS
+bootloader targets IA-32.
 
 Both the CMake integration and `scripts/clang_tidy.sh` run clang-tidy in quiet
 mode so hidden-header statistics such as `Suppressed N warnings` do not obscure
@@ -78,6 +78,8 @@ The local plugin lives under `tools/clang-tidy-folios`. Current checks include:
 - `folios-api-nullability`: null handling must match direction annotations.
 - `folios-distinct-typedefs`: `__nocast`, `__bitwise`, and reference typedefs
   should have type meaning.
+- `folios-nullized-params`: `__nullized` and `__success_nullized` pointer slots
+  must be cleared by the callee.
 - `folios-status-must-check`: `StStatus` results must be checked, returned, or
   intentionally ignored with `(void)`.
 

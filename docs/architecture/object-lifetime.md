@@ -1,9 +1,8 @@
 # Object Lifetime {#architecture_object_lifetime}
 
-Strata object lifetime is built around explicit reference types and a small
-intrusive control block. The model is intentionally visible in public API names
-and typedef annotations so lifetime bugs can be reviewed and eventually checked
-by tooling.
+Object lifetime in Strata uses explicit reference types and a small intrusive
+control block. Public API names and typedef annotations expose the model so
+lifetime bugs can be reviewed and eventually checked by tooling.
 
 ## Reference Kinds
 
@@ -35,9 +34,9 @@ interface; code outside the owning implementation should not manipulate the
 control block directly.
 
 The control block tracks a reference count, object pointer, finalize callback,
-dying state, reap-queued state, and deferred page count. The first-field rule
-also keeps room for typed weak/strong promotion patterns where the control block
-can be found from a reference without inventing a second allocation.
+dying state, reap-queued state, and deferred page count. Placing it first allows
+reference code to find the control block without a second allocation and
+supports typed weak-to-strong promotion.
 
 ## Removal Phases
 
@@ -62,3 +61,9 @@ write a required `StrongRef * __out`. Detach-style APIs may transfer ownership
 to the scheduler or process model, but the transfer must be explicit in the API
 contract. Do not make creation outputs optional just because one current caller
 does not need the handle.
+
+APIs that consume a caller-owned strong reference should take the reference
+slot, not a copy of the pointer. Mark unconditional consumers `__nullized`; mark
+status-returning consumers that only clear on success `__success_nullized`.
+Clearing the slot makes stale post-release use visible in review and to local
+clang-tidy checks.

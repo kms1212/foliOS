@@ -59,14 +59,14 @@ Mapping flags describe protection and mapping behavior:
 - `MF_ZERO_FILL` for zero-filled pages;
 - `MF_GUARD` and `MF_GUARD_GROW_DOWN` for guard policy.
 
-Keep `StMm_AllocFlags` and `StMm_MapFlags` separate. They are both fixed-width
-`__nocast` flagset domains for a reason. Bitwise operations are valid inside a
+Keep `StMm_AllocFlags` and `StMm_MapFlags` separate. They are distinct
+fixed-width `__nocast` flag-set domains. Bitwise operations are valid inside a
 single flag domain; crossing allocation and mapping flag domains requires an
 explicit boundary conversion.
 
-Protection changes must keep the same split: `StMm_MapFlags` controls the PTE
-and reservation mapping behavior, while `StMm_AllocFlags` remains allocation and
-placement policy.
+Protection changes must preserve this separation: `StMm_MapFlags` controls the
+PTE and reservation mapping behavior, while `StMm_AllocFlags` remains allocation
+and placement policy.
 
 ## Ownership
 

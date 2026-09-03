@@ -11,8 +11,8 @@ Strata documents describe kernel implementation contracts and subsystem design.
 
 ## Conventions
 
-Strata public APIs use the `St<Region>_<Action>` naming shape. Architecture and
-platform backends append the scope marker to the region, for example
+Strata public APIs use the `St<Region>_<Action>` naming pattern. Architecture
+and platform backends append the scope marker to the region, for example
 `StThreadP_Switch` or `StSyscallA_Handler`.
 
 Most first-class objects are ref-counted and expose type-specific reference

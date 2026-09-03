@@ -6,7 +6,7 @@ Date: 2026-05-15
 
 ## Context
 
-foliOS has several design choices that affect API shape, subsystem boundaries,
+foliOS has several design choices that affect API design, subsystem boundaries,
 and static analysis rules. Some of those choices already exist in the codebase,
 while new decisions are still being made during development.
 
@@ -26,9 +26,9 @@ clarifies current code or future work.
 
 ## Consequences
 
-The ADR tree starts at the point where the documentation system was introduced.
-It is not expected to fully reconstruct every historical design decision before
-new records are added.
+The ADR series begins with the introduction of the documentation system. New
+records can be added immediately, while retrospective ADRs can document older
+decisions when useful.
 
 New records should stay short, describe the accepted direction, and link to
 conceptual documentation when the decision needs more background.

@@ -5,9 +5,8 @@ physical backing.
 
 ## Role
 
-`StAllocationOwner` is a first-class object, similar in importance to an
-address space. It represents "who is responsible for this allocation?" rather
-than "what subtype of memory is this?"
+`StAllocationOwner` is a first-class object that records responsibility for
+allocation and cleanup independently of the memory subtype.
 
 The owner tracks:
 
@@ -29,8 +28,8 @@ VMM records keep strong owner references until they are released.
 ## Process Integration
 
 Processes own an allocation owner. Local user allocations normally charge the
-process owner through the address space/process relationship. This makes process
-teardown able to reclaim:
+process owner through the address space/process relationship. This allows
+process teardown to reclaim:
 
 - demand-zero pages that were never touched;
 - image-backed reservations;
@@ -38,4 +37,4 @@ teardown able to reclaim:
 - global or local ranges explicitly attached to the owner.
 
 Address spaces do not own allocation cleanup by themselves. They describe the
-virtual domain; the allocation owner owns the charge and teardown walk.
+virtual domain; the allocation owner owns accounting and the teardown walk.

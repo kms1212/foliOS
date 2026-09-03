@@ -30,7 +30,7 @@ The VMM records reservations and policy. The MM layer exposes the public
 lifecycle and performs PMM allocation and platform mapping.
 
 This keeps demand paging an implementation policy of selected MM/VMM paths
-rather than a meaning smuggled into every public `Reserve` call.
+instead of assigning that meaning implicitly to every public `Reserve` call.
 
 ## Related Docs
 

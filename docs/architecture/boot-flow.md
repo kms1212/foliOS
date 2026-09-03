@@ -8,8 +8,9 @@ This page describes the firmware-to-kernel flow at the architecture level. See
 1. Firmware enters the platform-specific Vellum startup path.
 2. Vellum initializes enough CPU, memory, disk, filesystem, video, and console
    support to read boot configuration and load bootloader modules.
-3. Vellum loads the `load_folios` bootloader module through the `loadmodule` command.
-4. The `load_folios` module acts as the current `stload` producer: it collects
+3. Vellum loads the `load_folios` bootloader module through the `loadmodule`
+   command.
+4. The `load_folios` module is the current `stload` producer: it collects
    bootloader/platform information, builds the boot information table, loads the
    kernel image, and transfers control to the kernel entry point.
 5. Strata consumes the boot information table through the common handoff ABI and
@@ -23,11 +24,11 @@ uses `scripts/mkdisk.sh -a ia32 disk.img`.
 
 ## `stload` Handoff
 
-`load_folios` is a Vellum bootloader module, not code that Vellum core executes
-inline. Vellum first brings up the environment needed to load modules. After
-that, `load_folios` owns the current loader-side handoff policy: it asks the
-bootloader for the information it needs, normalizes that information into the
-boot information table, and enters the kernel through the `stload` ABI.
+Vellum loads `load_folios` as a bootloader module, keeping its policy outside
+Vellum core. Vellum first initializes the environment needed to load modules.
+The current loader-side handoff policy belongs to `load_folios`. The module
+requests the required information, normalizes it into the boot information
+table, and enters the kernel through the `stload` ABI.
 
 The shared `stload` headers describe the ABI of that table. Important entries
 include:
@@ -53,5 +54,5 @@ bootloader module is hidden behind the producer boundary.
 Before the scheduler is live, code paths must be conservative: allocation
 sources are limited, panic reporting must not depend on fully initialized
 services, and symbol resolution should use static data. After the scheduler and
-process model are active, richer services can be layered on top, but early and
+process model are active, richer services become available, but early and
 panic paths still need to keep working without them.

@@ -3,9 +3,9 @@
 This page describes the `stmain` and C `main` compatibility model, weak entry
 points, and status translation.
 
-## Two Entry Shapes
+## Entry-Point Signatures
 
-foliOS supports two application entry shapes:
+foliOS supports two application entry-point signatures:
 
 ```c
 StStatus stmain(int argc, char **argv, char **envp);

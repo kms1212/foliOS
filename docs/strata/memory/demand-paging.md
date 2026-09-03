@@ -49,7 +49,7 @@ with stale protections.
 
 ## Failure Semantics
 
-If resolving or materializing a page fails, the user fault path should terminate
-or fail the affected process/thread path rather than turning every user fault
-into a kernel panic. Kernel faults still represent stronger invariants and may
-panic when the fault cannot be recovered.
+If resolving or materializing a page fails, the user fault handler should
+terminate the affected process or propagate a thread-level failure instead of
+turning every user fault into a kernel panic. Kernel faults still represent
+stronger invariants and may panic when the fault cannot be recovered.

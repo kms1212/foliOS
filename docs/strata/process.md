@@ -8,7 +8,8 @@ contract.
 
 ## Object Model
 
-`struct StProcess` is a ref-counted object. It owns or links:
+`struct StProcess` is a ref-counted object. It contains state, owned objects,
+and non-owning links:
 
 - process id, type, state, and exit status;
 - a GNT node for namespace-visible process resources;

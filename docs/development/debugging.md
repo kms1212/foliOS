@@ -47,8 +47,8 @@ If stack traces are empty or stop too early, check:
 ## Symbols
 
 `StSymbol_LookupStatic` and `StSymbol_FormatStatic` use the static symbol table.
-The generic `StSymbol_Lookup` and `StSymbol_Format` names are the future-facing
-entry points for richer resolution, but the panic path should stay on the static
+The generic `StSymbol_Lookup` and `StSymbol_Format` entry points are reserved
+for richer runtime resolution, but the panic path should stay on the static
 variant unless it is proven safe in interrupt and panic contexts.
 
 ## GDB

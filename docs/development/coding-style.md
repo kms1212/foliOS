@@ -1,8 +1,7 @@
 # foliOS Coding Style {#development_coding_style}
 
-This document summarizes the coding style used by handwritten foliOS code after
-reviewing the current `strata`, `vellum`, `common`, and SDK integration code.
-It is the single source of truth for both naming and day-to-day C style.
+This document defines naming and day-to-day C style for handwritten code in
+`strata`, `vellum`, `common`, and the SDK integration layer.
 
 The short version: code should make ownership, layer, and failure semantics
 visible at the point where they matter. Do not hide policy in a generic helper,
@@ -41,7 +40,7 @@ Vl<Region>P_<Action>(...)     // platform-specific Vellum backend
 
 The scope marker is appended to the region, not inserted before it:
 `StThreadP_Switch`, `StMmP_MapLocalSparseMemory`, and `StApicA_SendEoi` are the
-intended shape. Do not invent names such as `StPThread_*` or `StAThread_*`.
+intended pattern. Do not invent names such as `StPThread_*` or `StAThread_*`.
 
 First-class object families may own their namespace even when they live under a
 larger directory. Prefer `StAddressSpace_*`, `StAllocationOwner_*`, and
@@ -148,7 +147,7 @@ typedef uint32_t StThread_CreateFlags __nocast;
 #define TCF_DETACHED ((StThread_CreateFlags)0x00000001)
 ```
 
-## Public API Shape
+## Public API Conventions
 
 Every public Strata/Vellum API parameter must carry a direction annotation,
 including scalar values:
@@ -163,7 +162,7 @@ including scalar values:
 Function definitions should repeat the annotations so custom clang-tidy checks
 can validate the implementation, not only the declaration.
 
-Range parameters use two fixed shapes:
+Range parameters use two fixed forms:
 
 - `base` and `limit` describe an inclusive range: `[base, limit]`.
 - any position parameter paired with `count` describes a half-open range from
@@ -210,15 +209,15 @@ void StFoo_Read(uint8_t *buf __out __buf, size_t buf_size __in);
 
 When a fixed ABI prevents that layout, use the nearest existing size/count
 parameter and keep the relationship obvious in the parameter names. A future
-annotation may grow this into an explicit `__buf(count)` form for static
-analysis.
+annotation may express this relationship explicitly as `__buf(count)` for
+static analysis.
 
 Use `StStatus` or `VlStatus` when an operation can fail in a way the caller can
 handle. Use `void` for operations where failure is impossible, unrecoverable, or
 not useful to the caller, especially `Free`, `Release`, `Unlock`, and simple
 infallible setters/getters.
 
-For getters, choose the shape by semantics:
+For getters, choose the signature based on its semantics:
 
 - direct return is fine for naturally infallible values or nullable borrowed
   lookups;
@@ -329,9 +328,11 @@ Creation functions that return owned objects use `StStatus` and a required
 `StrongRef * __out`. They initialize ownership before publishing the object to
 global lists or GNT nodes.
 
-`Acquire`/`Release` functions express reference ownership. A weak or internal
-reference must be acquired into a strong reference before use when the object can
-be reaped concurrently.
+`Acquire`/`Release` functions express reference ownership. Release-style APIs
+that consume a caller-owned reference should take a `StrongRef * __inout
+__nullized` slot and clear it before dropping the reference. A weak or internal
+reference must be acquired into a strong reference before use when the object
+can be reaped concurrently.
 
 Remove/finalize paths are split when needed:
 
@@ -483,8 +484,8 @@ Use `NOLINT(...)` only for a concrete structural reason and name the check.
 ## Architecture And Platform Boundaries
 
 Architecture intrinsics should be small `__always_inline` wrappers around CPU
-instructions or register access. Keep them in `arch/<arch>/include/.../intrinsics`
-or a similarly narrow location.
+instructions or register access. Keep them in
+`arch/<arch>/include/.../intrinsics` or a similarly narrow location.
 
 Generic code should call generic APIs unless it is explicitly implementing an
 architecture or platform backend. Do not use an intrinsic as an example of a
@@ -545,7 +546,7 @@ is part of the correctness argument.
 
 Vellum is being migrated toward the same style. New Vellum code and touched
 Vellum code should move in this direction instead of preserving old patterns by
-default. The same naming shape applies with `Vl`:
+default. The same naming pattern applies with `Vl`:
 
 - `VlA_*` for architecture code;
 - `VlP_*` and firmware-specific prefixes such as `VlBiosP_*` for platform code;

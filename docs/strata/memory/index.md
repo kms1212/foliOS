@@ -24,5 +24,5 @@ The memory stack is intentionally layered:
   process or kernel subsystem.
 
 Callers should normally use the public `StMm_*` API rather than reaching into
-VMM or PMM directly. VMM and PMM are still public enough for internal kernel
-subsystems, but their contracts are lower-level.
+VMM or PMM directly. VMM and PMM remain available to internal kernel subsystems
+through lower-level contracts.

@@ -30,7 +30,7 @@ lower page is unmapped.
 User stacks are allocated near the top of the user range with
 `MF_USER_DEFAULT | MF_GUARD | MF_GUARD_GROW_DOWN`. The initial usable range is
 small, and pages are materialized by demand paging. The guard page keeps one
-page of fault isolation ahead of the current stack bottom.
+inaccessible page below the current stack boundary.
 
 Kernel stacks currently use fixed guard pages and are allocated in a global
 kernel domain.

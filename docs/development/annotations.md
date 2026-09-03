@@ -22,7 +22,17 @@ entry; they should not be handled with a recoverable `if (!out)` branch. Use
 `__out_optional` only when dropping the output cannot leak ownership or hide a
 required result.
 
-## Buffer Shape
+Pointer-slot ownership consumers add a second annotation to `__inout`:
+
+- `__nullized`: the callee always writes `NULL` to the pointed-to slot before
+  return.
+- `__success_nullized`: the callee writes `NULL` to the pointed-to slot on
+  successful completion.
+
+Use these on APIs such as reference release, detach, or remove operations that
+consume a caller-owned reference slot.
+
+## Buffer Parameters
 
 Until a richer annotation such as `__buf(count)` exists, put the size/count
 parameter immediately after the buffer whenever the ABI allows it:

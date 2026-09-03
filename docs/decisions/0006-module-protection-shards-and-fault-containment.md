@@ -6,12 +6,11 @@ Date: 2026-05-18
 
 ## Context
 
-foliOS modules are trusted to be non-malicious, signed system components, but
-they are not trusted to be crash-free. The module isolation model is therefore
-an operational fault-containment mechanism, not a complete sandbox for hostile
-code. Its job is to keep ordinary driver and service bugs from corrupting the
-kernel, unrelated modules, or unrelated module state while preserving direct
-call and direct data-access fast paths where the module ABI permits them.
+foliOS modules are signed, non-malicious system components that may nevertheless
+crash. The module isolation model provides operational fault containment for
+ordinary driver and service bugs while preserving direct call and data-access
+fast paths where the module ABI permits them. Hostile-code sandboxing lies
+outside this model's scope.
 
 Some architectures provide fast in-address-space memory protection primitives,
 but those primitives are architecture-specific. On amd64 the expected backend
@@ -20,8 +19,8 @@ different primitive, or may initially provide a slower page-table-only backend.
 The kernel should therefore model module isolation in terms of generic module
 protection shards rather than exposing MPK as the top-level abstraction.
 
-Existing architectures suggest that the common abstraction should be described
-by properties, not by the instruction names of one backend. x86_64 MPK tags
+Existing architectures suggest describing the common abstraction through
+backend-independent properties. x86_64 MPK tags
 pages with a key and uses thread-local PKRU state to disable read/write data
 access. arm64 FEAT_S1POE exposes a similar pkey model through POR_EL0, but its
 overlay permissions can cover read, write, and execute. IBM storage protection
@@ -29,17 +28,17 @@ keys are also explicitly useful for catching accidental references inside
 trusted code. IA-32 segmentation is an older but still useful reference point:
 it protects and relocates address ranges through segment descriptors, selectors,
 bases, limits, privilege checks, and access attributes rather than through page
-tags. ARM MTE, pointer authentication, and RISC-V PMP-like facilities are useful
-adjacent mechanisms, but they do not map one-to-one onto the same fast
-per-thread protection-window model.
+tags. ARM MTE, pointer authentication, and RISC-V PMP-like facilities provide
+useful adjacent mechanisms with different semantics from this fast per-thread
+protection-window model.
 
 ## Decision
 
 Treat a module protection shard as a page-table view with an architecture-local
 protection binding table. On amd64, that binding table is implemented with
-shard-local pkey assignments. A pkey number is not a global module identity.
-The same pkey number may refer to different modules in different shards because
-each shard owns a different page-table view and PCID context.
+shard-local pkey assignments. A pkey number has shard-local meaning and may
+refer to different modules in different shards because each shard owns a
+different page-table view and PCID context.
 
 A module protection backend should declare at least these properties:
 
@@ -65,7 +64,7 @@ A module protection backend should declare at least these properties:
 
 The generic module runtime may rely only on the common properties it requested
 from the active backend. Execute protection, user-writable protection state,
-and exact fault metadata are backend capabilities, not universal guarantees.
+and exact fault metadata vary by backend.
 The initial portable contract should require data read/write containment,
 preemption-context protection state, a reserved default binding, explicit KRT
 entry/return transitions, and protection-fault attribution to the current module
@@ -80,8 +79,8 @@ into the same module context.
 Within a shard, the default protection binding is reserved for KRT and user-area
 access that must remain available to the runtime. On amd64 this is pkey 0.
 Module-accessible regions use non-default shard-local bindings. A module's
-effective protection identity is therefore the current module context plus the
-current shard binding, not an architecture-local key value.
+effective protection identity combines the current module context with the
+current shard binding; an architecture-local key alone is insufficient.
 
 The kernel owns shard planning. It uses module archive metadata, especially SIF
 provided/required interface records and other locality or separation hints, to
@@ -90,12 +89,11 @@ shard numbers or architecture-local protection keys. Runtime metadata should
 carry a shard generation so KRT and fault paths can detect stale call gates or
 stale mapping decisions after a reconfiguration.
 
-Shard planning is an incremental optimization pass, not a correctness-critical
-part of each call. A valid module graph must keep running under a conservative
-layout. The planner may later improve locality, split hot or cold dependencies,
-or rebalance slots, but it must do so through generation changes, draining, and
-metadata updates rather than assuming module code stores or owns call-frame
-state.
+Shard planning is an incremental performance optimization. A valid module graph
+must remain correct under a conservative layout. The planner may later improve
+locality, separate dependencies with different activity levels, or rebalance
+slots through generation changes, draining, and metadata updates. The planner
+cannot rely on module code to store or own call-frame state.
 
 KRT is the defined transition coordinator. A same-shard module call may switch
 between caller and callee by changing the architecture-local protection state.
@@ -114,19 +112,18 @@ kernel rules. If the kernel later enters another module, KRT installs that
 module entry's required shard and protection state rather than inheriting
 whatever access window was open in the interrupted module.
 
-Ordinary user contexts treat architecture-local protection state as saved user
-CPU state rather than a module isolation boundary. User/kernel separation is
-provided by the user page-table view and, once implemented, KPTI-style kernel
-mapping removal on kernel entry. On amd64, the default ordinary-user PKRU value
+Ordinary user contexts preserve architecture-local protection state as saved
+user CPU state. The user page-table view and, once implemented, KPTI-style
+kernel mapping removal provide user/kernel separation. On amd64, the default
+ordinary-user PKRU value
 should leave all pkeys open. The kernel may save and restore that value across
 preemption like other user context state without assigning module-runtime
 meaning to it.
 
-Well-defined cross-module calls must not depend on the caller's private stack
-remaining accessible while the caller's private protection binding is closed.
-KRT should define the entry frame, return frame, and stack-switching rules
-explicitly. Callees should run on a callee, KRT, or otherwise ABI-defined stack,
-not by accidentally continuing on caller-owned private memory.
+Well-defined cross-module calls must switch away from the caller's private stack
+before closing the caller's private protection binding. KRT should define the
+entry frame, return frame, and stack-switching rules explicitly. Callees should
+run on a callee-owned, KRT-owned, or otherwise ABI-defined stack.
 
 Modules must not store KRT call frames as module-owned state. Call frames are
 runtime-owned transition records whose lifetime is tied to the active call
@@ -139,22 +136,21 @@ offsets, handles, or generated interface bindings rather than ad hoc raw
 pointers. The runtime may temporarily open the required architecture-local
 binding while performing a validated access, then close it again.
 
-A jump into another module's code without going through the KRT call gate is
-undefined module behavior, not a valid cross-module call. MPK does not prevent
-instruction fetch from another mapped executable page on amd64, and foliOS does
-not require the generic protection-shard abstraction to enforce execute
-isolation. If a bad function pointer lands in another module's code, that code
-does not receive a valid entry frame, module context, or open data binding set.
+A KRT call gate is the sole valid entry for a cross-module call. MPK permits
+instruction fetch from another mapped executable page on amd64, and execute
+isolation lies outside the generic protection-shard contract. If a bad function
+pointer lands in another module's code, the target code lacks a valid entry
+frame, module context, and open data binding set.
 The expected outcome is a module-context fault, failed ABI check, or invalid
 runtime access, after which the kernel and KRT attribute the failure to the
 current module context and recover by tearing down, detaching, or restarting
 that context rather than panicking the whole system.
 
-Module loading may still perform static contract validation, such as requiring
+Module loading may perform static contract validation, such as requiring
 ELF `ET_DYN` images, enforcing W^X mappings, and rejecting ABI-forbidden
 instructions outside approved runtime code. These checks enforce the module ABI
-and reduce accidental escape from the fault-containment model; they are not a
-claim that modules are hostile-code sandboxes.
+and reduce accidental violations of the fault-containment contract. Hostile-code
+sandboxing remains outside their scope.
 
 ## Consequences
 
@@ -169,9 +165,9 @@ same shard when resource and separation constraints allow it.
 
 Fault handling must carry enough execution metadata to identify the current
 module context, current shard, architecture-local binding, slot, and shard
-generation. Module faults should normally become module-context termination,
-restart, or capability revocation events. Kernel faults and module-loader
-invariant failures remain stronger errors.
+generation. A module fault should normally result in termination or restart of
+the module context, or revocation of its capabilities. Kernel faults and
+module-loader invariant failures remain stronger errors.
 
 KRT call frames need a clear nesting and unwind model. Nested module calls must
 restore shard and protection state on normal return and on fault paths. Invalid

@@ -1,8 +1,8 @@
 # Memory Model {#architecture_memory_model}
 
-The memory model is split into explicit layers. The goal is to make every
-operation state whether it is reserving address space, allocating physical
-backing, mapping caller-owned frames, or resolving a lazy mapping.
+The memory model is split into explicit layers so each operation's effect is
+clear: reserving address space, allocating physical backing, mapping
+caller-owned frames, or resolving a lazy mapping.
 
 ## Address-Space Scopes
 
